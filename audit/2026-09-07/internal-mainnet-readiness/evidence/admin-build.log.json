@@ -1,0 +1,4 @@
+{
+  "stdout": "▲ Next.js 16.3.0 (webpack)\n✓ Running next.config.ts took 12ms\n\n  Creating an optimized production build ...\n✓ Compiled successfully in 3.4s\n  Running TypeScript ...\n  Finished TypeScript in 297ms ...\n  Collecting page data using 9 workers ...\n  Generating static pages using 9 workers (0/10) ...\n  Generating static pages using 9 workers (2/10) \r\n  Generating static pages using 9 workers (4/10) \r\n  Generating static pages using 9 workers (7/10) \r\n✓ Generating static pages using 9 workers (10/10) in 191ms\n  Finalizing page optimization ...\n  Collecting build traces ...\n\nRoute (app)\n┌ ○ /\n├ ○ /_not-found\n├ ƒ /api/gateway/[...path]\n├ ƒ /api/health\n├ ƒ /api/indexer/[...path]\n├ ○ /history\n├ ○ /markets\n├ ○ /markets/new\n├ ○ /resolutions\n├ ○ /review\n└ ○ /system\n\n\n○  (Static)   prerendered as static content\nƒ  (Dynamic)  server-rendered on demand\n\n",
+  "stderr": "$ next build --webpack\n"
+}

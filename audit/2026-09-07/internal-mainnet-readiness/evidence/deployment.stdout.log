@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "chainId": 31337,
+  "checks": [
+    "wrong external CTF rejected before any broadcast",
+    "all custom runtimes matched constructor execution",
+    "all immutable wiring and operational roles verified",
+    "incomplete handover rejected",
+    "completed delayed handover verified",
+    "unexpected operator outside manifest rejected and revocation verified",
+    "scheduled unsafe admin-delay reduction rejected and rollback verified",
+    "altered deployed runtime rejected",
+    "market creation CLI verified",
+    "Solidity/TypeScript resolution commitment matched",
+    "substituted resolution rejected",
+    "exact resolution CLI finalized"
+  ],
+  "manifestPath": "/Volumes/T9/conditional-stocks/audit/2026-09-07/internal-mainnet-readiness/evidence/local-deployment/v2-0xcf7ed3acca5a467e9e704c703e8d87f634fb0fc9.json",
+  "authority": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
+  "marketId": "0xb9ab5cb432bcad8a414a8c55d1198c43f08a63da770d235a2e9c71035a1c0e3a",
+  "productionApproved": false
+}

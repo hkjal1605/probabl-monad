@@ -1,0 +1,12 @@
+{
+  "name": "arithmetic",
+  "command": [
+    "/private/tmp/conditional-stocks-audit-venv/bin/python",
+    "/Volumes/T9/conditional-stocks/audit/2026-09-06/remediation/verification/prove-accounting.py"
+  ],
+  "cwd": "/Volumes/T9/conditional-stocks",
+  "environmentOverrides": {},
+  "started": "2026-09-07T08:50:33.781Z",
+  "finished": "2026-09-07T08:50:33.918Z",
+  "exitCode": 0
+}

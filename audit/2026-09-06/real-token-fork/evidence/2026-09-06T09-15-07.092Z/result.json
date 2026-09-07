@@ -1,0 +1,289 @@
+{
+  "started": "2026-09-06T09:15:07.092Z",
+  "finished": "2026-09-06T09:15:48.442Z",
+  "completed": true,
+  "protocolCompatible": false,
+  "point2": "NOT VERIFIED — canonical USDG decimals incompatible; exchange lifecycle not executed",
+  "productionApproved": false,
+  "liveTransactionsSubmitted": 0,
+  "source": {
+    "algorithm": "sha256(path + space + sha256 + newline), sorted by path",
+    "digest": "38c22573022e14c631d5d7d7b1eb7ed9bf25b458c40b80485ca7d3891a393c5e",
+    "files": [
+      {
+        "path": "packages/contracts/src/ConditionalExchange.sol",
+        "sha256": "c3c79fe848765706a69900be53d95ab53fec84d9b04effaa55bb8bf267bd9fb7"
+      },
+      {
+        "path": "packages/contracts/src/ConditionalSettlement.sol",
+        "sha256": "47c76018d8e9e44b5d7c7d322b7ea4294f8c25a0719cd3cc91671da4626f9298"
+      },
+      {
+        "path": "packages/contracts/src/IOCRouter.sol",
+        "sha256": "89605cd32d16749fd9469b13d06ddcd975e0ed07a4e2e342bc8d3237bacfc0d4"
+      },
+      {
+        "path": "packages/contracts/src/ManualResolutionController.sol",
+        "sha256": "71f9b4fcad4a169c16098688cf2beb45e6895caff5617335bc31d2dc7a89a8c6"
+      },
+      {
+        "path": "packages/contracts/src/MarketRegistry.sol",
+        "sha256": "2b94327b9e807868aa558fd4ffe7d76f42f30b23ab24b0ed9c12e8badfa22aa8"
+      },
+      {
+        "path": "packages/contracts/src/OrderRecoveryRouter.sol",
+        "sha256": "186bc7928ff86758acd684d4bc7a58bf59138da3face18ca298139970302aedd"
+      },
+      {
+        "path": "packages/contracts/src/OrderValidator.sol",
+        "sha256": "b6cc87cb93ab628d783ca9728aa7bdb2892be04bae897228a107cacb5f8df29c"
+      },
+      {
+        "path": "packages/contracts/src/PositionRouter.sol",
+        "sha256": "86f42765ca00203684856078b2ecf682d40a4e3a83fbaa27fe26baf0578400f6"
+      },
+      {
+        "path": "packages/contracts/src/ProtocolAuthority.sol",
+        "sha256": "c4fc73ec9ca1cf6cf678475fbe8c6798678dfc72c96e42aba368bca1dd5b1542"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IConditionalSettlement.sol",
+        "sha256": "d4ee7cce41776285fe389ae4b3ba5dc62622b2f74e4990763d1276a583cc5a16"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IConditionalTokens.sol",
+        "sha256": "b73e3e62a7bd92d25f72d642a82e94fa2df4408589e63cee043856dfc3d394f2"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IIOCExchange.sol",
+        "sha256": "97527a451536585942e27cc9b83bc505b669b48c31454aed406debf273474d1c"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IIOCRouter.sol",
+        "sha256": "a7cd383eead7f3f33a5fe23fc16e0d36de96aba3337495c7aa9f0b95259fb667"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IManualResolutionController.sol",
+        "sha256": "89a75796eea5390cd3cf02322a34b7efecf4ec148fae09b9c551bc61a9f4dc10"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IMarketRegistry.sol",
+        "sha256": "58cb8074dd3f6a5d0f46ed5738cfc16f5bb214e26d8772189f8783a9a4626c57"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IOrderRecoveryExchange.sol",
+        "sha256": "0fd47f272a4ab91f1581caeb44253ca840b3ac7cf6ae9e0a5b596fcb507f495e"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IOrderValidator.sol",
+        "sha256": "dadebf59b58192165f4a13149a560de6dacc309cdde7dc602f9dfb538f7b3008"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IProtocolAccess.sol",
+        "sha256": "8e84ad25f8bdf69ba08c78a87e5f79f1dee39f292314f3ced92ede5a24ba4dec"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IProtocolAuthority.sol",
+        "sha256": "12ca833199d26934c9657168f138581ec0eb161d5132c33fda78597e1c4dd271"
+      },
+      {
+        "path": "packages/contracts/src/libraries/MarketConfigMath.sol",
+        "sha256": "1ea3eecf20494907620ef7ee89a1b4543bc270e81e4126f306b8b236bb5c6855"
+      },
+      {
+        "path": "packages/contracts/src/libraries/PriceMath.sol",
+        "sha256": "419b602c4fa56eb67c70b4d556a3d8573adc26ab31b25c129b825b13cd35860c"
+      },
+      {
+        "path": "packages/contracts/src/libraries/ProtocolConstants.sol",
+        "sha256": "e140e6ee4b78116fcc192283e469859504daa2d0ce6ac162a99fba164646b529"
+      },
+      {
+        "path": "packages/contracts/src/libraries/ProtocolRoles.sol",
+        "sha256": "e53d77b92a960a527b2b56e4fa0ec292c7b68bed8b5a4428cec6cd75baae1fe8"
+      },
+      {
+        "path": "packages/contracts/src/types/ProtocolTypes.sol",
+        "sha256": "c87f415b8b93b419e9a53d9eda5d77cef32c090783039ed373a0501e3d7e5322"
+      },
+      {
+        "path": "packages/contracts/src/utils/ExpectedCtfReceiver.sol",
+        "sha256": "3f799766f88d297ad3448d0aa660270b5b86b34211c1cdae408b3141831e08ca"
+      },
+      {
+        "path": "packages/contracts/src/utils/ProtocolAccess.sol",
+        "sha256": "bafdf6ca58f9ae781ef1dca75e9a5a837478bd7093e825fc46818758ebbb8baa"
+      }
+    ],
+    "lockSha256": "163c0d348fd858ae006b71aa8b82545f7949bba654689c03a1f3102f16a01108"
+  },
+  "runnerSha256": "7e72ce169938e90228a1c11c259b1aa65e807494ce7f0cde05483e86f25f8157",
+  "blockNumber": "55857421",
+  "blockHash": "0x4a93d48cdadbe25070d41ae28f7fdd152e586ce8d21385c12ef1a30198fbee34",
+  "sourceChainId": 4663,
+  "localChainId": 4663,
+  "checks": [
+    {
+      "name": "Canonical USDG/NVDA/TSLA identities and RH block pinned",
+      "status": "PASS"
+    },
+    {
+      "name": "Upstream transaction submission is rejected locally",
+      "status": "PASS"
+    },
+    {
+      "name": "Local Anvil fork retains RH mainnet chain ID and pinned block hash",
+      "status": "PASS"
+    },
+    {
+      "name": "USDG: exact transfer from real holder, boolean return, unchanged implementation",
+      "status": "PASS",
+      "detail": {
+        "decimals": 6,
+        "funding": "1000000000"
+      }
+    },
+    {
+      "name": "NVDA: exact transfer from real holder, boolean return, unchanged implementation",
+      "status": "PASS",
+      "detail": {
+        "decimals": 18,
+        "funding": "10000000000000000000"
+      }
+    },
+    {
+      "name": "TSLA: exact transfer from real holder, boolean return, unchanged implementation",
+      "status": "PASS",
+      "detail": {
+        "decimals": 18,
+        "funding": "10000000000000000000"
+      }
+    },
+    {
+      "name": "Protocol deployment with canonical USDG",
+      "status": "BLOCKED",
+      "detail": {
+        "abiItem": {
+          "type": "error",
+          "name": "InvalidDecimals",
+          "inputs": [
+            {
+              "name": "token",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "decimals",
+              "type": "uint8",
+              "internalType": "uint8"
+            }
+          ]
+        },
+        "args": [
+          "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+          6
+        ],
+        "errorName": "InvalidDecimals"
+      }
+    },
+    {
+      "name": "USDG: exact approval and boolean return",
+      "status": "PASS"
+    },
+    {
+      "name": "USDG: real CTF split + merge exit with exact raw-unit conservation",
+      "status": "PASS"
+    },
+    {
+      "name": "USDG: real CTF split + yes exit with exact raw-unit conservation",
+      "status": "PASS"
+    },
+    {
+      "name": "USDG: real CTF split + no exit with exact raw-unit conservation",
+      "status": "PASS"
+    },
+    {
+      "name": "USDG: real CTF split + invalid exit with exact raw-unit conservation",
+      "status": "PASS"
+    },
+    {
+      "name": "NVDA: exact approval and boolean return",
+      "status": "PASS"
+    },
+    {
+      "name": "NVDA: real CTF split + merge exit with exact raw-unit conservation",
+      "status": "PASS"
+    },
+    {
+      "name": "NVDA: real CTF split + yes exit with exact raw-unit conservation",
+      "status": "PASS"
+    },
+    {
+      "name": "NVDA: real CTF split + no exit with exact raw-unit conservation",
+      "status": "PASS"
+    },
+    {
+      "name": "NVDA: real CTF split + invalid exit with exact raw-unit conservation",
+      "status": "PASS"
+    },
+    {
+      "name": "NVDA: current UI multiplier and raw units agree",
+      "status": "PASS",
+      "detail": {
+        "multiplier": "1000000000000000000",
+        "raw": "6000000000000000000",
+        "ui": "6000000000000000000",
+        "limitation": "No issuer-admin or scheduled-multiplier changes exercised"
+      }
+    },
+    {
+      "name": "TSLA: exact approval and boolean return",
+      "status": "PASS"
+    },
+    {
+      "name": "TSLA: real CTF split + merge exit with exact raw-unit conservation",
+      "status": "PASS"
+    },
+    {
+      "name": "TSLA: real CTF split + yes exit with exact raw-unit conservation",
+      "status": "PASS"
+    },
+    {
+      "name": "TSLA: real CTF split + no exit with exact raw-unit conservation",
+      "status": "PASS"
+    },
+    {
+      "name": "TSLA: real CTF split + invalid exit with exact raw-unit conservation",
+      "status": "PASS"
+    },
+    {
+      "name": "TSLA: current UI multiplier and raw units agree",
+      "status": "PASS",
+      "detail": {
+        "multiplier": "1000000000000000000",
+        "raw": "6000000000000000000",
+        "ui": "6000000000000000000",
+        "limitation": "No issuer-admin or scheduled-multiplier changes exercised"
+      }
+    }
+  ],
+  "transactions": 64,
+  "upstreamReadMethods": {
+    "eth_chainId": 2,
+    "eth_getBlockByNumber": 3,
+    "eth_gasPrice": 1,
+    "eth_getBalance": 17,
+    "eth_getCode": 25,
+    "eth_getTransactionCount": 17,
+    "eth_getStorageAt": 62,
+    "eth_call": 3,
+    "eth_getTransactionReceipt": 15
+  },
+  "deniedUpstreamWrites": 2,
+  "limits": [
+    "Token issuer controls, upgrades and scheduled multiplier changes not fully reviewed or tested",
+    "RH/Nitro precompiles, sequencer screening and finality not certified by Anvil",
+    "M-02 remains open",
+    "No exchange/IOC lifecycle can run against canonical USDG until the decimal incompatibility is resolved"
+  ]
+}

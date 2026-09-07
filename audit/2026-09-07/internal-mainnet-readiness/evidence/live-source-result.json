@@ -1,0 +1,10 @@
+{
+  "completed": true,
+  "checkedAt": "2026-09-07T08:36:26.432Z",
+  "gammaMarketId": "2244513",
+  "conditionId": "0x5187c6fefe08cf4513e08dd31a514b698aaebc18c259b9a98c8170cca2b7d6e8",
+  "question": "Will AfD win an absolute majority of seats in Sachsen-Anhalt?",
+  "sourceEvents": 4,
+  "qualities": ["one-sided"],
+  "transactionsSubmitted": 0
+}

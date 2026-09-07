@@ -1,0 +1,42 @@
+{
+  "constructorArgs": [
+    "0x290eb239846d3648eb1fea4afbf0afff4a83ffa3",
+    "0xae72462a56790c381beb0e4ab9dfca99fd2cbe30",
+    "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168"
+  ],
+  "initcodeHash": "0x0e0eccac7b27ddcbbd6c19adaa49d4e430ce78b24069c284f4a11e24aa9d7c5a",
+  "response": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "error": {
+      "code": 3,
+      "message": "execution reverted: custom error 0xf2353bd3: 0000000000000000000000005fc5360d0400a0fd4f2af552add042d716f1d1680000000000000000000000000000000000000000000000000000000000000006",
+      "data": "0xf2353bd30000000000000000000000005fc5360d0400a0fd4f2af552add042d716f1d1680000000000000000000000000000000000000000000000000000000000000006"
+    }
+  },
+  "decoded": {
+    "abiItem": {
+      "type": "error",
+      "name": "InvalidDecimals",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "decimals",
+          "type": "uint8",
+          "internalType": "uint8"
+        }
+      ]
+    },
+    "args": [
+      "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+      6
+    ],
+    "errorName": "InvalidDecimals"
+  },
+  "nvdaUsdgLifecycle": "BLOCKED before market creation",
+  "tslaUsdgLifecycle": "BLOCKED before market creation"
+}

@@ -1,0 +1,131 @@
+[
+  {
+    "service": "apps/api",
+    "complete": false,
+    "lines": 2177,
+    "hit": 1621,
+    "functions": 214,
+    "called": 164,
+    "typeOnly": [],
+    "unmeasured": ["apps/api/src/admin-chain.ts", "apps/api/src/index.ts"],
+    "uncovered": [
+      "apps/api/src/app.ts",
+      "apps/api/src/chain.ts",
+      "apps/api/src/admin-evidence-service.ts",
+      "apps/api/src/service.ts"
+    ]
+  },
+  {
+    "service": "services/matcher",
+    "complete": false,
+    "lines": 687,
+    "hit": 577,
+    "functions": 84,
+    "called": 72,
+    "typeOnly": [],
+    "unmeasured": ["services/matcher/src/main.ts"],
+    "uncovered": [
+      "services/matcher/src/runtime.ts",
+      "services/matcher/src/settlement.ts",
+      "services/matcher/src/coordinator.ts",
+      "services/matcher/src/metrics.ts"
+    ]
+  },
+  {
+    "service": "services/settlement-worker",
+    "complete": false,
+    "lines": 958,
+    "hit": 690,
+    "functions": 68,
+    "called": 44,
+    "typeOnly": [],
+    "unmeasured": [
+      "services/settlement-worker/src/main.ts",
+      "services/settlement-worker/src/app.ts",
+      "services/settlement-worker/src/index.ts"
+    ],
+    "uncovered": [
+      "services/settlement-worker/src/chain.ts",
+      "services/settlement-worker/src/worker.ts"
+    ]
+  },
+  {
+    "service": "services/polymarket-ingestor",
+    "complete": false,
+    "lines": 643,
+    "hit": 580,
+    "functions": 112,
+    "called": 90,
+    "typeOnly": [],
+    "unmeasured": [
+      "services/polymarket-ingestor/src/main.ts",
+      "services/polymarket-ingestor/src/index.ts"
+    ],
+    "uncovered": [
+      "services/polymarket-ingestor/src/source.ts",
+      "services/polymarket-ingestor/src/app.ts",
+      "services/polymarket-ingestor/src/server.ts",
+      "services/polymarket-ingestor/src/service.ts"
+    ]
+  },
+  {
+    "service": "services/rh-indexer",
+    "complete": false,
+    "lines": 749,
+    "hit": 271,
+    "functions": 32,
+    "called": 18,
+    "typeOnly": [],
+    "unmeasured": [
+      "services/rh-indexer/src/logger.ts",
+      "services/rh-indexer/src/observability.ts",
+      "services/rh-indexer/src/api/index.ts",
+      "services/rh-indexer/src/index.ts",
+      "services/rh-indexer/src/handlers/block.ts",
+      "services/rh-indexer/src/handlers/authority.ts",
+      "services/rh-indexer/src/handlers/lifecycle.ts",
+      "services/rh-indexer/src/handlers/tokens.ts",
+      "services/rh-indexer/src/handlers/exchange.ts",
+      "services/rh-indexer/src/handlers/registry.ts",
+      "services/rh-indexer/scripts/ponder.ts",
+      "services/rh-indexer/scripts/preflight.ts",
+      "services/rh-indexer/scripts/reconcile.ts",
+      "services/rh-indexer/ponder.config.ts",
+      "services/rh-indexer/ponder.schema.ts"
+    ],
+    "uncovered": [
+      "services/rh-indexer/src/reconciliation/engine.ts",
+      "services/rh-indexer/src/canonical-block.ts",
+      "services/rh-indexer/src/environment.ts",
+      "services/rh-indexer/src/verified-head.ts"
+    ]
+  },
+  {
+    "service": "packages/db",
+    "complete": false,
+    "lines": 3663,
+    "hit": 3234,
+    "functions": 529,
+    "called": 463,
+    "typeOnly": [
+      "packages/db/src/reconciliation/types.ts",
+      "packages/db/src/evidence/types.ts",
+      "packages/db/src/polymarket/types.ts",
+      "packages/db/src/gateway/types.ts"
+    ],
+    "unmeasured": ["packages/db/src/indexer/verification.ts", "packages/db/scripts/migrate.ts"],
+    "uncovered": [
+      "packages/db/src/schema.ts",
+      "packages/db/src/reconciliation/queries.ts",
+      "packages/db/src/testing.ts",
+      "packages/db/src/evidence/queries.ts",
+      "packages/db/src/settlement/queries.ts",
+      "packages/db/src/connection.ts",
+      "packages/db/src/matcher/queries.ts",
+      "packages/db/src/matcher/memory.ts",
+      "packages/db/src/polymarket/queries.ts",
+      "packages/db/src/indexer/reads.ts",
+      "packages/db/src/indexer/writes.ts"
+    ]
+  }
+]

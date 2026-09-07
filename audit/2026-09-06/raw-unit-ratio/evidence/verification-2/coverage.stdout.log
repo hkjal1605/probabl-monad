@@ -1,0 +1,272 @@
+Compiling 70 files with Solc 0.8.30
+Solc 0.8.30 finished in 20.39s
+Compiler run successful!
+Analysing contracts...
+Running tests...
+
+Ran 3 tests for test/GoldenVectors.t.sol:GoldenVectorsTest
+[PASS] testSolidityMatchesCommittedMarketAndConditionVectors() (gas: 321271)
+[PASS] testSolidityMatchesCommittedOrderVector() (gas: 1364104)
+[PASS] testSolidityMatchesCommittedRoundingVector() (gas: 181658)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 10.77ms (4.94ms CPU time)
+
+Ran 2 tests for test/ReceiverBoundaries.t.sol:ReceiverBoundariesTest
+[PASS] testBatchCallbackBindsArraysAndRejectsOverlappingExpectations() (gas: 899811)
+[PASS] testSingleCallbackBindsSenderOperatorOwnerIdAmountAndCannotReplay() (gas: 921665)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 14.83ms (2.46ms CPU time)
+
+Ran 3 tests for test/Milestone11LifecycleE2E.t.sol:Milestone11LifecycleE2ETest
+[PASS] testTradeToInvalidResolutionAndAllClaimsRedemption() (gas: 1999166)
+[PASS] testTradeToNoResolutionAndRedemption() (gas: 1725166)
+[PASS] testTradeToYesResolutionAndRedemption() (gas: 1677156)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 27.34ms (13.23ms CPU time)
+
+Ran 6 tests for test/AuditFindings.t.sol:AuditFindingsTest
+[PASS] testFindingFilledExposureCanGrowBeyondMarketOpenNotionalCap() (gas: 3551096)
+[PASS] testRemediationPrepreparedConditionCannotBlockMarketCreation() (gas: 734945)
+[PASS] testRemediationRegistryRejectsCapsThatMakeMatchingImpossible() (gas: 56444)
+[PASS] testRemediationRegistryRejectsTickAboveEveryPermittedOrderNotional() (gas: 56143)
+[PASS] testRemediationRejectingRecipientCannotOpenOrder() (gas: 630652)
+[PASS] testRemediationResolutionRejectsDifferentEvidenceHashThanPrepared() (gas: 171737)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 33.91ms (26.46ms CPU time)
+
+Ran 6 tests for test/AdversarialReceivers.t.sol:AdversarialReceiversTest
+[PASS] testBoundedInterfaceProbesRejectGasGriefAndFalseERC165() (gas: 460892)
+[PASS] testChangingReceiverBehaviorRevertsFillAtomicallyAndMakerCanCancel() (gas: 4540204)
+[PASS] testGasGriefingMakerCannotStarveOtherRecoveryBatchEntries() (gas: 2933893)
+[PASS] testLargeReceiverRevertCannotStarveOtherRecoveryBatchEntries() (gas: 2583116)
+[PASS] testReceiverCannotReenterCancellationDuringFill() (gas: 2956418)
+[PASS] testSmartWalletCanRedirectRecoveryAfterItStartsRejectingClaims() (gas: 2026423)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 39.16ms (26.13ms CPU time)
+
+Ran 13 tests for test/ExchangeValidation.t.sol:ExchangeValidationTest
+[PASS] testAssetContractsRejectMismatchedConditionalTokens() (gas: 162865)
+[PASS] testFalseReturnTokenCannotOpenAnOrder() (gas: 1800993)
+[PASS] testIocMakerLimitIsEnforcedBeforeFunding() (gas: 197204)
+[PASS] testIocRevertsAtomicallyWhenAnyMakerIsStale() (gas: 850777)
+[PASS] testNoReturnTokenFailsCtfSettlementAtomicallyAndEscrowRemainsRecoverable() (gas: 2133510)
+[PASS] testNonCrossingAndWrongBranchCannotFill() (gas: 1027256)
+[PASS] testOneTimeComponentConfigurationCannotChange() (gas: 54049)
+[PASS] testOnlyMakerCanCancel() (gas: 434228)
+[PASS] testOnlyMatcherCanFill() (gas: 738384)
+[PASS] testOrderTickStepExpiryAndReplayValidation() (gas: 713241)
+[PASS] testOrderWalletAndMarketRiskCapsAreEnforced() (gas: 1525695)
+[PASS] testPauseBlocksOpenAndFillButNotExistingEscrowRecovery() (gas: 696650)
+[PASS] testSettlementAndIocInternalsRejectDirectCalls() (gas: 73074)
+Suite result: ok. 13 passed; 0 failed; 0 skipped; finished in 43.77ms (30.61ms CPU time)
+
+Ran 1 test for test/ProtocolInvariants.t.sol:StatefulReachabilityTest
+[PASS] testHandlerExecutesTradingRecoveryMergeResolutionAndRedemption() (gas: 71075738)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 26.27ms (24.73ms CPU time)
+
+Ran 4 tests for test/SecurityBoundaries.t.sol:SecurityBoundariesTest
+[PASS] testChangedRecipientChainAndExchangeDomainCannotUseAnExistingSignature() (gas: 1924939)
+[PASS] testMalformedOrRevertingERC1271CannotCreateEscrow() (gas: 1617733)
+[PASS] testOrdersFromDifferentMarketsCannotConsumeEachOthersEscrow() (gas: 1405465)
+[PASS] testRecoveryBatchAndMakerRedirectRejectInvalidBoundaries() (gas: 470540)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 18.36ms (12.73ms CPU time)
+
+Ran 2 tests for test/PriceMath.t.sol:PriceMathTest
+[PASS] testFuzzPartialReservationAlwaysCoversFill(uint128,uint128,uint128,uint128) (runs: 1024, μ: 18198, ~: 18198)
+[PASS] testFuzzReservationNeverRoundsBelowExecution(uint128,uint128) (runs: 1024, μ: 13374, ~: 13374)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 81.92ms (132.11ms CPU time)
+
+Ran 5 tests for test/ResolutionCommitment.t.sol:ResolutionCommitmentTest
+[PASS] testCommitmentIsBoundToChainControllerMarketAndDenominator() (gas: 373871)
+[PASS] testCtfReportFailurePreservesApprovalForRetry() (gas: 351074)
+[PASS] testFuzzExactApprovedVectorFinalizesOnce(uint8) (runs: 64, μ: 280465, ~: 273909)
+[PASS] testNeitherOperationalRoleCanReplaceTheOtherApproval() (gas: 332424)
+[PASS] testPayoutAndUriCannotChangeEvenWithSameEvidenceHash() (gas: 412794)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 84.23ms (81.03ms CPU time)
+
+Ran 19 tests for test/MarketResolutionAndPositions.t.sol:MarketResolutionAndPositionsTest
+[PASS] testBestEffortRecoveryBatchSkipsInvalidEntries() (gas: 406970)
+[PASS] testFeeOnTransferCollateralIsRejectedWithoutOpeningOrder() (gas: 1949922)
+[PASS] testFreezeMakesOpenEscrowPermissionlesslyReleasable() (gas: 395616)
+[PASS] testFuzzSplitAndMergeConserveRawCollateral(uint96) (runs: 64, μ: 325039, ~: 325045)
+[PASS] testInvalidResolutionPaysHalfPerClaim() (gas: 620190)
+[PASS] testLifecycleRejectsInvalidTransitionsAndAllowsPublicCutoffFreeze() (gas: 124152)
+[PASS] testManualNoResolutionAndDirectCtfRedemption() (gas: 376757)
+[PASS] testManualYesResolutionAndWinningClaimRedemption() (gas: 475858)
+[PASS] testMarketIdentityAndLifecycleAreDeterministic() (gas: 42802)
+[PASS] testMergeCompleteSetBeforeResolutionAndMultiplierChange() (gas: 627944)
+[PASS] testOnlyConfiguredCtfOracleCanResolvePreparedCondition() (gas: 20027)
+[PASS] testPositionRouterRejectsMalformedRequests() (gas: 59629)
+[PASS] testRecoveryBatchesHandleExpiredAndInvalidatedOrders() (gas: 698976)
+[PASS] testRegistryRejectsInvalidIndexesTimesAndCaps() (gas: 109085)
+[PASS] testRegistryRejectsWrongQuoteAndAcceptsSixDecimalBase() (gas: 2348446)
+[PASS] testResolutionRejectsMalformedAndSecondSubmission() (gas: 263048)
+[PASS] testResolutionRequiresEvidenceAndAwaitingState() (gas: 109125)
+[PASS] testUnauthorizedRolesCannotCreateFreezeOrResolve() (gas: 73302)
+[PASS] testUnsolicitedClaimsCannotPolluteExchange() (gas: 181070)
+Suite result: ok. 19 passed; 0 failed; 0 skipped; finished in 146.65ms (143.98ms CPU time)
+
+Ran 17 tests for test/ConditionalExchange.t.sol:ConditionalExchangeTest
+[PASS] testAllClaimFundedNoFill() (gas: 1074249)
+[PASS] testAllClaimFundedYesFill() (gas: 1085689)
+[PASS] testClaimBidAgainstWholeAsk() (gas: 1161536)
+[PASS] testClaimBidAgainstWholeAskNo() (gas: 1161405)
+[PASS] testErc1271SmartWalletOrder() (gas: 2046894)
+[PASS] testFuzzPartialFillReservationsReconcile(uint16) (runs: 64, μ: 1372871, ~: 1372871)
+[PASS] testIOCIsAtomicAndReleasesRemainder() (gas: 1320965)
+[PASS] testInvalidSignatureCannotPullMakerFunds() (gas: 161957)
+[PASS] testMixedFundingBothDirections() (gas: 1160527)
+[PASS] testPartialFillThenCancelReturnsExactReservations() (gas: 1340904)
+[PASS] testPauseBlocksFillButNeverCancellation() (gas: 383804)
+[PASS] testPausedStockTokenCannotCreateAnOpenOrder() (gas: 444945)
+[PASS] testThirdPartyReleasesExpiredAndInvalidatedOrders() (gas: 688842)
+[PASS] testUnsolicitedErc20DustCannotBlockSettlement() (gas: 1249803)
+[PASS] testWholeBidAgainstClaimAskNo() (gas: 1160745)
+[PASS] testWholeFundedNoFillAtRestingAskAndReturnsPriceImprovement() (gas: 1264158)
+[PASS] testWholeFundedYesFillAtRestingBidPrice() (gas: 1292076)
+Suite result: ok. 17 passed; 0 failed; 0 skipped; finished in 294.63ms (318.98ms CPU time)
+
+Ran 5 tests for test/RegistryHardening.t.sol:RegistryHardeningTest
+[PASS] testAllSharedAuthorityWiringRejectsASecondAuthority() (gas: 6319868)
+[PASS] testFuzzAcceptedCapsAdmitAnActualTwoSidedFill(uint64,uint64,uint96) (runs: 64, μ: 1672057, ~: 1722346)
+[PASS] testMalformedPreparedSlotCountIsRejected() (gas: 83446)
+[PASS] testPreResolvedConditionIsRejectedAndNoMarketIsStored() (gas: 226526)
+[PASS] testUint128BoundariesFailWithConfigErrorInsteadOfOverflow() (gas: 88830)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 286.49ms (280.30ms CPU time)
+
+Ran 18 tests for test/RawUnitRatio.t.sol:RawUnitRatioTest
+[PASS] testAllClaimFundedNoFill() (gas: 1074268)
+[PASS] testAllClaimFundedYesFill() (gas: 1085708)
+[PASS] testClaimBidAgainstWholeAsk() (gas: 1161555)
+[PASS] testClaimBidAgainstWholeAskNo() (gas: 1161424)
+[PASS] testErc1271SmartWalletOrder() (gas: 2046917)
+[PASS] testFuzzPartialFillReservationsReconcile(uint16) (runs: 1024, μ: 1372894, ~: 1372894)
+[PASS] testIOCIsAtomicAndReleasesRemainder() (gas: 1320984)
+[PASS] testInvalidSignatureCannotPullMakerFunds() (gas: 161980)
+[PASS] testMixedFundingBothDirections() (gas: 1160545)
+[PASS] testPartialFillThenCancelReturnsExactReservations() (gas: 1340923)
+[PASS] testPauseBlocksFillButNeverCancellation() (gas: 383822)
+[PASS] testPausedStockTokenCannotCreateAnOpenOrder() (gas: 444968)
+[PASS] testRawRatioIsIndependentOfTokenMetadata() (gas: 18791)
+[PASS] testThirdPartyReleasesExpiredAndInvalidatedOrders() (gas: 688860)
+[PASS] testUnsolicitedErc20DustCannotBlockSettlement() (gas: 1249821)
+[PASS] testWholeBidAgainstClaimAskNo() (gas: 1160764)
+[PASS] testWholeFundedNoFillAtRestingAskAndReturnsPriceImprovement() (gas: 1264176)
+[PASS] testWholeFundedYesFillAtRestingBidPrice() (gas: 1292095)
+Suite result: ok. 18 passed; 0 failed; 0 skipped; finished in 594.48ms (634.23ms CPU time)
+
+Ran 1 test for test/ProtocolInvariants.t.sol:LifecycleInvariantsTest
+[PASS] invariantEscrowCountersConservationAndFinality() (runs: 256, calls: 16384, reverts: 0)
+
+╭-------------------------+------------+-------+---------+----------╮
+| Contract                | Selector   | Calls | Reverts | Discards |
++===================================================================+
+| ProtocolStatefulHandler | cancel     | 1283  | 0       | 0        |
+|-------------------------+------------+-------+---------+----------|
+| ProtocolStatefulHandler | elapse     | 1286  | 0       | 0        |
+|-------------------------+------------+-------+---------+----------|
+| ProtocolStatefulHandler | executeIOC | 1230  | 0       | 0        |
+|-------------------------+------------+-------+---------+----------|
+| ProtocolStatefulHandler | invalidate | 1296  | 0       | 0        |
+|-------------------------+------------+-------+---------+----------|
+| ProtocolStatefulHandler | lifecycle  | 1289  | 0       | 0        |
+|-------------------------+------------+-------+---------+----------|
+| ProtocolStatefulHandler | matchPair  | 1258  | 0       | 0        |
+|-------------------------+------------+-------+---------+----------|
+| ProtocolStatefulHandler | merge      | 1195  | 0       | 0        |
+|-------------------------+------------+-------+---------+----------|
+| ProtocolStatefulHandler | open       | 1226  | 0       | 0        |
+|-------------------------+------------+-------+---------+----------|
+| ProtocolStatefulHandler | pause      | 1307  | 0       | 0        |
+|-------------------------+------------+-------+---------+----------|
+| ProtocolStatefulHandler | redeem     | 1286  | 0       | 0        |
+|-------------------------+------------+-------+---------+----------|
+| ProtocolStatefulHandler | release    | 1227  | 0       | 0        |
+|-------------------------+------------+-------+---------+----------|
+| ProtocolStatefulHandler | replay     | 1271  | 0       | 0        |
+|-------------------------+------------+-------+---------+----------|
+| ProtocolStatefulHandler | split      | 1230  | 0       | 0        |
+╰-------------------------+------------+-------+---------+----------╯
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 22.32s (22.28s CPU time)
+
+Ran 1 test for test/ProtocolInvariants.t.sol:TradingInvariantsTest
+[PASS] invariantEscrowCountersConservationAndFinality() (runs: 256, calls: 16384, reverts: 0)
+
+╭-------------------------+------------+-------+---------+----------╮
+| Contract                | Selector   | Calls | Reverts | Discards |
++===================================================================+
+| ProtocolStatefulHandler | cancel     | 1283  | 0       | 0        |
+|-------------------------+------------+-------+---------+----------|
+| ProtocolStatefulHandler | elapse     | 1286  | 0       | 0        |
+|-------------------------+------------+-------+---------+----------|
+| ProtocolStatefulHandler | executeIOC | 1230  | 0       | 0        |
+|-------------------------+------------+-------+---------+----------|
+| ProtocolStatefulHandler | invalidate | 1296  | 0       | 0        |
+|-------------------------+------------+-------+---------+----------|
+| ProtocolStatefulHandler | lifecycle  | 1289  | 0       | 0        |
+|-------------------------+------------+-------+---------+----------|
+| ProtocolStatefulHandler | matchPair  | 1258  | 0       | 0        |
+|-------------------------+------------+-------+---------+----------|
+| ProtocolStatefulHandler | merge      | 1195  | 0       | 0        |
+|-------------------------+------------+-------+---------+----------|
+| ProtocolStatefulHandler | open       | 1226  | 0       | 0        |
+|-------------------------+------------+-------+---------+----------|
+| ProtocolStatefulHandler | pause      | 1307  | 0       | 0        |
+|-------------------------+------------+-------+---------+----------|
+| ProtocolStatefulHandler | redeem     | 1286  | 0       | 0        |
+|-------------------------+------------+-------+---------+----------|
+| ProtocolStatefulHandler | release    | 1227  | 0       | 0        |
+|-------------------------+------------+-------+---------+----------|
+| ProtocolStatefulHandler | replay     | 1271  | 0       | 0        |
+|-------------------------+------------+-------+---------+----------|
+| ProtocolStatefulHandler | split      | 1230  | 0       | 0        |
+╰-------------------------+------------+-------+---------+----------╯
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 23.24s (23.21s CPU time)
+
+Ran 16 test suites in 23.24s (47.25s CPU time): 106 tests passed, 0 failed, 0 skipped (106 total tests)
+
+╭------------------------------------+--------------------+--------------------+------------------+------------------╮
+| File                               | % Lines            | % Statements       | % Branches       | % Funcs          |
++====================================================================================================================+
+| src/ConditionalExchange.sol        | 93.73% (239/255)   | 90.61% (328/362)   | 53.03% (35/66)   | 96.88% (31/32)   |
+|------------------------------------+--------------------+--------------------+------------------+------------------|
+| src/ConditionalSettlement.sol      | 91.25% (73/80)     | 92.93% (92/99)     | 41.67% (5/12)    | 100.00% (9/9)    |
+|------------------------------------+--------------------+--------------------+------------------+------------------|
+| src/IOCRouter.sol                  | 100.00% (15/15)    | 95.45% (21/22)     | 75.00% (3/4)     | 100.00% (2/2)    |
+|------------------------------------+--------------------+--------------------+------------------+------------------|
+| src/ManualResolutionController.sol | 100.00% (35/35)    | 100.00% (45/45)    | 100.00% (7/7)    | 100.00% (4/4)    |
+|------------------------------------+--------------------+--------------------+------------------+------------------|
+| src/MarketRegistry.sol             | 95.24% (140/147)   | 92.86% (195/210)   | 45.83% (11/24)   | 100.00% (20/20)  |
+|------------------------------------+--------------------+--------------------+------------------+------------------|
+| src/OrderRecoveryRouter.sol        | 73.53% (25/34)     | 76.19% (32/42)     | 33.33% (1/3)     | 100.00% (6/6)    |
+|------------------------------------+--------------------+--------------------+------------------+------------------|
+| src/OrderValidator.sol             | 100.00% (23/23)    | 97.14% (34/35)     | 85.71% (6/7)     | 100.00% (4/4)    |
+|------------------------------------+--------------------+--------------------+------------------+------------------|
+| src/PositionRouter.sol             | 95.16% (59/62)     | 91.76% (78/85)     | 37.50% (3/8)     | 100.00% (5/5)    |
+|------------------------------------+--------------------+--------------------+------------------+------------------|
+| src/ProtocolAuthority.sol          | 87.50% (7/8)       | 91.67% (11/12)     | 0.00% (0/1)      | 100.00% (1/1)    |
+|------------------------------------+--------------------+--------------------+------------------+------------------|
+| src/libraries/MarketConfigMath.sol | 100.00% (4/4)      | 100.00% (5/5)      | 100.00% (0/0)    | 100.00% (1/1)    |
+|------------------------------------+--------------------+--------------------+------------------+------------------|
+| src/libraries/PriceMath.sol        | 100.00% (4/4)      | 100.00% (4/4)      | 100.00% (0/0)    | 100.00% (2/2)    |
+|------------------------------------+--------------------+--------------------+------------------+------------------|
+| src/utils/ExpectedCtfReceiver.sol  | 96.15% (25/26)     | 96.77% (30/31)     | 83.33% (5/6)     | 100.00% (7/7)    |
+|------------------------------------+--------------------+--------------------+------------------+------------------|
+| src/utils/ProtocolAccess.sol       | 85.71% (6/7)       | 85.71% (6/7)       | 50.00% (1/2)     | 100.00% (2/2)    |
+|------------------------------------+--------------------+--------------------+------------------+------------------|
+| test/AdversarialReceivers.t.sol    | 83.33% (15/18)     | 76.92% (10/13)     | 60.00% (3/5)     | 100.00% (6/6)    |
+|------------------------------------+--------------------+--------------------+------------------+------------------|
+| test/PriceMath.t.sol               | 100.00% (4/4)      | 100.00% (4/4)      | 100.00% (0/0)    | 100.00% (2/2)    |
+|------------------------------------+--------------------+--------------------+------------------+------------------|
+| test/ProtocolFixture.sol           | 98.53% (67/68)     | 98.53% (67/68)     | 100.00% (0/0)    | 100.00% (8/8)    |
+|------------------------------------+--------------------+--------------------+------------------+------------------|
+| test/ProtocolInvariants.t.sol      | 99.27% (273/275)   | 98.17% (376/383)   | 72.92% (35/48)   | 100.00% (23/23)  |
+|------------------------------------+--------------------+--------------------+------------------+------------------|
+| test/ReceiverBoundaries.t.sol      | 83.33% (5/6)       | 66.67% (2/3)       | 100.00% (0/0)    | 100.00% (3/3)    |
+|------------------------------------+--------------------+--------------------+------------------+------------------|
+| test/RegistryHardening.t.sol       | 100.00% (4/4)      | 100.00% (3/3)      | 100.00% (0/0)    | 100.00% (1/1)    |
+|------------------------------------+--------------------+--------------------+------------------+------------------|
+| test/TestBase.sol                  | 100.00% (8/8)      | 50.00% (4/8)       | 0.00% (0/4)      | 100.00% (4/4)    |
+|------------------------------------+--------------------+--------------------+------------------+------------------|
+| test/mocks/MockTokens.sol          | 100.00% (43/43)    | 100.00% (37/37)    | 100.00% (3/3)    | 100.00% (16/16)  |
+|------------------------------------+--------------------+--------------------+------------------+------------------|
+| Total                              | 95.38% (1074/1126) | 93.64% (1384/1478) | 59.00% (118/200) | 99.37% (157/158) |
+╰------------------------------------+--------------------+--------------------+------------------+------------------╯
+Wrote LCOV report.

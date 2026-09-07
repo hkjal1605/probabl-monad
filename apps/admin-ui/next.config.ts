@@ -1,0 +1,9 @@
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  agentRules: false,
+  distDir: process.env.PROBABL_REHEARSAL_BUILD === "1" ? ".next-rehearsal" : ".next",
+  reactStrictMode: true,
+  transpilePackages: ["@conditional-stocks/ui-kit"],
+};
+export default nextConfig;

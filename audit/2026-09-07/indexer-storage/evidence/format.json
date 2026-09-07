@@ -1,0 +1,13 @@
+{
+  "command": [
+    "bunx",
+    "--no-install",
+    "biome",
+    "ci",
+    "."
+  ],
+  "code": 0,
+  "elapsedMs": 198,
+  "stdout": "\u001b[0m\u001b[34mChecked 331 files in 132\u001b[0m\u001b[0m\u001b[2m\u001b[34mms\u001b[0m\u001b[0m\u001b[34m.\u001b[0m\u001b[0m\u001b[34m No fixes applied.\u001b[0m\n",
+  "stderr": ""
+}

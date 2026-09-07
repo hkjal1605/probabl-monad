@@ -1,0 +1,14 @@
+{
+  "registry": "0xda7a188dc5f8088efde91971efd5ffd31bdf1861",
+  "controller": "0x8103c5c063dedbea783b61d27250e827eebced98",
+  "exchange": "0x85096afdb3ca8a7841dca13d2da12e89c16a30f8",
+  "validator": "0xb67f52eed9f01d53bb53576e5f4fdea13793c6a9",
+  "settlement": "0x5f74f2584f1fc928ca408ace182070bf7759aab7",
+  "ioc": "0x63f6131e03190f52778a9f38c500f09a1debdd05",
+  "recovery": "0x10c179b2bb4eabf84c5b13c6e4f39c54cde2e3f6",
+  "ctf": "0x4e4e4c42b8ba0a4220f4920c0e1b803ff6131129",
+  "authority": "0x244ac3c7802301e4e5435de1711113ab114ff76e",
+  "router": "0x787c6b7e3ec337f89f24620e040092530b17166d",
+  "priceFormat": "raw-unit-ratio-x18",
+  "protocolVersion": 2
+}

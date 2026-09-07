@@ -1,0 +1,14 @@
+{
+  "name": "biome",
+  "command": [
+    "bunx",
+    "biome",
+    "ci",
+    "."
+  ],
+  "cwd": "/Volumes/T9/conditional-stocks",
+  "environmentOverrides": {},
+  "started": "2026-09-07T06:59:14.552Z",
+  "finished": "2026-09-07T06:59:15.092Z",
+  "exitCode": 0
+}

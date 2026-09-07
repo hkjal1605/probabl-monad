@@ -1,0 +1,193 @@
+{
+  "started": "2026-09-07T07:14:11.889Z",
+  "finished": "2026-09-07T07:15:52.235Z",
+  "completed": false,
+  "protocolCompatible": false,
+  "point2": "NOT VERIFIED — incomplete lifecycle run",
+  "productionApproved": false,
+  "liveTransactionsSubmitted": 0,
+  "source": {
+    "algorithm": "sha256(path + space + sha256 + newline), sorted by path",
+    "digest": "8ae0424ed34387453682c962eb9d5eb3c2c39df4fab27388cca7cf26c0ba2015",
+    "files": [
+      {
+        "path": "packages/contracts/src/ConditionalExchange.sol",
+        "sha256": "5a91cfaede15a9986575be69f775903b7d66714fa95596c051d56967e01a1a45"
+      },
+      {
+        "path": "packages/contracts/src/ConditionalSettlement.sol",
+        "sha256": "47c76018d8e9e44b5d7c7d322b7ea4294f8c25a0719cd3cc91671da4626f9298"
+      },
+      {
+        "path": "packages/contracts/src/IOCRouter.sol",
+        "sha256": "89605cd32d16749fd9469b13d06ddcd975e0ed07a4e2e342bc8d3237bacfc0d4"
+      },
+      {
+        "path": "packages/contracts/src/ManualResolutionController.sol",
+        "sha256": "71f9b4fcad4a169c16098688cf2beb45e6895caff5617335bc31d2dc7a89a8c6"
+      },
+      {
+        "path": "packages/contracts/src/MarketRegistry.sol",
+        "sha256": "d4649c185488fc6e7eed4b0773e2ee9e8f26b0eddb84e909e5f74f4957eee5fa"
+      },
+      {
+        "path": "packages/contracts/src/OrderRecoveryRouter.sol",
+        "sha256": "186bc7928ff86758acd684d4bc7a58bf59138da3face18ca298139970302aedd"
+      },
+      {
+        "path": "packages/contracts/src/OrderValidator.sol",
+        "sha256": "16dffaa2f6b023e28b383431bafa4819bb6ef5618ad1b3fe3ca304d1379b9076"
+      },
+      {
+        "path": "packages/contracts/src/PositionRouter.sol",
+        "sha256": "86f42765ca00203684856078b2ecf682d40a4e3a83fbaa27fe26baf0578400f6"
+      },
+      {
+        "path": "packages/contracts/src/ProtocolAuthority.sol",
+        "sha256": "c4fc73ec9ca1cf6cf678475fbe8c6798678dfc72c96e42aba368bca1dd5b1542"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IConditionalSettlement.sol",
+        "sha256": "d4ee7cce41776285fe389ae4b3ba5dc62622b2f74e4990763d1276a583cc5a16"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IConditionalTokens.sol",
+        "sha256": "b73e3e62a7bd92d25f72d642a82e94fa2df4408589e63cee043856dfc3d394f2"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IIOCExchange.sol",
+        "sha256": "97527a451536585942e27cc9b83bc505b669b48c31454aed406debf273474d1c"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IIOCRouter.sol",
+        "sha256": "a7cd383eead7f3f33a5fe23fc16e0d36de96aba3337495c7aa9f0b95259fb667"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IManualResolutionController.sol",
+        "sha256": "89a75796eea5390cd3cf02322a34b7efecf4ec148fae09b9c551bc61a9f4dc10"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IMarketRegistry.sol",
+        "sha256": "58cb8074dd3f6a5d0f46ed5738cfc16f5bb214e26d8772189f8783a9a4626c57"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IOrderRecoveryExchange.sol",
+        "sha256": "0fd47f272a4ab91f1581caeb44253ca840b3ac7cf6ae9e0a5b596fcb507f495e"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IOrderValidator.sol",
+        "sha256": "dadebf59b58192165f4a13149a560de6dacc309cdde7dc602f9dfb538f7b3008"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IProtocolAccess.sol",
+        "sha256": "8e84ad25f8bdf69ba08c78a87e5f79f1dee39f292314f3ced92ede5a24ba4dec"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IProtocolAuthority.sol",
+        "sha256": "12ca833199d26934c9657168f138581ec0eb161d5132c33fda78597e1c4dd271"
+      },
+      {
+        "path": "packages/contracts/src/libraries/MarketConfigMath.sol",
+        "sha256": "621e9046dbd53204b9de37c06ed367eacd3219f123df5ed7dd214b465f7ad86f"
+      },
+      {
+        "path": "packages/contracts/src/libraries/PriceMath.sol",
+        "sha256": "cb0567567b46a974a05b876e014c8fa941b7a7eb58b18db744e545ef0b6b7385"
+      },
+      {
+        "path": "packages/contracts/src/libraries/ProtocolConstants.sol",
+        "sha256": "50a30f5bfe65cd9c45d951a9a2e5bb1c1535ba57d604a962ba68bede9ac75276"
+      },
+      {
+        "path": "packages/contracts/src/libraries/ProtocolRoles.sol",
+        "sha256": "e53d77b92a960a527b2b56e4fa0ec292c7b68bed8b5a4428cec6cd75baae1fe8"
+      },
+      {
+        "path": "packages/contracts/src/types/ProtocolTypes.sol",
+        "sha256": "1479d17aaec5df935106d03a6cc5d3ea34f33a7686859ae5e9735e477aa09df1"
+      },
+      {
+        "path": "packages/contracts/src/utils/ExpectedCtfReceiver.sol",
+        "sha256": "3f799766f88d297ad3448d0aa660270b5b86b34211c1cdae408b3141831e08ca"
+      },
+      {
+        "path": "packages/contracts/src/utils/ProtocolAccess.sol",
+        "sha256": "bafdf6ca58f9ae781ef1dca75e9a5a837478bd7093e825fc46818758ebbb8baa"
+      }
+    ],
+    "lockSha256": "163c0d348fd858ae006b71aa8b82545f7949bba654689c03a1f3102f16a01108"
+  },
+  "runnerSha256": "ca7caee0d456cb1a1942389719fa85471a6f9009dd0161189194d35db5cdf2f1",
+  "blockNumber": "56647011",
+  "blockHash": "0x3e74877c2488a6b48cde767a4b00d119b122a8f7f87fa57d5784fe3edc9b44c8",
+  "sourceChainId": 4663,
+  "localChainId": 4663,
+  "checks": [
+    {
+      "name": "Canonical USDG/NVDA/TSLA identities and RH block pinned",
+      "status": "PASS"
+    },
+    {
+      "name": "Upstream transaction submission is rejected locally",
+      "status": "PASS"
+    },
+    {
+      "name": "Local Anvil fork retains RH mainnet chain ID and pinned block hash",
+      "status": "PASS"
+    },
+    {
+      "name": "USDG: exact transfer from real holder, boolean return, unchanged implementation",
+      "status": "PASS",
+      "detail": {
+        "decimals": 6,
+        "funding": "1000000000"
+      }
+    },
+    {
+      "name": "NVDA: exact transfer from real holder, boolean return, unchanged implementation",
+      "status": "PASS",
+      "detail": {
+        "decimals": 18,
+        "funding": "10000000000000000000"
+      }
+    },
+    {
+      "name": "TSLA: exact transfer from real holder, boolean return, unchanged implementation",
+      "status": "PASS",
+      "detail": {
+        "decimals": 18,
+        "funding": "10000000000000000000"
+      }
+    },
+    {
+      "name": "V2 complete protocol graph deploys with canonical six-decimal USDG",
+      "status": "PASS"
+    }
+  ],
+  "transactions": 39,
+  "upstreamReadMethods": {
+    "eth_chainId": 2,
+    "eth_getBlockByNumber": 3,
+    "eth_gasPrice": 1,
+    "eth_getBalance": 23,
+    "eth_getCode": 31,
+    "eth_getTransactionCount": 23,
+    "eth_getStorageAt": 63,
+    "eth_call": 3,
+    "eth_getTransactionReceipt": 2
+  },
+  "deniedUpstreamWrites": 2,
+  "deniedMethods": {
+    "eth_sendRawTransaction": 1,
+    "eth_getAccountInfo": 1
+  },
+  "cachedReadHits": 5,
+  "pinnedReadCacheEntries": 145,
+  "fatalError": "Indexer exited during primary indexer caught up",
+  "limits": [
+    "Token issuer controls, upgrades and scheduled multiplier changes not fully reviewed or tested",
+    "RH/Nitro precompiles, sequencer screening and finality not certified by Anvil",
+    "M-02 remains open",
+    "Case isolation uses local EVM snapshots; recorded case transactions can be orphaned by intentional local reverts"
+  ]
+}

@@ -1,0 +1,35 @@
+@hono/node-server  <1.19.10
+  workspace:@conditional-stocks/rh-indexer › ponder
+  workspace:@conditional-stocks/ui-kit › shadcn
+  high: @hono/node-server has authorization bypass for protected static paths via encoded slashes in Serve Static Middleware - https://github.com/advisories/GHSA-wc8c-qw6v-h7f6
+  moderate: @hono/node-server: Middleware bypass via repeated slashes in serveStatic - https://github.com/advisories/GHSA-92pp-h63x-v22m
+  moderate: Node.js Adapter for Hono: Path traversal in `serve-static` on Windows via encoded backslash (`%5C`) - https://github.com/advisories/GHSA-frvp-7c67-39w9
+
+drizzle-orm  <0.45.2
+  workspace:@conditional-stocks/rh-indexer › ponder
+  high: Drizzle ORM has SQL injection via improperly escaped SQL identifiers - https://github.com/advisories/GHSA-gpj5-g38j-94v9
+
+kysely  >=0.26.0 <0.28.17
+  workspace:@conditional-stocks/rh-indexer › ponder
+  high: Kysely: JSON-path traversal injection via unsanitized path-leg metacharacters in `JSONPathBuilder.key()` / `.at()` - https://github.com/advisories/GHSA-pv5w-4p9q-p3v2
+  high: SQL Injection via unsanitized JSON path keys when ignoring/silencing compilation errors or using `Kysely<any>`. - https://github.com/advisories/GHSA-wmrf-hv6w-mr66
+  high: Kysely has a MySQL SQL Injection via Insufficient Backslash Escaping in `sql.lit(string)` usage or similar methods that append string literal values into the compiled SQL strings - https://github.com/advisories/GHSA-8cpq-38p9-67gx
+
+vite  <=6.4.2
+  workspace:@conditional-stocks/rh-indexer › ponder
+  moderate: launch-editor: NTLMv2 hash disclosure via UNC path handling on Windows - https://github.com/advisories/GHSA-v6wh-96g9-6wx3
+  moderate: Vite Vulnerable to Path Traversal in Optimized Deps `.map` Handling - https://github.com/advisories/GHSA-4w7w-66w2-5vf9
+  high: vite: `server.fs.deny` bypass on Windows alternate paths - https://github.com/advisories/GHSA-fx2h-pf6j-xcff
+
+esbuild  <=0.24.2
+  workspace:@conditional-stocks/rh-indexer › ponder
+  moderate: esbuild enables any website to send any requests to the development server and read the response - https://github.com/advisories/GHSA-67mh-4wv8-2f99
+
+11 vulnerabilities (6 high, 5 moderate)
+
+To update all dependencies to the latest compatible versions:
+  bun update
+
+To update all dependencies to the latest versions (including breaking changes):
+  bun update --latest
+

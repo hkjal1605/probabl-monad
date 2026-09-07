@@ -1,0 +1,43 @@
+[
+  {
+    "process": "indexer",
+    "event": {
+      "timestamp": "2026-09-07T15:11:58.265Z",
+      "level": "info",
+      "service": "rh-indexer",
+      "event": "indexer.storage.ready",
+      "fields": {
+        "schema": "internal_stack_test",
+        "syncSchema": "cs_sync_internal_stack_test",
+        "blockRetention": 64,
+        "cacheRetention": 64,
+        "maintenanceIntervalMs": 1000,
+        "maintenanceBatchSize": 2000,
+        "ponderVersion": "0.17.8",
+        "cachePatch": 1
+      }
+    }
+  },
+  {
+    "process": "indexer",
+    "event": {
+      "timestamp": "2026-09-07T15:12:28.379Z",
+      "level": "info",
+      "service": "rh-indexer",
+      "event": "indexer.cache.pruned",
+      "fields": {
+        "cutoff": "22",
+        "deleted": 19,
+        "perTable": {
+          "blocks": 13,
+          "logs": 5,
+          "transactions": 1,
+          "transaction_receipts": 0,
+          "traces": 0,
+          "rpc_request_results": 0
+        },
+        "durationMs": 17.04766699999891
+      }
+    }
+  }
+]

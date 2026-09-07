@@ -1,0 +1,19 @@
+{
+  "name": "snapshot",
+  "command": [
+    "forge",
+    "snapshot",
+    "--root",
+    "packages/contracts",
+    "--snap",
+    "packages/contracts/.gas-snapshot"
+  ],
+  "cwd": "/Volumes/T9/conditional-stocks",
+  "environmentOverrides": {
+    "FOUNDRY_PROFILE": "default",
+    "FOUNDRY_FUZZ_SEED": "0x5afe20260906"
+  },
+  "started": "2026-09-07T07:03:37.735Z",
+  "finished": "2026-09-07T07:03:45.397Z",
+  "exitCode": 0
+}

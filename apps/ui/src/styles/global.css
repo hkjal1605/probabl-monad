@@ -1,0 +1,20 @@
+@import "@conditional-stocks/ui-kit/styles.css";
+
+@source "../";
+
+@layer utilities {
+  .price-grid {
+    background-image:
+      linear-gradient(
+        to right,
+        color-mix(in oklch, var(--border), transparent 55%) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklch, var(--border), transparent 55%) 1px,
+        transparent 1px
+      );
+    background-size: 48px 48px;
+  }
+}

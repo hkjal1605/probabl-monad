@@ -1,0 +1,14 @@
+{
+  "name": "deployment",
+  "command": [
+    "bun",
+    "packages/contracts/scripts/rehearse-deployment.ts"
+  ],
+  "cwd": "/Volumes/T9/conditional-stocks",
+  "environmentOverrides": {
+    "AUDIT_DEPLOYMENT_OUTPUT": "/Volumes/T9/conditional-stocks/audit/2026-09-06/raw-unit-ratio/evidence/verification-2/local-deployment"
+  },
+  "started": "2026-09-07T07:03:36.642Z",
+  "finished": "2026-09-07T07:03:41.990Z",
+  "exitCode": 0
+}

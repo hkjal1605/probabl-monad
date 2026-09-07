@@ -1,0 +1,18 @@
+{
+  "name": "forge-ci",
+  "command": [
+    "forge",
+    "test",
+    "--root",
+    "packages/contracts",
+    "-vv"
+  ],
+  "cwd": "/Volumes/T9/conditional-stocks",
+  "environmentOverrides": {
+    "FOUNDRY_PROFILE": "ci",
+    "FOUNDRY_FUZZ_SEED": "0x20260906"
+  },
+  "started": "2026-09-06T08:20:54.714Z",
+  "finished": "2026-09-06T08:22:00.905Z",
+  "exitCode": 0
+}

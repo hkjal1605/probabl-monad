@@ -1,0 +1,13 @@
+{
+  "name": "typecheck",
+  "command": [
+    "bun",
+    "run",
+    "typecheck"
+  ],
+  "cwd": "/Volumes/T9/conditional-stocks",
+  "environmentOverrides": {},
+  "started": "2026-09-07T06:57:59.015Z",
+  "finished": "2026-09-07T06:58:04.949Z",
+  "exitCode": 0
+}

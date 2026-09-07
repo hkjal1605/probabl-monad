@@ -1,0 +1,14 @@
+{
+  "name": "forge-lint",
+  "command": [
+    "forge",
+    "lint",
+    "--root",
+    "packages/contracts"
+  ],
+  "cwd": "/Volumes/T9/conditional-stocks",
+  "environmentOverrides": {},
+  "started": "2026-09-06T07:59:59.312Z",
+  "finished": "2026-09-06T07:59:59.491Z",
+  "exitCode": 0
+}

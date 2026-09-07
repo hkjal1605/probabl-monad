@@ -1,0 +1,296 @@
+{
+  "chainId": 31337,
+  "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "source": {
+    "algorithm": "sha256(path + space + sha256 + newline), sorted by path",
+    "digest": "38c22573022e14c631d5d7d7b1eb7ed9bf25b458c40b80485ca7d3891a393c5e",
+    "files": [
+      {
+        "path": "packages/contracts/src/ConditionalExchange.sol",
+        "sha256": "c3c79fe848765706a69900be53d95ab53fec84d9b04effaa55bb8bf267bd9fb7"
+      },
+      {
+        "path": "packages/contracts/src/ConditionalSettlement.sol",
+        "sha256": "47c76018d8e9e44b5d7c7d322b7ea4294f8c25a0719cd3cc91671da4626f9298"
+      },
+      {
+        "path": "packages/contracts/src/IOCRouter.sol",
+        "sha256": "89605cd32d16749fd9469b13d06ddcd975e0ed07a4e2e342bc8d3237bacfc0d4"
+      },
+      {
+        "path": "packages/contracts/src/ManualResolutionController.sol",
+        "sha256": "71f9b4fcad4a169c16098688cf2beb45e6895caff5617335bc31d2dc7a89a8c6"
+      },
+      {
+        "path": "packages/contracts/src/MarketRegistry.sol",
+        "sha256": "2b94327b9e807868aa558fd4ffe7d76f42f30b23ab24b0ed9c12e8badfa22aa8"
+      },
+      {
+        "path": "packages/contracts/src/OrderRecoveryRouter.sol",
+        "sha256": "186bc7928ff86758acd684d4bc7a58bf59138da3face18ca298139970302aedd"
+      },
+      {
+        "path": "packages/contracts/src/OrderValidator.sol",
+        "sha256": "b6cc87cb93ab628d783ca9728aa7bdb2892be04bae897228a107cacb5f8df29c"
+      },
+      {
+        "path": "packages/contracts/src/PositionRouter.sol",
+        "sha256": "86f42765ca00203684856078b2ecf682d40a4e3a83fbaa27fe26baf0578400f6"
+      },
+      {
+        "path": "packages/contracts/src/ProtocolAuthority.sol",
+        "sha256": "c4fc73ec9ca1cf6cf678475fbe8c6798678dfc72c96e42aba368bca1dd5b1542"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IConditionalSettlement.sol",
+        "sha256": "d4ee7cce41776285fe389ae4b3ba5dc62622b2f74e4990763d1276a583cc5a16"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IConditionalTokens.sol",
+        "sha256": "b73e3e62a7bd92d25f72d642a82e94fa2df4408589e63cee043856dfc3d394f2"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IIOCExchange.sol",
+        "sha256": "97527a451536585942e27cc9b83bc505b669b48c31454aed406debf273474d1c"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IIOCRouter.sol",
+        "sha256": "a7cd383eead7f3f33a5fe23fc16e0d36de96aba3337495c7aa9f0b95259fb667"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IManualResolutionController.sol",
+        "sha256": "89a75796eea5390cd3cf02322a34b7efecf4ec148fae09b9c551bc61a9f4dc10"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IMarketRegistry.sol",
+        "sha256": "58cb8074dd3f6a5d0f46ed5738cfc16f5bb214e26d8772189f8783a9a4626c57"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IOrderRecoveryExchange.sol",
+        "sha256": "0fd47f272a4ab91f1581caeb44253ca840b3ac7cf6ae9e0a5b596fcb507f495e"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IOrderValidator.sol",
+        "sha256": "dadebf59b58192165f4a13149a560de6dacc309cdde7dc602f9dfb538f7b3008"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IProtocolAccess.sol",
+        "sha256": "8e84ad25f8bdf69ba08c78a87e5f79f1dee39f292314f3ced92ede5a24ba4dec"
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IProtocolAuthority.sol",
+        "sha256": "12ca833199d26934c9657168f138581ec0eb161d5132c33fda78597e1c4dd271"
+      },
+      {
+        "path": "packages/contracts/src/libraries/MarketConfigMath.sol",
+        "sha256": "1ea3eecf20494907620ef7ee89a1b4543bc270e81e4126f306b8b236bb5c6855"
+      },
+      {
+        "path": "packages/contracts/src/libraries/PriceMath.sol",
+        "sha256": "419b602c4fa56eb67c70b4d556a3d8573adc26ab31b25c129b825b13cd35860c"
+      },
+      {
+        "path": "packages/contracts/src/libraries/ProtocolConstants.sol",
+        "sha256": "e140e6ee4b78116fcc192283e469859504daa2d0ce6ac162a99fba164646b529"
+      },
+      {
+        "path": "packages/contracts/src/libraries/ProtocolRoles.sol",
+        "sha256": "e53d77b92a960a527b2b56e4fa0ec292c7b68bed8b5a4428cec6cd75baae1fe8"
+      },
+      {
+        "path": "packages/contracts/src/types/ProtocolTypes.sol",
+        "sha256": "c87f415b8b93b419e9a53d9eda5d77cef32c090783039ed373a0501e3d7e5322"
+      },
+      {
+        "path": "packages/contracts/src/utils/ExpectedCtfReceiver.sol",
+        "sha256": "3f799766f88d297ad3448d0aa660270b5b86b34211c1cdae408b3141831e08ca"
+      },
+      {
+        "path": "packages/contracts/src/utils/ProtocolAccess.sol",
+        "sha256": "bafdf6ca58f9ae781ef1dca75e9a5a837478bd7093e825fc46818758ebbb8baa"
+      }
+    ],
+    "lockSha256": "163c0d348fd858ae006b71aa8b82545f7949bba654689c03a1f3102f16a01108"
+  },
+  "productionApproved": false,
+  "releaseBlockers": [
+    "M-02: independent cryptographic clearance required",
+    "Final admin must accept the delayed handover before market creation"
+  ],
+  "configurationReceipts": [
+    {
+      "label": "setResolutionController",
+      "transactionHash": "0x1e013969f939bc0d51844e25e768d75252be1d782d9be8b2fdde05c887469598",
+      "blockNumber": "36",
+      "blockHash": "0x50525c34d645a50b28307e9f05541bf25e98b2a314536117966d08ca5b1d6fcc"
+    },
+    {
+      "label": "configureOrderValidator",
+      "transactionHash": "0xe82244db2efeeacdaf0a678b805fa9eb7a6e4d9f18fe8900f43cbbb4767fbab7",
+      "blockNumber": "37",
+      "blockHash": "0x3188770dbcfec2ef4070226b52f64f4d745d77cc67b243e9a963a89bcb7a2e9e"
+    },
+    {
+      "label": "configureSettlement",
+      "transactionHash": "0x80de0159cc8866391e452a740783e4c41be6b72e332ab38d0ae0507b2d67db81",
+      "blockNumber": "38",
+      "blockHash": "0xff9c3a563c82ad13f91e25e7d2491d1c187a943c09c13af2cc0efbbf5f56b9aa"
+    },
+    {
+      "label": "configureIocRouter",
+      "transactionHash": "0x1a3bba235a76549dd7a81cb3dea1dff71096d6d2c20cd888013c8edaaf5cbbdc",
+      "blockNumber": "39",
+      "blockHash": "0xb7faa6635406210ed636150038a89caa5b0183a86148eec9cd2c03aff0072718"
+    },
+    {
+      "label": "beginDefaultAdminTransfer",
+      "transactionHash": "0x8bec2c1cc05474d9fd1b68817bd8a4a02ccee8e72966daee0aada64ec23faaf7",
+      "blockNumber": "40",
+      "blockHash": "0x88d87bd25195ab02cc3654df6205211802d894050df586f675f5969a5f8245f4"
+    }
+  ],
+  "compiler": {
+    "bytecodeHash": "none",
+    "evmVersion": "paris",
+    "optimizerRuns": 7500,
+    "solc": "0.8.30",
+    "viaIr": true
+  },
+  "deployedAtBlock": "40",
+  "deployments": {
+    "ConditionalTokens": {
+      "address": "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c",
+      "blockNumber": "26",
+      "blockHash": "0x422918eec9140821914db8abb4f38da21cfa17fc615db06c4cfcab9fc1beba7c",
+      "bytecodeHash": "0xadf1ee4719c637975ba08765e3a1187f2fb865c9b17386005960a81ff29cfcc7",
+      "constructorArgs": [],
+      "initcodeHash": "0xc0604e74979d0d1d6d76fd328edad4ff4f45dd18e3c7ca5c8eb7d84dccd3eaf0",
+      "transactionHash": "0xde45b664b914a09b9038fd9a2f767325f0bf35ee79aab2bc5fc94aa15b2f5bb3"
+    },
+    "ProtocolAuthority": {
+      "address": "0xc6e7DF5E7b4f2A278906862b61205850344D4e7d",
+      "blockNumber": "27",
+      "blockHash": "0x9dee51ddd904a8bb3c51e02580d315845d471a5d1aa2e78eb3b5a5411991c728",
+      "bytecodeHash": "0xd7d7167992f5033ff56630535706c29a330ff6db13b63f2b429115bc3b5d5ae4",
+      "constructorArgs": [
+        "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+        "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+        "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+        "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc"
+      ],
+      "initcodeHash": "0xdbd0e0d83d6858f58564d3f365aee4a43ea767d395346d088cfe52b81c302fd0",
+      "transactionHash": "0xdc2d4651da39cf97079cd69d812853e250574db8baf6b34fc2ec53ea28271fbf"
+    },
+    "MarketRegistry": {
+      "address": "0x59b670e9fA9D0A427751Af201D676719a970857b",
+      "blockNumber": "28",
+      "blockHash": "0xa8e01f100155d8980cb43ce60422da4f97f63e948807cd2dfcd5982863025b79",
+      "bytecodeHash": "0x64834f476b4e7065b9034b145a4ffbb47f098445ba37b2ab9ccd2448001d0896",
+      "constructorArgs": [
+        "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c",
+        "0xc6e7DF5E7b4f2A278906862b61205850344D4e7d",
+        "0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE"
+      ],
+      "initcodeHash": "0x6e3114bf0de699c7efe2e773eb93923a9fa612a6ea949a5a8be36a673d427310",
+      "transactionHash": "0x9a29750a67dbda913cca6ec37b05ca79954a802a12f0850bb8d77df43b2f3ae7"
+    },
+    "ManualResolutionController": {
+      "address": "0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1",
+      "blockNumber": "29",
+      "blockHash": "0x28c2507e586eaf79c3471be4428a8331ca130b6f5154b0b3ed49b56523d0315e",
+      "bytecodeHash": "0x89fd4eecf641d2d623f6b5ef9b53a08998db6204d6c5f47e9e71f6e43052bf15",
+      "constructorArgs": [
+        "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c",
+        "0x59b670e9fA9D0A427751Af201D676719a970857b",
+        "0xc6e7DF5E7b4f2A278906862b61205850344D4e7d"
+      ],
+      "initcodeHash": "0x504456d8074d85bfa0cb6b68ec44c2675a3e86474f69711b0dc950979342cc21",
+      "transactionHash": "0x7c7455cb0bf219e33f0078252e6717993c054e871947616c3658d6a57e758c6e"
+    },
+    "ConditionalExchange": {
+      "address": "0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44",
+      "blockNumber": "30",
+      "blockHash": "0xb04988b09ad1d14dd3f1562ecebb2bd5c997b991d156a075bb8fcac25ec635e8",
+      "bytecodeHash": "0xb2a6c7d3f90dc5f875a530c82a3d9479fcec8a42a8b3fd71f62a34859f54e1fa",
+      "constructorArgs": [
+        "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c",
+        "0x59b670e9fA9D0A427751Af201D676719a970857b",
+        "0xc6e7DF5E7b4f2A278906862b61205850344D4e7d"
+      ],
+      "initcodeHash": "0x445f252db31df1ee2d23bc094f3bcb5f88c69f9ff29ee7d3c34ebd250798c162",
+      "transactionHash": "0xafed7110c0310371b842cd40689a4be15820567616e042120244310770c112bb"
+    },
+    "OrderValidator": {
+      "address": "0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f",
+      "blockNumber": "31",
+      "blockHash": "0x85124128493973fae6ab97108434ec19e94e1692734880300de644c2121bda5f",
+      "bytecodeHash": "0x740e4d329e35ab6bc85089c20aa29871af7439e8a4c81c1569355fb49dde98f5",
+      "constructorArgs": [
+        "0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44"
+      ],
+      "initcodeHash": "0x7d3944cc10fd78b243ca3b641af15b8fee97315900875532191dbc67e2f4d9a0",
+      "transactionHash": "0x6d625147525235c0fbbdd7b7cf8471ef75e7a4858ffe0f3856abde0150b923ee"
+    },
+    "ConditionalSettlement": {
+      "address": "0x4A679253410272dd5232B3Ff7cF5dbB88f295319",
+      "blockNumber": "32",
+      "blockHash": "0x500fa2d40c869a6c8d45fc3e237aa418a952b4f180ff40cf3848864cb83c5142",
+      "bytecodeHash": "0x223532e33e772cfdf9ee8f0e2abc5a13cf30dd0e9733a9a33c4fc14359f06589",
+      "constructorArgs": [
+        "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c",
+        "0x59b670e9fA9D0A427751Af201D676719a970857b",
+        "0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44"
+      ],
+      "initcodeHash": "0x2ecc543b7f43d799ea9c8b8c376958f09c1797955b3d9d15487ea84913ecf7e8",
+      "transactionHash": "0x4151c437b25bd0c1f037424cfbacd0a3ef3a5fed40b95b9e200771827dc0841c"
+    },
+    "IOCRouter": {
+      "address": "0x7a2088a1bFc9d81c55368AE168C2C02570cB814F",
+      "blockNumber": "33",
+      "blockHash": "0xe9d952d7b250a4f09573fbdfec06ba69c59a1b819bee1b3dfc423ab385928ba8",
+      "bytecodeHash": "0x7859a88551742f16703a87ed73a23c672016c38c157448102a9c678b753c7857",
+      "constructorArgs": [
+        "0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44",
+        "0xc6e7DF5E7b4f2A278906862b61205850344D4e7d"
+      ],
+      "initcodeHash": "0x2687ea61f509f5c456b4cab69f30cc64086c750306ef44bc727906111b7f25f5",
+      "transactionHash": "0x276d29f22fc53ce361fe0d3ddeb607ce0fbef50bb9a9668c0497c769e5219a15"
+    },
+    "OrderRecoveryRouter": {
+      "address": "0x09635F643e140090A9A8Dcd712eD6285858ceBef",
+      "blockNumber": "34",
+      "blockHash": "0x8037a52a975ce107201f2a98d383e8be524e0dafca73a95d81dd64832fca6bff",
+      "bytecodeHash": "0xd015b7fd7ff3e1585ddf121b6ba76ccaa39cd8ee3913c72598a27e208b4cf70a",
+      "constructorArgs": [
+        "0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44"
+      ],
+      "initcodeHash": "0xfce77a74d7247904cd0660c2b97403e17688924e11573adc4e6aa715f9eec5d7",
+      "transactionHash": "0xa80ac211648ce32880a02179398ab39be1a5865f2b3829af5e15dd3f8b8fb641"
+    },
+    "PositionRouter": {
+      "address": "0xc5a5C42992dECbae36851359345FE25997F5C42d",
+      "blockNumber": "35",
+      "blockHash": "0x482393b66b2388b334c79bbc6aad31d5271d3cdb37e512d8ef70cf1112f06cdb",
+      "bytecodeHash": "0x77ab3d031c77da4e9344321f3e294a97a4e5e4fc2846f3f16116854a0d9fe946",
+      "constructorArgs": [
+        "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c"
+      ],
+      "initcodeHash": "0x33576b09597d45b1fb2512f34c144926b51d1df1589adc653969f172b23b9d84",
+      "transactionHash": "0x626c3f5b1e0da5e476eacc0af5b104b9657a161386f1b25831d6533539a49fa1"
+    }
+  },
+  "roles": {
+    "currentDefaultAdmin": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "finalDefaultAdmin": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    "pendingDefaultAdmin": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    "pendingDefaultAdminAcceptAfter": "1789027304",
+    "pendingDefaultAdminTransferTransactionHash": "0x8bec2c1cc05474d9fd1b68817bd8a4a02ccee8e72966daee0aada64ec23faaf7",
+    "guardian": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+    "marketAdmin": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+    "matcher": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+    "resolutionAdmin": "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc"
+  },
+  "rpcUrl": "redacted",
+  "usdg": "0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE"
+}

@@ -1,0 +1,18 @@
+@conditional-stocks/ui-kit typecheck: Exited with code 0
+@conditional-stocks/contract-bindings typecheck: Exited with code 0
+@conditional-stocks/admin-ui typecheck: Exited with code 0
+@conditional-stocks/config typecheck: Exited with code 0
+@conditional-stocks/market-data typecheck: Exited with code 0
+@conditional-stocks/domain typecheck: Exited with code 0
+@conditional-stocks/web typecheck: Exited with code 0
+@conditional-stocks/contracts typecheck: Exited with code 0
+@conditional-stocks/gateway typecheck: Exited with code 0
+@conditional-stocks/polymarket-ingestor typecheck: Exited with code 0
+@conditional-stocks/orderbook typecheck: Exited with code 0
+@conditional-stocks/rh-indexer typecheck: $ PONDER_ALLOW_PLACEHOLDERS=true bun --bun ponder codegen
+@conditional-stocks/matcher typecheck: Exited with code 0
+@conditional-stocks/api typecheck: Exited with code 0
+@conditional-stocks/settlement-worker typecheck: Exited with code 0
+@conditional-stocks/rh-indexer typecheck: 14:49:21.895 INFO  Wrote file "ponder-env.d.ts"
+@conditional-stocks/rh-indexer typecheck: 14:49:21.896 WARN  Started shutdown sequence
+@conditional-stocks/rh-indexer typecheck: Exited with code 0

@@ -1,0 +1,18 @@
+{
+  "currentBlockNumber": "0x355bcdf",
+  "currentBlockTimestamp": 1788694977,
+  "currentBlockHash": "0x6eca67644ece9b52ac8507259a4a0373eb422be5377e80f880ad2a53f43192b1",
+  "hardFork": "Bpo1",
+  "transactionOrder": "fees",
+  "environment": {
+    "baseFee": "0x13862a47",
+    "chainId": 4663,
+    "gasLimit": "0x4000000000000",
+    "gasPrice": "0x4f20f447"
+  },
+  "forkConfig": {
+    "forkUrl": "http://127.0.0.1:51756",
+    "forkBlockNumber": 55950559,
+    "forkRetryBackoff": 1000
+  }
+}

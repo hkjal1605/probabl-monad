@@ -1,0 +1,11 @@
+{
+  "name": "admin-build",
+  "command": [
+    "bun",
+    "run",
+    "build:admin-ui"
+  ],
+  "started": "2026-09-07T07:14:26.676Z",
+  "finished": "2026-09-07T07:14:39.676Z",
+  "exitCode": 0
+}

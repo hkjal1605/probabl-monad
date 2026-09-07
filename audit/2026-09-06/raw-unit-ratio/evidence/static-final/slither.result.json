@@ -1,0 +1,21 @@
+{
+  "name": "slither",
+  "command": [
+    "/private/tmp/conditional-stocks-audit.CxNZ4m/venv/bin/slither",
+    ".",
+    "--foundry-ignore-compile",
+    "--foundry-build-info-directory",
+    "/Volumes/T9/conditional-stocks/audit/2026-09-06/raw-unit-ratio/evidence/verification-2/slither-build/build-info",
+    "--exclude-dependencies",
+    "--filter-paths",
+    "(node_modules|test)/",
+    "--json",
+    "/Volumes/T9/conditional-stocks/audit/2026-09-06/raw-unit-ratio/evidence/static-final/slither.json",
+    "--fail-none"
+  ],
+  "cwd": "/Volumes/T9/conditional-stocks/packages/contracts",
+  "environmentOverrides": {},
+  "started": "2026-09-07T07:00:25.768Z",
+  "finished": "2026-09-07T07:00:27.145Z",
+  "exitCode": 0
+}

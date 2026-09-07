@@ -1,0 +1,11 @@
+{
+  "command": [
+    "bun",
+    "run",
+    "typecheck"
+  ],
+  "code": 0,
+  "elapsedMs": 4429,
+  "stdout": "@conditional-stocks/ui-kit typecheck: Exited with code 0\n@conditional-stocks/contract-bindings typecheck: Exited with code 0\n@conditional-stocks/config typecheck: Exited with code 0\n@conditional-stocks/shared typecheck: Exited with code 0\n@conditional-stocks/domain typecheck: Exited with code 0\n@conditional-stocks/market-data typecheck: Exited with code 0\n@conditional-stocks/admin-ui typecheck: Exited with code 0\n@conditional-stocks/web typecheck: Exited with code 0\n@conditional-stocks/gateway typecheck: Exited with code 0\n@conditional-stocks/orderbook typecheck: Exited with code 0\n@conditional-stocks/db typecheck: Exited with code 0\n@conditional-stocks/rh-indexer typecheck: $ PONDER_ALLOW_PLACEHOLDERS=true bun --bun ponder codegen\n@conditional-stocks/polymarket-ingestor typecheck: Exited with code 0\n@conditional-stocks/rh-indexer typecheck: 20:50:17.426 INFO  Wrote file \"ponder-env.d.ts\"\n@conditional-stocks/rh-indexer typecheck: 20:50:17.426 WARN  Started shutdown sequence\n@conditional-stocks/api typecheck: Exited with code 0\n@conditional-stocks/matcher typecheck: Exited with code 0\n@conditional-stocks/contracts typecheck: Exited with code 0\n@conditional-stocks/rh-indexer typecheck: Exited with code 0\n@conditional-stocks/settlement-worker typecheck: Exited with code 0\n",
+  "stderr": "$ bun run --workspaces --if-present typecheck\n"
+}

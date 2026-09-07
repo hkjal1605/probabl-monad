@@ -1,0 +1,12 @@
+{
+  "name": "typescript-tests",
+  "command": [
+    "bun",
+    "test"
+  ],
+  "cwd": "/Volumes/T9/conditional-stocks",
+  "environmentOverrides": {},
+  "started": "2026-09-07T07:02:59.612Z",
+  "finished": "2026-09-07T07:03:00.728Z",
+  "exitCode": 0
+}

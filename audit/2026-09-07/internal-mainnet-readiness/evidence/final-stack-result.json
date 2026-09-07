@@ -1,0 +1,20 @@
+{
+  "completed": true,
+  "chainId": 31337,
+  "upstreamTransactions": 0,
+  "checks": [
+    "all standalone entrypoints ready with active reconciliation",
+    "GTC order API -> continuous matcher -> worker -> canonical fill",
+    "IOC intent automatically planned, settled and confirmed",
+    "IOC with no liquidity terminates without taking collateral",
+    "reconciliation outage blocks intake while onchain cancellation remains available",
+    "matcher and reconciler restart from durable stores"
+  ],
+  "scratch": "/var/folders/7x/d5hp3t451s97051yclwlxql80000gn/T/conditional-stack-Xktagv",
+  "envFile": "/var/folders/7x/d5hp3t451s97051yclwlxql80000gn/T/conditional-stack-Xktagv/stack.env",
+  "marketId": "0x5a33d18b1cc92626070288a5e87ea0511b13afa9fb5a9cb1326c897eac414888",
+  "addresses": {
+    "exchange": "0x0165878A594ca255338adfa4d48449f69242Eb8F"
+  },
+  "completedAt": "2026-09-07T08:56:54.137Z"
+}

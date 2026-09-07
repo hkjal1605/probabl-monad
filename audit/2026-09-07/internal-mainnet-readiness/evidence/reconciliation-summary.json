@@ -1,0 +1,22 @@
+{
+  "runs": [
+    {
+      "status": "ok",
+      "count": 859
+    }
+  ],
+  "latest": {
+    "chainId": 31337,
+    "completedAt": "2026-09-07T08:54:13.735Z",
+    "deep": true,
+    "freezeRequired": false,
+    "freezeScopes": [],
+    "indexedBlock": "1097",
+    "indexedBlockHash": "0xb66464dba0425ba82a8c0247b1916d48fbc5017ca7a710cab6db0d1c477b1615",
+    "issues": [],
+    "projectionHash": "0x893d5762af9a3c1ce0c72d95d2efd2257853615ac41b6c9d9d81eae55c3ec4d5",
+    "projectionVersion": 2,
+    "startedAt": "2026-09-07T08:54:13.722Z",
+    "status": "ok"
+  }
+}

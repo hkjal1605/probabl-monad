@@ -1,0 +1,15 @@
+{
+  "name": "forge-format",
+  "command": [
+    "forge",
+    "fmt",
+    "--root",
+    "packages/contracts",
+    "--check"
+  ],
+  "cwd": "/Volumes/T9/conditional-stocks",
+  "environmentOverrides": {},
+  "started": "2026-09-06T08:18:31.476Z",
+  "finished": "2026-09-06T08:18:31.559Z",
+  "exitCode": 0
+}

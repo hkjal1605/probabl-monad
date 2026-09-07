@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "vectors": [
+    {
+      "name": "earlier bid sets maker price",
+      "orders": [
+        {
+          "hashId": 101,
+          "makerId": 101,
+          "priceRawX18": "6000000000000000000",
+          "quantity": "3000000000000000000",
+          "side": "buy"
+        },
+        {
+          "hashId": 102,
+          "makerId": 102,
+          "priceRawX18": "5000000000000000000",
+          "quantity": "3000000000000000000",
+          "side": "sell"
+        }
+      ],
+      "expected": [
+        {
+          "buyHashId": 101,
+          "executionPriceRawX18": "6000000000000000000",
+          "quantity": "3000000000000000000",
+          "sellHashId": 102
+        }
+      ]
+    },
+    {
+      "name": "earlier ask sets maker price",
+      "orders": [
+        {
+          "hashId": 201,
+          "makerId": 201,
+          "priceRawX18": "4000000000000000000",
+          "quantity": "2000000000000000000",
+          "side": "sell"
+        },
+        {
+          "hashId": 202,
+          "makerId": 202,
+          "priceRawX18": "5000000000000000000",
+          "quantity": "2000000000000000000",
+          "side": "buy"
+        }
+      ],
+      "expected": [
+        {
+          "buyHashId": 202,
+          "executionPriceRawX18": "4000000000000000000",
+          "quantity": "2000000000000000000",
+          "sellHashId": 201
+        }
+      ]
+    },
+    {
+      "name": "same-price FIFO then next order",
+      "orders": [
+        {
+          "hashId": 301,
+          "makerId": 301,
+          "priceRawX18": "4000000000000000000",
+          "quantity": "2000000000000000000",
+          "side": "sell"
+        },
+        {
+          "hashId": 302,
+          "makerId": 302,
+          "priceRawX18": "4000000000000000000",
+          "quantity": "3000000000000000000",
+          "side": "sell"
+        },
+        {
+          "hashId": 303,
+          "makerId": 303,
+          "priceRawX18": "5000000000000000000",
+          "quantity": "4000000000000000000",
+          "side": "buy"
+        }
+      ],
+      "expected": [
+        {
+          "buyHashId": 303,
+          "executionPriceRawX18": "4000000000000000000",
+          "quantity": "2000000000000000000",
+          "sellHashId": 301
+        },
+        {
+          "buyHashId": 303,
+          "executionPriceRawX18": "4000000000000000000",
+          "quantity": "2000000000000000000",
+          "sellHashId": 302
+        }
+      ]
+    }
+  ]
+}

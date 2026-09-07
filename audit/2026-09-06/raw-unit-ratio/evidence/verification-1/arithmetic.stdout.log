@@ -1,0 +1,10 @@
+{"property": "uint128 quantity-price product fits uint256", "negation": "unsat"}
+{"property": "reservation is floor execution or exactly one unit above it", "negation": "unsat"}
+{"property": "signed bid price bounds the scaled execution debit", "negation": "unsat"}
+{"property": "old bid reservation covers execution plus new reservation for every partial fill", "negation": "unsat"}
+{"property": "open-notional reduction is nonnegative and telescopes", "negation": "unsat"}
+{"property": "checked buyer refund exactly conserves the original escrow", "negation": "unsat"}
+{"property": "aligned cap witness reaches minNotional and the previous tick does not", "negation": "unsat"}
+{"property": "accepted feasibility witness admits two separate wallets simultaneously", "negation": "unsat"}
+{"property": "invalid payout floors cannot overdraw collateral from a complete set", "negation": "unsat"}
+{"solver": "5.1.0", "proved": 9, "scope": "integer arithmetic specification; no EVM, callbacks, hash security, or upstream CTF proof"}
