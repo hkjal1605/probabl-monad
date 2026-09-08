@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { protocolConfig } from "@/config/protocol";
+import { privateResponseHeaders, upstreamUrl } from "@/lib/api/upstream";
 import { MODE_COOKIE } from "@/lib/demo/mode";
 import { logger } from "@/lib/logger";
 
@@ -8,7 +8,10 @@ export async function GET(
   { params }: { params: Promise<{ path: string[] }> },
 ) {
   if (request.cookies.get(MODE_COOKIE)?.value === "demo")
-    return Response.json({ error: "Live indexer is disabled in demo mode." }, { status: 409 });
+    return Response.json(
+      { error: "Live indexer is disabled in demo mode." },
+      { status: 409, headers: privateResponseHeaders },
+    );
   const { path } = await params;
   // Public UI must never tunnel the indexer's service-only endpoints.
   if (
@@ -20,25 +23,37 @@ export async function GET(
       "trades",
       "balances",
       "positions",
+      "payouts",
       "resolutions",
       "transactions",
     ].includes(path[0] ?? "")
   )
-    return Response.json({ error: "route-not-public" }, { status: 404 });
-  const target = new URL(`/${path.join("/")}`, protocolConfig.indexerUrl);
-  target.search = request.nextUrl.search;
+    return Response.json(
+      { error: "route-not-public" },
+      { status: 404, headers: privateResponseHeaders },
+    );
   try {
+    const target = new URL(`/${path.join("/")}`, upstreamUrl("indexer"));
+    target.search = request.nextUrl.search;
     const response = await fetch(target, {
       cache: "no-store",
-      redirect: "error",
+      // workerd does not implement redirect: "error". Reject redirects explicitly.
+      redirect: "manual",
       signal: AbortSignal.timeout(5_000),
     });
+    if (response.status >= 300 && response.status < 400) {
+      await response.body?.cancel();
+      throw new Error("Indexer redirects are not permitted");
+    }
     return new Response(response.body, {
-      headers: { "content-type": "application/json" },
+      headers: { ...privateResponseHeaders, "content-type": "application/json" },
       status: response.status,
     });
   } catch (error) {
     logger.error("indexer.upstream.unavailable", { method: request.method, error });
-    return Response.json({ error: "indexer-unavailable" }, { status: 503 });
+    return Response.json(
+      { error: "indexer-unavailable" },
+      { status: 503, headers: privateResponseHeaders },
+    );
   }
 }

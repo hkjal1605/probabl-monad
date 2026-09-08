@@ -82,12 +82,13 @@ export async function sourceManifest() {
 
 export const roleIds = {
   marketAdmin: keccak256(toBytes("MARKET_ADMIN_ROLE")),
-  matcher: keccak256(toBytes("MATCHER_ROLE")),
   guardian: keccak256(toBytes("GUARDIAN_ROLE")),
   resolutionAdmin: keccak256(toBytes("RESOLUTION_ADMIN_ROLE")),
 } as const;
 
 export interface DeploymentRecord {
+  // Only PayoutVault is created by ConditionalExchange rather than by the deployment EOA.
+  creator?: Address;
   address: Address;
   blockNumber?: string;
   blockHash?: Hex;

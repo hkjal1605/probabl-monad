@@ -56,8 +56,8 @@ Research on prediction-market interfaces reports that information overload and r
 - Reservation math uses `@conditional-stocks/domain` integer math; floating point is not used for signed/accounting values.
 - The API provides the canonical safe-block preview, funding balance, allowance, exact EIP-712 payload, order hash, and payoff.
 - The exact order sent to `/prepare` is retained and signed/submitted unchanged. Editing any form field invalidates that preparation.
-- GTC orders become live only after the indexer observes `OrderOpened`; IOC includes explicit maximum quantity, maximum notional, and worst-price protection.
-- If the relayer is unavailable, the client independently reconstructs `openOrder(order, signature)` using the generated contract ABI and compares both calldata and destination before offering the same user-paid transaction.
+- Both GTC and IOC use owner-broadcast atomic placement. The API selects candidates and simulates; the browser constructs its own typed data and exact `placeAndMatch` calldata, verifies the API response, then asks the wallet to send it. There is no relayer fallback.
+- The review displays quoted fills, gross execution quote, remainder and deadline. GTC rests its unfilled escrow; IOC refunds it. Stale/failing plans revert entirely and require a fresh review. Contract validity does not imply best-price or complete book clearing.
 - Cancellation, merge, redemption, transfers, approval, and approval revocation are wallet-submitted transactions. UI feedback says pending until canonical state changes.
 
 The wallet layer accepts a standard injected EIP-1193 provider. This supports external wallets and host-embedded smart-wallet providers without coupling the protocol UI to one wallet vendor. Selecting a hosted embedded-wallet vendor and provisioning its project credentials is a deployment choice; private keys are never handled by this repository.
@@ -67,7 +67,7 @@ The wallet layer accepts a standard injected EIP-1193 provider. This supports ex
 - Server components read market, order-book, trade, position, balance, and resolution projections.
 - Same-origin Next route handlers proxy the Hono API and Ponder indexer, so internal service URLs and authorization handling stay server-side.
 - The probability WebSocket client de-duplicates by source hash and reconnects with bounded exponential backoff; server snapshots provide recovery.
-- Robinhood Chain events remain canonical. Preview fixtures are enabled by default only in development, are visibly labeled, and are disabled by default in production.
+- Robinhood Chain events remain canonical. Live mode never silently falls back to fixtures. Explicit demo mode uses an isolated local simulator with visible labeling.
 - If the web application or API is unavailable, users retain direct contract paths for cancellation/release, Conditional Tokens merge/redemption, ERC-20 transfers, and ERC-1155 approval revocation.
 
 ## Admin application
@@ -76,7 +76,7 @@ The admin UI is an orchestration and verification surface, not an authority sour
 
 | Route | Operator workflow |
 | --- | --- |
-| `/` | Evidence queue and matcher/indexer/API/settlement/ingestor health |
+| `/` | Evidence queue and indexer/API/reconciler/ingestor health |
 | `/markets/new` | Fetch Gamma metadata into a draft, set immutable local terms/caps/times, and prepare a creation evidence packet |
 | `/review` | Independent four-eyes review, reject/approve, simulate, copy Safe payload, and reconcile the executed transaction |
 | `/markets` | Review lifecycle/caps and prepare guardian-freeze Safe payloads |

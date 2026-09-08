@@ -5,6 +5,7 @@ import {
   manualResolutionControllerAbi,
   marketRegistryAbi,
   orderRecoveryRouterAbi,
+  payoutVaultAbi,
   positionRouterAbi,
   protocolAuthorityAbi,
 } from "@conditional-stocks/contract-bindings";
@@ -63,6 +64,12 @@ export default createConfig({
     },
   },
   contracts: {
+    PayoutVault: {
+      abi: payoutVaultAbi,
+      address: contracts.payoutVault,
+      chain: "robinhood",
+      ...sourceRange,
+    },
     ConditionalTokens: {
       abi: conditionalTokensAbi,
       address: contracts.conditionalTokens,

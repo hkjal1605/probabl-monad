@@ -1,11 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://conditional-stocks.example/schemas/deployment-manifest-v1.json",
-  "title": "Conditional Stocks v1 deployment manifest",
+  "$id": "https://probabl.trade/schemas/deployment-manifest-atomic-v2.json",
+  "title": "probabl raw-unit v2 / checked atomic execution v2 deployment manifest",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "chainId",
+    "protocolVersion",
+    "executionVersion",
+    "priceFormat",
     "compiler",
     "deployer",
     "source",
@@ -18,6 +21,10 @@
     "usdg"
   ],
   "properties": {
+    "protocolVersion": { "const": 2 },
+    "executionVersion": { "const": 2 },
+    "priceFormat": { "const": "raw-unit-ratio-x18" },
+    "release": { "type": "object" },
     "chainId": { "type": "integer", "minimum": 1 },
     "deployer": { "$ref": "#/$defs/address" },
     "productionApproved": { "const": false },
@@ -61,11 +68,26 @@
     "deployedAtBlock": { "type": "string", "pattern": "^[0-9]+$" },
     "deployments": {
       "type": "object",
+      "required": [
+        "ConditionalTokens",
+        "ProtocolAuthority",
+        "MarketRegistry",
+        "ManualResolutionController",
+        "ConditionalExchange",
+        "PayoutVault",
+        "OrderValidator",
+        "ConditionalSettlement",
+        "ProtocolFeeVault",
+        "AtomicOrderRouter",
+        "PositionRouter",
+        "OrderRecoveryRouter"
+      ],
       "additionalProperties": {
         "type": "object",
         "required": ["address", "bytecodeHash"],
         "properties": {
           "address": { "$ref": "#/$defs/address" },
+          "creator": { "$ref": "#/$defs/address" },
           "blockNumber": { "type": "string", "pattern": "^[0-9]+$" },
           "bytecodeHash": { "$ref": "#/$defs/hash" },
           "transactionHash": { "$ref": "#/$defs/hash" },
@@ -77,10 +99,9 @@
     },
     "roles": {
       "type": "object",
-      "required": ["marketAdmin", "matcher", "guardian", "resolutionAdmin", "finalDefaultAdmin"],
+      "required": ["marketAdmin", "guardian", "resolutionAdmin", "finalDefaultAdmin"],
       "properties": {
         "marketAdmin": { "$ref": "#/$defs/address" },
-        "matcher": { "$ref": "#/$defs/address" },
         "guardian": { "$ref": "#/$defs/address" },
         "resolutionAdmin": { "$ref": "#/$defs/address" },
         "finalDefaultAdmin": { "$ref": "#/$defs/address" }

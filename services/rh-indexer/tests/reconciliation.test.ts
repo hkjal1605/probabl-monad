@@ -11,6 +11,8 @@ import { hashProjection } from "../src/reconciliation/engine.ts";
 
 const hash = (digit: string): Hex => `0x${digit.repeat(64)}` as Hex;
 const snapshot = (): ReconciliationSnapshot => ({
+  payoutCredits: [],
+  payoutTotals: [],
   claimTotals: [
     { amount: "2", positionId: "2" },
     { amount: "1", positionId: "1" },
@@ -46,7 +48,7 @@ const report = (
   indexedBlockHash: hash("1"),
   issues,
   projectionHash: hash("2"),
-  projectionVersion: 2,
+  projectionVersion: 3,
   startedAt: completedAt,
   status: issues.length > 0 ? "mismatch" : "ok",
 });
@@ -71,7 +73,7 @@ describe("reconciliation freeze signals", () => {
           ...report("2026-09-07T00:00:00.000Z"),
           projectionVersion: 1,
         } as unknown as ReconciliationReport))(),
-    ).rejects.toThrow("v2");
+    ).rejects.toThrow("v3");
     expect(await store.latestReport()).toBeNull();
     await store.close();
   });

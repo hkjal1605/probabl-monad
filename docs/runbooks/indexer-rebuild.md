@@ -46,7 +46,7 @@ bun --filter @conditional-stocks/rh-indexer verify:rebuild
 ```
 
 The projection version, hash, indexed block, and indexed block hash must match. Also compare row
-counts for markets, orders, fills, claim balances, resolutions, processed event IDs and matcher events.
+counts for markets, orders, fills, claim balances, resolutions, processed event IDs.
 The September 7 schema no longer stores unused lifecycle mirrors, raw event bodies or ERC-20
 transfer deltas. Compare like-for-like schemas for these row counts; the v2 custody projection hash
 continues to cover the same reconciliation rows and raw-unit meaning.
@@ -67,7 +67,7 @@ divergent event. Never copy a balance or selected row from one schema to the oth
    compatible persisted restart. Alternatively, rehearse two unbounded instances as in the storage
    integration harness, compare them at the same head, and promote without changing their source
    configuration.
-3. Re-run deep reconciliation and confirm matcher cursor continuity.
+3. Re-run deep reconciliation and confirm canonical candidate anchor/hash consistency.
 4. Atomically route internal consumers to the new read API.
 5. Resume settlement first in observation-only mode, then resume order intake after operations signs
    off.

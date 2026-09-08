@@ -54,6 +54,11 @@ export class OfficialPolymarketSource implements PolymarketSource {
       onDisconnect(reason);
     };
     socket.addEventListener("open", () => {
+      // A connection may finish opening after shutdown/replacement was requested.
+      if (intentionallyClosed || disconnectNotified) {
+        socket.close();
+        return;
+      }
       logger.info("polymarket.socket.connected", { subscriptions: tokenIds.length });
       socket.send(JSON.stringify({ assets_ids: tokenIds, type: "market" }));
       lastPongAt = Date.now();
@@ -67,6 +72,7 @@ export class OfficialPolymarketSource implements PolymarketSource {
       }, 10_000);
     });
     socket.addEventListener("message", (message) => {
+      if (intentionallyClosed || disconnectNotified) return;
       if (message.data === "PONG") {
         lastPongAt = Date.now();
         return;

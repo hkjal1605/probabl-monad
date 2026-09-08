@@ -6,15 +6,25 @@ import {
   OperationLeaseUnavailable,
   type OperationRecord,
 } from "@conditional-stocks/db/gateway";
-import { hashOrder, type Order, TimeInForce } from "@conditional-stocks/domain";
+import type { Order } from "@conditional-stocks/domain";
 import {
   GatewayError,
   GatewayErrorCode,
+  parseAtomicPlan,
   parseOrder,
   preparedOrder,
+  type ValidationSnapshot,
   validateOrder,
 } from "@conditional-stocks/gateway";
-import { canonicalStringify } from "@conditional-stocks/orderbook";
+import {
+  ATOMIC_EXECUTION_VERSION,
+  type AtomicPlan,
+  AtomicPlanError,
+  atomicRestingNotional,
+  canonicalStringify,
+  planAtomicOrder,
+  planAtomicRecovery,
+} from "@conditional-stocks/orderbook";
 import { type Address, getAddress, type Hex, isAddress, isHex, keccak256, toBytes } from "viem";
 import type { CanonicalOrder, IndexerClient, ViemGatewayChain } from "./chain.ts";
 import type { ApiEnvironment } from "./environment.ts";
@@ -35,18 +45,6 @@ const object = (value: unknown, name = "body"): Record<string, unknown> => {
   return value as Record<string, unknown>;
 };
 
-// PostgreSQL restores canonical bigint values; the public wire parser deliberately
-// accepts decimal strings only. Revalidate persisted orders without rounding them.
-const storedOrder = (value: unknown): Order =>
-  parseOrder(
-    Object.fromEntries(
-      Object.entries(object(value, "persisted order")).map(([key, item]) => [
-        key,
-        typeof item === "bigint" ? item.toString() : item,
-      ]),
-    ),
-  );
-
 const hex = (value: unknown, name: string, bytes?: number): Hex => {
   if (
     typeof value !== "string" ||
@@ -58,56 +56,7 @@ const hex = (value: unknown, name: string, bytes?: number): Hex => {
   return value.toLowerCase() as Hex;
 };
 
-export interface SettlementIntentSink {
-  status?(intentId: Hex): Promise<{ state: string; batchId: Hex | null; error: unknown }>;
-  enqueueIoc(input: {
-    order: Order;
-    orderHash: Hex;
-    protection: { maxNotional: bigint; maxQuantity: bigint; worstPriceRawX18: bigint };
-    signature: Hex;
-  }): Promise<{ batchId: Hex; state: string }>;
-}
-
-export class HttpSettlementIntentSink implements SettlementIntentSink {
-  constructor(
-    readonly baseUrl: string,
-    readonly token: string,
-  ) {}
-
-  async status(intentId: Hex) {
-    const response = await fetch(`${this.baseUrl}/internal/ioc-intents/${intentId}`, {
-      headers: { authorization: `Bearer ${this.token}` },
-      signal: AbortSignal.timeout(5_000),
-    });
-    if (!response.ok)
-      throw new GatewayError(GatewayErrorCode.RpcUnavailable, "IOC status unavailable", 503);
-    return response.json() as Promise<{ state: string; batchId: Hex | null; error: unknown }>;
-  }
-
-  async enqueueIoc(input: Parameters<SettlementIntentSink["enqueueIoc"]>[0]) {
-    const response = await fetch(`${this.baseUrl}/internal/ioc-intents`, {
-      body: canonicalStringify(input),
-      headers: {
-        authorization: `Bearer ${this.token}`,
-        "content-type": "application/vnd.conditional-stocks.canonical+json",
-      },
-      method: "POST",
-      signal: AbortSignal.timeout(5_000),
-    });
-    const body = (await response.json()) as { batchId?: Hex; error?: string; state?: string };
-    if (!response.ok || !body.batchId || !body.state) {
-      throw new GatewayError(
-        GatewayErrorCode.RpcUnavailable,
-        body.error ?? `settlement worker returned ${response.status}`,
-        503,
-      );
-    }
-    return { batchId: body.batchId, state: body.state };
-  }
-}
-
 export class GatewayService {
-  #submissionTail: Promise<unknown> = Promise.resolve();
   #recoveryTail: Promise<void> = Promise.resolve();
   #recoveryCursor = 0n;
   constructor(
@@ -115,7 +64,6 @@ export class GatewayService {
     readonly store: GatewayQueries,
     readonly chain: ViemGatewayChain,
     readonly indexer: IndexerClient,
-    readonly settlement: SettlementIntentSink,
     readonly safety?: TradingSafety,
   ) {}
 
@@ -177,260 +125,161 @@ export class GatewayService {
   }
 
   async prepareOrder(input: unknown, session: Address) {
-    const body = object(input);
-    const order = parseOrder(body.order);
+    const order = parseOrder(object(input).order);
     this.#requireAccount(session, order.maker);
-    this.#requireTester(session);
     await this.safety?.assertCanTrade([order.marketId]);
     const snapshot = await this.chain.snapshot(order, this.indexer);
-    const funding = await this.chain.funding(order, snapshot.market, snapshot.safeBlockNumber);
+    validateOrder(order, snapshot);
+    const execution = await this.chain.executionContext(order);
+    const [funding, plan] = await Promise.all([
+      this.chain.funding(order, snapshot.market, execution.blockNumber),
+      this.#quoteAtomic(order, snapshot, execution),
+    ]);
     const preparation = preparedOrder(order, snapshot, this.environment.exchange, funding);
+    logger.info("api.order.quoted", {
+      orderHash: preparation.orderHash,
+      marketId: order.marketId,
+      makerCount: plan.makers.length,
+      filledQuantity: plan.filledQuantity,
+      remainingQuantity: plan.remainingQuantity,
+      deadline: plan.deadline,
+    });
     return {
       ...preparation,
+      plan,
+      executionVersion: ATOMIC_EXECUTION_VERSION,
+      currentFees: { makerFeeBps: execution.makerFeeBps, takerFeeBps: execution.takerFeeBps },
       fundingReady: preparation.funding.approved && preparation.funding.balanceSufficient,
-      userPaidTransactionTemplate: {
-        args: [order, "<order-signature>"],
-        functionName: "openOrder",
-        to: this.environment.exchange,
+      atomicRouter: this.environment.atomicRouter,
+    };
+  }
+
+  /** Read-only execution preparation: never signs, broadcasts, or queues an order. */
+  async orderTransaction(input: unknown, session: Address) {
+    const body = object(input);
+    const order = parseOrder(body.order);
+    const plan = parseAtomicPlan(body.plan, order);
+    const signature = hex(body.signature, "signature");
+    this.#requireAccount(session, order.maker);
+    await this.safety?.assertCanTrade([order.marketId]);
+    const snapshot = await this.chain.snapshot(order, this.indexer);
+    const execution = await this.chain.executionContext(order);
+    if (plan.deadline <= execution.timestamp || plan.deadline > execution.timestamp + 60n)
+      throw new GatewayError(
+        GatewayErrorCode.OrderExpired,
+        "Execution quote expired; review a fresh quote",
+        409,
+      );
+    validateOrder(order, snapshot);
+    const [funding, currentPlan] = await Promise.all([
+      this.chain.funding(order, snapshot.market, execution.blockNumber),
+      this.#quoteAtomic(order, snapshot, execution),
+    ]);
+    // Never accept a client-selected inferior/omitted maker, silently edit a reviewed plan,
+    // or extend its deadline. Re-derive current best price/FIFO before returning wallet bytes.
+    if (
+      canonicalStringify({ ...plan, deadline: 0n }) !==
+      canonicalStringify({ ...currentPlan, deadline: 0n })
+    )
+      throw new GatewayError(
+        GatewayErrorCode.OrderInvalid,
+        "The best-price execution plan changed; review a fresh quote",
+        409,
+      );
+    const preparation = preparedOrder(order, snapshot, this.environment.exchange, funding);
+    if (!preparation.funding.balanceSufficient)
+      throw new GatewayError(
+        GatewayErrorCode.BalanceInsufficient,
+        "Funding balance is insufficient",
+      );
+    if (!preparation.funding.approved)
+      throw new GatewayError(
+        GatewayErrorCode.ApprovalMissing,
+        "Exchange funding approval is missing",
+      );
+    if (!(await this.chain.verifyOrderSignature(order, signature, execution.blockNumber)))
+      throw new GatewayError(GatewayErrorCode.SignatureInvalid, "Order signature is invalid");
+    try {
+      await this.chain.simulateAtomic(order, signature, plan);
+    } catch {
+      throw new GatewayError(
+        GatewayErrorCode.SimulationFailed,
+        "Atomic execution is no longer valid; refresh the quote. No transaction was broadcast.",
+        409,
+      );
+    }
+    await this.safety?.assertCanTrade([order.marketId]);
+    return {
+      orderHash: preparation.orderHash,
+      executionVersion: ATOMIC_EXECUTION_VERSION,
+      transaction: {
+        chainId: this.environment.chainId,
+        from: session,
+        to: this.environment.atomicRouter,
+        data: this.chain.atomicCalldata(order, signature, plan),
         value: 0n,
       },
     };
   }
 
-  submitOrder(input: unknown, session: Address, idempotencyKey: string | undefined) {
-    // Local ordering reduces nonce contention; PostgreSQL leases fence cross-process work.
-    const result = this.#submissionTail.then(
-      async () => await this.#submitOrder(input, session, idempotencyKey),
-    );
-    this.#submissionTail = result.catch(() => undefined);
-    return result;
-  }
-
-  async #submitOrder(
-    input: unknown,
-    session: Address,
-    idempotencyKey: string | undefined,
-  ): Promise<{
-    attempts: Awaited<ReturnType<GatewayQueries["listAttempts"]>>;
-    operation: OperationRecord;
-  }> {
-    const key = this.#idempotencyKey(idempotencyKey);
-    const body = object(input);
-    const order = parseOrder(body.order);
-    this.#requireAccount(session, order.maker);
-    this.#requireTester(session);
-    await this.safety?.assertCanTrade([order.marketId]);
-    const signature = hex(body.signature, "signature");
-    const orderHash = hashOrder(order, {
-      chainId: BigInt(this.environment.chainId),
-      verifyingContract: this.environment.exchange,
-    });
-    const requestDigest = digest({
+  async #quoteAtomic(
+    order: Order,
+    snapshot: ValidationSnapshot,
+    execution: Awaited<ReturnType<ViemGatewayChain["executionContext"]>>,
+  ): Promise<AtomicPlan> {
+    if (execution.nextSequence !== snapshot.nextSequence)
+      throw new GatewayError(
+        GatewayErrorCode.CanonicalStateUnavailable,
+        "New liquidity is awaiting indexer confirmation; retry the quote shortly",
+        503,
+      );
+    const candidates = await this.indexer.matchCandidates(
       order,
-      protection: body.protection ?? null,
-      signature,
-      signedTransaction: body.signedTransaction ?? null,
-    });
-    const begun = await this.store.beginOperation({
-      address: session,
-      canonicalState: null,
-      error: null,
-      finalReceipt: null,
-      idempotencyKey: key,
-      kind: "order",
-      operationId: crypto.randomUUID(),
-      orderHash,
-      payload: { order, protection: body.protection ?? null, signature },
-      requestDigest,
-      state: "accepted",
-      transactionHash: null,
-    });
-    if (begun.created)
-      logger.info("api.order.accepted", {
-        operationId: begun.operation.operationId,
-        orderHash,
-        marketId: order.marketId,
-        quantity: order.quantity,
-        limitPriceRawX18: order.limitPriceRawX18,
-        timeInForce: order.tif,
+      snapshot,
+      execution.makerFeeBps,
+      this.environment.exchange,
+      execution.timestamp,
+    );
+    try {
+      const plan = planAtomicOrder({
+        taker: order,
+        candidates,
+        chainId: snapshot.chainId,
+        exchange: this.environment.exchange,
+        timestamp: execution.timestamp,
+        baseStep: snapshot.market.baseStep,
+        makerFeeBps: execution.makerFeeBps,
+        takerFeeBps: execution.takerFeeBps,
+        nextSequence: snapshot.nextSequence,
       });
-    if (!begun.created) {
-      if (begun.operation.requestDigest !== requestDigest) {
-        throw new GatewayError(
-          GatewayErrorCode.Conflict,
-          "idempotency key was used for another request",
-          409,
-        );
-      }
+      const resting = atomicRestingNotional({
+        taker: order,
+        plan,
+        marketOpenNotional: snapshot.marketOpenNotional,
+        walletOpenNotional: snapshot.walletOpenNotional,
+      });
+      const needsRecovery =
+        resting.market > snapshot.market.maxMarketOpenNotional ||
+        resting.wallet > snapshot.market.maxWalletOpenNotional;
+      const recovery = planAtomicRecovery({
+        taker: order,
+        resting,
+        maxMarketOpenNotional: snapshot.market.maxMarketOpenNotional,
+        maxWalletOpenNotional: snapshot.market.maxWalletOpenNotional,
+        candidates: needsRecovery
+          ? await this.indexer.staleReservations(
+              order,
+              snapshot,
+              this.environment.exchange,
+              execution.timestamp,
+            )
+          : [],
+      });
+      return { ...plan, releaseOrders: recovery.releaseOrders };
+    } catch (error) {
+      if (!(error instanceof AtomicPlanError)) throw error;
+      throw new GatewayError(GatewayErrorCode.OrderInvalid, error.message, 409);
     }
-    return this.#runOperation(begun.operation.operationId, async () => {
-      const current = await this.store.getOperation(begun.operation.operationId);
-      if (!current) throw new Error("operation disappeared");
-      if (!["accepted", "retryable"].includes(current.state) || current.transactionHash) {
-        return this.#refreshOrderOperation(current);
-      }
-      if (current.state === "retryable")
-        await this.#updateOperation(current.operationId, {
-          error: null,
-          state: "accepted",
-        });
-
-      try {
-        const snapshot = await this.chain.snapshot(order, this.indexer);
-        const notional = validateOrder(order, snapshot);
-        const funding = await this.chain.funding(order, snapshot.market, snapshot.safeBlockNumber);
-        const preparation = preparedOrder(order, snapshot, this.environment.exchange, funding);
-        if (preparation.orderHash !== orderHash) {
-          throw new GatewayError(GatewayErrorCode.OrderInvalid, "order digest mismatch");
-        }
-        if (!preparation.funding.balanceSufficient) {
-          throw new GatewayError(
-            GatewayErrorCode.BalanceInsufficient,
-            "funding balance is insufficient",
-          );
-        }
-        if (!preparation.funding.approved) {
-          throw new GatewayError(
-            GatewayErrorCode.ApprovalMissing,
-            "exchange funding approval is missing",
-          );
-        }
-        if (!(await this.chain.verifyOrderSignature(order, signature, snapshot.safeBlockNumber))) {
-          throw new GatewayError(GatewayErrorCode.SignatureInvalid, "order signature is invalid");
-        }
-        if (order.tif === TimeInForce.Ioc) {
-          const protection = this.#parseProtection(body.protection, order, notional);
-          await this.store.renewOperation(begun.operation.operationId);
-          const queued = await this.settlement.enqueueIoc({
-            order,
-            orderHash,
-            protection,
-            signature,
-          });
-          const operation = await this.#updateOperation(begun.operation.operationId, {
-            canonicalState: { batchId: queued.batchId },
-            state: "submitted",
-          });
-          return { attempts: [], operation };
-        }
-        try {
-          await this.chain.simulateOpen(order, signature, snapshot.safeBlockNumber);
-          await this.chain.simulateOpen(order, signature);
-        } catch (error) {
-          throw new GatewayError(
-            GatewayErrorCode.SimulationFailed,
-            error instanceof Error ? error.message : String(error),
-            409,
-          );
-        }
-        const existingAttempt = await (
-          await this.store.listAttempts(begun.operation.operationId)
-        ).at(-1);
-        if (existingAttempt?.rawTransaction) {
-          await this.safety?.assertCanTrade([order.marketId]);
-          await this.store.renewOperation(begun.operation.operationId);
-          const hash = await this.chain.broadcast(existingAttempt.rawTransaction).catch((error) => {
-            throw new GatewayError(
-              GatewayErrorCode.RpcUnavailable,
-              error instanceof Error ? error.message : String(error),
-              503,
-            );
-          });
-          if (hash !== existingAttempt.transactionHash)
-            throw new Error("RPC returned wrong tx hash");
-          const operation = await this.#updateOperation(begun.operation.operationId, {
-            state: "broadcast",
-          });
-          return { attempts: await this.store.listAttempts(operation.operationId), operation };
-        }
-        if (body.signedTransaction !== undefined) {
-          const rawTransaction = hex(body.signedTransaction, "signedTransaction");
-          const validated = await this.chain.validateRawTransaction(rawTransaction, {
-            data: this.chain.openOrderCalldata(order, signature),
-            from: session,
-            to: this.environment.exchange,
-          });
-          await this.store.persistPreparedAttempt({
-            attempt: 0,
-            createdAtMs: now(),
-            nonce: validated.nonce,
-            operationId: begun.operation.operationId,
-            rawTransaction,
-            replaces: null,
-            transactionHash: validated.transactionHash,
-          });
-          await this.safety?.assertCanTrade([order.marketId]);
-          await this.store.renewOperation(begun.operation.operationId);
-          const hash = await this.chain.broadcast(rawTransaction).catch((error) => {
-            throw new GatewayError(
-              GatewayErrorCode.RpcUnavailable,
-              error instanceof Error ? error.message : String(error),
-              503,
-            );
-          });
-          if (hash !== validated.transactionHash) throw new Error("RPC returned wrong tx hash");
-          const operation = await this.#updateOperation(begun.operation.operationId, {
-            state: "broadcast",
-          });
-          return { attempts: await this.store.listAttempts(operation.operationId), operation };
-        }
-        const relayer = this.chain.relayerAddress;
-        if (!relayer) {
-          throw new GatewayError(
-            GatewayErrorCode.RpcUnavailable,
-            "relayer unavailable; submit a user-signed openOrder transaction",
-            503,
-            { data: this.chain.openOrderCalldata(order, signature), to: this.environment.exchange },
-          );
-        }
-        const pendingNonce = await this.chain.pendingNonce(relayer);
-        const nonce = await this.store.peekNonce(relayer, pendingNonce);
-        const transaction = await this.chain.prepareRelayedOpen(order, signature, nonce);
-        await this.store.persistPreparedAttempt(
-          {
-            attempt: 0,
-            createdAtMs: now(),
-            nonce,
-            operationId: begun.operation.operationId,
-            rawTransaction: transaction.rawTransaction,
-            replaces: null,
-            transactionHash: transaction.transactionHash,
-          },
-          { address: relayer, pendingNonce },
-        );
-        await this.safety?.assertCanTrade([order.marketId]);
-        await this.store.renewOperation(begun.operation.operationId);
-        const broadcastHash = await this.chain
-          .broadcast(transaction.rawTransaction)
-          .catch((error) => {
-            throw new GatewayError(
-              GatewayErrorCode.RpcUnavailable,
-              error instanceof Error ? error.message : String(error),
-              503,
-            );
-          });
-        if (broadcastHash !== transaction.transactionHash)
-          throw new Error("RPC returned wrong tx hash");
-        const operation = await this.#updateOperation(begun.operation.operationId, {
-          state: "broadcast",
-        });
-        return { attempts: await this.store.listAttempts(operation.operationId), operation };
-      } catch (error) {
-        const gatewayError =
-          error instanceof GatewayError
-            ? error
-            : new GatewayError(
-                GatewayErrorCode.RpcUnavailable,
-                "Transaction processing temporarily unavailable; retry the same idempotency key",
-                503,
-              );
-        await this.#updateOperation(begun.operation.operationId, {
-          error: { code: gatewayError.code, message: gatewayError.message },
-          state: gatewayError.status >= 500 ? "retryable" : "failed",
-        });
-        throw gatewayError;
-      }
-    });
   }
 
   async prepareCancellation(input: unknown, session: Address) {
@@ -444,6 +293,100 @@ export class GatewayService {
         data: this.chain.cancelOrderCalldata(orderHash),
         from: session,
         to: this.environment.exchange,
+        value: 0n,
+      },
+    };
+  }
+
+  /** Permissionless explicit cleanup when an atomic quote needs more than its bounded batch. */
+  async prepareOrderRecovery(input: unknown, session: Address) {
+    const body = object(input);
+    const orderHash = hex(body.orderHash, "orderHash", 32);
+    const kind = body.kind;
+    if (kind !== "expired" && kind !== "invalidated" && kind !== "closed")
+      throw new GatewayError(GatewayErrorCode.InvalidRequest, "Invalid stale-order release kind");
+    const data = this.chain.recoveryCalldata(orderHash, kind);
+    try {
+      await this.chain.simulateUserCall(session, this.environment.exchange, data);
+    } catch {
+      throw new GatewayError(
+        GatewayErrorCode.SimulationFailed,
+        "Order is not currently releasable for that reason",
+        409,
+      );
+    }
+    return {
+      transaction: {
+        chainId: this.environment.chainId,
+        from: session,
+        to: this.environment.exchange,
+        data,
+        value: 0n,
+      },
+    };
+  }
+
+  /** Recovery remains available during trading freezes and never requires a protocol signer. */
+  async preparePayoutWithdrawal(input: unknown, session: Address) {
+    const body = object(input);
+    const uint256 = (value: unknown, name: string) => {
+      if (
+        typeof value !== "string" ||
+        !/^(0|[1-9][0-9]{0,77})$/.test(value) ||
+        BigInt(value) >= 1n << 256n
+      )
+        throw new GatewayError(
+          GatewayErrorCode.InvalidRequest,
+          `${name} must be uint256 decimal units`,
+        );
+      return BigInt(value);
+    };
+    if (
+      typeof body.asset !== "string" ||
+      !isAddress(body.asset) ||
+      typeof body.recipient !== "string" ||
+      !isAddress(body.recipient)
+    )
+      throw new GatewayError(
+        GatewayErrorCode.InvalidRequest,
+        "Asset and recipient must be addresses",
+      );
+    const asset = getAddress(body.asset);
+    const recipient = getAddress(body.recipient);
+    const tokenId = uint256(body.tokenId, "tokenId");
+    const amount = uint256(body.amount, "amount");
+    if (
+      amount === 0n ||
+      /^0x0{40}$/i.test(asset) ||
+      /^0x0{40}$/i.test(recipient) ||
+      recipient.toLowerCase() === this.environment.payoutVault.toLowerCase() ||
+      (asset.toLowerCase() !== this.environment.conditionalTokens.toLowerCase() && tokenId !== 0n)
+    )
+      throw new GatewayError(GatewayErrorCode.InvalidRequest, "Invalid exact-asset withdrawal");
+    const available = await this.chain.payoutCredit(session, asset, tokenId);
+    if (amount > available)
+      throw new GatewayError(
+        GatewayErrorCode.BalanceInsufficient,
+        "Withdrawal exceeds your current payout credit",
+        409,
+      );
+    const data = this.chain.payoutWithdrawalCalldata(asset, tokenId, amount, recipient);
+    try {
+      await this.chain.simulateUserCall(session, this.environment.payoutVault, data);
+    } catch {
+      throw new GatewayError(
+        GatewayErrorCode.SimulationFailed,
+        "Payout withdrawal cannot currently execute; try another recipient or retry later",
+        409,
+      );
+    }
+    return {
+      available,
+      transaction: {
+        chainId: this.environment.chainId,
+        from: session,
+        to: this.environment.payoutVault,
+        data,
         value: 0n,
       },
     };
@@ -489,11 +432,24 @@ export class GatewayService {
   async preparePositionAction(kind: "merge" | "redeem", input: unknown, session: Address) {
     const action = await this.#positionAction(kind, input);
     const approved = await this.chain.positionRouterApproved(session);
+    if (approved) {
+      try {
+        await this.chain.simulateUserCall(session, this.environment.positionRouter, action.data);
+      } catch {
+        throw new GatewayError(
+          GatewayErrorCode.SimulationFailed,
+          "Position action cannot currently execute; refresh balances or choose another amount",
+          409,
+        );
+      }
+    }
     return {
       approval: approved
         ? null
         : {
             data: this.chain.positionApprovalCalldata(),
+            chainId: this.environment.chainId,
+            from: session,
             operator: this.environment.positionRouter,
             to: this.environment.conditionalTokens,
             value: 0n,
@@ -703,29 +659,6 @@ export class GatewayService {
     };
   }
 
-  async #refreshOrderOperation(operation: OperationRecord) {
-    if (!operation.orderHash)
-      return { attempts: await this.store.listAttempts(operation.operationId), operation };
-    const orderHash = operation.orderHash;
-    operation = await this.#refreshOperation(operation);
-    const canonical = await this.indexer.order(orderHash);
-    if (canonical) {
-      operation = await this.#updateOperation(operation.operationId, {
-        canonicalState: canonical,
-        state: canonical.confirmation === "observed" ? "broadcast" : "canonical",
-      });
-    } else if (operation.state === "prepared") {
-      const [attempt] = await this.store.listAttempts(operation.operationId);
-      if (attempt?.rawTransaction) {
-        await this.#guardOrderReplay(operation);
-        await this.store.renewOperation(operation.operationId);
-        await this.chain.broadcast(attempt.rawTransaction).catch(() => undefined);
-        operation = await this.#updateOperation(operation.operationId, { state: "broadcast" });
-      }
-    }
-    return { attempts: await this.store.listAttempts(operation.operationId), operation };
-  }
-
   async #refreshOperation(operation: OperationRecord): Promise<OperationRecord> {
     const result = await this.#runOperation(operation.operationId, async () => {
       const current = await this.store.getOperation(operation.operationId);
@@ -736,28 +669,6 @@ export class GatewayService {
   }
 
   async #refreshOwnedOperation(operation: OperationRecord): Promise<OperationRecord> {
-    if (operation.kind === "order" && operation.orderHash && this.settlement.status) {
-      const order = storedOrder(object(operation.payload).order);
-      if (
-        order.tif === TimeInForce.Ioc &&
-        operation.state !== "accepted" &&
-        operation.state !== "retryable"
-      ) {
-        const status = await this.settlement.status(operation.orderHash);
-        return await this.#updateOperation(operation.operationId, {
-          canonicalState: status,
-          state:
-            status.state === "confirmed"
-              ? "canonical"
-              : ["failed", "quarantined", "expired", "unfilled"].includes(status.state)
-                ? "failed"
-                : "submitted",
-          error: ["expired", "unfilled"].includes(status.state)
-            ? { code: "ioc-unfilled", message: `IOC ${status.state}; no collateral was taken` }
-            : operation.error,
-        });
-      }
-    }
     if (!operation.transactionHash) return operation;
     const receipt = await this.indexer.transaction(operation.transactionHash);
     if (receipt) {
@@ -788,7 +699,12 @@ export class GatewayService {
     if (!rpcReceipt && ["prepared", "retryable", "broadcast"].includes(operation.state)) {
       const attempt = await (await this.store.listAttempts(operation.operationId)).at(-1);
       if (attempt?.rawTransaction) {
-        await this.#guardOrderReplay(operation);
+        if (operation.kind === "order")
+          throw new GatewayError(
+            GatewayErrorCode.OrderInvalid,
+            "Legacy trading outboxes cannot be replayed",
+            409,
+          );
         await this.store.renewOperation(operation.operationId);
         await this.chain.broadcast(attempt.rawTransaction).catch(() => undefined);
         return await this.#updateOperation(operation.operationId, { state: "broadcast" });
@@ -805,7 +721,7 @@ export class GatewayService {
       const page = await this.store.pendingOperationsPage(this.#recoveryCursor, 25);
       this.#recoveryCursor = page.nextSequence;
       for (const operation of page.operations) {
-        if (!operation.transactionHash && operation.state !== "submitted") continue;
+        if (!operation.transactionHash) continue;
         try {
           await this.#refreshOperation(operation);
         } catch (error) {
@@ -874,52 +790,8 @@ export class GatewayService {
     return operation;
   }
 
-  async #guardOrderReplay(operation: OperationRecord): Promise<void> {
-    if (operation.kind !== "order") return; // Never gate cancellation, merge or redemption.
-    const payload = object(operation.payload);
-    const order = storedOrder(payload.order);
-    this.#requireTester(order.maker);
-    await this.safety?.assertCanTrade([order.marketId]);
-  }
-
-  #requireTester(account: Address): void {
-    if (
-      this.environment.internalTesters &&
-      !this.environment.internalTesters.has(account.toLowerCase())
-    )
-      throw new GatewayError(
-        GatewayErrorCode.NotAuthenticated,
-        "Trading is limited to configured internal tester wallets",
-        403,
-      );
-  }
-
   async #findOrderOperation(session: Address, orderHash: Hex): Promise<OperationRecord | null> {
     return await this.store.findOrderOperation(session, orderHash);
-  }
-
-  #parseProtection(input: unknown, order: Order, notional: bigint) {
-    const protection = object(input, "protection");
-    const parse = (value: unknown, name: string): bigint => {
-      if (typeof value !== "string" || !/^(0|[1-9][0-9]*)$/.test(value)) {
-        throw new GatewayError(GatewayErrorCode.InvalidRequest, `${name} must be a decimal string`);
-      }
-      return BigInt(value);
-    };
-    const maxNotional = parse(protection.maxNotional, "protection.maxNotional");
-    const maxQuantity = parse(protection.maxQuantity, "protection.maxQuantity");
-    const worstPriceRawX18 = parse(protection.worstPriceRawX18, "protection.worstPriceRawX18");
-    if (
-      maxQuantity !== order.quantity ||
-      worstPriceRawX18 !== order.limitPriceRawX18 ||
-      maxNotional < notional
-    ) {
-      throw new GatewayError(
-        GatewayErrorCode.OrderInvalid,
-        "IOC protection must cover the signed quantity, limit price, and reservation",
-      );
-    }
-    return { maxNotional, maxQuantity, worstPriceRawX18 };
   }
 
   #idempotencyKey(value: string | undefined): string {

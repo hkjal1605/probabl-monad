@@ -58,7 +58,6 @@ const env: Record<string, string> = {
   INITIAL_ADMIN: account(0).address,
   FINAL_ADMIN: account(1).address,
   MARKET_ADMIN: account(2).address,
-  MATCHER: account(3).address,
   GUARDIAN: account(4).address,
   RESOLUTION_ADMIN: account(5).address,
   DEPLOYMENT_OUTPUT_DIRECTORY: output,
@@ -141,21 +140,24 @@ const grant = await wallet(1).writeContract({
   abi: authorityArtifact.abi,
   address: address("ProtocolAuthority"),
   functionName: "grantRole",
-  args: [roleIds.matcher, unexpectedOperator],
+  args: [roleIds.marketAdmin, unexpectedOperator],
 } as never);
 await client.waitForTransactionReceipt({ hash: grant });
 try {
   await verifyDeploymentManifest(client, manifest);
   throw new Error("Unexpected operator outside manifest was accepted");
 } catch (error) {
-  if (!(error instanceof Error) || !error.message.includes("Unexpected matcher role membership"))
+  if (
+    !(error instanceof Error) ||
+    !error.message.includes("Unexpected marketAdmin role membership")
+  )
     throw error;
 }
 const revoke = await wallet(1).writeContract({
   abi: authorityArtifact.abi,
   address: address("ProtocolAuthority"),
   functionName: "revokeRole",
-  args: [roleIds.matcher, unexpectedOperator],
+  args: [roleIds.marketAdmin, unexpectedOperator],
 } as never);
 await client.waitForTransactionReceipt({ hash: revoke });
 await verifyDeploymentManifest(client, manifest);
@@ -282,9 +284,16 @@ for (const [signer, order] of [
   const signature = await account(signer).signTypedData(orderTypedData(order, domain));
   const onchainHash = await read(exchange, exchangeArtifact.abi, "hashOrder", [order]);
   if (onchainHash !== hashOrder(order, domain)) throw new Error("Fee-capped EIP712 hash mismatch");
-  await write(signer, exchange, exchangeArtifact.abi, "openOrder", [order, signature]);
+  const routerArtifact = await loadArtifact("AtomicOrderRouter");
+  await write(signer, address("AtomicOrderRouter"), routerArtifact.abi, "placeAndMatch", [
+    order,
+    signature,
+    signer === 4 ? [bid] : [],
+    signer === 4 ? [bid.quantity] : [],
+    signer === 4 ? [bid.quantity] : [],
+    (await client.getBlock()).timestamp + 60n,
+  ]);
 }
-await write(3, exchange, exchangeArtifact.abi, "matchOrders", [bid, ask, 10n ** 18n]);
 const chainMarket = (await read(registry, registryArtifact.abi, "getMarket", [marketId])) as {
   stockYesPositionId: bigint;
   quoteYesPositionId: bigint;

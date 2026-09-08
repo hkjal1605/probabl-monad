@@ -1,0 +1,79 @@
+{
+  "completed": true,
+  "testEnvironment": "Owned loopback Anvil 31337, mock collateral, production Next UI, injected public-test smart wallet; no real wallet extension or upstream transactions",
+  "checks": [
+    "Rejected recipient withdrawal fails simulation with no broadcast",
+    "ERC-1271 beneficiary authentication succeeds",
+    "Two partial 100 USDG claim withdrawals reduce 200 to 100 to zero, deleting the indexed credit row",
+    "100 human-unit USDG merge binds exact 100000000 raw units and CTF operator approval",
+    "Expired partially filled order releases remaining escrow and retains 1/2 executed history"
+  ],
+  "chainId": 31337,
+  "receipts": [
+    {
+      "hash": "0xa225b9ae7101a7869f820cda6c1cbd5629a31f9d6b85f17a20732a613552afd5",
+      "from": "0x14dc79964da2c08b23698b3d3cc7ca32193d9955",
+      "to": "0xef86cec1cef0c78e5725fa6cc3e9929788bbde35",
+      "gasUsed": "0x13658",
+      "status": "0x1",
+      "reviewed": {
+        "data": "0x16762eed0000000000000000000000009fe46736679d2d9a65f0992f2272de9f3c7fa6e09ff43769ccb48b5a75df13c40a5c3ea39f7a000d04c4882246f2b92bf2f881cd0000000000000000000000000000000000000000000000000000000005f5e10000000000000000000000000014dc79964da2c08b23698b3d3cc7ca32193d9955",
+        "from": "0xef86cec1cef0c78e5725fa6cc3e9929788bbde35",
+        "to": "0x3B02fF1e626Ed7a8fd6eC5299e2C54e1421B626B",
+        "value": "0x0"
+      }
+    },
+    {
+      "hash": "0x8c96c84b8869c44d4af7e16801f20299e7a8647ce50cc05690bd8b548dd4206f",
+      "from": "0x14dc79964da2c08b23698b3d3cc7ca32193d9955",
+      "to": "0xef86cec1cef0c78e5725fa6cc3e9929788bbde35",
+      "gasUsed": "0xcb97",
+      "status": "0x1",
+      "reviewed": {
+        "data": "0x16762eed0000000000000000000000009fe46736679d2d9a65f0992f2272de9f3c7fa6e09ff43769ccb48b5a75df13c40a5c3ea39f7a000d04c4882246f2b92bf2f881cd0000000000000000000000000000000000000000000000000000000005f5e10000000000000000000000000014dc79964da2c08b23698b3d3cc7ca32193d9955",
+        "from": "0xef86cec1cef0c78e5725fa6cc3e9929788bbde35",
+        "to": "0x3B02fF1e626Ed7a8fd6eC5299e2C54e1421B626B",
+        "value": "0x0"
+      }
+    },
+    {
+      "hash": "0xd71e0d7e5d0d15a767def764f61c7d1d18ef2b355b7267da2da6d310b2e67ee3",
+      "from": "0x14dc79964da2c08b23698b3d3cc7ca32193d9955",
+      "to": "0x9fe46736679d2d9a65f0992f2272de9f3c7fa6e0",
+      "gasUsed": "0xb3ac",
+      "status": "0x1",
+      "reviewed": {
+        "data": "0xa22cb465000000000000000000000000a51c1fc2f0d1a1b8494ed1fe312d7c3a78ed91c00000000000000000000000000000000000000000000000000000000000000001",
+        "from": "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955",
+        "to": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+        "value": "0x0"
+      }
+    },
+    {
+      "hash": "0xaa18596e067af372cf69a9821e47502bf14f4b11338099a272208436b315d3f4",
+      "from": "0x14dc79964da2c08b23698b3d3cc7ca32193d9955",
+      "to": "0xa51c1fc2f0d1a1b8494ed1fe312d7c3a78ed91c0",
+      "gasUsed": "0x2b8db",
+      "status": "0x1",
+      "reviewed": {
+        "data": "0xb13bf9010000000000000000000000005fbdb2315678afecb367f032d93f642f64180aa319785f1d4ff7fdb33a01620b6bbbbadf10fa3492424e85b737426790b80757330000000000000000000000000000000000000000000000000000000005f5e10000000000000000000000000014dc79964da2c08b23698b3d3cc7ca32193d9955",
+        "from": "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955",
+        "to": "0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0",
+        "value": "0x0"
+      }
+    },
+    {
+      "hash": "0xca2464b08f8d620da88ef30504580da8a57992f370f3cd7079dd60d28ce3adc8",
+      "from": "0x23618e81e3f5cdf7f54c3d65f7fbc0abf5b21e8f",
+      "to": "0x0165878a594ca255338adfa4d48449f69242eb8f",
+      "gasUsed": "0x28320",
+      "status": "0x1",
+      "reviewed": {
+        "data": "0x371ee5abe1a67f13980dc8380a1f812a899198f3900f69488b7a01e6977c2b34fc07b537",
+        "from": "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f",
+        "to": "0x0165878A594ca255338adfa4d48449f69242Eb8F",
+        "value": "0x0"
+      }
+    }
+  ]
+}

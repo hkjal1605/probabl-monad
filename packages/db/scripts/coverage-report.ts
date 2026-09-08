@@ -33,14 +33,7 @@ async function files(directory: string): Promise<string[]> {
     )
   ).flat();
 }
-const services = [
-  "apps/api",
-  "services/matcher",
-  "services/settlement-worker",
-  "services/polymarket-ingestor",
-  "services/rh-indexer",
-  "packages/db",
-];
+const services = ["apps/api", "services/polymarket-ingestor", "services/rh-indexer", "packages/db"];
 const entrypoints: Record<string, string[]> = {
   "services/rh-indexer": [
     "services/rh-indexer/scripts/ponder.ts",

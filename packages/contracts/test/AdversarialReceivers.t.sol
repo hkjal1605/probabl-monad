@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import { OrderValidator } from "../src/OrderValidator.sol";
+import { PayoutVault } from "../src/PayoutVault.sol";
 import {
     Branch,
     FundingKind,
@@ -105,63 +106,67 @@ contract AdversarialReceiversTest is ProtocolFixture {
             0,
             keccak256("CALLBACK_ASK")
         );
-        bidHash = exchange.openOrder(bid, _sign(bid, BUYER_KEY));
-        askHash = exchange.openOrder(ask, _sign(ask, SELLER_KEY));
+        bidHash = _openOrder(bid, _sign(bid, BUYER_KEY));
+        askHash = _openOrder(ask, _sign(ask, SELLER_KEY));
     }
 
-    function _balancesAndState(
-        bytes32 bidHash,
-        bytes32 askHash,
-        address receiver
-    ) private view returns (bytes32) {
-        return keccak256(
-            abi.encode(
-                exchange.getOrderState(bidHash),
-                exchange.getOrderState(askHash),
-                exchange.marketOpenNotional(marketId),
-                exchange.walletOpenNotional(marketId, buyer),
-                exchange.walletOpenNotional(marketId, seller),
-                quote.balanceOf(address(exchange)),
-                stock.balanceOf(address(exchange)),
-                quote.balanceOf(address(ctf)),
-                stock.balanceOf(address(ctf)),
-                quote.balanceOf(address(settlement)),
-                stock.balanceOf(address(settlement)),
-                ctf.balanceOf(receiver, market.stockYesPositionId),
-                ctf.balanceOf(buyer, market.quoteNoPositionId),
-                ctf.balanceOf(seller, market.stockNoPositionId),
-                ctf.balanceOf(seller, market.quoteYesPositionId)
-            )
-        );
+    function testChangingReceiverBehaviorDefersOnlyItsPayout() public {
+        _assertReceiverDeferral(0);
     }
 
-    function testChangingReceiverBehaviorRevertsFillAtomicallyAndMakerCanCancel() public {
+    function testGasGriefingRecipientGetsBackedCredit() public {
+        _assertReceiverDeferral(1);
+    }
+
+    function testLargeRevertRecipientGetsBackedCredit() public {
+        _assertReceiverDeferral(2);
+    }
+
+    function _assertReceiverDeferral(
+        uint256 behavior
+    ) private {
         MutableReceiver receiver = new MutableReceiver(buyer);
         (Order memory bid, Order memory ask, bytes32 bidHash, bytes32 askHash) =
             _pair(address(receiver));
-        bytes32 beforeState = _balancesAndState(bidHash, askHash, address(receiver));
-        receiver.setBehavior(true, false);
-        vm.expectRevert();
-        exchange.matchOrders(bid, ask, 1e18);
-        assertEq(
-            _balancesAndState(bidHash, askHash, address(receiver)),
-            beforeState,
-            "all state and balances rolled back"
-        );
-        receiver.setBehavior(false, true);
-        vm.expectRevert();
-        exchange.matchOrders{ gas: 2_000_000 }(bid, ask, 1e18);
-        assertEq(
-            _balancesAndState(bidHash, askHash, address(receiver)),
-            beforeState,
-            "gas grief rolled back"
-        );
-        vm.prank(buyer);
-        exchange.cancelOrder(bidHash);
+        receiver.setBehavior(behavior == 0, behavior == 1);
+        receiver.setLargeRevert(behavior == 2);
+        _matchOrders(bid, ask, 1e18);
         assertEq(
             uint256(exchange.getOrderState(bidHash).status),
-            uint256(OrderStatus.CANCELLED),
-            "maker recovery"
+            uint256(OrderStatus.FILLED),
+            "bid filled"
+        );
+        assertEq(
+            uint256(exchange.getOrderState(askHash).status),
+            uint256(OrderStatus.FILLED),
+            "ask filled"
+        );
+        assertEq(
+            exchange.payoutVault()
+                .claimable(address(receiver), address(ctf), market.stockYesPositionId),
+            1e18,
+            "failed payout credited"
+        );
+        assertEq(
+            ctf.balanceOf(address(exchange.payoutVault()), market.stockYesPositionId),
+            1e18,
+            "exact backing"
+        );
+        assertEq(ctf.balanceOf(seller, market.quoteYesPositionId), 210e18, "other party unaffected");
+        assertEq(
+            ctf.balanceOf(seller, market.stockNoPositionId), 1e18, "seller complement delivered"
+        );
+        assertEq(
+            ctf.balanceOf(buyer, market.quoteNoPositionId), 210e18, "buyer complement delivered"
+        );
+        assertEq(exchange.marketOpenNotional(marketId), 0, "no stranded risk cap");
+        PayoutVault payouts = exchange.payoutVault();
+        vm.prank(address(receiver));
+        payouts.withdraw(address(ctf), market.stockYesPositionId, 1e18, buyer);
+        assertEq(
+            ctf.balanceOf(buyer, market.stockYesPositionId),
+            1e18,
+            "authorized alternate destination"
         );
     }
 
@@ -191,12 +196,12 @@ contract AdversarialReceiversTest is ProtocolFixture {
             0,
             keccak256("REENTRANT_ASK")
         );
-        bytes32 bidHash = exchange.openOrder(bid, _sign(bid, BUYER_KEY));
-        exchange.openOrder(ask, _sign(ask, SELLER_KEY));
+        bytes32 bidHash = _openOrder(bid, _sign(bid, BUYER_KEY));
+        _openOrder(ask, _sign(ask, SELLER_KEY));
         receiver.setCallback(
             address(exchange), abi.encodeWithSignature("cancelOrder(bytes32)", bidHash)
         );
-        exchange.matchOrders(bid, ask, 0.5e18);
+        _matchOrders(bid, ask, 0.5e18);
         assertTrue(!receiver.callbackSucceeded(), "reentrant cancellation must fail");
         assertEq(
             ctf.balanceOf(address(receiver), market.stockYesPositionId), 0.5e18, "one delivery"
@@ -227,6 +232,7 @@ contract AdversarialReceiversTest is ProtocolFixture {
             vm.expectRevert(
                 abi.encodeWithSelector(OrderValidator.UnsupportedClaimDestination.selector, bad[i])
             );
+            vm.prank(address(atomicRouter));
             exchange.openOrder{ gas: 500_000 }(bid, signature);
         }
     }
@@ -248,11 +254,8 @@ contract AdversarialReceiversTest is ProtocolFixture {
             0,
             keccak256("WALLET_RECOVERY")
         );
-        bytes32 hash = exchange.openOrder(bid, _sign(bid, BUYER_KEY));
+        bytes32 hash = _openOrder(bid, _sign(bid, BUYER_KEY));
         wallet.setBehavior(true, false);
-        vm.prank(address(wallet));
-        vm.expectRevert();
-        exchange.cancelOrder(hash);
         vm.prank(seller);
         vm.expectRevert();
         exchange.cancelOrderTo(hash, seller);
@@ -295,7 +298,7 @@ contract AdversarialReceiversTest is ProtocolFixture {
             keccak256("GAS_GRIEF_RECOVERY")
         );
         bad.expiry = uint64(block.timestamp + 1);
-        bytes32 badHash = exchange.openOrder(bad, _sign(bad, BUYER_KEY));
+        bytes32 badHash = _openOrder(bad, _sign(bad, BUYER_KEY));
         Order memory good = _order(
             buyer,
             Branch.YES,
@@ -308,7 +311,7 @@ contract AdversarialReceiversTest is ProtocolFixture {
             keccak256("GOOD_RECOVERY")
         );
         good.expiry = bad.expiry;
-        bytes32 goodHash = exchange.openOrder(good, _sign(good, BUYER_KEY));
+        bytes32 goodHash = _openOrder(good, _sign(good, BUYER_KEY));
         wallet.setBehavior(false, !largeRevert);
         wallet.setLargeRevert(largeRevert);
         vm.warp(bad.expiry);
@@ -319,8 +322,8 @@ contract AdversarialReceiversTest is ProtocolFixture {
         recoveryRouter.releaseExpired{ gas: 1_000_000 }(batch);
         assertEq(
             uint256(exchange.getOrderState(badHash).status),
-            uint256(OrderStatus.OPEN),
-            "bad receiver isolated"
+            uint256(OrderStatus.CANCELLED),
+            "bad receiver recovered into its credit"
         );
         assertEq(
             uint256(exchange.getOrderState(goodHash).status),

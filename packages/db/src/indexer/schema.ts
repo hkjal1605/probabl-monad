@@ -100,6 +100,8 @@ export const order = onchainTable(
     fundingKind: table.integer().notNull(),
     timeInForce: table.integer().notNull(),
     quantity: table.bigint().notNull(),
+    // Executed base units, preserved when cancellation clears the live remainder.
+    filled: table.bigint().notNull(),
     limitPriceRawX18: table.bigint().notNull(),
     maxFeeBps: table.integer().notNull(),
     // Raw received-asset claims charged across this order's fills; no duplicate fee ledger.
@@ -130,6 +132,15 @@ export const order = onchainTable(
     // An ascending scan is not interchangeable with price DESC / FIFO ASC.
     askIdx: index("order_ask_idx")
       .on(table.marketId, table.branch, table.side, table.limitPriceRawX18, table.sequence)
+      .where(sql`${table.status} = 'open'`),
+    expiryIdx: index("order_open_expiry_idx")
+      .on(table.marketId, table.expiry, table.sequence)
+      .where(sql`${table.status} = 'open'`),
+    nonceIdx: index("order_open_maker_nonce_idx")
+      .on(table.marketId, table.maker, table.nonce, table.sequence)
+      .where(sql`${table.status} = 'open'`),
+    walletExpiryIdx: index("order_open_wallet_expiry_idx")
+      .on(table.marketId, table.maker, table.expiry, table.sequence)
       .where(sql`${table.status} = 'open'`),
     makerIdx: index("order_maker_history_idx").on(
       table.maker,
@@ -235,6 +246,23 @@ export const nonceFloor = onchainTable("nonce_floor", (table) => ({
   updatedBlock: table.bigint().notNull(),
 }));
 
+// Only outstanding, beneficiary-owned failed payouts. Successful payouts create no rows;
+// fully claimed credits are deleted through Ponder's reversible block journal.
+export const payoutCredit = onchainTable(
+  "payout_credit",
+  (table) => ({
+    id: table.text().primaryKey(),
+    beneficiary: table.hex().notNull(),
+    asset: table.hex().notNull(),
+    tokenId: table.bigint().notNull(),
+    amount: table.bigint().notNull(),
+    updatedBlock: table.bigint().notNull(),
+  }),
+  (table) => ({
+    beneficiaryIdx: index("payout_credit_beneficiary_idx").on(table.beneficiary, table.id),
+  }),
+);
+
 export const protocolState = onchainTable("protocol_state", (table) => ({
   id: table.text().primaryKey(),
   tradingPaused: table.boolean().notNull(),
@@ -256,25 +284,3 @@ export const resolution = onchainTable("resolution", (table) => ({
   blockNumber: table.bigint().notNull(),
   transactionHash: table.hex().notNull(),
 }));
-
-export const matcherEvent = onchainTable(
-  "matcher_event",
-  (table) => ({
-    id: table.text().primaryKey(),
-    chainId: table.bigint().notNull(),
-    blockNumber: table.bigint().notNull(),
-    blockHash: table.hex().notNull(),
-    blockTimestamp: table.bigint().notNull(),
-    transactionHash: table.hex().notNull(),
-    transactionIndex: table.integer().notNull(),
-    logIndex: table.integer().notNull(),
-    payload: table.text().notNull(),
-  }),
-  (table) => ({
-    cursorIdx: index("matcher_event_cursor_idx").on(
-      table.blockNumber,
-      table.transactionIndex,
-      table.logIndex,
-    ),
-  }),
-);

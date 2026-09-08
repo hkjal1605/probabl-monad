@@ -1,6 +1,7 @@
 "use client";
 
-import { conditionalExchangeAbi } from "@conditional-stocks/contract-bindings";
+import { formatTokenAmount } from "@conditional-stocks/domain";
+import { parseAtomicPlan, parseOrder } from "@conditional-stocks/gateway";
 import { Alert, AlertDescription, AlertTitle } from "@conditional-stocks/ui-kit/alert";
 import { Badge } from "@conditional-stocks/ui-kit/badge";
 import { Button } from "@conditional-stocks/ui-kit/button";
@@ -19,7 +20,6 @@ import { Tabs, TabsList, TabsTrigger } from "@conditional-stocks/ui-kit/tabs";
 import { CircleAlert, LoaderCircle, ShieldCheck, WalletCards } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { type Address, encodeFunctionData, type Hex } from "viem";
 import { useDemo } from "@/components/providers/DemoProvider";
 import { useWallet } from "@/components/providers/WalletProvider";
 import { protocolConfig } from "@/config/protocol";
@@ -28,6 +28,12 @@ import type { MarketView } from "@/lib/api/types";
 import { DEMO_ACCOUNT, demoApprovalKey, reviewDemoOrder } from "@/lib/demo/engine";
 import { formatNumber, formatUsd } from "@/lib/format/display";
 import { logger } from "@/lib/logger";
+import {
+  atomicApproval,
+  atomicSigningData,
+  atomicTransaction,
+  verifyAtomicResponse,
+} from "@/lib/trading/atomic";
 import { createOrder, previewOrder } from "@/lib/trading/order";
 
 interface Preparation {
@@ -43,7 +49,18 @@ interface Preparation {
   order: ReturnType<typeof createOrder>;
   payoff: unknown;
   typedData: unknown;
-  userPaidTransactionTemplate: { to: string };
+  plan?: {
+    guard: { nextSequence: string; makerFeeBps: number; takerFeeBps: number };
+    releaseOrders: string[];
+    makers: unknown[];
+    quantities: string[];
+    expectedRemaining: string[];
+    deadline: string;
+    filledQuantity: string;
+    remainingQuantity: string;
+    executionQuote: string;
+  };
+  atomicRouter?: string;
 }
 const asError = async (response: Response) => {
   logger.warn("order.request.failed", {
@@ -69,6 +86,14 @@ export function OrderTicket({ market }: { market: MarketView }) {
   const [price, setPrice] = useState(defaultPrice?.toString() ?? "");
   const [busy, setBusy] = useState(false);
   const [preparation, setPreparation] = useState<Preparation | null>(null);
+  const [nowSeconds, setNowSeconds] = useState(() => Math.floor(Date.now() / 1000));
+  useEffect(() => {
+    if (!preparation?.plan) return;
+    const timer = setInterval(() => setNowSeconds(Math.floor(Date.now() / 1000)), 1000);
+    return () => clearInterval(timer);
+  }, [preparation]);
+  const quoteExpired =
+    !demo && preparation?.plan && BigInt(preparation.plan.deadline) <= BigInt(nowSeconds);
   // biome-ignore lint/correctness/useExhaustiveDependencies: Wallet/market identity changes invalidate a previously reviewed transaction.
   useEffect(() => {
     setPreparation(null);
@@ -117,7 +142,6 @@ export function OrderTicket({ market }: { market: MarketView }) {
           notional: preview.costRaw,
           payoff: null,
           typedData: null,
-          userPaidTransactionTemplate: { to: DEMO_ACCOUNT },
         });
         return;
       }
@@ -131,7 +155,17 @@ export function OrderTicket({ market }: { market: MarketView }) {
       });
       if (!response.ok) throw new Error(await asError(response));
       const result = (await response.json()) as Omit<Preparation, "order">;
-      setPreparation({ ...result, order: candidate });
+      const plan = parseAtomicPlan(result.plan, parseOrder(candidate));
+      setNowSeconds(Math.floor(Date.now() / 1000));
+      setPreparation({
+        ...result,
+        order: candidate,
+        plan: JSON.parse(
+          JSON.stringify(plan, (_, value) =>
+            typeof value === "bigint" ? value.toString() : value,
+          ),
+        ),
+      });
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : "Order preview failed");
     } finally {
@@ -149,7 +183,14 @@ export function OrderTicket({ market }: { market: MarketView }) {
         setPreparation(null);
         return;
       }
-      const hash = await wallet.sendTransaction(preparation.funding.approvalCall);
+      const hash = await wallet.sendTransaction(
+        atomicApproval({
+          order: preparation.order,
+          config: protocolConfig,
+          market,
+          response: preparation.funding.approvalCall,
+        }),
+      );
       toast.success(`Approval submitted: ${hash.slice(0, 10)}…`);
       setPreparation(null);
     } catch (cause) {
@@ -173,74 +214,42 @@ export function OrderTicket({ market }: { market: MarketView }) {
         setPreparation(null);
         return;
       }
-      const signature = await wallet.signTypedData(preparation.typedData);
+      if (!wallet.account || !preparation.plan)
+        throw new Error("Review an atomic order quote first.");
+      if (preparation.atomicRouter?.toLowerCase() !== protocolConfig.atomicRouter.toLowerCase())
+        throw new Error("API atomic router differs from the configured deployment.");
+      // The order signature and transaction are both constructed from the reviewed local order.
+      // Neither a relay fallback nor a background settlement worker can change this plan.
+      const signature = await wallet.signTypedData(
+        atomicSigningData(preparation.order, protocolConfig),
+      );
       const token = wallet.sessionToken ?? (await wallet.authenticate());
-      const currentOrder = preparation.order;
-      const response = await fetch("/api/gateway/orders/submit", {
-        body: JSON.stringify({
-          order: currentOrder,
-          protection:
-            tif === "ioc"
-              ? {
-                  maxNotional: preparation.notional,
-                  maxQuantity: currentOrder.quantity,
-                  worstPriceRawX18: currentOrder.limitPriceRawX18,
-                }
-              : undefined,
-          signature,
-        }),
-        headers: {
-          authorization: `Bearer ${token}`,
-          "content-type": "application/json",
-          "idempotency-key": crypto.randomUUID(),
-        },
+      const expected = atomicTransaction({
+        order: preparation.order,
+        plan: preparation.plan,
+        signature,
+        account: wallet.account,
+        config: protocolConfig,
+      });
+      const response = await fetch("/api/gateway/orders/transaction", {
+        body: JSON.stringify({ order: preparation.order, plan: preparation.plan, signature }),
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
         method: "POST",
       });
-      if (!response.ok) {
-        const body = (await response.json().catch(() => ({}))) as {
-          error?: { details?: { data?: string; to?: string }; message?: string };
-        };
-        const fallback = body.error?.details;
-        const expectedFallbackData = encodeFunctionData({
-          abi: conditionalExchangeAbi,
-          args: [
-            {
-              branch: currentOrder.branch,
-              expiry: BigInt(currentOrder.expiry),
-              fundingKind: currentOrder.fundingKind,
-              limitPriceRawX18: BigInt(currentOrder.limitPriceRawX18),
-              maker: currentOrder.maker as Address,
-              marketId: currentOrder.marketId as Hex,
-              nonce: BigInt(currentOrder.nonce),
-              quantity: BigInt(currentOrder.quantity),
-              recipient: currentOrder.recipient as Address,
-              salt: currentOrder.salt as Hex,
-              maxFeeBps: currentOrder.maxFeeBps,
-              side: currentOrder.side,
-              tif: currentOrder.tif,
-            },
-            signature as Hex,
-          ],
-          functionName: "openOrder",
-        });
-        if (
-          response.status === 503 &&
-          fallback?.data?.toLowerCase() === expectedFallbackData.toLowerCase() &&
-          fallback.to?.toLowerCase() === preparation.userPaidTransactionTemplate.to.toLowerCase()
-        ) {
-          const hash = await wallet.sendTransaction({ data: fallback.data, to: fallback.to });
-          toast.success(
-            `Relayer unavailable; user-paid order submitted: ${hash.slice(0, 10)}… It becomes live after canonical indexing.`,
-          );
-          setPreparation(null);
-          return;
-        }
-        throw new Error(body.error?.message ?? `Request failed (${response.status})`);
-      }
-      const result = (await response.json()) as {
-        operation: { operationId: string; state: string };
-      };
-      toast.success(`Order ${result.operation.state}. It becomes live after canonical indexing.`);
+      if (!response.ok) throw new Error(await asError(response));
+      const transaction = verifyAtomicResponse(expected, await response.json());
+      // Recheck quote age after the API round trip; a wallet delay can still cause an onchain revert.
+      atomicTransaction({
+        order: preparation.order,
+        plan: preparation.plan,
+        signature,
+        account: wallet.account,
+        config: protocolConfig,
+      });
+      const hash = await wallet.sendTransaction(transaction);
+      toast.success(
+        `Atomic order submitted: ${hash.slice(0, 10)}… Fills and any remainder appear after indexing.`,
+      );
       setPreparation(null);
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : "Order submission failed");
@@ -440,6 +449,51 @@ export function OrderTicket({ market }: { market: MarketView }) {
             </AlertDescription>
           </Alert>
         )}
+        {!demo && preparation?.plan && (
+          <div className="rounded-xl border p-3 text-xs leading-5" aria-live="polite">
+            <p>
+              Atomic fill:{" "}
+              {formatTokenAmount(BigInt(preparation.plan.filledQuantity), market.baseTokenDecimals)}{" "}
+              {market.ticker} across {preparation.plan.makers.length} resting orders.
+            </p>
+            <p>
+              {preparation.order.tif === 0 ? "Rests" : "Released"}:{" "}
+              {formatTokenAmount(
+                BigInt(preparation.plan.remainingQuantity),
+                market.baseTokenDecimals,
+              )}{" "}
+              {market.ticker}.
+            </p>
+            <p>
+              Execution value before fees:{" "}
+              {formatTokenAmount(
+                BigInt(preparation.plan.executionQuote),
+                market.quoteTokenDecimals,
+              )}{" "}
+              USDG.
+            </p>
+            <p>
+              {quoteExpired
+                ? "Quote expired. Refresh before signing."
+                : "All reviewed fills execute together or the transaction reverts. You pay gas, including for a reverted transaction."}
+            </p>
+            {preparation.plan.releaseOrders.length > 0 && (
+              <p>
+                This transaction also releases {preparation.plan.releaseOrders.length} stale orders
+                to their owners to free risk-cap space. The additional gas is included in your
+                transaction.
+              </p>
+            )}
+            <p>
+              If an individual payout is rejected, its recipient receives an exact-asset claim in
+              the payout vault. Other payouts complete normally. Claim deferred payouts from
+              Portfolio.
+            </p>
+            <Button variant="outline" size="sm" className="mt-2" onClick={prepare} disabled={busy}>
+              Refresh quote
+            </Button>
+          </div>
+        )}
         {preparation?.funding.approvalCall ? (
           <Button className="w-full" size="lg" onClick={approve} disabled={busy}>
             <ShieldCheck />
@@ -451,10 +505,10 @@ export function OrderTicket({ market }: { market: MarketView }) {
             variant="brand"
             size="lg"
             onClick={submit}
-            disabled={busy || !preparation.funding.balanceSufficient}
+            disabled={busy || Boolean(quoteExpired) || !preparation.funding.balanceSufficient}
           >
             {busy ? <LoaderCircle className="animate-spin" /> : <ShieldCheck />}
-            {demo ? "Submit demo order" : "Sign and submit order"}
+            {demo ? "Submit demo order" : "Sign and place atomically"}
           </Button>
         ) : wallet.account ? (
           <Button
@@ -480,7 +534,7 @@ export function OrderTicket({ market }: { market: MarketView }) {
         <p className="text-center text-[11px] leading-5 text-muted-foreground">
           {demo
             ? "Local simulation only. GTC rests against changing demo liquidity; IOC fills available depth and releases the remainder. No signature, gas or real assets."
-            : "Signing an order authorizes only its exact branch, side, quantity, price, expiry, and nonce. A submitted order is not live until the chain indexer observes OrderOpened."}
+            : "Your wallet signs the order and broadcasts one placement transaction containing its fills. GTC leaves any remainder resting; IOC refunds it. Approvals, if needed, are separate. Activity appears after chain confirmation."}
         </p>
       </CardContent>
     </Card>

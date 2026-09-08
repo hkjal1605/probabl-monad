@@ -1,0 +1,15 @@
+{
+  "registry": "0x19142c1b4b841a357b83c3b5cc46e007906ab0a6",
+  "controller": "0xbb3a711d71483cdf4d61bdf5bd6a1fdd016a475c",
+  "exchange": "0x3122692f014fd97f59839be4e5619af9ed72266e",
+  "validator": "0xb481bea313179141fbdb344a26d31bd66ee64152",
+  "settlement": "0x5cfbe115372524a842f3c869bc3b4b376b670f98",
+  "feeVault": "0xde5c3b87745d440a334d640af2af82d2724a7b1d",
+  "atomicRouter": "0x6571010d7f35a4bc4be21c8fc5595de9bac596eb",
+  "recovery": "0x3c9bc73cfa10d6990f1032c0c77de62d377d1723",
+  "ctf": "0x5a7929571411d150bba8e15d2db6657f30a0ef37",
+  "authority": "0x74fb384841edf054b8a201b4b6066413d67d696b",
+  "router": "0x46b7369b57b161dfcf29da6e4abec7e3984b7663",
+  "priceFormat": "raw-unit-ratio-x18",
+  "protocolVersion": 2
+}

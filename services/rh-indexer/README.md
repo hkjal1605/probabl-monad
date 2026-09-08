@@ -3,7 +3,7 @@
 This service is the canonical offchain projection for Conditional Stocks v2 raw-unit ratios. It uses
 [Ponder](https://ponder.sh/docs/get-started/new-project) to synchronize Robinhood Chain logs,
 handle reorg rollbacks, and transactionally build typed PostgreSQL read models. Hono routes
-serve those projections to the matcher, API, portfolio, and operations services.
+serve those projections to the atomic candidate API, portfolio, and operations services.
 
 The chain remains the source of truth. This database may be discarded and rebuilt from the
 configured deployment block. It must never be edited to “repair” custody or accounting.
@@ -19,7 +19,7 @@ The projection contains:
 
 - a bounded recent block ring, relevant transactions, and event-delivery guards;
 - market terms, claim IDs, and current market state;
-- order state, reservations, open interest, fills, and matcher events;
+- order state, reservations, open interest, fills, and paid fees;
 - current ERC-1155 claim balances, nonce floors, pauses, and manual resolution evidence.
 
 Rows store their canonical block/hash and cursor. Confirmation is derived from `indexer_state`
@@ -62,7 +62,7 @@ The adapter resumes fetching at the extraction/recovery cursor instead of refetc
 deployment-to-checkpoint prefix. Application state, recovery checkpoints and rollback journals
 are **never** deleted by cache maintenance. Keep the same schema and persistent storage on restart.
 
-Older matcher/settlement/IOC block anchors fall back to exact-block RPC reads with head hash
+Older atomic candidate/reconciliation block anchors fall back to exact-block RPC reads with head hash
 revalidation; unavailable historical headers or branch disagreement fail closed. Recent anchor
 reads remain database-only. The RPC must retain historical block headers; this fallback does not
 require historical `eth_call` state. Simultaneous misses are coalesced and concurrency bounded.
@@ -103,7 +103,7 @@ bun run reconcile:indexer:anvil
 ```
 
 The seed submits two EIP-712-signed, whole-collateral GTC orders and partially fills them through the
-authorized matcher. The resolution fixture releases the remaining reservations and performs the
+owner's atomic placement transaction. There is no privileged matcher. The resolution fixture releases the remaining reservations and performs the
 manual admin-only YES resolution. Neither fixture is available on a non-Anvil chain.
 
 ## Production commands
@@ -126,7 +126,7 @@ production.
 | --- | --- |
 | `GET /indexer/health` | Indexed/confirmed/finalized head and head age |
 | `GET /metrics` | Ponder's built-in Prometheus runtime and sync metrics |
-| `GET /internal/matcher-events` | Ordered, confirmed-only matcher stream |
+| `GET /internal/match-candidates` | Bounded eligible opposite-side GTC makers, best price then FIFO, bound to a canonical block |
 | `GET /markets[/:id]` | Current market terms and state |
 | `GET /orders/:id` | Canonical order and confirmation state |
 | `GET /trades` | Cursor-orderable fills, optionally by market |
@@ -136,11 +136,13 @@ production.
 | `GET /internal/reservations` | Positive exchange reservations |
 | `GET /internal/reconciliation-snapshot` | Aggregated accounting input |
 
-The matcher cursor is `(blockNumber, transactionIndex, logIndex, blockHash)`. Events above the
-configured confirmation head are withheld. A stale block hash returns HTTP `409`, the canonical
-hash, and a conservative `rewindToBlock`; the matcher must rewind its journal before consuming
-again. This route uses `application/vnd.conditional-stocks.canonical+json` and must be decoded with
-the shared `canonicalParse` codec, which restores `bigint` without unsafe JSON-number conversion.
+Atomic candidate parameters are `marketId`, `branch`, maker `side`, `limitPriceRawX18`,
+`makerFeeBps`, `atBlock` and latest execution `timestamp`. The query excludes non-open/IOC,
+expired, nonce-invalidated, noncrossing, fee-ineligible and anchor-ineligible rows before
+the 33-row window. It returns chain/exchange/block identity with full maker orders,
+hashes, remaining quantities and onchain sequences. Integers are decimal JSON strings;
+no application-specific canonical codec is required. Quotes cannot reserve orders.
+Old matcher-event, IOC-book and settlement context/confirmation endpoints are removed.
 
 ## Reconciliation
 

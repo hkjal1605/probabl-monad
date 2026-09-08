@@ -57,7 +57,7 @@ contract MarketResolutionAndPositionsTest is ProtocolFixture {
             10,
             keccak256("FROZEN_ORDER")
         );
-        bytes32 orderHash = exchange.openOrder(bid, _sign(bid, BUYER_KEY));
+        bytes32 orderHash = _openOrder(bid, _sign(bid, BUYER_KEY));
         registry.freezeMarket(marketId, keccak256("EVENT_KNOWN"));
 
         vm.prank(address(0xBEEF));
@@ -83,7 +83,7 @@ contract MarketResolutionAndPositionsTest is ProtocolFixture {
             30,
             keccak256("BATCH_RELEASE")
         );
-        bytes32 validHash = exchange.openOrder(bid, _sign(bid, BUYER_KEY));
+        bytes32 validHash = _openOrder(bid, _sign(bid, BUYER_KEY));
         registry.freezeMarket(marketId, keccak256("BATCH_FREEZE"));
         bytes32[] memory hashes = new bytes32[](2);
         hashes[0] = keccak256("NOT_AN_ORDER");
@@ -290,7 +290,7 @@ contract MarketResolutionAndPositionsTest is ProtocolFixture {
             keccak256("BATCH_EXPIRED")
         );
         expired.expiry = uint64(block.timestamp + 1);
-        bytes32 expiredHash = exchange.openOrder(expired, _sign(expired, BUYER_KEY));
+        bytes32 expiredHash = _openOrder(expired, _sign(expired, BUYER_KEY));
         vm.warp(block.timestamp + 1);
         bytes32[] memory expiredHashes = new bytes32[](1);
         expiredHashes[0] = expiredHash;
@@ -307,7 +307,7 @@ contract MarketResolutionAndPositionsTest is ProtocolFixture {
             32,
             keccak256("BATCH_INVALIDATED")
         );
-        bytes32 invalidatedHash = exchange.openOrder(invalidated, _sign(invalidated, BUYER_KEY));
+        bytes32 invalidatedHash = _openOrder(invalidated, _sign(invalidated, BUYER_KEY));
         vm.prank(buyer);
         exchange.cancelUpTo(33);
         bytes32[] memory invalidatedHashes = new bytes32[](1);
@@ -401,7 +401,7 @@ contract MarketResolutionAndPositionsTest is ProtocolFixture {
         bytes memory signature = _sign(ask, SELLER_KEY);
 
         vm.expectRevert();
-        exchange.openOrder(ask, signature);
+        _openOrder(ask, signature);
         assertEq(feeToken.balanceOf(address(exchange)), 0, "failed open leaves no fee token");
     }
 

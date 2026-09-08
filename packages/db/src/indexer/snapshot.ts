@@ -29,6 +29,14 @@ export function reconciliationQuery(db: ReadonlyDrizzle<typeof schema>, deep: bo
       resolutions: jsonRows(schema.resolution),
       marketOpenInterest: jsonRows(schema.marketOpenInterest),
       walletOpenInterest: jsonRows(schema.walletOpenInterest),
+      payoutCredits: deep ? jsonRows(schema.payoutCredit) : sql<[]>`'[]'::jsonb`,
+      payoutTotals: sql<ReconciliationSnapshot["payoutTotals"]>`(
+        SELECT COALESCE(jsonb_agg(totals.value), '[]'::jsonb) FROM (
+          SELECT jsonb_build_object('amount', SUM(${schema.payoutCredit.amount})::text,
+            'asset', ${schema.payoutCredit.asset}, 'tokenId', ${schema.payoutCredit.tokenId}::text) AS value
+          FROM ${schema.payoutCredit} GROUP BY ${schema.payoutCredit.asset}, ${schema.payoutCredit.tokenId}
+        ) totals
+      )`,
       openOrders: deep
         ? jsonRows(schema.order, sql`${schema.order.status} = 'open'`)
         : sql<[]>`'[]'::jsonb`,

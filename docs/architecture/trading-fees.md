@@ -8,7 +8,7 @@ Scope: maker/taker fees only. Redemption, merging, cancellation, recovery, and p
 - The current `ProtocolAuthority.DEFAULT_ADMIN_ROLE` holder can call `setFeeRates(uint16 makerBps, uint16 takerBps)` at any time. There is no fee-update timelock. Both rates are bounded to 0–1,000 bps (10%). The cap is a compiled safety limit, not an admin-adjustable setting.
 - Rates apply at execution, not order placement. Both rates are snapshotted before token callbacks for each fill. An update never reprices an earlier fill.
 - Maker/taker status comes from the exchange's existing onchain order sequence, not the signer field named `Order.maker`, side, or GTC/IOC label. A GTC order can take initially and make later; each fill uses its actual role.
-- Each order signs `uint16 maxFeeBps`. Either applicable rate exceeding that cap reverts the entire match; the matcher cannot waive it or overwrite the signed cap. Cancellation and recovery still work. A zero cap authorizes zero fees, even after an admin increase.
+- Each order signs `uint16 maxFeeBps`. Either applicable rate exceeding that cap reverts the entire match; the caller cannot waive it or overwrite the signed cap. Cancellation and recovery still work. A zero cap authorizes zero fees, even after an admin increase.
 - Fees are deducted only from received **active claims**: stock claims for buyers; USDG claims for sellers. Funding reservations remain unchanged and no extra USDG approval or balance is needed.
 - The other side's funding amount, inactive claims, and buyer price-improvement refund are not reduced. Gross fill quantities/prices remain the accounting basis for open-order reservations and risk caps.
 - Received claim balances are exact raw amounts and need not align with an order's `baseStep`. Do not round those balances; the step restriction applies to new submitted order quantities.
@@ -47,7 +47,7 @@ Admin entrypoints:
 
 `redeemFees` is a treasury convenience method, **not a redemption fee**. It burns only claims owned by the vault. A claim may instead be withdrawn and redeemed directly from the treasury wallet. Neither method has access to exchange reservations or anyone else's CTF claims. There are no arbitrary calls, token spending approvals, upgrades, or escrow withdrawal powers. Outgoing asset operations are reentrancy-guarded; a failing recipient or collateral transfer reverts the complete withdrawal/redemption.
 
-The existing delayed authority handover also transfers fee administration. Market, matcher, guardian, and resolution roles alone do not authorize fee updates or claims. Use the final default-admin wallet/multisig, not an operational service key.
+The existing delayed authority handover also transfers fee administration. Market, guardian, and resolution roles alone do not authorize fee updates or claims. Use the final default-admin wallet/multisig, not an operational service key.
 
 For example, submit a transaction to the deployed vault with `setFeeRates(0, 20)` for 0% maker / 0.20% taker, or `setFeeRates(0, 0)` to disable both. Obtain the exact vault address from the deployment manifest's `ProtocolFeeVault` record or `ConditionalSettlement.feeVault()`. Rates do not require new `.env` configuration; they are onchain state.
 
@@ -55,13 +55,13 @@ For example, submit a transaction to the deployed vault with `setFeeRates(0, 20)
 
 Order EIP-712 version is **3** with `maxFeeBps` appended after `salt`. Market identities and raw-unit pricing remain protocol v2: do not change market IDs or rescale any amounts. Pre-fee v2 signatures are not valid v3 signatures, including at zero rates.
 
-Shared types, ABI bindings, golden vectors, gateway parsing/preparation, orderbook normalization/proposals, IOC serialization, indexer order projections, development seed scripts, and UI signing carry the cap. An omitted gateway/UI cap defaults only to zero, never to the protocol maximum. The UI lets the user explicitly authorize a higher cap and labels payoff previews as before fees; API preparation includes that same fee-basis distinction. Current admin rates are not inferred from that maximum.
+Shared types, ABI bindings, golden vectors, gateway parsing/preparation, atomic candidate planning and execution-plan serialization, indexer order projections, development seed scripts, and UI signing carry the cap. An omitted gateway/UI cap defaults only to zero, never to the protocol maximum. The UI lets the user explicitly authorize a higher cap and labels payoff previews as before fees; API preparation includes that same fee-basis distinction. Current admin rates are not inferred from that maximum.
 
 `OrderOpened` includes the cap. `TradingFeeCharged` records the order, market, received position ID, liquidity role, rate, gross amount, and actual fee. The indexer accumulates only per-order `feesPaid` in received-claim units for order history; canonical CTF transfers already provide wallet/vault balances and reorg-aware collateral reconciliation. There is no second per-transfer balance database. Reverted transactions produce neither fees nor canonical fee records.
 
 Use a fresh deployment and regenerate/reindex development state against its ABI/start block. Do not replay old signed intents or old orderbook snapshots as v3 orders. No deployed old contracts were assumed or migrated here.
 
-A rate increase can make resting low-cap orders unfillable. They must be cancelled/re-signed, or wait for rates to fall. This is deliberate protection, not permission for a matcher to raise a cap. Automated fee-aware book filtering/requotation should be considered separately before operating dynamic rates at scale; contract simulation remains the enforcement boundary.
+A rate increase can make resting low-cap orders unfillable. They must be cancelled/re-signed, or wait for rates to fall. This is deliberate protection, not permission to raise a signed cap. The atomic candidate query filters maker fee eligibility before its row limit, and preparation rejects fills above the taker's cap. Current rates are read at one latest-chain block. Rates can still change between quoting and inclusion; exact simulation and onchain signed-cap checks remain authoritative.
 
 ## Open-source research and design choices
 

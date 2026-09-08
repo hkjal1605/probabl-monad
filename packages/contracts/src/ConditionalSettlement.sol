@@ -5,7 +5,9 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+import { PayoutVault } from "./PayoutVault.sol";
 import { ProtocolFeeVault } from "./ProtocolFeeVault.sol";
+import { IAtomicExchange } from "./interfaces/IAtomicExchange.sol";
 import { IConditionalTokens } from "./interfaces/IConditionalTokens.sol";
 import { IMarketRegistry } from "./interfaces/IMarketRegistry.sol";
 import { FeeMath } from "./libraries/FeeMath.sol";
@@ -15,6 +17,7 @@ import {
     FundingKind,
     Market,
     MarketState,
+    Payout,
     SettlementFill
 } from "./types/ProtocolTypes.sol";
 import { ExpectedCtfReceiver } from "./utils/ExpectedCtfReceiver.sol";
@@ -54,6 +57,7 @@ contract ConditionalSettlement is ExpectedCtfReceiver, ReentrancyGuard {
     IMarketRegistry public immutable registry;
     address public immutable exchange;
     ProtocolFeeVault public immutable feeVault;
+    PayoutVault public immutable payoutVault;
     mapping(bytes32 orderHash => uint16 fractionalBps) public feeRemainder;
 
     modifier onlyExchange() {
@@ -80,11 +84,16 @@ contract ConditionalSettlement is ExpectedCtfReceiver, ReentrancyGuard {
         registry = registry_;
         exchange = exchange_;
         feeVault = feeVault_;
+        payoutVault = PayoutVault(IAtomicExchange(exchange_).payoutVault());
+        if (address(payoutVault).code.length == 0 || payoutVault.exchange() != exchange_) {
+            revert InvalidAddress();
+        }
+        conditionalTokens_.setApprovalForAll(address(payoutVault), true);
     }
 
     function settleFill(
         SettlementFill calldata fill
-    ) external nonReentrant onlyExchange {
+    ) external nonReentrant onlyExchange returns (Payout[4] memory payouts) {
         if (
             fill.buyerMaker == address(0) || fill.buyerRecipient == address(0)
                 || fill.sellerMaker == address(0) || fill.sellerRecipient == address(0)
@@ -111,8 +120,8 @@ contract ConditionalSettlement is ExpectedCtfReceiver, ReentrancyGuard {
             fill.bidIsMaker ? takerBps : makerBps,
             fill.sellMaxFeeBps
         );
-        _settleStock(fill, market, buyerFee);
-        _settleQuote(fill, market, sellerFee);
+        (payouts[0], payouts[1]) = _settleStock(fill, market, buyerFee);
+        (payouts[2], payouts[3]) = _settleQuote(fill, market, sellerFee);
         // Do not emit/store zero-fee history; ERC1155 balances already cover all transfers.
         if (buyerFee != 0) {
             emit TradingFeeCharged(
@@ -142,7 +151,7 @@ contract ConditionalSettlement is ExpectedCtfReceiver, ReentrancyGuard {
         SettlementFill calldata fill,
         Market memory market,
         uint256 fee
-    ) private {
+    ) private returns (Payout memory active, Payout memory inactive) {
         uint256 activePosition =
             fill.branch == Branch.YES ? market.stockYesPositionId : market.stockNoPositionId;
 
@@ -160,18 +169,12 @@ contract ConditionalSettlement is ExpectedCtfReceiver, ReentrancyGuard {
                 fill.fillQuantity,
                 balanceBefore
             );
-            conditionalTokens.safeTransferFrom(
-                address(this), fill.buyerRecipient, activePosition, fill.fillQuantity - fee, ""
-            );
-            conditionalTokens.safeTransferFrom(
-                address(this), fill.sellerMaker, inactivePosition, fill.fillQuantity, ""
-            );
+            active = _stageClaim(fill.buyerRecipient, activePosition, fill.fillQuantity - fee);
+            inactive = _stageClaim(fill.sellerMaker, inactivePosition, fill.fillQuantity);
             _assertNoClaimBalance(inactivePosition);
         } else {
             _pullClaim(activePosition, fill.fillQuantity);
-            conditionalTokens.safeTransferFrom(
-                address(this), fill.buyerRecipient, activePosition, fill.fillQuantity - fee, ""
-            );
+            active = _stageClaim(fill.buyerRecipient, activePosition, fill.fillQuantity - fee);
         }
 
         _deliverFee(activePosition, fee);
@@ -182,7 +185,7 @@ contract ConditionalSettlement is ExpectedCtfReceiver, ReentrancyGuard {
         SettlementFill calldata fill,
         Market memory market,
         uint256 fee
-    ) private {
+    ) private returns (Payout memory active, Payout memory inactive) {
         uint256 activePosition =
             fill.branch == Branch.YES ? market.quoteYesPositionId : market.quoteNoPositionId;
 
@@ -200,22 +203,28 @@ contract ConditionalSettlement is ExpectedCtfReceiver, ReentrancyGuard {
                 fill.executionQuote,
                 balanceBefore
             );
-            conditionalTokens.safeTransferFrom(
-                address(this), fill.sellerRecipient, activePosition, fill.executionQuote - fee, ""
-            );
-            conditionalTokens.safeTransferFrom(
-                address(this), fill.buyerMaker, inactivePosition, fill.executionQuote, ""
-            );
+            active = _stageClaim(fill.sellerRecipient, activePosition, fill.executionQuote - fee);
+            inactive = _stageClaim(fill.buyerMaker, inactivePosition, fill.executionQuote);
             _assertNoClaimBalance(inactivePosition);
         } else {
             _pullClaim(activePosition, fill.executionQuote);
-            conditionalTokens.safeTransferFrom(
-                address(this), fill.sellerRecipient, activePosition, fill.executionQuote - fee, ""
-            );
+            active = _stageClaim(fill.sellerRecipient, activePosition, fill.executionQuote - fee);
         }
 
         _deliverFee(activePosition, fee);
         _assertNoClaimBalance(activePosition);
+    }
+
+    function _stageClaim(
+        address beneficiary,
+        uint256 tokenId,
+        uint256 amount
+    ) private returns (Payout memory payout) {
+        // Carried fractional fees can consume an entire one-raw-unit fill. A zero net
+        // delivery is valid and must not make this otherwise collateralized fill unfillable.
+        if (amount == 0) return payout;
+        payoutVault.fundClaim(tokenId, amount);
+        return Payout(beneficiary, address(conditionalTokens), tokenId, amount);
     }
 
     function _calculateFee(

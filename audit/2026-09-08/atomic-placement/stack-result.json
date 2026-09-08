@@ -1,0 +1,30 @@
+{
+  "completed": true,
+  "chainId": 31337,
+  "upstreamTransactions": 0,
+  "checks": [
+    "all standalone entrypoints ready with active reconciliation",
+    "GTC quote -> user atomic placement -> canonical fill",
+    "IOC fills in its user placement transaction",
+    "IOC with no liquidity terminates and refunds in the same transaction",
+    "partially filled IOC history preserves executed quantity after atomic refund",
+    "reconciliation outage blocks intake while onchain cancellation remains available",
+    "reconciler restarts from its durable store",
+    "idle block ring and isolated sync cache remain bounded across 1,280 empty blocks",
+    "evicted canonical-block and atomic candidate anchors remain correct",
+    "SIGKILL restart preserves protocol state and resumes RPC fetching at the durable checkpoint",
+    "shallow reorg rolls back protocol events and overwritten ring slots and exposes only replacement anchors",
+    "paced comparison catches up with bounded maintenance enabled",
+    "three identical catch-up bursts stay within 10% plus 1s aggregate polling tolerance",
+    "simultaneous fresh-schema replay has an isolated cache and reproduces all protocol tables",
+    "clean persisted restart after eviction retains exact canonical protocol state",
+    "both production frontends build, start and serve against the live local stack"
+  ],
+  "scratch": "/Volumes/T9/conditional-stocks/output/atomic-tmp/conditional-stack-TYQY28",
+  "envFile": "/Volumes/T9/conditional-stocks/output/atomic-tmp/conditional-stack-TYQY28/stack.env",
+  "marketId": "0x7556cc36f04e445331a59adf44736cfff711cae3b95ed252ae3002cb0e54e7c4",
+  "addresses": {
+    "exchange": "0x0165878A594ca255338adfa4d48449f69242Eb8F"
+  },
+  "completedAt": "2026-09-08T11:45:27.872Z"
+}

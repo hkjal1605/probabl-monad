@@ -20,7 +20,15 @@ export const startPolymarketServer = (
     port: environment.port,
     maxRequestBodySize: 5 * 1024 * 1024,
   });
+  const stop = server.stop.bind(server);
   return Object.assign(server, {
+    stop: async (closeActiveConnections?: boolean) => {
+      // Bun's forced stop need not dispatch Hono onClose before resolving.
+      // Release subscriptions/timers explicitly, and finish their DB reads.
+      const closed = stop(closeActiveConnections);
+      await app.closeStreams();
+      await closed;
+    },
     // WebSockets require forced socket closure, but HTTP handlers may still be writing.
     drainRequests: async () => {
       await Promise.allSettled([...pending]);

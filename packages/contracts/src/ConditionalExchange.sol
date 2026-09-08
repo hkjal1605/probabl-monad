@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import { PayoutVault } from "./PayoutVault.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+import { IAtomicOrderRouter } from "./interfaces/IAtomicOrderRouter.sol";
 import { IConditionalSettlement } from "./interfaces/IConditionalSettlement.sol";
 import { IConditionalTokens } from "./interfaces/IConditionalTokens.sol";
-import { IIOCRouter } from "./interfaces/IIOCRouter.sol";
 import { IMarketRegistry } from "./interfaces/IMarketRegistry.sol";
 import { IOrderValidator } from "./interfaces/IOrderValidator.sol";
 import { IProtocolAuthority } from "./interfaces/IProtocolAuthority.sol";
@@ -21,6 +22,7 @@ import {
     Order,
     OrderStateData,
     OrderStatus,
+    Payout,
     SettlementFill,
     Side,
     TimeInForce
@@ -48,8 +50,8 @@ contract ConditionalExchange is ProtocolAccess, ExpectedCtfReceiver, ReentrancyG
     error RiskCapExceeded();
     error SettlementAlreadyConfigured();
     error SettlementNotConfigured();
-    error IocRouterAlreadyConfigured();
-    error UnauthorizedIocRouter(address caller);
+    error AtomicRouterAlreadyConfigured();
+    error UnauthorizedAtomicRouter(address caller);
     error ValidatorAlreadyConfigured();
     error ValidatorNotConfigured();
 
@@ -94,13 +96,12 @@ contract ConditionalExchange is ProtocolAccess, ExpectedCtfReceiver, ReentrancyG
     );
     event SettlementConfigured(address indexed settlement);
     event OrderValidatorConfigured(address indexed validator);
-    event IocRouterConfigured(address indexed router);
+    event AtomicRouterConfigured(address indexed router);
     event OrderRecoveryRecipient(
         bytes32 indexed orderHash, address indexed maker, address indexed recipient
     );
 
     bytes32 public constant DEFAULT_ADMIN_ROLE = ProtocolRoles.DEFAULT_ADMIN_ROLE;
-    bytes32 public constant MATCHER_ROLE = ProtocolRoles.MATCHER_ROLE;
     bytes32 public constant GUARDIAN_ROLE = ProtocolRoles.GUARDIAN_ROLE;
     bytes32 public constant CANCELLED_BY_MAKER = keccak256("CANCELLED_BY_MAKER");
     bytes32 public constant IOC_REMAINDER = keccak256("IOC_REMAINDER");
@@ -109,9 +110,13 @@ contract ConditionalExchange is ProtocolAccess, ExpectedCtfReceiver, ReentrancyG
     bytes32 public constant MARKET_NOT_OPEN = keccak256("MARKET_NOT_OPEN");
 
     IMarketRegistry public immutable registry;
+    // Permanently assigned by the constructor; no setter, delegatecall or upgrade path.
+    // Storage keeps the exchange runtime independent of a CREATE-derived child address so
+    // deployment verification can reproduce its constructor without consuming a nonce.
+    PayoutVault public payoutVault;
     IConditionalSettlement public settlement;
     IOrderValidator public orderValidator;
-    address public iocRouter;
+    address public atomicRouter;
 
     bool public tradingPaused;
 
@@ -136,6 +141,8 @@ contract ConditionalExchange is ProtocolAccess, ExpectedCtfReceiver, ReentrancyG
                 || address(registry_.authority()) != address(authority_)
         ) revert InvalidAddress();
         registry = registry_;
+        payoutVault = new PayoutVault(conditionalTokens_);
+        conditionalTokens_.setApprovalForAll(address(payoutVault), true);
     }
 
     /// @notice Permanently connects the exchange to its stateless order validator.
@@ -167,18 +174,18 @@ contract ConditionalExchange is ProtocolAccess, ExpectedCtfReceiver, ReentrancyG
         emit SettlementConfigured(address(settlement_));
     }
 
-    /// @notice Permanently connects the exchange to the bounded atomic IOC router.
-    function configureIocRouter(
-        IIOCRouter router_
+    /// @notice Permanently connects the exchange to its wallet-authorized atomic entry point.
+    function configureAtomicRouter(
+        IAtomicOrderRouter router_
     ) external onlyProtocolRole(DEFAULT_ADMIN_ROLE) {
-        if (iocRouter != address(0)) revert IocRouterAlreadyConfigured();
+        if (atomicRouter != address(0)) revert AtomicRouterAlreadyConfigured();
         if (
             address(router_) == address(0) || address(router_).code.length == 0
                 || router_.exchange() != address(this)
                 || address(router_.authority()) != address(authority)
         ) revert InvalidAddress();
-        iocRouter = address(router_);
-        emit IocRouterConfigured(address(router_));
+        atomicRouter = address(router_);
+        emit AtomicRouterConfigured(address(router_));
     }
 
     function supportsInterface(
@@ -196,68 +203,72 @@ contract ConditionalExchange is ProtocolAccess, ExpectedCtfReceiver, ReentrancyG
         emit EmergencyPauseChanged(paused, reasonHash, msg.sender);
     }
 
-    /// @notice Opens a signed, fully funded good-until-cancelled order.
-    /// @dev Any address may relay the order; funding is always pulled from its signed maker.
+    /// @notice Opens signed escrow only within the user's atomic placement transaction.
+    /// @dev Disallow signature-only relaying: it could strip the user's execution plan.
     function openOrder(
         Order calldata order,
         bytes calldata signature
     ) external nonReentrant returns (bytes32 orderHash) {
+        _requireAtomicRouter();
         if (tradingPaused) revert ContractPaused();
-        if (order.tif != TimeInForce.GTC) revert InvalidOrder();
         orderHash = _openOrder(order, signature);
-    }
-
-    /// @dev IOC entry point callable only by the permanently configured atomic router.
-    function openIOCOrder(
-        Order calldata order,
-        bytes calldata signature
-    ) external nonReentrant returns (bytes32 orderHash) {
-        _requireIocRouter();
-        if (tradingPaused) revert ContractPaused();
-        if (order.tif != TimeInForce.IOC) revert InvalidOrder();
-        orderHash = _openOrder(order, signature);
-    }
-
-    /// @dev Executes one IOC maker leg; the outer router transaction guarantees remainder release.
-    function matchIOCOrders(
-        Order calldata takerOrder,
-        Order calldata makerOrder,
-        uint128 fillQuantity
-    ) external nonReentrant {
-        _requireIocRouter();
-        if (tradingPaused) revert ContractPaused();
-        if (takerOrder.tif != TimeInForce.IOC || makerOrder.tif != TimeInForce.GTC) {
-            revert InvalidOrder();
-        }
-        if (takerOrder.side == Side.BUY) {
-            _executeMatch(takerOrder, makerOrder, fillQuantity);
-        } else {
-            _executeMatch(makerOrder, takerOrder, fillQuantity);
-        }
     }
 
     /// @dev Cancels any live IOC remainder without affecting a completely filled IOC.
     function cancelIOCRemainder(
         bytes32 orderHash
-    ) external nonReentrant {
-        _requireIocRouter();
+    ) external nonReentrant returns (Payout memory payout) {
+        _requireAtomicRouter();
         OrderStateData storage state = _orders[orderHash];
-        if (state.status == OrderStatus.FILLED) return;
+        if (state.status == OrderStatus.FILLED) return payout;
         if (state.status != OrderStatus.OPEN) revert InvalidOrderStatus(orderHash, state.status);
-        _cancelOrder(orderHash, state, IOC_REMAINDER, state.maker);
+        return _cancelOrder(orderHash, state, IOC_REMAINDER, state.maker);
     }
 
-    /// @notice Matches two already-open GTC orders at the earlier sequence's signed limit price.
+    /// @notice Settles an atomic-router leg at the earlier sequence's signed limit price.
     function matchOrders(
         Order calldata buyOrder,
         Order calldata sellOrder,
         uint128 fillQuantity
-    ) external nonReentrant onlyProtocolRole(MATCHER_ROLE) {
+    ) external nonReentrant returns (Payout[5] memory) {
+        _requireAtomicRouter();
         if (tradingPaused) revert ContractPaused();
-        if (buyOrder.tif != TimeInForce.GTC || sellOrder.tif != TimeInForce.GTC) {
-            revert InvalidOrder();
-        }
-        _executeMatch(buyOrder, sellOrder, fillQuantity);
+        return _executeMatch(buyOrder, sellOrder, fillQuantity);
+    }
+
+    /// @notice Enforces caps on the final resting state, then releases staged deliveries.
+    /// @dev The fixed router must call this after every fill and IOC/stale release. No recipient
+    ///      callback can invalidate a later leg because all accounting is already complete.
+    function finalizeAtomicPlacement(
+        bytes32 orderHash,
+        Payout[] calldata payouts
+    ) external nonReentrant {
+        _requireAtomicRouter();
+        OrderStateData storage state = _orders[orderHash];
+        Market memory market = registry.getMarket(state.marketId);
+        if (
+            walletOpenNotional[state.marketId][state.maker] > market.maxWalletOpenNotional
+                || marketOpenNotional[state.marketId] > market.maxMarketOpenNotional
+        ) revert RiskCapExceeded();
+        payoutVault.deliver(payouts);
+    }
+
+    /// @notice Bounded router cleanup cannot cancel a still-valid order. Terminal entries are
+    ///      idempotent so a concurrent permissionless release cannot poison a reviewed plan.
+    function releaseStaleOrder(
+        bytes32 orderHash,
+        bytes32 marketId
+    ) external nonReentrant returns (Payout memory payout) {
+        _requireAtomicRouter();
+        OrderStateData storage state = _orders[orderHash];
+        if (state.marketId != marketId) revert InvalidOrder();
+        if (state.status != OrderStatus.OPEN) return payout;
+        bytes32 reason;
+        if (block.timestamp >= state.expiry) reason = ORDER_EXPIRED;
+        else if (state.nonce < minimumNonce[state.maker]) reason = NONCE_INVALIDATED;
+        else if (registry.marketState(marketId) != MarketState.OPEN) reason = MARKET_NOT_OPEN;
+        else revert OrderNotReleasable();
+        return _cancelOrder(orderHash, state, reason, state.maker);
     }
 
     /// @notice Cancels the caller's open order and returns its exact unfilled reservation.
@@ -267,7 +278,7 @@ contract ConditionalExchange is ProtocolAccess, ExpectedCtfReceiver, ReentrancyG
         OrderStateData storage state = _orders[orderHash];
         if (state.status != OrderStatus.OPEN) revert InvalidOrderStatus(orderHash, state.status);
         if (state.maker != msg.sender) revert NotOrderMaker();
-        _cancelOrder(orderHash, state, CANCELLED_BY_MAKER, state.maker);
+        _deliverOne(_cancelOrder(orderHash, state, CANCELLED_BY_MAKER, state.maker));
     }
 
     /// @notice Maker-authorized recovery when a smart wallet can no longer receive its escrow.
@@ -281,7 +292,7 @@ contract ConditionalExchange is ProtocolAccess, ExpectedCtfReceiver, ReentrancyG
         if (state.maker != msg.sender) revert NotOrderMaker();
         if (recipient == address(0) || recipient == address(this)) revert InvalidAddress();
         emit OrderRecoveryRecipient(orderHash, state.maker, recipient);
-        _cancelOrder(orderHash, state, CANCELLED_BY_MAKER, recipient);
+        _deliverOne(_cancelOrder(orderHash, state, CANCELLED_BY_MAKER, recipient));
     }
 
     /// @notice Invalidates every signed order whose nonce is lower than the new minimum.
@@ -301,7 +312,7 @@ contract ConditionalExchange is ProtocolAccess, ExpectedCtfReceiver, ReentrancyG
         OrderStateData storage state = _orders[orderHash];
         if (state.status != OrderStatus.OPEN) revert InvalidOrderStatus(orderHash, state.status);
         if (block.timestamp < state.expiry) revert OrderNotReleasable();
-        _cancelOrder(orderHash, state, ORDER_EXPIRED, state.maker);
+        _deliverOne(_cancelOrder(orderHash, state, ORDER_EXPIRED, state.maker));
     }
 
     function releaseInvalidatedOrder(
@@ -310,7 +321,7 @@ contract ConditionalExchange is ProtocolAccess, ExpectedCtfReceiver, ReentrancyG
         OrderStateData storage state = _orders[orderHash];
         if (state.status != OrderStatus.OPEN) revert InvalidOrderStatus(orderHash, state.status);
         if (state.nonce >= minimumNonce[state.maker]) revert OrderNotReleasable();
-        _cancelOrder(orderHash, state, NONCE_INVALIDATED, state.maker);
+        _deliverOne(_cancelOrder(orderHash, state, NONCE_INVALIDATED, state.maker));
     }
 
     function releaseClosedMarketOrder(
@@ -320,7 +331,7 @@ contract ConditionalExchange is ProtocolAccess, ExpectedCtfReceiver, ReentrancyG
         if (state.status != OrderStatus.OPEN) revert InvalidOrderStatus(orderHash, state.status);
         MarketState current = registry.marketState(state.marketId);
         if (current == MarketState.OPEN) revert OrderNotReleasable();
-        _cancelOrder(orderHash, state, MARKET_NOT_OPEN, state.maker);
+        _deliverOne(_cancelOrder(orderHash, state, MARKET_NOT_OPEN, state.maker));
     }
 
     function hashOrder(
@@ -347,6 +358,7 @@ contract ConditionalExchange is ProtocolAccess, ExpectedCtfReceiver, ReentrancyG
         if (
             order.maker == address(0) || order.recipient == address(0)
                 || order.maker == address(this) || order.recipient == address(this)
+                || order.recipient == address(payoutVault) || order.recipient == address(settlement)
                 || order.quantity == 0 || order.limitPriceRawX18 == 0
                 || order.expiry <= block.timestamp || order.nonce < minimumNonce[order.maker]
         ) revert InvalidOrder();
@@ -370,10 +382,8 @@ contract ConditionalExchange is ProtocolAccess, ExpectedCtfReceiver, ReentrancyG
         uint256 newWalletOpenNotional =
             walletOpenNotional[order.marketId][order.maker] + orderNotional;
         uint256 newMarketOpenNotional = marketOpenNotional[order.marketId] + orderNotional;
-        if (
-            newWalletOpenNotional > market.maxWalletOpenNotional
-                || newMarketOpenNotional > market.maxMarketOpenNotional
-        ) revert RiskCapExceeded();
+        // Aggregate caps are checked at finalization after atomic fills/releases, not against
+        // this temporary gross reservation. The full order is still funded and size-limited.
 
         orderHash = validator.validate(order, signature);
         if (_orders[orderHash].status != OrderStatus.NONE) revert DuplicateOrder(orderHash);
@@ -426,7 +436,7 @@ contract ConditionalExchange is ProtocolAccess, ExpectedCtfReceiver, ReentrancyG
         Order calldata buyOrder,
         Order calldata sellOrder,
         uint128 fillQuantity
-    ) private {
+    ) private returns (Payout[5] memory payouts) {
         if (
             buyOrder.side != Side.BUY || sellOrder.side != Side.SELL
                 || buyOrder.marketId != sellOrder.marketId || buyOrder.branch != sellOrder.branch
@@ -438,8 +448,8 @@ contract ConditionalExchange is ProtocolAccess, ExpectedCtfReceiver, ReentrancyG
         if (buyOrderHash == sellOrderHash) revert InvalidFill();
         OrderStateData storage buyState = _orders[buyOrderHash];
         OrderStateData storage sellState = _orders[sellOrderHash];
-        _requireFillable(buyOrderHash, buyState, buyOrder);
-        _requireFillable(sellOrderHash, sellState, sellOrder);
+        _requireFillable(buyOrderHash, buyState);
+        _requireFillable(sellOrderHash, sellState);
 
         Market memory market = registry.getMarket(buyOrder.marketId);
         if (
@@ -462,7 +472,7 @@ contract ConditionalExchange is ProtocolAccess, ExpectedCtfReceiver, ReentrancyG
         _consumeSell(sellState, fillQuantity, sellOrder.limitPriceRawX18);
 
         _approveSettlementAssets(buyOrder, sellOrder, market);
-        settlement.settleFill(
+        Payout[4] memory fillPayouts = settlement.settleFill(
             SettlementFill({
                 marketId: buyOrder.marketId,
                 buyerMaker: buyOrder.maker,
@@ -481,7 +491,10 @@ contract ConditionalExchange is ProtocolAccess, ExpectedCtfReceiver, ReentrancyG
                 bidIsMaker: bidIsMaker
             })
         );
-        _releaseBuyerImprovement(buyOrder, market, buyerRelease);
+        for (uint256 i; i < 4; ++i) {
+            payouts[i] = fillPayouts[i];
+        }
+        payouts[4] = _releaseBuyerImprovement(buyOrder, market, buyerRelease);
 
         emit OrderFilled(
             buyOrderHash,
@@ -543,17 +556,15 @@ contract ConditionalExchange is ProtocolAccess, ExpectedCtfReceiver, ReentrancyG
         Order calldata buyOrder,
         Market memory market,
         uint256 buyerRelease
-    ) private {
-        if (buyerRelease == 0) return;
+    ) private returns (Payout memory payout) {
+        if (buyerRelease == 0) return payout;
         if (buyOrder.fundingKind == FundingKind.WHOLE_COLLATERAL) {
-            IERC20(market.quoteToken).safeTransfer(buyOrder.maker, buyerRelease);
+            return _stageWhole(buyOrder.maker, market.quoteToken, buyerRelease);
         } else {
             uint256 activePosition = buyOrder.branch == Branch.YES
                 ? market.quoteYesPositionId
                 : market.quoteNoPositionId;
-            conditionalTokens.safeTransferFrom(
-                address(this), buyOrder.maker, activePosition, buyerRelease, ""
-            );
+            return _stageClaim(buyOrder.maker, activePosition, buyerRelease);
         }
     }
 
@@ -595,7 +606,7 @@ contract ConditionalExchange is ProtocolAccess, ExpectedCtfReceiver, ReentrancyG
         OrderStateData storage state,
         bytes32 reasonHash,
         address recipient
-    ) private {
+    ) private returns (Payout memory payout) {
         uint128 unfilledQuantity = state.remaining;
         uint256 releasedAmount = state.reserved;
         uint256 releasedNotional = state.openNotional;
@@ -609,32 +620,56 @@ contract ConditionalExchange is ProtocolAccess, ExpectedCtfReceiver, ReentrancyG
 
         Market memory market = registry.getMarket(state.marketId);
         if (state.fundingKind == FundingKind.WHOLE_COLLATERAL) {
-            IERC20 token = IERC20(state.side == Side.BUY ? market.quoteToken : market.baseToken);
-            token.safeTransfer(recipient, releasedAmount);
+            address token = state.side == Side.BUY ? market.quoteToken : market.baseToken;
+            payout = _stageWhole(recipient, token, releasedAmount);
         } else {
             uint256 positionId = _activePosition(market, state.branch, state.side);
-            conditionalTokens.safeTransferFrom(
-                address(this), recipient, positionId, releasedAmount, ""
-            );
+            payout = _stageClaim(recipient, positionId, releasedAmount);
         }
 
         emit OrderCancelled(orderHash, state.maker, unfilledQuantity, releasedAmount, reasonHash);
     }
 
+    function _stageClaim(
+        address beneficiary,
+        uint256 tokenId,
+        uint256 amount
+    ) private returns (Payout memory) {
+        payoutVault.fundClaim(tokenId, amount);
+        return Payout(beneficiary, address(conditionalTokens), tokenId, amount);
+    }
+
+    function _stageWhole(
+        address beneficiary,
+        address token,
+        uint256 amount
+    ) private returns (Payout memory) {
+        // Refunds reuse the already bounded reservation; a transient approval avoids another
+        // token-keyed mapping write and never leaves the vault a standing ERC20 allowance.
+        IERC20(token).forceApprove(address(payoutVault), amount);
+        payoutVault.fundWhole(token, amount);
+        IERC20(token).forceApprove(address(payoutVault), 0);
+        return Payout(beneficiary, token, 0, amount);
+    }
+
+    function _deliverOne(
+        Payout memory payout
+    ) private {
+        Payout[] memory payouts = new Payout[](1);
+        payouts[0] = payout;
+        payoutVault.deliver(payouts);
+    }
+
     function _requireFillable(
         bytes32 orderHash,
-        OrderStateData storage state,
-        Order calldata order
+        OrderStateData storage state
     ) private view {
         if (state.status != OrderStatus.OPEN) revert InvalidOrderStatus(orderHash, state.status);
-        if (
-            state.maker != order.maker || state.marketId != order.marketId
-                || state.branch != order.branch || state.side != order.side
-                || state.fundingKind != order.fundingKind
-                || state.limitPriceRawX18 != order.limitPriceRawX18 || state.expiry != order.expiry
-                || state.nonce != order.nonce || order.expiry <= block.timestamp
-                || order.nonce < minimumNonce[order.maker]
-        ) revert InvalidFill();
+        // The lookup hash commits every signed term and only _openOrder can initialize it.
+        // Mutable eligibility is expiry / nonce / status; immutable terms cannot be swapped.
+        if (state.expiry <= block.timestamp || state.nonce < minimumNonce[state.maker]) {
+            revert InvalidFill();
+        }
     }
 
     function _activePosition(
@@ -656,7 +691,7 @@ contract ConditionalExchange is ProtocolAccess, ExpectedCtfReceiver, ReentrancyG
         token.forceApprove(address(settlement), type(uint256).max);
     }
 
-    function _requireIocRouter() private view {
-        if (msg.sender != iocRouter) revert UnauthorizedIocRouter(msg.sender);
+    function _requireAtomicRouter() private view {
+        if (msg.sender != atomicRouter) revert UnauthorizedAtomicRouter(msg.sender);
     }
 }

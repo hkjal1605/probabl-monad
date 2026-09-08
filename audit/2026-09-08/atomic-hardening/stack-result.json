@@ -1,0 +1,22 @@
+{
+  "completed": true,
+  "chainId": 31337,
+  "upstreamTransactions": 0,
+  "checks": [
+    "all standalone entrypoints ready with active reconciliation",
+    "GTC quote -> user atomic placement -> canonical fill",
+    "IOC fills in its user placement transaction",
+    "IOC with no liquidity terminates and refunds in the same transaction",
+    "partially filled IOC history preserves executed quantity after atomic refund",
+    "reconciliation outage blocks intake while onchain cancellation remains available",
+    "reconciler restarts from its durable store",
+    "both production frontends build, start and serve against the live local stack"
+  ],
+  "scratch": "/Volumes/T9/conditional-stocks/output/atomic-tmp/conditional-stack-cE5qVX",
+  "envFile": "/Volumes/T9/conditional-stocks/output/atomic-tmp/conditional-stack-cE5qVX/stack.env",
+  "marketId": "0xf33e32f3ea1bc20a161b2d0b0137ee24f4fc85ab729acdee5b9640be60f3deed",
+  "addresses": {
+    "exchange": "0x0165878A594ca255338adfa4d48449f69242Eb8F"
+  },
+  "completedAt": "2026-09-08T14:16:21.266Z"
+}

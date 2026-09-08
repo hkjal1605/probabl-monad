@@ -1,8 +1,11 @@
 import {
+  atomicOrderRouterAbi,
   conditionalExchangeAbi,
+  conditionalSettlementAbi,
   marketRegistryAbi,
+  payoutVaultAbi,
   positionRouterAbi,
-  protocolAuthorityAbi,
+  protocolFeeVaultAbi,
 } from "@conditional-stocks/contract-bindings";
 import {
   assertMarketUnits,
@@ -18,26 +21,30 @@ import {
   GatewayError,
   GatewayErrorCode,
   type MarketSnapshot,
+  parseOrder,
   type ValidationSnapshot,
 } from "@conditional-stocks/gateway";
 import {
+  ATOMIC_EXECUTION_VERSION,
+  type AtomicPlan,
+  type MatchCandidate,
+  type StaleReservation,
+} from "@conditional-stocks/orderbook";
+import {
   type Address,
   createPublicClient,
-  createWalletClient,
   encodeFunctionData,
   erc20Abi,
   getAddress,
   type Hex,
   http,
+  isAddress,
   isHex,
   keccak256,
   parseTransaction,
   recoverTransactionAddress,
   type TransactionSerialized,
-  toBytes,
-  zeroHash,
 } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
 
 import type { ApiEnvironment } from "./environment.ts";
 
@@ -76,14 +83,6 @@ const erc1155ApprovalAbi = [
     type: "function",
   },
 ] as const;
-
-export interface PreparedTransaction {
-  data: Hex;
-  nonce: bigint;
-  rawTransaction: Hex;
-  to: Address;
-  transactionHash: Hex;
-}
 
 export interface CanonicalOrder {
   confirmation: "confirmed" | "finalized" | "observed";
@@ -155,6 +154,68 @@ export class IndexerClient {
     return this.#json<IndexerHealth>("/indexer/health");
   }
 
+  async matchCandidates(
+    order: Order,
+    snapshot: ValidationSnapshot,
+    makerFeeBps: number,
+    exchange: Address,
+    timestamp: bigint,
+  ): Promise<MatchCandidate[]> {
+    const query = new URLSearchParams({
+      marketId: order.marketId,
+      branch: String(order.branch),
+      side: String(order.side === Side.Buy ? Side.Sell : Side.Buy),
+      atBlock: String(snapshot.safeBlockNumber),
+      makerFeeBps: String(makerFeeBps),
+      limitPriceRawX18: String(order.limitPriceRawX18),
+      timestamp: String(timestamp),
+    });
+    const body = await this.#json<{
+      chainId: number;
+      exchange: string;
+      blockNumber: string;
+      blockHash: Hex;
+      candidates: { order: unknown; orderHash: Hex; remaining: string; sequence: string }[];
+    }>(`/internal/match-candidates?${query}`);
+    if (
+      !body ||
+      body.chainId !== Number(snapshot.chainId) ||
+      typeof body.exchange !== "string" ||
+      body.exchange.toLowerCase() !== exchange.toLowerCase() ||
+      body.blockNumber !== String(snapshot.safeBlockNumber) ||
+      body.blockHash !== snapshot.safeBlockHash ||
+      !Array.isArray(body.candidates) ||
+      body.candidates.length > 33
+    )
+      throw new GatewayError(
+        GatewayErrorCode.CanonicalStateUnavailable,
+        "Candidate book identity or anchor mismatch",
+        503,
+      );
+    return body.candidates.map((candidate) => {
+      if (
+        !candidate ||
+        typeof candidate.remaining !== "string" ||
+        typeof candidate.sequence !== "string" ||
+        typeof candidate.orderHash !== "string" ||
+        !/^(0|[1-9][0-9]{0,38})$/.test(candidate.remaining) ||
+        !/^(0|[1-9][0-9]{0,19})$/.test(candidate.sequence) ||
+        !/^0x[0-9a-fA-F]{64}$/.test(candidate.orderHash)
+      )
+        throw new GatewayError(
+          GatewayErrorCode.CanonicalStateUnavailable,
+          "Malformed maker candidate",
+          503,
+        );
+      return {
+        order: parseOrder(candidate.order),
+        orderHash: candidate.orderHash,
+        remaining: BigInt(candidate.remaining),
+        sequence: BigInt(candidate.sequence),
+      };
+    });
+  }
+
   async order(orderHash: Hex): Promise<CanonicalOrder | null> {
     const response = await fetch(`${this.baseUrl}/orders/${orderHash}`, {
       signal: AbortSignal.timeout(5_000),
@@ -163,6 +224,67 @@ export class IndexerClient {
     if (response.status === 404) return null;
     if (!response.ok) throw new Error(`indexer order request failed: ${response.status}`);
     return (await response.json()) as CanonicalOrder;
+  }
+
+  async staleReservations(
+    order: Order,
+    snapshot: ValidationSnapshot,
+    exchange: Address,
+    timestamp: bigint,
+  ): Promise<StaleReservation[]> {
+    const query = new URLSearchParams({
+      marketId: order.marketId,
+      maker: order.maker,
+      atBlock: String(snapshot.safeBlockNumber),
+      timestamp: String(timestamp),
+    });
+    const body = await this.#json<{
+      chainId: number;
+      exchange: string;
+      blockNumber: string;
+      blockHash: Hex;
+      candidates: { orderHash: Hex; maker: Address; marketId: Hex; openNotional: string }[];
+    }>(`/internal/stale-reservations?${query}`);
+    if (
+      !body ||
+      body.chainId !== Number(snapshot.chainId) ||
+      typeof body.exchange !== "string" ||
+      body.exchange.toLowerCase() !== exchange.toLowerCase() ||
+      body.blockNumber !== String(snapshot.safeBlockNumber) ||
+      body.blockHash !== snapshot.safeBlockHash ||
+      !Array.isArray(body.candidates) ||
+      body.candidates.length > 33
+    )
+      throw new GatewayError(
+        GatewayErrorCode.CanonicalStateUnavailable,
+        "Recovery book identity or anchor mismatch",
+        503,
+      );
+    return body.candidates.map((row) => {
+      if (
+        !row ||
+        typeof row.orderHash !== "string" ||
+        !/^0x[0-9a-fA-F]{64}$/.test(row.orderHash) ||
+        typeof row.maker !== "string" ||
+        !isAddress(row.maker) ||
+        typeof row.marketId !== "string" ||
+        row.marketId.toLowerCase() !== order.marketId.toLowerCase() ||
+        typeof row.openNotional !== "string" ||
+        !/^[1-9][0-9]{0,38}$/.test(row.openNotional) ||
+        BigInt(row.openNotional) >= 1n << 128n
+      )
+        throw new GatewayError(
+          GatewayErrorCode.CanonicalStateUnavailable,
+          "Malformed stale reservation",
+          503,
+        );
+      return {
+        orderHash: row.orderHash.toLowerCase() as Hex,
+        maker: getAddress(row.maker),
+        marketId: row.marketId,
+        openNotional: BigInt(row.openNotional),
+      };
+    });
   }
 
   async market(marketId: Hex): Promise<CanonicalMarket | null> {
@@ -224,24 +346,56 @@ export class IndexerClient {
 }
 
 export class ViemGatewayChain {
-  readonly #account;
   readonly #public;
-  readonly #wallet;
 
   constructor(readonly environment: ApiEnvironment) {
     const transport = http(environment.rpcUrl, { batch: true });
     this.#public = createPublicClient({ transport });
-    this.#account = environment.relayerPrivateKey
-      ? privateKeyToAccount(environment.relayerPrivateKey)
-      : null;
-    this.#wallet = this.#account ? createWalletClient({ account: this.#account, transport }) : null;
-  }
-
-  get relayerAddress(): Address | null {
-    return this.#account?.address ?? null;
   }
 
   async assertNetwork(): Promise<void> {
+    const [router, executionVersion, routerExchange, payoutVault, payoutExchange, payoutCtf] =
+      await Promise.all([
+        this.#public.readContract({
+          abi: conditionalExchangeAbi,
+          address: this.environment.exchange,
+          functionName: "atomicRouter",
+        }),
+        this.#public.readContract({
+          abi: atomicOrderRouterAbi,
+          address: this.environment.atomicRouter,
+          functionName: "EXECUTION_VERSION",
+        }),
+        this.#public.readContract({
+          abi: atomicOrderRouterAbi,
+          address: this.environment.atomicRouter,
+          functionName: "exchange",
+        }),
+        this.#public.readContract({
+          abi: conditionalExchangeAbi,
+          address: this.environment.exchange,
+          functionName: "payoutVault",
+        }),
+        this.#public.readContract({
+          abi: payoutVaultAbi,
+          address: this.environment.payoutVault,
+          functionName: "exchange",
+        }),
+        this.#public.readContract({
+          abi: payoutVaultAbi,
+          address: this.environment.payoutVault,
+          functionName: "conditionalTokens",
+        }),
+      ]);
+    if (
+      router.toLowerCase() !== this.environment.atomicRouter.toLowerCase() ||
+      executionVersion !== BigInt(ATOMIC_EXECUTION_VERSION) ||
+      payoutVault.toLowerCase() !== this.environment.payoutVault.toLowerCase() ||
+      payoutExchange.toLowerCase() !== this.environment.exchange.toLowerCase() ||
+      payoutCtf.toLowerCase() !== this.environment.conditionalTokens.toLowerCase() ||
+      routerExchange.toLowerCase() !== this.environment.exchange.toLowerCase()
+    )
+      throw new Error("API requires the configured permissionless atomic router");
     const version = await this.#public.readContract({
       abi: marketRegistryAbi,
       address: this.environment.marketRegistry,
@@ -261,30 +415,6 @@ export class ViemGatewayChain {
         503,
       );
     }
-    if (this.relayerAddress) {
-      const authority = await this.#public.readContract({
-        abi: conditionalExchangeAbi,
-        address: this.environment.exchange,
-        functionName: "authority",
-      });
-      const roles = [
-        zeroHash,
-        ...["MARKET_ADMIN_ROLE", "MATCHER_ROLE", "GUARDIAN_ROLE", "RESOLUTION_ADMIN_ROLE"].map(
-          (role) => keccak256(toBytes(role)),
-        ),
-      ];
-      for (const role of roles) {
-        if (
-          await this.#public.readContract({
-            abi: protocolAuthorityAbi,
-            address: authority,
-            functionName: "hasRole",
-            args: [role, this.relayerAddress],
-          })
-        )
-          throw new Error("API relayer must not hold any protocol role");
-      }
-    }
   }
 
   async snapshot(order: Order, indexer: IndexerClient): Promise<ValidationSnapshot> {
@@ -297,44 +427,58 @@ export class ViemGatewayChain {
       );
     }
     const safeBlockNumber = BigInt(health.head.confirmedBlock);
-    const [block, marketRaw, minimumNonce, walletOpenNotional, marketOpenNotional, tradingPaused] =
-      await Promise.all([
-        this.#public.getBlock({ blockNumber: safeBlockNumber }),
-        this.#public.readContract({
-          abi: marketRegistryAbi,
-          address: this.environment.marketRegistry,
-          args: [order.marketId],
-          blockNumber: safeBlockNumber,
-          functionName: "getMarket",
-        }),
-        this.#public.readContract({
-          abi: conditionalExchangeAbi,
-          address: this.environment.exchange,
-          args: [order.maker],
-          blockNumber: safeBlockNumber,
-          functionName: "minimumNonce",
-        }),
-        this.#public.readContract({
-          abi: conditionalExchangeAbi,
-          address: this.environment.exchange,
-          args: [order.marketId, order.maker],
-          blockNumber: safeBlockNumber,
-          functionName: "walletOpenNotional",
-        }),
-        this.#public.readContract({
-          abi: conditionalExchangeAbi,
-          address: this.environment.exchange,
-          args: [order.marketId],
-          blockNumber: safeBlockNumber,
-          functionName: "marketOpenNotional",
-        }),
-        this.#public.readContract({
-          abi: conditionalExchangeAbi,
-          address: this.environment.exchange,
-          blockNumber: safeBlockNumber,
-          functionName: "tradingPaused",
-        }),
-      ]);
+    const [
+      block,
+      marketRaw,
+      minimumNonce,
+      walletOpenNotional,
+      marketOpenNotional,
+      tradingPaused,
+      nextSequence,
+    ] = await Promise.all([
+      this.#public.getBlock({ blockNumber: safeBlockNumber }),
+      this.#public.readContract({
+        abi: marketRegistryAbi,
+        address: this.environment.marketRegistry,
+        args: [order.marketId],
+        blockNumber: safeBlockNumber,
+        functionName: "getMarket",
+      }),
+      this.#public.readContract({
+        abi: conditionalExchangeAbi,
+        address: this.environment.exchange,
+        args: [order.maker],
+        blockNumber: safeBlockNumber,
+        functionName: "minimumNonce",
+      }),
+      this.#public.readContract({
+        abi: conditionalExchangeAbi,
+        address: this.environment.exchange,
+        args: [order.marketId, order.maker],
+        blockNumber: safeBlockNumber,
+        functionName: "walletOpenNotional",
+      }),
+      this.#public.readContract({
+        abi: conditionalExchangeAbi,
+        address: this.environment.exchange,
+        args: [order.marketId],
+        blockNumber: safeBlockNumber,
+        functionName: "marketOpenNotional",
+      }),
+      this.#public.readContract({
+        abi: conditionalExchangeAbi,
+        address: this.environment.exchange,
+        blockNumber: safeBlockNumber,
+        functionName: "tradingPaused",
+      }),
+      this.#public.readContract({
+        abi: conditionalExchangeAbi,
+        address: this.environment.exchange,
+        blockNumber: safeBlockNumber,
+        functionName: "nextSequence",
+        args: [order.marketId, order.branch],
+      }),
+    ]);
     const market = marketRaw as typeof marketRaw & Record<string, unknown>;
     const [baseTokenDecimals, quoteTokenDecimals, protocolVersion] = await Promise.all([
       this.#public.readContract({
@@ -375,6 +519,12 @@ export class ViemGatewayChain {
         503,
       );
     }
+    if (!block.hash)
+      throw new GatewayError(
+        GatewayErrorCode.CanonicalStateUnavailable,
+        "Safe block has no canonical hash",
+        503,
+      );
     const marketSnapshot: MarketSnapshot = {
       ...units,
       baseStep: market.baseStep,
@@ -401,7 +551,9 @@ export class ViemGatewayChain {
       market: marketSnapshot,
       marketOpenNotional,
       minimumNonce,
+      nextSequence,
       safeBlockNumber,
+      safeBlockHash: block.hash,
       safeBlockTimestamp: block.timestamp,
       tradingPaused,
       walletOpenNotional,
@@ -477,11 +629,77 @@ export class ViemGatewayChain {
     return this.#public.verifyMessage({ address, message, signature });
   }
 
-  openOrderCalldata(order: Order, signature: Hex): Hex {
-    return encodeFunctionData({
+  async executionContext(order: Order) {
+    const block = await this.#public.getBlock({ blockTag: "latest" });
+    const settlement = await this.#public.readContract({
       abi: conditionalExchangeAbi,
-      args: [order, signature],
-      functionName: "openOrder",
+      address: this.environment.exchange,
+      functionName: "settlement",
+      blockNumber: block.number,
+    });
+    const vault = await this.#public.readContract({
+      abi: conditionalSettlementAbi,
+      address: settlement,
+      functionName: "feeVault",
+      blockNumber: block.number,
+    });
+    const [[makerFeeBps, takerFeeBps], nextSequence] = await Promise.all([
+      this.#public.readContract({
+        abi: protocolFeeVaultAbi,
+        address: vault,
+        functionName: "feeRates",
+        blockNumber: block.number,
+      }),
+      this.#public.readContract({
+        abi: conditionalExchangeAbi,
+        address: this.environment.exchange,
+        functionName: "nextSequence",
+        args: [order.marketId, order.branch],
+        blockNumber: block.number,
+      }),
+    ]);
+    return {
+      timestamp: block.timestamp,
+      blockNumber: block.number,
+      makerFeeBps,
+      takerFeeBps,
+      nextSequence,
+    };
+  }
+
+  atomicCalldata(order: Order, signature: Hex, plan: AtomicPlan): Hex {
+    return encodeFunctionData({
+      abi: atomicOrderRouterAbi,
+      functionName: "placeAndMatchChecked",
+      args: [
+        order,
+        signature,
+        plan.makers,
+        plan.quantities,
+        plan.expectedRemaining,
+        plan.deadline,
+        plan.guard,
+        plan.releaseOrders,
+      ],
+    });
+  }
+
+  async simulateAtomic(order: Order, signature: Hex, plan: AtomicPlan): Promise<void> {
+    await this.#public.simulateContract({
+      abi: atomicOrderRouterAbi,
+      account: order.maker,
+      address: this.environment.atomicRouter,
+      functionName: "placeAndMatchChecked",
+      args: [
+        order,
+        signature,
+        plan.makers,
+        plan.quantities,
+        plan.expectedRemaining,
+        plan.deadline,
+        plan.guard,
+        plan.releaseOrders,
+      ],
     });
   }
 
@@ -490,6 +708,42 @@ export class ViemGatewayChain {
       abi: conditionalExchangeAbi,
       args: [orderHash],
       functionName: "cancelOrder",
+    });
+  }
+
+  recoveryCalldata(orderHash: Hex, kind: "expired" | "invalidated" | "closed"): Hex {
+    return encodeFunctionData({
+      abi: conditionalExchangeAbi,
+      functionName: (
+        {
+          expired: "releaseExpiredOrder",
+          invalidated: "releaseInvalidatedOrder",
+          closed: "releaseClosedMarketOrder",
+        } as const
+      )[kind],
+      args: [orderHash],
+    });
+  }
+
+  async payoutCredit(beneficiary: Address, asset: Address, tokenId: bigint): Promise<bigint> {
+    return this.#public.readContract({
+      abi: payoutVaultAbi,
+      address: this.environment.payoutVault,
+      functionName: "claimable",
+      args: [beneficiary, asset, tokenId],
+    });
+  }
+
+  payoutWithdrawalCalldata(
+    asset: Address,
+    tokenId: bigint,
+    amount: bigint,
+    recipient: Address,
+  ): Hex {
+    return encodeFunctionData({
+      abi: payoutVaultAbi,
+      functionName: "withdraw",
+      args: [asset, tokenId, amount, recipient],
     });
   }
 
@@ -541,23 +795,6 @@ export class ViemGatewayChain {
     await this.#public.call({ account: from, data, to, value: 0n });
   }
 
-  async simulateOpen(order: Order, signature: Hex, blockNumber?: bigint): Promise<bigint> {
-    const account = this.#account?.address ?? order.maker;
-    const result = await this.#public.simulateContract({
-      abi: conditionalExchangeAbi,
-      account,
-      address: this.environment.exchange,
-      args: [order, signature],
-      blockNumber,
-      functionName: "openOrder",
-    });
-    return result.request.gas ?? 0n;
-  }
-
-  async pendingNonce(address: Address): Promise<bigint> {
-    return BigInt(await this.#public.getTransactionCount({ address, blockTag: "pending" }));
-  }
-
   async receipt(transactionHash: Hex): Promise<{
     blockHash: Hex;
     blockNumber: bigint;
@@ -577,38 +814,6 @@ export class ViemGatewayChain {
     } catch {
       return null;
     }
-  }
-
-  async prepareRelayedOpen(
-    order: Order,
-    signature: Hex,
-    nonce: bigint,
-  ): Promise<PreparedTransaction> {
-    if (nonce < 0n || nonce > BigInt(Number.MAX_SAFE_INTEGER))
-      throw new RangeError("relayer nonce cannot be represented exactly by the transaction signer");
-    if (!this.#account || !this.#wallet) {
-      throw new GatewayError(
-        GatewayErrorCode.RpcUnavailable,
-        "order relayer is not configured",
-        503,
-      );
-    }
-    const request = await this.#wallet.prepareTransactionRequest({
-      account: this.#account,
-      chain: null,
-      data: this.openOrderCalldata(order, signature),
-      nonce: Number(nonce),
-      to: this.environment.exchange,
-      value: 0n,
-    });
-    const rawTransaction = await this.#wallet.signTransaction({ ...request, chain: null });
-    return {
-      data: request.data ?? this.openOrderCalldata(order, signature),
-      nonce,
-      rawTransaction,
-      to: this.environment.exchange,
-      transactionHash: keccak256(rawTransaction),
-    };
   }
 
   async broadcast(rawTransaction: Hex): Promise<Hex> {

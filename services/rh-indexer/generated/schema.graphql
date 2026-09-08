@@ -102,16 +102,6 @@ type Query {
     limit: Int
     offset: Int
   ): marketOpenInterestPage!
-  matcherEvent(id: String!): matcherEvent
-  matcherEvents(
-    where: matcherEventFilter
-    orderBy: String
-    orderDirection: String
-    before: String
-    after: String
-    limit: Int
-    offset: Int
-  ): matcherEventPage!
   nonceFloor(maker: String!): nonceFloor
   nonceFloors(
     where: nonceFloorFilter
@@ -132,6 +122,16 @@ type Query {
     limit: Int
     offset: Int
   ): orderPage!
+  payoutCredit(id: String!): payoutCredit
+  payoutCredits(
+    where: payoutCreditFilter
+    orderBy: String
+    orderDirection: String
+    before: String
+    after: String
+    limit: Int
+    offset: Int
+  ): payoutCreditPage!
   protocolState(id: String!): protocolState
   protocolStates(
     where: protocolStateFilter
@@ -1091,121 +1091,6 @@ input marketOpenInterestFilter {
   updatedBlock_lte: BigInt
 }
 
-type matcherEvent {
-  id: String!
-  chainId: BigInt!
-  blockNumber: BigInt!
-  blockHash: String!
-  blockTimestamp: BigInt!
-  transactionHash: String!
-  transactionIndex: Int!
-  logIndex: Int!
-  payload: String!
-}
-
-type matcherEventPage {
-  items: [matcherEvent!]!
-  pageInfo: PageInfo!
-  totalCount: Int!
-}
-
-input matcherEventFilter {
-  AND: [matcherEventFilter]
-  OR: [matcherEventFilter]
-  id: String
-  id_not: String
-  id_in: [String]
-  id_not_in: [String]
-  id_contains: String
-  id_not_contains: String
-  id_starts_with: String
-  id_ends_with: String
-  id_not_starts_with: String
-  id_not_ends_with: String
-  id_contains_nocase: String
-  id_not_contains_nocase: String
-  id_starts_with_nocase: String
-  id_ends_with_nocase: String
-  id_not_starts_with_nocase: String
-  id_not_ends_with_nocase: String
-  chainId: BigInt
-  chainId_not: BigInt
-  chainId_in: [BigInt]
-  chainId_not_in: [BigInt]
-  chainId_gt: BigInt
-  chainId_lt: BigInt
-  chainId_gte: BigInt
-  chainId_lte: BigInt
-  blockNumber: BigInt
-  blockNumber_not: BigInt
-  blockNumber_in: [BigInt]
-  blockNumber_not_in: [BigInt]
-  blockNumber_gt: BigInt
-  blockNumber_lt: BigInt
-  blockNumber_gte: BigInt
-  blockNumber_lte: BigInt
-  blockHash: String
-  blockHash_not: String
-  blockHash_in: [String]
-  blockHash_not_in: [String]
-  blockHash_contains: String
-  blockHash_not_contains: String
-  blockHash_starts_with: String
-  blockHash_ends_with: String
-  blockHash_not_starts_with: String
-  blockHash_not_ends_with: String
-  blockTimestamp: BigInt
-  blockTimestamp_not: BigInt
-  blockTimestamp_in: [BigInt]
-  blockTimestamp_not_in: [BigInt]
-  blockTimestamp_gt: BigInt
-  blockTimestamp_lt: BigInt
-  blockTimestamp_gte: BigInt
-  blockTimestamp_lte: BigInt
-  transactionHash: String
-  transactionHash_not: String
-  transactionHash_in: [String]
-  transactionHash_not_in: [String]
-  transactionHash_contains: String
-  transactionHash_not_contains: String
-  transactionHash_starts_with: String
-  transactionHash_ends_with: String
-  transactionHash_not_starts_with: String
-  transactionHash_not_ends_with: String
-  transactionIndex: Int
-  transactionIndex_not: Int
-  transactionIndex_in: [Int]
-  transactionIndex_not_in: [Int]
-  transactionIndex_gt: Int
-  transactionIndex_lt: Int
-  transactionIndex_gte: Int
-  transactionIndex_lte: Int
-  logIndex: Int
-  logIndex_not: Int
-  logIndex_in: [Int]
-  logIndex_not_in: [Int]
-  logIndex_gt: Int
-  logIndex_lt: Int
-  logIndex_gte: Int
-  logIndex_lte: Int
-  payload: String
-  payload_not: String
-  payload_in: [String]
-  payload_not_in: [String]
-  payload_contains: String
-  payload_not_contains: String
-  payload_starts_with: String
-  payload_ends_with: String
-  payload_not_starts_with: String
-  payload_not_ends_with: String
-  payload_contains_nocase: String
-  payload_not_contains_nocase: String
-  payload_starts_with_nocase: String
-  payload_ends_with_nocase: String
-  payload_not_starts_with_nocase: String
-  payload_not_ends_with_nocase: String
-}
-
 type nonceFloor {
   maker: String!
   minimumNonce: BigInt!
@@ -1259,7 +1144,10 @@ type order {
   fundingKind: Int!
   timeInForce: Int!
   quantity: BigInt!
+  filled: BigInt!
   limitPriceRawX18: BigInt!
+  maxFeeBps: Int!
+  feesPaid: BigInt!
   expiry: BigInt!
   nonce: BigInt!
   salt: String!
@@ -1363,6 +1251,14 @@ input orderFilter {
   quantity_lt: BigInt
   quantity_gte: BigInt
   quantity_lte: BigInt
+  filled: BigInt
+  filled_not: BigInt
+  filled_in: [BigInt]
+  filled_not_in: [BigInt]
+  filled_gt: BigInt
+  filled_lt: BigInt
+  filled_gte: BigInt
+  filled_lte: BigInt
   limitPriceRawX18: BigInt
   limitPriceRawX18_not: BigInt
   limitPriceRawX18_in: [BigInt]
@@ -1371,6 +1267,22 @@ input orderFilter {
   limitPriceRawX18_lt: BigInt
   limitPriceRawX18_gte: BigInt
   limitPriceRawX18_lte: BigInt
+  maxFeeBps: Int
+  maxFeeBps_not: Int
+  maxFeeBps_in: [Int]
+  maxFeeBps_not_in: [Int]
+  maxFeeBps_gt: Int
+  maxFeeBps_lt: Int
+  maxFeeBps_gte: Int
+  maxFeeBps_lte: Int
+  feesPaid: BigInt
+  feesPaid_not: BigInt
+  feesPaid_in: [BigInt]
+  feesPaid_not_in: [BigInt]
+  feesPaid_gt: BigInt
+  feesPaid_lt: BigInt
+  feesPaid_gte: BigInt
+  feesPaid_lte: BigInt
   expiry: BigInt
   expiry_not: BigInt
   expiry_in: [BigInt]
@@ -1471,6 +1383,86 @@ input orderFilter {
   openedBlock_lt: BigInt
   openedBlock_gte: BigInt
   openedBlock_lte: BigInt
+  updatedBlock: BigInt
+  updatedBlock_not: BigInt
+  updatedBlock_in: [BigInt]
+  updatedBlock_not_in: [BigInt]
+  updatedBlock_gt: BigInt
+  updatedBlock_lt: BigInt
+  updatedBlock_gte: BigInt
+  updatedBlock_lte: BigInt
+}
+
+type payoutCredit {
+  id: String!
+  beneficiary: String!
+  asset: String!
+  tokenId: BigInt!
+  amount: BigInt!
+  updatedBlock: BigInt!
+}
+
+type payoutCreditPage {
+  items: [payoutCredit!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input payoutCreditFilter {
+  AND: [payoutCreditFilter]
+  OR: [payoutCreditFilter]
+  id: String
+  id_not: String
+  id_in: [String]
+  id_not_in: [String]
+  id_contains: String
+  id_not_contains: String
+  id_starts_with: String
+  id_ends_with: String
+  id_not_starts_with: String
+  id_not_ends_with: String
+  id_contains_nocase: String
+  id_not_contains_nocase: String
+  id_starts_with_nocase: String
+  id_ends_with_nocase: String
+  id_not_starts_with_nocase: String
+  id_not_ends_with_nocase: String
+  beneficiary: String
+  beneficiary_not: String
+  beneficiary_in: [String]
+  beneficiary_not_in: [String]
+  beneficiary_contains: String
+  beneficiary_not_contains: String
+  beneficiary_starts_with: String
+  beneficiary_ends_with: String
+  beneficiary_not_starts_with: String
+  beneficiary_not_ends_with: String
+  asset: String
+  asset_not: String
+  asset_in: [String]
+  asset_not_in: [String]
+  asset_contains: String
+  asset_not_contains: String
+  asset_starts_with: String
+  asset_ends_with: String
+  asset_not_starts_with: String
+  asset_not_ends_with: String
+  tokenId: BigInt
+  tokenId_not: BigInt
+  tokenId_in: [BigInt]
+  tokenId_not_in: [BigInt]
+  tokenId_gt: BigInt
+  tokenId_lt: BigInt
+  tokenId_gte: BigInt
+  tokenId_lte: BigInt
+  amount: BigInt
+  amount_not: BigInt
+  amount_in: [BigInt]
+  amount_not_in: [BigInt]
+  amount_gt: BigInt
+  amount_lt: BigInt
+  amount_gte: BigInt
+  amount_lte: BigInt
   updatedBlock: BigInt
   updatedBlock_not: BigInt
   updatedBlock_in: [BigInt]

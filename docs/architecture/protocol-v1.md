@@ -1,9 +1,9 @@
-# Protocol v1 architecture
+# Protocol architecture (raw-unit v2, atomic execution v1)
 
 The filename is retained for existing links. Pricing and signing are now governed by
 [protocol v2 raw-unit ratios](./raw-unit-ratio-v2.md), which supersedes v1 unit assumptions.
 Order signatures now use v3 fee caps; [maker/taker fees](./trading-fees.md) supplements the settlement
-and custody descriptions below. Market IDs and raw-unit ratios remain v2.
+and custody descriptions below. Market IDs and raw-unit ratios remain v2. [Permissionless atomic placement](./atomic-placement.md) supersedes the former matcher/IOC execution flow.
 
 ## Deployment graph
 
@@ -11,7 +11,7 @@ and custody descriptions below. Market IDs and raw-unit ratios remain v2.
 ProtocolAuthority ─────┬── MarketRegistry ── ManualResolutionController ── ConditionalTokens
                        └── ConditionalExchange ──┬── OrderValidator
                                                 ├── ConditionalSettlement ── ConditionalTokens
-                                                └── IOCRouter
+                                                └── AtomicOrderRouter
 
 ConditionalTokens ─────── PositionRouter
 ConditionalExchange ───── OrderRecoveryRouter
@@ -31,32 +31,35 @@ Every connection is immutable or configured exactly once before use. Constructio
 | `ConditionalExchange` | Per-order escrow, sequences, nonces, caps, cancellation, fill accounting | Holds only live order reservations |
 | `ConditionalSettlement` | Exchange-only atomic pull, CTF split, and output delivery | Transient fill amounts only; no admin or arbitrary transfer |
 | `ProtocolFeeVault` | Admin-configurable maker/taker rates, isolated fee-claim custody and withdrawal | Only its own earned/donated claims; never user escrow |
-| `IOCRouter` | At most 32 maker fills followed by atomic taker-remainder cancellation | None |
+| `AtomicOrderRouter` | Owner-authorized opening and at most 32 maker fills; GTC rests / IOC refunds the remainder | None |
 | `OrderRecoveryRouter` | At most 64 best-effort stale-order releases | None |
 | `PositionRouter` | Optional exact-amount merge and redemption | Transient user-provided claims only |
 | `ManualResolutionController` | One-time manual YES, NO, or invalid payout reporting with evidence reference | No collateral custody |
 | `ConditionalTokens` | Canonical collateral splitting, merging, payout accounting, and redemption | Holds backing collateral |
 
-The split is necessary because a monolithic exchange exceeded the EIP-170 runtime limit. The build targets the conservative `paris` EVM until exact Robinhood testnet opcode compatibility is proven. With Solidity 0.8.30, `via_ir`, and 7,500 optimizer runs, the fee-enabled exchange is 23,560 runtime bytes, below the 24,576-byte limit; rerun the size check after every change. Deployability does not imply production approval: audit M-02 remains open.
+The split is necessary because a monolithic exchange exceeded the EIP-170 runtime limit. The build targets the conservative `paris` EVM until exact Robinhood testnet opcode compatibility is proven. With Solidity 0.8.30, `via_ir`, and 7,500 optimizer runs, the fee-enabled exchange is 23,216 runtime bytes, below the 24,576-byte limit; rerun the size check after every change. Deployability does not imply production approval: audit M-02 remains open.
 
 ## GTC flow
 
 1. A user signs the v3 `Order` with `maxFeeBps`, domain-separated by chain ID and `ConditionalExchange` address, with `limitPriceRawX18` expressed as raw quote/raw base scaled by `1e18`.
-2. Anyone may relay `openOrder`; `OrderValidator` verifies the maker signature.
+2. The API supplies a reviewed candidate plan. The owner wallet calls `AtomicOrderRouter.placeAndMatch`; only this permanently configured router can invoke exchange opening and fills. `OrderValidator` verifies the maker signature.
 3. The exchange validates market state, expiry, nonce, tick, step, size, and caps, stores the reservation, then pulls exact funding from the maker.
-4. The matcher submits crossing orders. The exchange re-hashes both originals, validates their stored state, and derives the maker price from their onchain sequences.
+4. In that same user transaction the router submits the quoted opposite-side resting orders. The exchange re-hashes both originals, validates their stored state, and derives the maker price from their onchain sequences.
 5. The exchange reduces reservations before calling `ConditionalSettlement`.
 6. Settlement snapshots maker/taker rates and checks both signed caps, pulls exact fill funding, splits only whole-funded amounts, deducts fees from received active claims, and sends those fees to the immutable vault. Inactive claims are returned without deductions.
 7. The exchange returns bid price improvement immediately and emits `OrderFilled`.
 
-Any failure reverts the complete transaction.
+Any failure reverts the complete placement, including opening and all earlier legs. The unfilled GTC reservation remains resting.
 
-The offchain price-level structures, canonical proposal format, fencing, and replay behavior are
-specified in [Order-book matcher v1](./orderbook-matcher-v1.md).
+The stateless planner, deadline and exact maker-remainder checks are specified in
+[permissionless atomic placement](./atomic-placement.md). The contract does not enforce
+global best-price/FIFO or complete book clearing.
 
 ## IOC flow
 
-`IOCRouter.executeIOC` is one transaction. It opens a signed IOC taker, calls the exchange once per supplied GTC maker, then cancels any remainder. The maker list is capped at 32. The transaction is atomic; production matchers must simulate it and remove stale maker entries.
+IOC uses the same `AtomicOrderRouter.placeAndMatch` entrypoint. It opens the order, executes
+at most 32 exact GTC maker legs, and refunds every unfilled unit before returning. An empty
+plan refunds everything. Neither IOC nor GTC has a server-paid delayed settlement path.
 
 ## Pause and recovery
 

@@ -1,13 +1,14 @@
 import { expect, test } from "bun:test";
 import { createGatewayQueries } from "@conditional-stocks/db/gateway";
 import { testDatabase } from "@conditional-stocks/db/testing";
-import { Branch, FundingKind, type Order, Side, TimeInForce } from "@conditional-stocks/domain";
+import { Branch, FundingKind, hashOrder, Side, TimeInForce } from "@conditional-stocks/domain";
 import {
   GatewayError,
   GatewayErrorCode,
+  parseOrder,
   type ValidationSnapshot,
 } from "@conditional-stocks/gateway";
-import { type Address, type Hex, keccak256, toHex } from "viem";
+import { type Address, type Hex, keccak256 } from "viem";
 import { createApp } from "./app.ts";
 import {
   type CanonicalMarket,
@@ -18,7 +19,7 @@ import {
   ViemGatewayChain,
 } from "./chain.ts";
 import type { ApiEnvironment } from "./environment.ts";
-import { GatewayService, type SettlementIntentSink } from "./service.ts";
+import { GatewayService } from "./service.ts";
 
 const maker: Address = "0x1000000000000000000000000000000000000001";
 const other: Address = "0x2000000000000000000000000000000000000002";
@@ -30,13 +31,11 @@ const env: ApiEnvironment = {
   conditionalTokens: other,
   exchange: maker,
   indexerUrl: "http://127.0.0.1:1",
-  iocRouter: other,
+  atomicRouter: other,
+  payoutVault: other,
   marketRegistry: other,
   positionRouter: other,
-  relayerPrivateKey: null,
   rpcUrl: "http://127.0.0.1:1",
-  settlementWorkerUrl: "http://127.0.0.1:1",
-  settlementWorkerToken: "test",
 };
 const wire = {
   branch: Branch.Yes,
@@ -56,9 +55,11 @@ const wire = {
 const snapshot: ValidationSnapshot = {
   chainId: 31337n,
   safeBlockNumber: 100n,
+  safeBlockHash: hash,
   safeBlockTimestamp: 1500n,
   tradingPaused: false,
   minimumNonce: 7n,
+  nextSequence: 10n,
   marketOpenNotional: 0n,
   walletOpenNotional: 0n,
   market: {
@@ -94,22 +95,19 @@ class Chain extends ViemGatewayChain {
   approved = true;
   simulationError = false;
   broadcastError = false;
-  relayerEnabled = true;
   snapshotError = false;
+  snapshotValue = structuredClone(snapshot);
   onSnapshot: (() => Promise<void>) | null = null;
   broadcasts: Hex[] = [];
-  prepared: bigint[] = [];
   receiptValue: Awaited<ReturnType<ViemGatewayChain["receipt"]>> = null;
-  constructor() {
-    super(env);
-  }
-  override get relayerAddress() {
-    return this.relayerEnabled ? other : null;
+  constructor(environment: ApiEnvironment = env) {
+    super(environment);
+    this.snapshotValue.chainId = BigInt(environment.chainId);
   }
   override async snapshot() {
     await this.onSnapshot?.();
     if (this.snapshotError) throw new Error("private database details");
-    return structuredClone(snapshot);
+    return structuredClone(this.snapshotValue);
   }
   override async funding() {
     return { allowance: this.allowance, approvedForAll: this.approved, balance: this.balance };
@@ -120,23 +118,24 @@ class Chain extends ViemGatewayChain {
   override async verifyOrderSignature() {
     return this.signatureValid;
   }
-  override async simulateOpen() {
-    if (this.simulationError) throw new Error("simulation revert");
-    return 1n;
-  }
-  override async pendingNonce() {
-    return 7n;
-  }
-  override async prepareRelayedOpen(order: Order, signature: Hex, nonce: bigint) {
-    this.prepared.push(nonce);
-    const rawTransaction = toHex(nonce);
+  executionTime = 1500n;
+  executionSequence = 10n;
+  makerFeeBps = 0;
+  takerFeeBps = 0;
+  credit = 10n;
+  simulated = 0;
+  override async executionContext() {
     return {
-      rawTransaction,
-      transactionHash: keccak256(rawTransaction),
-      nonce,
-      to: env.exchange,
-      data: this.openOrderCalldata(order, signature),
+      timestamp: this.executionTime,
+      blockNumber: 101n,
+      makerFeeBps: this.makerFeeBps,
+      takerFeeBps: this.takerFeeBps,
+      nextSequence: this.executionSequence,
     };
+  }
+  override async simulateAtomic() {
+    this.simulated++;
+    if (this.simulationError) throw new Error("simulation revert");
   }
   override async broadcast(raw: Hex) {
     if (this.broadcastError) throw new Error("RPC disconnected");
@@ -152,9 +151,22 @@ class Chain extends ViemGatewayChain {
   override async positionRouterApproved() {
     return this.approved;
   }
-  override async simulateUserCall() {}
+  override async simulateUserCall() {
+    if (this.simulationError) throw new Error("simulated revert");
+  }
+  override async payoutCredit(_beneficiary: Address) {
+    return this.credit;
+  }
 }
 class Indexer extends IndexerClient {
+  candidates: import("@conditional-stocks/orderbook").MatchCandidate[] = [];
+  stale: import("@conditional-stocks/orderbook").StaleReservation[] = [];
+  override async staleReservations() {
+    return this.stale;
+  }
+  override async matchCandidates() {
+    return this.candidates;
+  }
   orderValue: CanonicalOrder | null = null;
   transactionValue: CanonicalTransaction | null = null;
   marketValue: CanonicalMarket | null = {
@@ -201,25 +213,193 @@ class Indexer extends IndexerClient {
     return this.resolutionValue;
   }
 }
-async function setup() {
+async function setup(environment: ApiEnvironment = env) {
   const fixture = await testDatabase();
-  const chain = new Chain();
+  const chain = new Chain(environment);
   const indexer = new Indexer();
-  const ioc = { enqueued: 0, state: "queued" };
-  const settlement: SettlementIntentSink = {
-    enqueueIoc: async () => {
-      ioc.enqueued++;
-      return { batchId: hash, state: ioc.state };
-    },
-    status: async () => ({ batchId: hash, state: ioc.state, error: null }),
-  };
   const store = createGatewayQueries(fixture.database);
-  const service = new GatewayService(env, store, chain, indexer, settlement);
-  return { fixture, chain, indexer, ioc, store, service, settlement };
+  const service = new GatewayService(environment, store, chain, indexer);
+  return { fixture, chain, indexer, store, service };
 }
 
+test("checked quotes reject unconfirmed admissions, changed eligibility, omitted best makers and cap corruption", async () => {
+  const { service, indexer, chain } = await setup();
+  const mk = (sequence: number, price: string) => {
+    const order = parseOrder({
+      ...wire,
+      maker: other,
+      recipient: other,
+      side: 1,
+      salt: `0x${String(sequence).repeat(64)}`,
+      limitPriceRawX18: price,
+    });
+    return {
+      order,
+      orderHash: hashOrder(order, { chainId: 31337n, verifyingContract: env.exchange }),
+      sequence: BigInt(sequence),
+      remaining: order.quantity,
+    };
+  };
+  indexer.candidates = [mk(1, "199000000"), mk(2, "200000000")];
+  const best = indexer.candidates[0];
+  const worse = indexer.candidates[1];
+  if (!best || !worse) throw new Error("Missing candidate fixtures");
+  chain.snapshotValue.marketOpenNotional = 399_000_000n;
+  const quote = await service.prepareOrder({ order: wire }, maker);
+  const tx = () => wireJson({ order: wire, plan: quote.plan, signature: "0x12" });
+  chain.executionSequence++;
+  await expect(service.orderTransaction(tx(), maker)).rejects.toMatchObject({ status: 503 });
+  chain.executionSequence--;
+  chain.makerFeeBps = 1;
+  await expect(service.orderTransaction(tx(), maker)).rejects.toBeInstanceOf(GatewayError);
+  chain.makerFeeBps = 0;
+  for (const changes of [
+    { makers: [], quantities: [], expectedRemaining: [] },
+    { makers: [worse.order] },
+    { releaseOrders: [hash] },
+    { expectedRemaining: [BigInt(wire.quantity) - 1n] },
+  ])
+    await expect(
+      service.orderTransaction(wireJson({ ...tx(), plan: { ...quote.plan, ...changes } }), maker),
+    ).rejects.toBeInstanceOf(GatewayError);
+  // Another user consumes the maker while the reviewed quote is outstanding.
+  best.remaining /= 2n;
+  await expect(service.orderTransaction(tx(), maker)).rejects.toMatchObject({ status: 409 });
+  expect(chain.simulated).toBe(0);
+  expect(chain.broadcasts).toEqual([]);
+});
+
+test("API recovers only necessary stale escrow and never rejects reducing execution at gross caps", async () => {
+  const { service, indexer, chain } = await setup();
+  chain.snapshotValue.marketOpenNotional = snapshot.market.maxMarketOpenNotional;
+  chain.snapshotValue.walletOpenNotional = snapshot.market.maxWalletOpenNotional;
+  indexer.stale = [{ orderHash: hash, marketId: hash, maker, openNotional: 200_000_000n }];
+  expect((await service.prepareOrder({ order: wire }, maker)).plan.releaseOrders).toEqual([hash]);
+  indexer.stale = [];
+  await expect(service.prepareOrder({ order: wire }, maker)).rejects.toMatchObject({ status: 409 });
+  const order = parseOrder({ ...wire, side: 1, maker: other, recipient: other });
+  indexer.candidates = [
+    {
+      order,
+      orderHash: hashOrder(order, { chainId: 31337n, verifyingContract: env.exchange }),
+      sequence: 1n,
+      remaining: order.quantity,
+    },
+  ];
+  const plan = (await service.prepareOrder({ order: wire }, maker)).plan;
+  expect(plan.remainingQuantity).toBe(0n);
+  expect(plan.releaseOrders).toEqual([]);
+});
+
+test("payout and stale recovery remain user-paid during freezes; input spoofing cannot spend another beneficiary", async () => {
+  const { chain, indexer, store } = await setup();
+  const service = new GatewayService(env, store, chain, indexer, {
+    assertCanTrade: async () => {
+      throw new Error("frozen");
+    },
+  });
+  let owner: Address | undefined;
+  chain.payoutCredit = async (beneficiary: Address) => {
+    owner = beneficiary;
+    return chain.credit;
+  };
+  const input = {
+    asset: env.conditionalTokens,
+    tokenId: "1",
+    amount: "4",
+    recipient: maker,
+    beneficiary: other,
+  };
+  const result = await service.preparePayoutWithdrawal(input, maker);
+  expect(owner).toBe(maker);
+  expect(result.transaction).toMatchObject({ from: maker, to: env.payoutVault, value: 0n });
+  for (const patch of [
+    { amount: "0" },
+    { amount: "11" },
+    { amount: "01" },
+    { amount: String(1n << 256n) },
+    { tokenId: "-1" },
+    { recipient: env.payoutVault },
+    { asset: maker },
+  ])
+    await expect(
+      service.preparePayoutWithdrawal({ ...input, ...patch }, maker),
+    ).rejects.toBeInstanceOf(GatewayError);
+  chain.credit = 0n;
+  await expect(service.preparePayoutWithdrawal(input, maker)).rejects.toMatchObject({
+    status: 409,
+  });
+  chain.credit = 10n;
+  chain.simulationError = true;
+  await expect(service.preparePayoutWithdrawal(input, maker)).rejects.toMatchObject({
+    status: 409,
+  });
+  await expect(
+    service.prepareOrderRecovery({ kind: "expired", orderHash: hash }, other),
+  ).rejects.toMatchObject({ status: 409 });
+  chain.simulationError = false;
+  for (const kind of ["expired", "invalidated", "closed"])
+    expect(
+      (await service.prepareOrderRecovery({ kind, orderHash: hash }, other)).transaction.from,
+    ).toBe(other);
+  await expect(
+    service.prepareOrderRecovery({ kind: "cancel", orderHash: hash }, other),
+  ).rejects.toBeInstanceOf(GatewayError);
+  expect(chain.broadcasts).toEqual([]);
+  expect(await store.pendingOperations()).toEqual([]);
+});
+
+test("API selects exact multi-price FIFO fills without persisting or mutating candidate orders", async () => {
+  const { service, indexer, store, chain } = await setup();
+  for (const [sequence, price] of [
+    [3, 200_000_000n],
+    [2, 199_000_000n],
+    [1, 199_000_000n],
+  ] as const) {
+    const order = parseOrder({
+      ...wire,
+      maker: other,
+      recipient: other,
+      side: Side.Sell,
+      salt: `0x${String(sequence).repeat(64)}`,
+      quantity: "500000000000000000",
+      limitPriceRawX18: String(price),
+    });
+    indexer.candidates.push({
+      order,
+      remaining: order.quantity,
+      sequence: BigInt(sequence),
+      orderHash: hashOrder(order, { chainId: 31337n, verifyingContract: env.exchange }),
+    });
+  }
+  const before = structuredClone(indexer.candidates);
+  chain.snapshotValue.marketOpenNotional = 299_000_000n;
+  const prepared = await service.prepareOrder({ order: wire }, maker);
+  expect(prepared.plan.makers.map((order) => String(order.salt))).toEqual([
+    String(before[2]?.order.salt),
+    String(before[1]?.order.salt),
+  ]);
+  expect(prepared.plan.filledQuantity).toBe(10n ** 18n);
+  expect(prepared.plan.remainingQuantity).toBe(0n);
+  expect(prepared.plan.executionQuote).toBe(199_000_000n);
+  const plan = JSON.parse(
+    JSON.stringify(prepared.plan, (_, value) =>
+      typeof value === "bigint" ? String(value) : value,
+    ),
+  );
+  await service.orderTransaction({ order: wire, signature: "0x12", plan }, maker);
+  expect(chain.simulated).toBe(1);
+  expect(indexer.candidates).toEqual(before);
+  expect(await store.pendingOperations()).toEqual([]);
+  expect(chain.broadcasts).toEqual([]);
+  const firstCandidate = before[0];
+  if (!firstCandidate) throw new Error("Fixture candidate missing");
+  indexer.candidates[0] = { ...firstCandidate, orderHash: hash };
+  await expect(service.prepareOrder({ order: wire }, maker)).rejects.toMatchObject({ status: 409 });
+});
+
 test("auth sessions are PostgreSQL-backed, reusable across API instances, and challenges are single-use", async () => {
-  const { fixture, chain, indexer, settlement, service } = await setup();
+  const { fixture, chain, indexer, service } = await setup();
   const challenge = await service.createChallenge({ address: maker });
   expect(challenge.message).toContain("https://probabl.test");
   const session = await service.verifyChallenge({
@@ -232,7 +412,6 @@ test("auth sessions are PostgreSQL-backed, reusable across API instances, and ch
     createGatewayQueries(fixture.connect()),
     chain,
     indexer,
-    settlement,
   );
   expect(await restarted.authenticate(`Bearer ${session.token}`)).toBe(maker);
   await expect(
@@ -263,127 +442,42 @@ test("auth sessions are PostgreSQL-backed, reusable across API instances, and ch
   ).rejects.toMatchObject({ status: 401 });
 });
 
-test("parallel API instances deduplicate one relayed order, and retry recovers durable signed bytes after restart", async () => {
-  const { fixture, chain, indexer, settlement, service, store } = await setup();
-  const second = new GatewayService(
-    env,
-    createGatewayQueries(fixture.connect()),
-    chain,
-    indexer,
-    settlement,
+const wireJson = (value: unknown) =>
+  JSON.parse(
+    JSON.stringify(value, (_key, item) => (typeof item === "bigint" ? item.toString() : item)),
   );
-  const entered = Promise.withResolvers<void>();
-  const release = Promise.withResolvers<void>();
-  chain.onSnapshot = async () => {
-    entered.resolve();
-    await release.promise;
-  };
-  const request = { order: wire, signature: "0x12" };
-  const first = service.submitOrder(request, maker, "parallel-0001");
-  await entered.promise;
-  try {
-    expect((await second.submitOrder(request, maker, "parallel-0001")).operation.state).toBe(
-      "accepted",
-    );
-    expect(chain.prepared).toEqual([]);
-  } finally {
-    release.resolve();
-  }
-  const result = await first;
-  expect(result.operation.state).toBe("broadcast");
-  expect(chain.prepared).toEqual([7n]);
-  expect(result.attempts).toHaveLength(1);
-  await expect(
-    second.submitOrder({ ...request, signature: "0x34" }, maker, "parallel-0001"),
-  ).rejects.toMatchObject({ status: 409 });
-  await second.submitOrder(request, maker, "parallel-0001");
-  expect(chain.prepared).toEqual([7n]);
-  expect(new Set(chain.broadcasts).size).toBe(1);
-  indexer.transactionValue = {
-    blockHash: hash,
-    blockNumber: "100",
-    confirmation: "confirmed",
-    hash: result.operation.transactionHash ?? hash,
-    status: "success",
-  };
-  expect((await second.operation(result.operation.operationId, maker)).operation.state).toBe(
-    "canonical",
-  );
-  expect(await store.pendingOperations()).toEqual([]);
-  await expect(second.operation(result.operation.operationId, other)).rejects.toMatchObject({
-    status: 403,
-  });
-  await expect(second.operation("missing", maker)).rejects.toMatchObject({ status: 404 });
-});
 
-test("broadcast failure retains the outbox; retry never reserves a fresh nonce", async () => {
-  const { fixture, chain, indexer, settlement, store, service } = await setup();
-  const request = { order: wire, signature: "0x12" };
-  chain.broadcastError = true;
-  await expect(service.submitOrder(request, maker, "outage-0001")).rejects.toMatchObject({
-    status: 503,
-  });
-  const saved = (await store.pendingOperations())[0];
-  if (!saved) throw new Error("outbox fixture missing");
-  expect(saved.state).toBe("retryable");
-  expect(await store.listAttempts(saved.operationId)).toHaveLength(1);
-  chain.broadcastError = false;
-  const recovered = new GatewayService(
-    env,
-    createGatewayQueries(fixture.connect()),
-    chain,
-    indexer,
-    settlement,
-  );
-  await recovered.reconcilePending();
-  expect((await recovered.operation(saved.operationId, maker)).operation.state).toBe("broadcast");
-  expect(chain.prepared).toEqual([7n]);
-  expect(new Set(chain.broadcasts).size).toBe(1);
-});
-
-test("recovery rotates past unprepared requests without blocking new submissions on a slow RPC", async () => {
-  const { chain, service } = await setup();
-  const request = { order: wire, signature: "0x12" };
-  chain.snapshotError = true;
-  for (let i = 0; i < 26; i++)
-    await expect(service.submitOrder(request, maker, `old-request-${i}`)).rejects.toMatchObject({
-      status: 503,
+test("GTC and IOC preparation return bounded atomic plans without queues, broadcasts, or durable operations", async () => {
+  const { service, store, chain } = await setup();
+  for (const tif of [0, 1]) {
+    const order = { ...wire, tif };
+    const prepared = await service.prepareOrder({ order }, maker);
+    expect(prepared.plan.filledQuantity).toBe(0n);
+    expect(prepared.plan.remainingQuantity).toBe(BigInt(wire.quantity));
+    expect(prepared.plan.deadline).toBe(1560n);
+    const input = wireJson({ order, plan: prepared.plan, signature: "0x12" });
+    const [first, second] = await Promise.all([
+      service.orderTransaction(input, maker),
+      service.orderTransaction(input, maker),
+    ]);
+    expect(first).toEqual(second);
+    expect(first.transaction).toMatchObject({
+      to: env.atomicRouter,
+      from: maker,
+      value: 0n,
+      chainId: 31337,
     });
-  chain.snapshotError = false;
-  chain.broadcastError = true;
-  await expect(service.submitOrder(request, maker, "later-outbox-01")).rejects.toMatchObject({
-    status: 503,
-  });
-  chain.broadcastError = false;
-  await service.reconcilePending();
-  expect(chain.broadcasts).toEqual([]);
-  const entered = Promise.withResolvers<void>();
-  const release = Promise.withResolvers<void>();
-  chain.receipt = async () => {
-    entered.resolve();
-    await release.promise;
-    return null;
-  };
-  const recovery = service.reconcilePending();
-  await entered.promise;
-  try {
-    const newOrder = await service.submitOrder(
-      { ...request, order: { ...wire, salt: `0x${"22".repeat(32)}` } },
-      maker,
-      "new-request-01",
-    );
-    expect(newOrder.operation.state).toBe("broadcast");
-  } finally {
-    release.resolve();
-    await recovery;
+    expect(first.transaction.data.slice(0, 10)).not.toBe("0x");
   }
-  expect(chain.prepared).toEqual([7n, 8n]);
-  expect(chain.broadcasts).toHaveLength(2);
+  expect(chain.simulated).toBe(4);
+  expect(chain.broadcasts).toEqual([]);
+  expect(await store.pendingOperations()).toEqual([]);
 });
 
-test("validation failures are durable, RPC failure is retryable, and an accepted-but-unprepared request resumes", async () => {
-  const { chain, service, store } = await setup();
-  const request = { order: wire, signature: "0x12" };
+test("atomic preparation enforces wallet, balance, approval, signature, expiry, and simulation gates", async () => {
+  const { service, chain, store } = await setup();
+  const quote = await service.prepareOrder({ order: wire }, maker);
+  const input = wireJson({ order: wire, plan: quote.plan, signature: "0x12" });
   const failures = [
     {
       change: () => {
@@ -421,71 +515,131 @@ test("validation failures are durable, RPC failure is retryable, and an accepted
       },
       code: GatewayErrorCode.SimulationFailed,
     },
+    {
+      change: () => {
+        chain.executionTime = 1560n;
+      },
+      reset: () => {
+        chain.executionTime = 1500n;
+      },
+      code: GatewayErrorCode.OrderExpired,
+    },
   ];
-  for (const [index, failure] of failures.entries()) {
+  for (const failure of failures) {
     failure.change();
-    await expect(service.submitOrder(request, maker, `invalid-000${index}`)).rejects.toMatchObject({
+    await expect(service.orderTransaction(input, maker)).rejects.toMatchObject({
       code: failure.code,
     });
     failure.reset();
-    expect((await service.submitOrder(request, maker, `invalid-000${index}`)).operation.state).toBe(
-      "failed",
-    );
   }
-  expect(chain.broadcasts).toEqual([]);
-  chain.snapshotError = true;
-  await expect(service.submitOrder(request, maker, "recover-0001")).rejects.toMatchObject({
-    status: 503,
-  });
-  const saved = (await store.pendingOperations())[0];
-  if (!saved) throw new Error("accepted fixture missing");
-  expect(saved.error?.message).not.toContain("private database");
-  // Equivalent to a process dying between durable acceptance and transaction preparation.
-  await store.updateOperation(saved.operationId, { state: "accepted" });
-  chain.snapshotError = false;
-  expect((await service.submitOrder(request, maker, "recover-0001")).operation.state).toBe(
-    "broadcast",
-  );
-  expect(chain.prepared).toHaveLength(1);
-  for (const key of [undefined, "short", "invalid key long"])
-    await expect(service.submitOrder(request, maker, key)).rejects.toThrow("Idempotency");
   await expect(service.prepareOrder({ order: wire }, other)).rejects.toMatchObject({ status: 403 });
-  expect((await service.prepareOrder({ order: wire }, maker)).fundingReady).toBe(true);
+  await expect(service.orderTransaction(input, other)).rejects.toMatchObject({ status: 403 });
+  for (const plan of [
+    null,
+    {},
+    { ...input.plan, deadline: "0" },
+    { ...input.plan, quantities: ["1"] },
+  ])
+    await expect(service.orderTransaction({ ...input, plan }, maker)).rejects.toBeInstanceOf(
+      GatewayError,
+    );
+  expect(chain.broadcasts).toEqual([]);
+  expect(await store.pendingOperations()).toEqual([]);
 });
 
-test("IOC protection, persisted intent status and empty-fill termination work without a gateway nonce", async () => {
-  const { chain, service, ioc } = await setup();
-  const request = {
-    order: { ...wire, tif: TimeInForce.Ioc },
-    signature: "0x12",
-    protection: {
-      maxQuantity: wire.quantity,
-      maxNotional: "200000000",
-      worstPriceRawX18: wire.limitPriceRawX18,
+test("safety failures block both quote and transaction preparation without affecting cancellation", async () => {
+  const { service, chain, indexer, store } = await setup();
+  const quote = await service.prepareOrder({ order: wire }, maker);
+  let checks = 0;
+  const gated = new GatewayService(env, store, chain, indexer, {
+    assertCanTrade: async () => {
+      checks++;
+      throw new Error("reconciliation freeze");
     },
-  };
-  const result = await service.submitOrder(request, maker, "ioc-test-0001");
-  expect(result.operation.state).toBe("submitted");
-  expect(chain.prepared).toEqual([]);
-  expect(ioc.enqueued).toBe(1);
-  ioc.state = "unfilled";
-  const refreshed = await service.operation(result.operation.operationId, maker);
-  expect(refreshed.operation.state).toBe("failed");
-  expect(refreshed.operation.error?.code).toBe("ioc-unfilled");
+  });
+  await expect(gated.prepareOrder({ order: wire }, maker)).rejects.toThrow("reconciliation freeze");
   await expect(
-    service.submitOrder(
-      { ...request, protection: { ...request.protection, maxNotional: "0" } },
-      maker,
-      "ioc-bad-0001",
-    ),
-  ).rejects.toThrow("cover");
-  await expect(
-    service.submitOrder(
-      { ...request, protection: { ...request.protection, maxQuantity: 1 } },
-      maker,
-      "ioc-bad-0002",
-    ),
-  ).rejects.toThrow("decimal string");
+    gated.orderTransaction(wireJson({ order: wire, plan: quote.plan, signature: "0x12" }), maker),
+  ).rejects.toThrow("reconciliation freeze");
+  expect(checks).toBe(2);
+  expect(chain.broadcasts).toEqual([]);
+});
+
+test("atomic HTTP route prepares user bytes; removed submission endpoint cannot broadcast", async () => {
+  const { service, chain } = await setup();
+  const challenge = await service.createChallenge({ address: maker });
+  const auth = await service.verifyChallenge({
+    address: maker,
+    challengeId: challenge.challengeId,
+    signature: "0x12",
+  });
+  const quote = await service.prepareOrder({ order: wire }, maker);
+  const body = JSON.stringify(wireJson({ order: wire, plan: quote.plan, signature: "0x12" }));
+  const app = createApp(service);
+  const headers = { authorization: `Bearer ${auth.token}`, "content-type": "application/json" };
+  const response = await app.request("/v1/orders/transaction", { method: "POST", headers, body });
+  expect(response.status).toBe(200);
+  expect((await response.json()).transaction.to).toBe(env.atomicRouter);
+  expect((await app.request("/v1/orders/submit", { method: "POST", headers, body })).status).toBe(
+    404,
+  );
+  expect(chain.broadcasts).toEqual([]);
+});
+
+test("mainnet HTTP trading accepts unrelated authenticated wallets without registration and preserves ownership checks", async () => {
+  const { service, chain, store } = await setup({ ...env, chainId: 4663 });
+  const app = createApp(service);
+  const post = (path: string, body: unknown, token?: string) =>
+    app.request(path, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(wireJson(body)),
+    });
+  // Neither wallet appears in service configuration or has an administrative role.
+  for (const address of [
+    "0x3000000000000000000000000000000000000003",
+    "0x4000000000000000000000000000000000000004",
+  ]) {
+    const challengeResponse = await post("/v1/auth/challenge", { address });
+    expect(challengeResponse.status).toBe(200);
+    const challenge = await challengeResponse.json();
+    expect(challenge.message).toContain("Chain ID: 4663");
+    const authResponse = await post("/v1/auth/verify", {
+      address,
+      challengeId: challenge.challengeId,
+      signature: "0x12",
+    });
+    expect(authResponse.status).toBe(200);
+    const { token } = await authResponse.json();
+    for (const tif of [TimeInForce.Gtc, TimeInForce.Ioc]) {
+      for (const side of [Side.Buy, Side.Sell]) {
+        const order = { ...wire, maker: address, recipient: address, tif, side };
+        const prepared = await post("/v1/orders/prepare", { order }, token);
+        expect(prepared.status).toBe(200);
+        const quote = await prepared.json();
+        const input = { order, plan: quote.plan, signature: "0x12" };
+        const transaction = await post("/v1/orders/transaction", input, token);
+        expect(transaction.status).toBe(200);
+        expect((await transaction.json()).transaction).toMatchObject({
+          from: address,
+          to: env.atomicRouter,
+          chainId: 4663,
+        });
+        for (const path of ["/v1/orders/prepare", "/v1/orders/transaction"]) {
+          expect((await post(path, input)).status).toBe(401);
+          expect(
+            (await post(path, { ...input, order: { ...order, maker: other } }, token)).status,
+          ).toBe(403);
+        }
+      }
+    }
+  }
+  expect(chain.simulated).toBe(8);
+  expect(chain.broadcasts).toEqual([]);
+  expect(await store.pendingOperations()).toEqual([]);
 });
 
 test("user-signed cancellation and position actions share the PostgreSQL outbox without a relayer allocation", async () => {
@@ -556,7 +710,8 @@ test("user-signed cancellation and position actions share the PostgreSQL outbox 
       )
     ).operation.state,
   ).toBe("broadcast");
-  expect(chain.prepared).toEqual([]);
+  // Retrying a pending cancellation rebroadcasts the same signed bytes, not a new nonce.
+  expect(new Set(chain.broadcasts).size).toBe(3);
   for (const body of [
     { ...merge, amount: "0" },
     { ...merge, recipient: "bad" },

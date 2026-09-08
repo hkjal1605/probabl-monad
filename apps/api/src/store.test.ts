@@ -24,7 +24,7 @@ describe("gateway durable state", () => {
     expect(await store.sessionAddress(tokenHash, 2_001n)).toBeNull();
   });
 
-  test("atomically deduplicates operation keys and allocates nonces", async () => {
+  test("atomically deduplicates operation keys without allocating wallet nonces", async () => {
     const store = createGatewayQueries((await testDatabase()).database);
     stores.push(store);
     const address = getAddress("0x1000000000000000000000000000000000000001");
@@ -45,9 +45,6 @@ describe("gateway durable state", () => {
     };
     expect((await store.beginOperation(input)).created).toBeTrue();
     expect((await store.beginOperation({ ...input, operationId: "another" })).created).toBeFalse();
-    expect(await store.allocateNonce(address, 4n)).toBe(4n);
-    expect(await store.allocateNonce(address, 4n)).toBe(5n);
-    expect(await store.allocateNonce(address, 9n)).toBe(9n);
   });
 
   test("preparation persists nonce, attempt, and operation atomically", async () => {
@@ -69,8 +66,6 @@ describe("gateway durable state", () => {
       state: "accepted",
       transactionHash: null,
     });
-    expect(await store.peekNonce(address, 7n)).toBe(7n);
-    expect(await store.peekNonce(address, 7n)).toBe(7n);
     const attempt = {
       attempt: 0,
       createdAtMs: 1n,
@@ -80,26 +75,12 @@ describe("gateway durable state", () => {
       replaces: null,
       transactionHash: hash,
     };
-    await expect(
-      (async () =>
-        await store.persistPreparedAttempt(
-          { ...attempt, nonce: 8n },
-          { address, pendingNonce: 7n },
-        ))(),
-    ).rejects.toThrow("ownership");
-    expect(await store.peekNonce(address, 7n)).toBe(7n);
     expect(await store.listAttempts("atomic")).toHaveLength(0);
-    await store.persistPreparedAttempt(attempt, { address, pendingNonce: 7n });
-    expect(await store.peekNonce(address, 7n)).toBe(8n);
+    await store.persistPreparedAttempt(attempt);
     expect((await store.getOperation("atomic"))?.state).toBe("prepared");
     expect((await store.getOperation("atomic"))?.transactionHash).toBe(hash);
     await expect(
-      (async () =>
-        await store.persistPreparedAttempt(
-          { ...attempt, nonce: 8n },
-          { address, pendingNonce: 7n },
-        ))(),
+      (async () => await store.persistPreparedAttempt({ ...attempt, nonce: 8n }))(),
     ).rejects.toThrow();
-    expect(await store.peekNonce(address, 7n)).toBe(8n);
   });
 });

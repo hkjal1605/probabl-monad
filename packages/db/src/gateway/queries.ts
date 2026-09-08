@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { canonicalParse, canonicalStringify } from "@conditional-stocks/orderbook";
 import { and, asc, desc, eq, gt, gte, inArray, isNull, lt, notInArray } from "drizzle-orm";
 import type { Address, Hex } from "viem";
-import { type ApplicationDatabase, boundedLimit, nonceQueries } from "../connection.ts";
+import { type ApplicationDatabase, boundedLimit } from "../connection.ts";
 import {
   gatewayAttempts as attempts,
   authChallenges,
@@ -35,7 +35,6 @@ export class OperationLeaseLost extends Error {
 
 export function createGatewayQueries(database: ApplicationDatabase) {
   const db = () => database.session;
-  const { allocateNonce, peekNonce } = nonceQueries(database);
   const lock = <T>(id: string, work: () => Promise<T>) =>
     database.locked(`gateway:operation:${id}`, work);
   const ownership = new AsyncLocalStorage<{ id: string; token: bigint; ttlMs: bigint }>();
@@ -296,14 +295,9 @@ export function createGatewayQueries(database: ApplicationDatabase) {
         .orderBy(asc(attempts.attempt))
     ).map((row) => canonicalParse<TransactionAttempt>(row.payload));
   }
-  async function persistPreparedAttempt(
-    attempt: TransactionAttempt,
-    relayer?: { address: Address; pendingNonce: bigint },
-  ) {
+  async function persistPreparedAttempt(attempt: TransactionAttempt) {
     await lock(attempt.operationId, async () => {
       await assertOwnership(attempt.operationId);
-      if (relayer && (await allocateNonce(relayer.address, relayer.pendingNonce)) !== attempt.nonce)
-        throw new Error("relayer nonce ownership changed during preparation");
       await addAttempt(attempt);
       await updateOperation(attempt.operationId, {
         state: "prepared",
@@ -347,8 +341,6 @@ export function createGatewayQueries(database: ApplicationDatabase) {
     updateOperation,
     addAttempt,
     listAttempts,
-    allocateNonce,
-    peekNonce,
     persistPreparedAttempt,
     pendingOperations,
     pendingOperationsPage,

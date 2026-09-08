@@ -13,7 +13,9 @@ export const metadata: Metadata = {
   applicationName: "probabl",
   description:
     "Trade conditional stock values across clear YES and NO event outcomes with onchain settlement.",
-  metadataBase: new URL("https://conditional.exchange"),
+  ...(process.env.NEXT_PUBLIC_APP_URL
+    ? { metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL) }
+    : {}),
   openGraph: {
     siteName: "probabl",
     images: [

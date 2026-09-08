@@ -1,5 +1,6 @@
 "use client";
 
+import { parseTokenAmount } from "@conditional-stocks/domain";
 import { Button } from "@conditional-stocks/ui-kit/button";
 import {
   Dialog,
@@ -17,9 +18,17 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useDemo } from "@/components/providers/DemoProvider";
 import { useWallet } from "@/components/providers/WalletProvider";
-import type { PositionView } from "@/lib/api/types";
+import { protocolConfig } from "@/config/protocol";
+import type { MarketView, PositionView } from "@/lib/api/types";
+import { positionAction, verifyPositionResponse } from "@/lib/trading/positions";
 
-export function PositionActions({ position }: { position: PositionView }) {
+export function PositionActions({
+  position,
+  market,
+}: {
+  position: PositionView;
+  market: MarketView;
+}) {
   const wallet = useWallet();
   const demo = useDemo();
   const [kind, setKind] = useState<"merge" | "redeem">(position.redeemable ? "redeem" : "merge");
@@ -31,6 +40,10 @@ export function PositionActions({ position }: { position: PositionView }) {
     if (!wallet.account) return;
     setBusy(true);
     try {
+      const rawAmount = parseTokenAmount(
+        amount.trim(),
+        collateral === "base" ? position.baseTokenDecimals : position.quoteTokenDecimals,
+      ).toString();
       if (demo) {
         if (!demo.state.approvals["claims-router"]) {
           demo.dispatch({ type: "approve", key: "claims-router" });
@@ -39,19 +52,40 @@ export function PositionActions({ position }: { position: PositionView }) {
         }
         demo.dispatch(
           kind === "merge"
-            ? { type: "merge", marketId: position.marketId, amount, collateral }
-            : { type: "redeem", marketId: position.marketId, amount, collateral, branch },
+            ? { type: "merge", marketId: position.marketId, amount: rawAmount, collateral }
+            : {
+                type: "redeem",
+                marketId: position.marketId,
+                amount: rawAmount,
+                collateral,
+                branch,
+              },
         );
         toast.success(`Demo ${kind} complete. Wallet and claims updated.`);
         setAmount("");
         return;
       }
       const token = wallet.sessionToken ?? (await wallet.authenticate());
+      const expected = positionAction({
+        kind,
+        amount: BigInt(rawAmount),
+        branch,
+        account: wallet.account,
+        collateralToken: collateral === "base" ? market.baseToken : market.quoteToken,
+        conditionId: position.conditionId,
+        config: protocolConfig,
+      });
+      if (wallet.chainId !== protocolConfig.chainId) await wallet.ensureNetwork();
       const body =
         kind === "merge"
-          ? { amount, collateral, marketId: position.marketId, recipient: wallet.account }
+          ? {
+              amount: rawAmount,
+              collateral,
+              marketId: position.marketId,
+              recipient: wallet.account,
+            }
           : {
-              amounts: [amount],
+              amounts: [rawAmount],
               collateral,
               indexSets: [branch === "yes" ? "1" : "2"],
               marketId: position.marketId,
@@ -66,10 +100,7 @@ export function PositionActions({ position }: { position: PositionView }) {
         const error = (await response.json()) as { error?: { message?: string } };
         throw new Error(error.error?.message ?? "Could not prepare action");
       }
-      const prepared = (await response.json()) as {
-        approval: { data: string; to: string; value: string } | null;
-        transaction: { data: string; to: string; value: string };
-      };
+      const prepared = verifyPositionResponse(expected, await response.json());
       if (prepared.approval) {
         await wallet.sendTransaction(prepared.approval);
         toast.success("Claim approval submitted. Re-open this action after confirmation.");
@@ -127,14 +158,16 @@ export function PositionActions({ position }: { position: PositionView }) {
           </Tabs>
         )}
         <div>
-          <Label htmlFor="claim-amount">Raw claim amount</Label>
+          <Label htmlFor="claim-amount">
+            Amount ({collateral === "base" ? market.ticker : "USDG"} claims)
+          </Label>
           <Input
             className="mt-2 font-mono"
             id="claim-amount"
             value={amount}
             onChange={(event) => setAmount(event.target.value)}
-            inputMode="numeric"
-            placeholder="1000000000000000000"
+            inputMode="decimal"
+            placeholder="1.0"
           />
         </div>
         <p className="text-xs leading-5 text-muted-foreground">
@@ -142,7 +175,11 @@ export function PositionActions({ position }: { position: PositionView }) {
             ? "Simulation only. A winning claim returns its collateral; an invalid outcome returns 50% (rounded down); a losing claim burns for zero."
             : "Direct Conditional Tokens merge and redeem calls remain available if this app or API is offline. The app never has custody of your claims."}
         </p>
-        <Button variant="brand" onClick={run} disabled={busy || !/^[1-9][0-9]*$/.test(amount)}>
+        <Button
+          variant="brand"
+          onClick={run}
+          disabled={busy || !/^(?:[0-9]+)(?:\.[0-9]+)?$/.test(amount)}
+        >
           {busy ? (
             <LoaderCircle className="animate-spin" />
           ) : kind === "merge" ? (

@@ -1,0 +1,215 @@
+{
+  "market": {
+    "id": "0x0754ba86b48a62311e55bd5bcc126e56dc1404cbdd53172afcc71bf680569e84",
+    "baseToken": "0x322f0929c4625ed5bad873c95208d54e1c003b2d",
+    "quoteToken": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+    "baseTokenDecimals": 18,
+    "quoteTokenDecimals": 6,
+    "protocolVersion": 2,
+    "priceFormat": "raw-unit-ratio-x18",
+    "localQuestionId": "0x09d26d1b101659d7a054eb44db10bee514cacfc20eac9ee40d265bbb2c4f2925",
+    "conditionId": "0xa571f00ad9d7de703099db6d541f27259c690ac8e4e10132959b391f7843585d",
+    "polymarketConditionId": "0xa23c813d3e0bbfaf56c96a422010844b880527547e8ef9e883401365af733830",
+    "rulesHash": "0xa23c813d3e0bbfaf56c96a422010844b880527547e8ef9e883401365af733830",
+    "metadataHash": "0xa23c813d3e0bbfaf56c96a422010844b880527547e8ef9e883401365af733830",
+    "metadataUri": "ipfs://raw-ratio-fullstack-TSLA",
+    "polymarketYesIndex": "1",
+    "polymarketNoIndex": "2",
+    "stockYesPositionId": "3663345015089010570412164408067201113002494792577278374665654537641905738349",
+    "stockNoPositionId": "36281547992812764660287372436788834409649117315010794207178239644274393045773",
+    "quoteYesPositionId": "35145247474764583390447726680942706069574126010453787486370078318743979902811",
+    "quoteNoPositionId": "47564938866558319725146585235391295586491753362766579970244988334953935113815",
+    "tradingOpen": "1788867542",
+    "tradingCutoff": "1788871142",
+    "priceTickRawX18": "10000",
+    "baseStep": "1000000000000000",
+    "minNotional": "10000",
+    "maxOrderQuantity": "10000000000000000000",
+    "maxOrderNotional": "10000000000",
+    "maxWalletOpenNotional": "100000000000",
+    "maxMarketOpenNotional": "1000000000000",
+    "state": 2,
+    "stateReasonHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "createdBlock": "57660808",
+    "updatedBlock": "57660810"
+  },
+  "placements": [
+    {
+      "hash": "0x23ff506d94a35bdc63524898d4592a06967e3e3de562b31b1481d8d96b34b6d2",
+      "from": "0x47eF2D93f0943A2F9A3B3d127B63A33F1a9b3473",
+      "plan": {
+        "makers": [],
+        "quantities": [],
+        "expectedRemaining": [],
+        "deadline": "1788867615",
+        "filledQuantity": "0",
+        "remainingQuantity": "1000000000000000000",
+        "executionQuote": "0"
+      },
+      "gasUsed": "380949",
+      "blockNumber": "57660833",
+      "status": "success"
+    },
+    {
+      "hash": "0xc91060b9fb71a8af74cbd8506fdf5003206aac8e0d43d013f59ef113a82936fe",
+      "from": "0x86dfA879C7e9216282D5BBF16ebaC9759FECBFE0",
+      "plan": {
+        "makers": [
+          {
+            "maxFeeBps": 0,
+            "branch": 0,
+            "expiry": "1788871054",
+            "fundingKind": 0,
+            "limitPriceRawX18": "200000000",
+            "maker": "0x47eF2D93f0943A2F9A3B3d127B63A33F1a9b3473",
+            "marketId": "0x0754ba86b48a62311e55bd5bcc126e56dc1404cbdd53172afcc71bf680569e84",
+            "nonce": "1788867555000",
+            "quantity": "1000000000000000000",
+            "recipient": "0x47eF2D93f0943A2F9A3B3d127B63A33F1a9b3473",
+            "salt": "0xc80275bce0e411acdd19c48def28d89b6f1ce98a734e7f0a6e61744d4420a988",
+            "side": 1,
+            "tif": 0
+          }
+        ],
+        "quantities": [
+          "1000000000000000000"
+        ],
+        "expectedRemaining": [
+          "1000000000000000000"
+        ],
+        "deadline": "1788867616",
+        "filledQuantity": "1000000000000000000",
+        "remainingQuantity": "1000000000000000000",
+        "executionQuote": "200000000"
+      },
+      "gasUsed": "849842",
+      "blockNumber": "57660838",
+      "status": "success"
+    }
+  ],
+  "indexedPartialBid": {
+    "id": "0x681a73652d88eaa6e8112a3db921f65b0dc001f07ef05f8132af8db8b5b9f9ff",
+    "marketId": "0x0754ba86b48a62311e55bd5bcc126e56dc1404cbdd53172afcc71bf680569e84",
+    "maker": "0x86dfa879c7e9216282d5bbf16ebac9759fecbfe0",
+    "recipient": "0x86dfa879c7e9216282d5bbf16ebac9759fecbfe0",
+    "branch": 0,
+    "side": 0,
+    "fundingKind": 0,
+    "timeInForce": 0,
+    "quantity": "2000000000000000000",
+    "filled": "1000000000000000000",
+    "limitPriceRawX18": "210000000",
+    "maxFeeBps": 0,
+    "feesPaid": "0",
+    "expiry": "1788871054",
+    "nonce": "1788867555000",
+    "salt": "0xb482fecf09ae18a065655c15205c001f0022f85422b56a66f7c1e195c47135a6",
+    "sequence": "1",
+    "initialReserved": "420000000",
+    "reserved": "210000000",
+    "remaining": "1000000000000000000",
+    "openNotional": "210000000",
+    "status": "open",
+    "cancelReasonHash": null,
+    "openedBlock": "57660838",
+    "updatedBlock": "57660838",
+    "confirmation": "finalized"
+  },
+  "indexedCancelledBid": {
+    "id": "0x681a73652d88eaa6e8112a3db921f65b0dc001f07ef05f8132af8db8b5b9f9ff",
+    "marketId": "0x0754ba86b48a62311e55bd5bcc126e56dc1404cbdd53172afcc71bf680569e84",
+    "maker": "0x86dfa879c7e9216282d5bbf16ebac9759fecbfe0",
+    "recipient": "0x86dfa879c7e9216282d5bbf16ebac9759fecbfe0",
+    "branch": 0,
+    "side": 0,
+    "fundingKind": 0,
+    "timeInForce": 0,
+    "quantity": "2000000000000000000",
+    "filled": "1000000000000000000",
+    "limitPriceRawX18": "210000000",
+    "maxFeeBps": 0,
+    "feesPaid": "0",
+    "expiry": "1788871054",
+    "nonce": "1788867555000",
+    "salt": "0xb482fecf09ae18a065655c15205c001f0022f85422b56a66f7c1e195c47135a6",
+    "sequence": "1",
+    "initialReserved": "420000000",
+    "reserved": "0",
+    "remaining": "0",
+    "openNotional": "0",
+    "status": "cancelled",
+    "cancelReasonHash": "0x04e1a481aba740989f91d8d146a3d221545d3b37740b15ec3875b045bf8dae78",
+    "openedBlock": "57660838",
+    "updatedBlock": "57660846",
+    "confirmation": "finalized"
+  },
+  "positions": {
+    "account": "0x86dfa879c7e9216282d5bbf16ebac9759fecbfe0",
+    "positions": [
+      {
+        "baseTokenDecimals": 18,
+        "quoteTokenDecimals": 6,
+        "protocolVersion": 2,
+        "priceFormat": "raw-unit-ratio-x18",
+        "conditionId": "0xa571f00ad9d7de703099db6d541f27259c690ac8e4e10132959b391f7843585d",
+        "marketId": "0x0754ba86b48a62311e55bd5bcc126e56dc1404cbdd53172afcc71bf680569e84",
+        "quoteNo": "200000000",
+        "quoteYes": "0",
+        "redeemable": false,
+        "stockNo": "0",
+        "stockYes": "1000000000000000000"
+      },
+      {
+        "baseTokenDecimals": 18,
+        "quoteTokenDecimals": 6,
+        "protocolVersion": 2,
+        "priceFormat": "raw-unit-ratio-x18",
+        "conditionId": "0x9be614cc53c2ca8ae4846ce2b0d48be77f863b5ec9f5eed470ca9a6547d88c22",
+        "marketId": "0x8486b3a282bde3d8c4a3a1b51906b01dd9f2343f9a556847365aff4669861cf1",
+        "quoteNo": "200000000",
+        "quoteYes": "0",
+        "redeemable": false,
+        "stockNo": "0",
+        "stockYes": "1000000000000000000"
+      }
+    ]
+  },
+  "whole": {
+    "account": "0x86dfa879c7e9216282d5bbf16ebac9759fecbfe0",
+    "decimals": 6,
+    "blockNumber": "57660850",
+    "canonicalBalance": "600000000",
+    "claims": [
+      {
+        "id": "0x86dfa879c7e9216282d5bbf16ebac9759fecbfe0:0x0000000000000000000000000000000000000000:13133550574007168767521179097233330572671890121361893781258606188906778192843",
+        "account": "0x86dfa879c7e9216282d5bbf16ebac9759fecbfe0",
+        "positionId": "13133550574007168767521179097233330572671890121361893781258606188906778192843",
+        "amount": "1000000000000000000",
+        "updatedBlock": "57660820"
+      },
+      {
+        "id": "0x86dfa879c7e9216282d5bbf16ebac9759fecbfe0:0x0000000000000000000000000000000000000000:13261449937743811160650263893624054291876401332793151037662729572096040851920",
+        "account": "0x86dfa879c7e9216282d5bbf16ebac9759fecbfe0",
+        "positionId": "13261449937743811160650263893624054291876401332793151037662729572096040851920",
+        "amount": "200000000",
+        "updatedBlock": "57660820"
+      },
+      {
+        "id": "0x86dfa879c7e9216282d5bbf16ebac9759fecbfe0:0x0000000000000000000000000000000000000000:3663345015089010570412164408067201113002494792577278374665654537641905738349",
+        "account": "0x86dfa879c7e9216282d5bbf16ebac9759fecbfe0",
+        "positionId": "3663345015089010570412164408067201113002494792577278374665654537641905738349",
+        "amount": "1000000000000000000",
+        "updatedBlock": "57660838"
+      },
+      {
+        "id": "0x86dfa879c7e9216282d5bbf16ebac9759fecbfe0:0x0000000000000000000000000000000000000000:47564938866558319725146585235391295586491753362766579970244988334953935113815",
+        "account": "0x86dfa879c7e9216282d5bbf16ebac9759fecbfe0",
+        "positionId": "47564938866558319725146585235391295586491753362766579970244988334953935113815",
+        "amount": "200000000",
+        "updatedBlock": "57660838"
+      }
+    ],
+    "token": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+    "wholeTokenDelta": null
+  }
+}

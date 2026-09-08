@@ -1,5 +1,7 @@
 # Shared PostgreSQL migration — implementation record
 
+> Historical design record, superseded for trading execution on 2026-09-08 by [permissionless atomic placement](./atomic-placement.md). The matcher and settlement-worker runtime code, trading queues and nonce allocator have been removed. Do not use the old startup commands or trading endpoints below.
+
 Status: in progress. This document is not a completion or production-readiness claim.
 
 Progress snapshot (2026-09-08): all six adapters and service callers now use asynchronous

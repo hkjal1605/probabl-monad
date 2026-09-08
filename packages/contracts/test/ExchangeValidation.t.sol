@@ -3,9 +3,9 @@ pragma solidity 0.8.30;
 
 import { ConditionalExchange } from "../src/ConditionalExchange.sol";
 import { ConditionalSettlement } from "../src/ConditionalSettlement.sol";
+import { IAtomicOrderRouter } from "../src/interfaces/IAtomicOrderRouter.sol";
 import { IConditionalSettlement } from "../src/interfaces/IConditionalSettlement.sol";
 import { IConditionalTokens } from "../src/interfaces/IConditionalTokens.sol";
-import { IIOCRouter } from "../src/interfaces/IIOCRouter.sol";
 import { IProtocolAuthority } from "../src/interfaces/IProtocolAuthority.sol";
 import { ProtocolConstants } from "../src/libraries/ProtocolConstants.sol";
 import {
@@ -27,7 +27,7 @@ contract ExchangeValidationTest is ProtocolFixture {
     uint128 private constant BID = 210e18;
     uint128 private constant ASK = 200e18;
 
-    function testOnlyMatcherCanFill() public {
+    function testOnlyAtomicRouterCanCallSettlementKernel() public {
         (Order memory bid, Order memory ask,,) = _openPair(1, Branch.YES, BID, ASK);
         vm.prank(address(0xBAD));
         vm.expectRevert();
@@ -38,7 +38,7 @@ contract ExchangeValidationTest is ProtocolFixture {
         (Order memory nonCrossingBid, Order memory expensiveAsk,,) =
             _openPair(2, Branch.YES, 199e18, ASK);
         vm.expectRevert();
-        exchange.matchOrders(nonCrossingBid, expensiveAsk, QUANTITY);
+        _matchOrders(nonCrossingBid, expensiveAsk, QUANTITY);
 
         Order memory noAsk = _order(
             seller,
@@ -51,38 +51,38 @@ contract ExchangeValidationTest is ProtocolFixture {
             3,
             keccak256("NO_ASK_VALIDATION")
         );
-        exchange.openOrder(noAsk, _sign(noAsk, SELLER_KEY));
+        _openOrder(noAsk, _sign(noAsk, SELLER_KEY));
         vm.expectRevert();
-        exchange.matchOrders(nonCrossingBid, noAsk, QUANTITY);
+        _matchOrders(nonCrossingBid, noAsk, QUANTITY);
     }
 
     function testOrderTickStepExpiryAndReplayValidation() public {
         Order memory badTick = _buy(4, BID + 1, QUANTITY, keccak256("BAD_TICK"));
         bytes memory badTickSignature = _sign(badTick, BUYER_KEY);
         vm.expectRevert();
-        exchange.openOrder(badTick, badTickSignature);
+        _openOrder(badTick, badTickSignature);
 
         Order memory badStep = _buy(5, BID, QUANTITY + 1, keccak256("BAD_STEP"));
         bytes memory badStepSignature = _sign(badStep, BUYER_KEY);
         vm.expectRevert();
-        exchange.openOrder(badStep, badStepSignature);
+        _openOrder(badStep, badStepSignature);
 
         Order memory expired = _buy(6, BID, QUANTITY, keccak256("EXPIRED_AT_OPEN"));
         expired.expiry = uint64(block.timestamp);
         bytes memory expiredSignature = _sign(expired, BUYER_KEY);
         vm.expectRevert();
-        exchange.openOrder(expired, expiredSignature);
+        _openOrder(expired, expiredSignature);
 
         Order memory valid = _buy(7, BID, QUANTITY, keccak256("REPLAY"));
         bytes memory validSignature = _sign(valid, BUYER_KEY);
-        exchange.openOrder(valid, validSignature);
+        _openOrder(valid, validSignature);
         vm.expectRevert();
-        exchange.openOrder(valid, validSignature);
+        _openOrder(valid, validSignature);
     }
 
     function testOnlyMakerCanCancel() public {
         Order memory bid = _buy(8, BID, QUANTITY, keccak256("MAKER_CANCEL"));
-        bytes32 orderHash = exchange.openOrder(bid, _sign(bid, BUYER_KEY));
+        bytes32 orderHash = _openOrder(bid, _sign(bid, BUYER_KEY));
         vm.prank(seller);
         vm.expectRevert();
         exchange.cancelOrder(orderHash);
@@ -99,11 +99,11 @@ contract ExchangeValidationTest is ProtocolFixture {
         exchange.setTradingPaused(true, keccak256("VALIDATION_PAUSE"));
 
         vm.expectRevert();
-        exchange.matchOrders(bid, ask, QUANTITY);
+        _matchOrders(bid, ask, QUANTITY);
         Order memory newBid = _buy(10, BID, QUANTITY, keccak256("PAUSED_OPEN"));
         bytes memory signature = _sign(newBid, BUYER_KEY);
         vm.expectRevert();
-        exchange.openOrder(newBid, signature);
+        _openOrder(newBid, signature);
 
         vm.prank(buyer);
         exchange.cancelOrder(bidHash);
@@ -127,7 +127,7 @@ contract ExchangeValidationTest is ProtocolFixture {
         Order[] memory makers = new Order[](33);
         uint128[] memory quantities = new uint128[](33);
         vm.expectRevert();
-        iocRouter.executeIOC(taker, signature, makers, quantities);
+        _executeIOC(taker, signature, makers, quantities);
         assertEq(
             uint256(exchange.getOrderState(exchange.hashOrder(taker)).status),
             uint256(OrderStatus.NONE),
@@ -147,7 +147,7 @@ contract ExchangeValidationTest is ProtocolFixture {
             12,
             keccak256("LIVE_IOC_MAKER")
         );
-        bytes32 makerHash = exchange.openOrder(maker, _sign(maker, SELLER_KEY));
+        bytes32 makerHash = _openOrder(maker, _sign(maker, SELLER_KEY));
         Order memory stale = maker;
         stale.nonce = 13;
         stale.salt = keccak256("STALE_IOC_MAKER");
@@ -171,7 +171,7 @@ contract ExchangeValidationTest is ProtocolFixture {
         quantities[1] = QUANTITY;
 
         vm.expectRevert();
-        iocRouter.executeIOC(taker, signature, makers, quantities);
+        _executeIOC(taker, signature, makers, quantities);
 
         assertEq(
             uint256(exchange.getOrderState(makerHash).status),
@@ -219,7 +219,7 @@ contract ExchangeValidationTest is ProtocolFixture {
         );
         bytes memory signature = _sign(ioc, BUYER_KEY);
         vm.expectRevert();
-        exchange.openIOCOrder(ioc, signature);
+        exchange.openOrder(ioc, signature);
     }
 
     function testOneTimeComponentConfigurationCannotChange() public {
@@ -228,7 +228,7 @@ contract ExchangeValidationTest is ProtocolFixture {
         vm.expectRevert();
         exchange.configureSettlement(IConditionalSettlement(address(settlement)));
         vm.expectRevert();
-        exchange.configureIocRouter(IIOCRouter(address(iocRouter)));
+        exchange.configureAtomicRouter(IAtomicOrderRouter(address(atomicRouter)));
     }
 
     function testAssetContractsRejectMismatchedConditionalTokens() public {
@@ -249,33 +249,33 @@ contract ExchangeValidationTest is ProtocolFixture {
             _marketBuy(cappedMarketId, buyer, 1, uint128(1e18), uint128(1e18), "TOO_SMALL");
         bytes memory tooSmallSignature = _sign(tooSmall, BUYER_KEY);
         vm.expectRevert();
-        exchange.openOrder(tooSmall, tooSmallSignature);
+        _openOrder(tooSmall, tooSmallSignature);
 
         Order memory tooLarge =
             _marketBuy(cappedMarketId, buyer, 2, uint128(1e18), uint128(201e18), "TOO_LARGE");
         bytes memory tooLargeSignature = _sign(tooLarge, BUYER_KEY);
         vm.expectRevert();
-        exchange.openOrder(tooLarge, tooLargeSignature);
+        _openOrder(tooLarge, tooLargeSignature);
 
         Order memory first =
             _marketBuy(cappedMarketId, buyer, 3, QUANTITY, uint128(200e18), "CAP_FIRST");
-        exchange.openOrder(first, _sign(first, BUYER_KEY));
+        _openOrder(first, _sign(first, BUYER_KEY));
 
         Order memory walletOverflow =
             _marketBuy(cappedMarketId, buyer, 4, QUANTITY, uint128(200e18), "WALLET_CAP");
         bytes memory walletOverflowSignature = _sign(walletOverflow, BUYER_KEY);
         vm.expectRevert();
-        exchange.openOrder(walletOverflow, walletOverflowSignature);
+        _openOrder(walletOverflow, walletOverflowSignature);
 
         Order memory second =
             _marketBuy(cappedMarketId, secondBuyer, 3, QUANTITY, uint128(200e18), "CAP_SECOND");
-        exchange.openOrder(second, _sign(second, SECOND_BUYER_KEY));
+        _openOrder(second, _sign(second, SECOND_BUYER_KEY));
 
         Order memory marketOverflow =
             _marketBuy(cappedMarketId, seller, 3, QUANTITY, uint128(200e18), "MARKET_CAP");
         bytes memory marketOverflowSignature = _sign(marketOverflow, SELLER_KEY);
         vm.expectRevert();
-        exchange.openOrder(marketOverflow, marketOverflowSignature);
+        _openOrder(marketOverflow, marketOverflowSignature);
     }
 
     function testFalseReturnTokenCannotOpenAnOrder() public {
@@ -291,7 +291,7 @@ contract ExchangeValidationTest is ProtocolFixture {
         Order memory ask = _marketSell(tokenMarketId, seller, 20, "FALSE_RETURN");
         bytes memory signature = _sign(ask, SELLER_KEY);
         vm.expectRevert();
-        exchange.openOrder(ask, signature);
+        _openOrder(ask, signature);
         assertEq(token.balanceOf(address(exchange)), 0, "false-return token entered escrow");
     }
 
@@ -309,10 +309,10 @@ contract ExchangeValidationTest is ProtocolFixture {
         Order memory bid =
             _marketBuy(tokenMarketId, buyer, 21, QUANTITY, uint128(200e18), "NO_RETURN_BID");
         Order memory ask = _marketSell(tokenMarketId, seller, 21, "NO_RETURN_ASK");
-        bytes32 bidHash = exchange.openOrder(bid, _sign(bid, BUYER_KEY));
-        bytes32 askHash = exchange.openOrder(ask, _sign(ask, SELLER_KEY));
+        bytes32 bidHash = _openOrder(bid, _sign(bid, BUYER_KEY));
+        bytes32 askHash = _openOrder(ask, _sign(ask, SELLER_KEY));
         vm.expectRevert();
-        exchange.matchOrders(bid, ask, QUANTITY);
+        _matchOrders(bid, ask, QUANTITY);
 
         assertEq(
             uint256(exchange.getOrderState(bidHash).status),
@@ -363,8 +363,8 @@ contract ExchangeValidationTest is ProtocolFixture {
             nonce,
             keccak256(abi.encode("VALIDATION_ASK", nonce))
         );
-        bidHash = exchange.openOrder(bid, _sign(bid, BUYER_KEY));
-        askHash = exchange.openOrder(ask, _sign(ask, SELLER_KEY));
+        bidHash = _openOrder(bid, _sign(bid, BUYER_KEY));
+        askHash = _openOrder(ask, _sign(ask, SELLER_KEY));
     }
 
     function _buy(

@@ -65,6 +65,8 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/contract-audit-python"
           "$RUNNER_TEMP/contract-audit-python/bin/pip" install --disable-pip-version-check z3-solver==5.1.0.0
           "$RUNNER_TEMP/contract-audit-python/bin/python" audit/2026-09-06/remediation/verification/prove-accounting.py
+          "$RUNNER_TEMP/contract-audit-python/bin/python" audit/2026-09-08/atomic-placement/prove-atomic-bounds.py
+          "$RUNNER_TEMP/contract-audit-python/bin/python" audit/2026-09-08/atomic-placement/prove-payout-accounting.py
 
       - name: Audit JavaScript dependencies
         run: bun run audit:deps

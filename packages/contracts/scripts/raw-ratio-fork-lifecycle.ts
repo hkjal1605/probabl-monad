@@ -117,7 +117,8 @@ export async function runRawRatioForkLifecycle(ctx: Context): Promise<void> {
           "OrderValidator",
           "ConditionalSettlement",
           "ProtocolFeeVault",
-          "IOCRouter",
+          "PayoutVault",
+          "AtomicOrderRouter",
           "OrderRecoveryRouter",
           "PositionRouter",
         ].map(async (name) => [name, await loadArtifact(name)] as const),
@@ -148,12 +149,48 @@ export async function runRawRatioForkLifecycle(ctx: Context): Promise<void> {
       exchange,
       feeVault,
     ]);
-    const ioc = await deploy("IOCRouter", [exchange, ctx.authority]);
+    const atomicRouter = await deploy("AtomicOrderRouter", [exchange, ctx.authority]);
     const recovery = await deploy("OrderRecoveryRouter", [exchange]);
     await write(registry, abi("MarketRegistry"), "setResolutionController", [controller]);
     await write(exchange, abi("ConditionalExchange"), "configureOrderValidator", [validator]);
     await write(exchange, abi("ConditionalExchange"), "configureSettlement", [settlement]);
-    await write(exchange, abi("ConditionalExchange"), "configureIocRouter", [ioc]);
+    const payoutVault = (await local.readContract({
+      address: exchange,
+      abi: abi("ConditionalExchange"),
+      functionName: "payoutVault",
+    })) as Address;
+    await write(exchange, abi("ConditionalExchange"), "configureAtomicRouter", [atomicRouter]);
+    const place = async (order: Order, makers: Order[] = [], quantities: bigint[] = []) => {
+      const signer = order.maker === buyer.address ? buyer : seller;
+      const remaining = await Promise.all(
+        makers.map(async (maker) => {
+          const state = (await read(exchange, abi("ConditionalExchange"), "getOrderState", [
+            hashOrder(maker, { chainId: 4663n, verifyingContract: exchange }),
+          ])) as { remaining: bigint };
+          return state.remaining;
+        }),
+      );
+      const deadline = (await local.getBlock()).timestamp + 60n;
+      return write(
+        atomicRouter,
+        abi("AtomicOrderRouter"),
+        "placeAndMatch",
+        [
+          order,
+          await signer.signTypedData(
+            orderTypedData(order, {
+              chainId: 4663n,
+              verifyingContract: exchange,
+            }),
+          ),
+          makers,
+          quantities,
+          remaining,
+          deadline < order.expiry ? deadline : order.expiry,
+        ],
+        signer,
+      );
+    };
     assert(
       (await read(registry, abi("MarketRegistry"), "PROTOCOL_VERSION")) === 2,
       "Wrong protocol version",
@@ -165,7 +202,7 @@ export async function runRawRatioForkLifecycle(ctx: Context): Promise<void> {
       validator,
       settlement,
       feeVault,
-      ioc,
+      atomicRouter,
       recovery,
       ctf: ctx.ctf,
       authority: ctx.authority,
@@ -197,7 +234,8 @@ export async function runRawRatioForkLifecycle(ctx: Context): Promise<void> {
         controller,
         exchange,
         settlement,
-        ioc,
+        atomicRouter,
+        payoutVault,
         recovery,
         abi,
         write,
@@ -212,11 +250,9 @@ export async function runRawRatioForkLifecycle(ctx: Context): Promise<void> {
       marketRegistry: registry,
       conditionalTokens: ctx.ctf,
       positionRouter: ctx.router,
-      iocRouter: ioc,
-      relayerPrivateKey: null,
+      atomicRouter: atomicRouter,
+      payoutVault,
       indexerUrl: "http://127.0.0.1:1",
-      settlementWorkerUrl: "http://127.0.0.1:1",
-      settlementWorkerToken: "local-only",
       authDomain: "localhost",
       authOrigin: "http://localhost",
     });
@@ -348,13 +384,11 @@ export async function runRawRatioForkLifecycle(ctx: Context): Promise<void> {
                   )),
                   "Legacy signature accepted",
                 );
-                await write(exchange, abi("ConditionalExchange"), "openOrder", [
-                  ask,
-                  await seller.signTypedData(orderTypedData(ask, domain)),
-                ]);
-                await write(exchange, abi("ConditionalExchange"), "openOrder", [bid, bidSignature]);
                 const part = 333n * 10n ** 15n;
-                await write(exchange, abi("ConditionalExchange"), "matchOrders", [bid, ask, part]);
+                // A first small ask is consumed by the incoming bid; a later ask consumes
+                // the bid's resting remainder. Every fill belongs to a new owner's placement.
+                await place({ ...ask, quantity: part });
+                await place(bid, [{ ...ask, quantity: part }], [part]);
                 const state = (await read(exchange, abi("ConditionalExchange"), "getOrderState", [
                   hashOrder(bid, domain),
                 ])) as { remaining: bigint; reserved: bigint };
@@ -363,11 +397,12 @@ export async function runRawRatioForkLifecycle(ctx: Context): Promise<void> {
                     state.reserved === quoteForReservation(quantity - part, bid.limitPriceRawX18),
                   "Partial reservation mismatch",
                 );
-                await write(exchange, abi("ConditionalExchange"), "matchOrders", [
-                  bid,
-                  ask,
-                  quantity - part,
-                ]);
+                const secondAsk = {
+                  ...ask,
+                  quantity: quantity - part,
+                  salt: keccak256(toHex(`${label}-second-ask`)),
+                };
+                await place(secondAsk, [bid], [quantity - part]);
                 const activeStock =
                   branch === 0 ? market.stockYesPositionId : market.stockNoPositionId;
                 const activeQuote =
@@ -379,7 +414,8 @@ export async function runRawRatioForkLifecycle(ctx: Context): Promise<void> {
                 );
                 assert(
                   (await read(ctx.ctf, ctfAbi, "balanceOf", [seller.address, activeQuote])) ===
-                    unitPrice,
+                    quoteForExecution(part, unitPrice) +
+                      quoteForExecution(quantity - part, bid.limitPriceRawX18),
                   "Seller raw USDG claim mismatch",
                 );
                 assert(quoteForExecution(quantity, unitPrice) === unitPrice, "Price ratio drift");
@@ -390,24 +426,16 @@ export async function runRawRatioForkLifecycle(ctx: Context): Promise<void> {
                   "Cap reservation leaked",
                 );
                 if (branch === 0 && buyFunding === 0 && sellFunding === 0 && outcome === "yes") {
-                  const extraAsk = { ...ask, salt: keccak256(toHex("ioc-ask")) };
+                  const extraAsk = { ...ask, salt: keccak256(toHex("atomicRouter-ask")) };
                   const extraBid = {
                     ...bid,
                     quantity: 2n * quantity,
                     tif: 1 as const,
-                    salt: keccak256(toHex("ioc-bid")),
+                    salt: keccak256(toHex("atomicRouter-bid")),
                   };
                   const cashBefore = await balance(ctx.quote, buyer.address);
-                  await write(exchange, abi("ConditionalExchange"), "openOrder", [
-                    extraAsk,
-                    await seller.signTypedData(orderTypedData(extraAsk, domain)),
-                  ]);
-                  await write(ioc, abi("IOCRouter"), "executeIOC", [
-                    extraBid,
-                    await buyer.signTypedData(orderTypedData(extraBid, domain)),
-                    [extraAsk],
-                    [quantity / 2n],
-                  ]);
+                  await place(extraAsk);
+                  await place(extraBid, [extraAsk], [quantity / 2n]);
                   assert(
                     (await balance(ctx.quote, buyer.address)) === cashBefore - unitPrice / 2n,
                     "IOC improvement/remainder refund mismatch",
@@ -433,10 +461,7 @@ export async function runRawRatioForkLifecycle(ctx: Context): Promise<void> {
                     salt: keccak256(toHex("expiry")),
                   };
                   const before = await balance(ctx.quote, buyer.address);
-                  await write(exchange, abi("ConditionalExchange"), "openOrder", [
-                    expired,
-                    await buyer.signTypedData(orderTypedData(expired, domain)),
-                  ]);
+                  await place(expired);
                   await rpc("evm_increaseTime", [11]);
                   await rpc("evm_mine");
                   await write(

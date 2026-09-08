@@ -6,16 +6,10 @@ const services = [
     path: "/indexer/health",
   },
   {
-    name: "Settlement worker",
-    url: process.env.SETTLEMENT_WORKER_URL ?? "http://127.0.0.1:42071",
-    path: "/ready",
-  },
-  {
     name: "Polymarket ingestor",
     url: process.env.POLYMARKET_INGESTOR_URL ?? "http://127.0.0.1:42073",
     path: "/health",
   },
-  { name: "Matcher", url: process.env.MATCHER_HEALTH_URL ?? "", path: "/health" },
   {
     name: "Reconciler",
     url: process.env.RECONCILIATION_URL ?? "http://127.0.0.1:42070",

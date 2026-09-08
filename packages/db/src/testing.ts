@@ -1,9 +1,7 @@
 /** Actual isolated PostgreSQL databases for tests. Never accept a remote/production endpoint. */
 import { afterAll, afterEach } from "bun:test";
-import { eq } from "drizzle-orm";
 import { Pool } from "pg";
 import { type ApplicationDatabase, createDatabase } from "./connection.ts";
-import { matcherLeases } from "./schema.ts";
 
 const cleanups: Array<() => Promise<void>> = [];
 const fileCleanups: Array<() => Promise<void>> = [];
@@ -14,7 +12,7 @@ afterAll(async () => {
   for (const cleanup of fileCleanups.splice(0).reverse()) await cleanup();
 });
 
-export async function testDatabase(options: { cleanup?: "test" | "file" } = {}) {
+export async function testDatabase(options: { cleanup?: "test" | "file"; migrate?: boolean } = {}) {
   const value = process.env.TEST_DATABASE_URL;
   if (!value)
     throw new Error("TEST_DATABASE_URL must point to an isolated local PostgreSQL test server");
@@ -59,7 +57,7 @@ export async function testDatabase(options: { cleanup?: "test" | "file" } = {}) 
   (options.cleanup === "file" ? fileCleanups : cleanups).push(close);
   const database = connect();
   try {
-    await database.migrate();
+    if (options.migrate !== false) await database.migrate();
   } catch (error) {
     await close();
     throw error;
@@ -71,11 +69,5 @@ export async function testDatabase(options: { cleanup?: "test" | "file" } = {}) 
     connect,
     close,
     registerClose: (handler: () => Promise<void>) => externalClosers.push(handler),
-    async expireMatcherLease(bookKey: string) {
-      await database.session
-        .update(matcherLeases)
-        .set({ expiresAtMs: 0n })
-        .where(eq(matcherLeases.bookKey, bookKey));
-    },
   };
 }

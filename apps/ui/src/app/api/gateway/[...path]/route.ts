@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { protocolConfig } from "@/config/protocol";
+import { privateResponseHeaders, upstreamUrl } from "@/lib/api/upstream";
 import { MODE_COOKIE } from "@/lib/demo/mode";
 import { logger } from "@/lib/logger";
 
@@ -7,20 +7,23 @@ async function forward(request: NextRequest, { params }: { params: Promise<{ pat
   if (request.cookies.get(MODE_COOKIE)?.value === "demo")
     return Response.json(
       { error: { message: "Live gateway is disabled in demo mode." } },
-      { status: 409 },
+      { status: 409, headers: privateResponseHeaders },
     );
   const { path } = await params;
   if (path.some((part) => !/^[A-Za-z0-9_-]+$/.test(part)))
-    return Response.json({ error: "invalid-route" }, { status: 400 });
-  const target = new URL(`/v1/${path.join("/")}`, protocolConfig.apiUrl);
-  target.search = request.nextUrl.search;
+    return Response.json(
+      { error: "invalid-route" },
+      { status: 400, headers: privateResponseHeaders },
+    );
   const headers = new Headers();
   for (const name of ["authorization", "content-type", "idempotency-key"]) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }
   try {
-    const init: RequestInit = {
+    const target = new URL(`/v1/${path.join("/")}`, upstreamUrl("api"));
+    target.search = request.nextUrl.search;
+    const init: RequestInit & { duplex?: "half" } = {
       cache: "no-store",
       headers,
       method: request.method,
@@ -28,12 +31,16 @@ async function forward(request: NextRequest, { params }: { params: Promise<{ pat
       signal: AbortSignal.timeout(30_000),
     };
     if (request.method !== "GET" && request.method !== "HEAD") {
-      init.body = await request.arrayBuffer();
+      init.body = request.body;
+      init.duplex = "half";
     }
     const response = await fetch(target, init);
     const responseHeaders = new Headers({
+      ...privateResponseHeaders,
       "content-type": response.headers.get("content-type") ?? "application/json",
     });
+    const retryAfter = response.headers.get("retry-after");
+    if (retryAfter) responseHeaders.set("retry-after", retryAfter);
     const requestId = response.headers.get("x-request-id");
     if (requestId && /^[a-f0-9-]{36}$/i.test(requestId))
       responseHeaders.set("x-request-id", requestId);
@@ -57,7 +64,7 @@ async function forward(request: NextRequest, { params }: { params: Promise<{ pat
           retryable: true,
         },
       },
-      { status: 503 },
+      { status: 503, headers: privateResponseHeaders },
     );
   }
 }

@@ -6,7 +6,6 @@ import {
   type MarketUnits,
 } from "@conditional-stocks/domain";
 
-import { protocolConfig } from "@/config/protocol";
 import { isDemoMode } from "@/lib/demo/server";
 import type {
   BranchBook,
@@ -17,11 +16,19 @@ import type {
   ResolutionView,
   TradeView,
 } from "./types";
+import { upstreamUrl } from "./upstream";
 
 const json = async <T>(url: string): Promise<T> => {
   if (await isDemoMode()) throw new Error("Live server reads are disabled in demo mode.");
-  const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(3_500) });
-  if (!response.ok) throw new Error(`${new URL(url).pathname} returned ${response.status}`);
+  const response = await fetch(url, {
+    cache: "no-store",
+    redirect: "manual",
+    signal: AbortSignal.timeout(3_500),
+  });
+  if (!response.ok) {
+    await response.body?.cancel();
+    throw new Error(`${new URL(url).pathname} returned ${response.status}`);
+  }
   return response.json() as Promise<T>;
 };
 
@@ -87,18 +94,18 @@ function aggregateBook(
 
 async function liveMarkets(): Promise<MarketView[]> {
   const marketResponse = await json<{ markets: Record<string, unknown>[] }>(
-    `${protocolConfig.indexerUrl}/markets`,
+    `${upstreamUrl("indexer")}/markets`,
   );
   return Promise.all(
     marketResponse.markets.map(async (market): Promise<MarketView> => {
       assertMarketUnits(market);
       const id = text(market.id);
       const [attached, book] = await Promise.all([
-        json<Record<string, unknown>>(`${protocolConfig.apiUrl}/v1/markets/${id}/polymarket`).catch(
+        json<Record<string, unknown>>(`${upstreamUrl("api")}/v1/markets/${id}/polymarket`).catch(
           () => ({}),
         ),
         json<{ orders: Record<string, unknown>[] }>(
-          `${protocolConfig.indexerUrl}/orderbook/${id}`,
+          `${upstreamUrl("indexer")}/orderbook/${id}`,
         ).catch(() => ({ orders: [] })),
       ]);
       const attachedRecord = record(attached);
@@ -172,9 +179,7 @@ export const serverApi = {
   positions: async (account: string): Promise<PositionView[]> => {
     try {
       return (
-        await json<{ positions: PositionView[] }>(
-          `${protocolConfig.indexerUrl}/positions/${account}`,
-        )
+        await json<{ positions: PositionView[] }>(`${upstreamUrl("indexer")}/positions/${account}`)
       ).positions;
     } catch {
       return [];
@@ -183,9 +188,7 @@ export const serverApi = {
   orders: async (account: string): Promise<IndexedOrder[]> => {
     try {
       return (
-        await json<{ orders: IndexedOrder[] }>(
-          `${protocolConfig.indexerUrl}/orders?maker=${account}`,
-        )
+        await json<{ orders: IndexedOrder[] }>(`${upstreamUrl("indexer")}/orders?maker=${account}`)
       ).orders;
     } catch {
       return [];
@@ -195,7 +198,7 @@ export const serverApi = {
     try {
       return (
         await json<{ trades: TradeView[] }>(
-          `${protocolConfig.indexerUrl}/trades?limit=100${marketId ? `&marketId=${marketId}` : ""}`,
+          `${upstreamUrl("indexer")}/trades?limit=100${marketId ? `&marketId=${marketId}` : ""}`,
         )
       ).trades;
     } catch {
@@ -204,7 +207,7 @@ export const serverApi = {
   },
   resolution: async (marketId: string): Promise<ResolutionView | null> => {
     try {
-      return await json<ResolutionView>(`${protocolConfig.indexerUrl}/resolutions/${marketId}`);
+      return await json<ResolutionView>(`${upstreamUrl("indexer")}/resolutions/${marketId}`);
     } catch {
       return null;
     }

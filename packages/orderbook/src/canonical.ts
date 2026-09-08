@@ -1,7 +1,6 @@
 import { type Hex, keccak256, toBytes } from "viem";
 
 import { CanonicalInputError } from "./errors.ts";
-import type { ChainCursor } from "./types.ts";
 
 const BIGINT_TAG = "$bigint";
 
@@ -59,33 +58,3 @@ export const canonicalParse = <T>(value: string): T =>
   }) as T;
 
 export const hashCanonical = (value: unknown): Hex => keccak256(toBytes(canonicalStringify(value)));
-
-export const compareCursors = (left: ChainCursor, right: ChainCursor): number => {
-  if (left.chainId !== right.chainId) {
-    throw new CanonicalInputError("cannot compare cursors from different chains");
-  }
-  if (left.blockNumber !== right.blockNumber) return left.blockNumber < right.blockNumber ? -1 : 1;
-  if (left.transactionIndex !== right.transactionIndex) {
-    return left.transactionIndex < right.transactionIndex ? -1 : 1;
-  }
-  if (left.logIndex !== right.logIndex) return left.logIndex < right.logIndex ? -1 : 1;
-  return 0;
-};
-
-export const assertCursorContinuity = (previous: ChainCursor, next: ChainCursor): number => {
-  const comparison = compareCursors(next, previous);
-  if (comparison < 0) throw new CanonicalInputError("canonical cursor moved backwards");
-  if (
-    next.blockNumber === previous.blockNumber &&
-    (next.blockHash !== previous.blockHash || next.blockTimestamp !== previous.blockTimestamp)
-  ) {
-    throw new CanonicalInputError("events in one block disagree on its hash or timestamp");
-  }
-  if (next.blockNumber > previous.blockNumber && next.blockTimestamp < previous.blockTimestamp) {
-    throw new CanonicalInputError("canonical block timestamp moved backwards");
-  }
-  return comparison;
-};
-
-export const cursorKey = (cursor: ChainCursor): string =>
-  `${cursor.chainId}:${cursor.blockNumber}:${cursor.transactionIndex}:${cursor.logIndex}`;

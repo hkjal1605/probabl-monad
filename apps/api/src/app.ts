@@ -127,23 +127,27 @@ export const createApp = (service?: GatewayService, adminService?: AdminEvidence
     return json(await gateway.prepareOrder(await context.req.json(), session));
   });
 
-  app.post("/v1/orders/submit", async (context) => {
+  app.post("/v1/orders/transaction", async (context) => {
     const gateway = requireService(service);
     const session = await gateway.authenticate(context.req.header("authorization"));
-    return json(
-      await gateway.submitOrder(
-        await context.req.json(),
-        session,
-        context.req.header("idempotency-key"),
-      ),
-      202,
-    );
+    return json(await gateway.orderTransaction(await context.req.json(), session), 200);
   });
 
   app.post("/v1/orders/cancel/prepare", async (context) => {
     const gateway = requireService(service);
     const session = await gateway.authenticate(context.req.header("authorization"));
     return json(await gateway.prepareCancellation(await context.req.json(), session));
+  });
+  app.post("/v1/orders/recovery/prepare", async (context) => {
+    const gateway = requireService(service);
+    const session = await gateway.authenticate(context.req.header("authorization"));
+    return json(await gateway.prepareOrderRecovery(await context.req.json(), session));
+  });
+
+  app.post("/v1/payouts/withdraw/prepare", async (context) => {
+    const gateway = requireService(service);
+    const session = await gateway.authenticate(context.req.header("authorization"));
+    return json(await gateway.preparePayoutWithdrawal(await context.req.json(), session));
   });
 
   app.post("/v1/orders/cancel/submit", async (context) => {

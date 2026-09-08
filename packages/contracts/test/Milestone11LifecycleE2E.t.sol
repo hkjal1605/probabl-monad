@@ -83,9 +83,9 @@ contract Milestone11LifecycleE2ETest is ProtocolFixture {
             nonce,
             keccak256(abi.encode("M11_ASK", nonce))
         );
-        exchange.openOrder(bid, _sign(bid, BUYER_KEY));
-        exchange.openOrder(ask, _sign(ask, SELLER_KEY));
-        exchange.matchOrders(bid, ask, QUANTITY);
+        _openOrder(bid, _sign(bid, BUYER_KEY));
+        _openOrder(ask, _sign(ask, SELLER_KEY));
+        _matchOrders(bid, ask, QUANTITY);
     }
 
     function _resolve(

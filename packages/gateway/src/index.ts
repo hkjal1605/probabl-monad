@@ -13,6 +13,7 @@ import {
   Side,
   TimeInForce,
 } from "@conditional-stocks/domain";
+import type { AtomicPlan } from "@conditional-stocks/orderbook";
 import {
   type Address,
   encodeFunctionData,
@@ -106,7 +107,9 @@ export interface ValidationSnapshot {
   market: MarketSnapshot;
   marketOpenNotional: bigint;
   minimumNonce: bigint;
+  nextSequence: bigint;
   safeBlockNumber: bigint;
+  safeBlockHash: Hex;
   safeBlockTimestamp: bigint;
   tradingPaused: boolean;
   walletOpenNotional: bigint;
@@ -160,6 +163,8 @@ const record = (value: unknown, name: string): Record<string, unknown> => {
 };
 
 const integerString = (value: unknown, name: string, maximum: bigint): bigint => {
+  if (typeof value === "string" && value.length > maximum.toString().length)
+    throw new GatewayError(GatewayErrorCode.InvalidRequest, `${name} is outside its integer range`);
   if (typeof value !== "string" || !/^(0|[1-9][0-9]*)$/.test(value)) {
     throw new GatewayError(GatewayErrorCode.InvalidRequest, `${name} must be a decimal string`);
   }
@@ -235,6 +240,93 @@ export const orderToWire = (order: Order): OrderWire => ({
   quantity: order.quantity.toString(),
 });
 
+/** Decode only execution fields. Preview totals are always recomputed, never trusted. */
+export function parseAtomicPlan(input: unknown, taker: Order): AtomicPlan {
+  const value = record(input, "plan");
+  const guard = record(value.guard, "plan.guard");
+  const feeBps = (value: unknown): number => {
+    if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 1000)
+      throw new GatewayError(GatewayErrorCode.InvalidRequest, "Invalid quoted fee rate");
+    return value;
+  };
+  const executionGuard = {
+    nextSequence: integerString(guard.nextSequence, "guard.nextSequence", UINT64_MAX),
+    makerFeeBps: feeBps(guard.makerFeeBps),
+    takerFeeBps: feeBps(guard.takerFeeBps),
+  };
+  if (!Array.isArray(value.releaseOrders) || value.releaseOrders.length > 32)
+    throw new GatewayError(GatewayErrorCode.InvalidRequest, "Invalid bounded stale recovery plan");
+  const releaseOrders = value.releaseOrders.map((id, i) => bytes32(id, `releaseOrders[${i}]`));
+  if (new Set(releaseOrders).size !== releaseOrders.length)
+    throw new GatewayError(GatewayErrorCode.InvalidRequest, "Duplicate recovery order");
+  if (
+    !Array.isArray(value.makers) ||
+    !Array.isArray(value.quantities) ||
+    !Array.isArray(value.expectedRemaining) ||
+    value.makers.length > 32 ||
+    value.makers.length !== value.quantities.length ||
+    value.makers.length !== value.expectedRemaining.length
+  )
+    throw new GatewayError(GatewayErrorCode.InvalidRequest, "Invalid bounded execution plan");
+  const makers = value.makers.map(parseOrder);
+  if (
+    new Set(makers.map((maker) => JSON.stringify(orderToWire(maker)).toLowerCase())).size !==
+    makers.length
+  )
+    throw new GatewayError(GatewayErrorCode.InvalidRequest, "Duplicate maker in execution plan");
+  const quantities = value.quantities.map((item, i) =>
+    integerString(item, `quantities[${i}]`, UINT128_MAX),
+  );
+  const expectedRemaining = value.expectedRemaining.map((item, i) =>
+    integerString(item, `expectedRemaining[${i}]`, UINT128_MAX),
+  );
+  const deadline = integerString(value.deadline, "deadline", UINT64_MAX);
+  const filledQuantity = quantities.reduce((sum, quantity) => sum + quantity, 0n);
+  if (
+    filledQuantity > taker.quantity ||
+    deadline > taker.expiry ||
+    deadline === 0n ||
+    (makers.length > 0 && taker.maxFeeBps < executionGuard.takerFeeBps) ||
+    makers.some(
+      (maker, i) =>
+        maker.tif !== TimeInForce.Gtc ||
+        maker.marketId.toLowerCase() !== taker.marketId.toLowerCase() ||
+        maker.branch !== taker.branch ||
+        maker.side === taker.side ||
+        deadline > maker.expiry ||
+        maker.maxFeeBps < executionGuard.makerFeeBps ||
+        maker.limitPriceRawX18 === 0n ||
+        quantities[i] === 0n ||
+        (quantities[i] ?? 0n) > (expectedRemaining[i] ?? 0n) ||
+        (expectedRemaining[i] ?? 0n) > maker.quantity ||
+        (taker.side === Side.Buy
+          ? maker.limitPriceRawX18 > taker.limitPriceRawX18
+          : maker.limitPriceRawX18 < taker.limitPriceRawX18),
+    )
+  )
+    throw new GatewayError(
+      GatewayErrorCode.InvalidRequest,
+      "Execution plan violates signed order limits",
+    );
+  const executionQuote = makers.reduce((sum, maker, i) => {
+    const quote = quoteForExecution(quantities[i] ?? 0n, maker.limitPriceRawX18);
+    if (quote === 0n)
+      throw new GatewayError(GatewayErrorCode.InvalidRequest, "Fill rounds to zero quote");
+    return sum + quote;
+  }, 0n);
+  return {
+    guard: executionGuard,
+    releaseOrders,
+    makers,
+    quantities,
+    expectedRemaining,
+    deadline,
+    filledQuantity,
+    remainingQuantity: taker.quantity - filledQuantity,
+    executionQuote,
+  };
+}
+
 export const orderTypedData = (order: Order, chainId: bigint, exchange: Address) => ({
   domain: {
     chainId,
@@ -298,12 +390,8 @@ export const validateOrder = (
   if (notional < market.minNotional || notional > market.maxOrderNotional) {
     throw new GatewayError(GatewayErrorCode.OrderInvalid, "order notional violates market limits");
   }
-  if (snapshot.walletOpenNotional + notional > market.maxWalletOpenNotional) {
-    throw new GatewayError(GatewayErrorCode.WalletCapExceeded, "wallet open-notional cap exceeded");
-  }
-  if (snapshot.marketOpenNotional + notional > market.maxMarketOpenNotional) {
-    throw new GatewayError(GatewayErrorCode.MarketCapExceeded, "market open-notional cap exceeded");
-  }
+  // Aggregate caps are validated against the final reviewed atomic resting state, after
+  // maker reductions, stale recovery and IOC cancellation. Full funding remains required.
   return notional;
 };
 

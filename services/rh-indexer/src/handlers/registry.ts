@@ -1,6 +1,5 @@
 import {
   insertMarket,
-  persistMatcherEvent,
   persistProtocolEvent,
   updateMarket,
   ZERO_HASH,
@@ -86,14 +85,6 @@ ponder.on("MarketRegistry:MarketTermsConfigured", async ({ event, context }) => 
     tradingOpen: args.tradingOpen,
     updatedBlock: event.block.number,
   });
-  await persistMatcherEvent(context.db, context.chain.id, event, "market-terms-configured", {
-    baseStep: args.baseStep,
-    marketId: args.marketId,
-    priceTickRawX18: args.priceTickRawX18,
-    tradingCutoff: args.tradingCutoff,
-    tradingOpen: args.tradingOpen,
-    type: "market-terms-configured",
-  });
 });
 
 ponder.on("MarketRegistry:MarketPositionsConfigured", async ({ event, context }) => {
@@ -135,13 +126,6 @@ ponder.on("MarketRegistry:MarketStateChanged", async ({ event, context }) => {
     state: args.newState,
     stateReasonHash: args.reasonHash,
     updatedBlock: event.block.number,
-  });
-  await persistMatcherEvent(context.db, context.chain.id, event, "market-state-changed", {
-    marketId: args.marketId,
-    newState: args.newState,
-    previousState: args.previousState,
-    reasonHash: args.reasonHash,
-    type: "market-state-changed",
   });
 });
 

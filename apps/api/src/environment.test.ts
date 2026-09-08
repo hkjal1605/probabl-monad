@@ -8,40 +8,44 @@ const api = {
   ROBINHOOD_CHAIN_ID: "31337",
   CONDITIONAL_TOKENS_ADDRESS: maker,
   EXCHANGE_ADDRESS: maker,
-  IOC_ROUTER_ADDRESS: maker,
+  ATOMIC_ORDER_ROUTER_ADDRESS: maker,
+  PAYOUT_VAULT_ADDRESS: maker,
   MARKET_REGISTRY_ADDRESS: maker,
   POSITION_ROUTER_ADDRESS: maker,
   ROBINHOOD_RPC_URL: "http://127.0.0.1:8545",
-  SETTLEMENT_INTERNAL_TOKEN: "local-fixture-token",
 };
 
-test("API configuration validates chain identity, URLs, signer and internal mainnet allowlist", () => {
+test("API configuration validates atomic identity without a trading signer or wallet allowlist", () => {
   const result = loadApiEnvironment(api);
   expect(result.chainId).toBe(31337);
-  expect(result.relayerPrivateKey).toBeNull();
+  expect(result.atomicRouter).toBe(maker);
+  expect(result).not.toHaveProperty("relayerPrivateKey");
   expect(result.authOrigin).toBe("http://127.0.0.1:3000");
   for (const field of Object.keys(api))
     expect(() => loadApiEnvironment({ ...api, [field]: "" })).toThrow();
   for (const chain of ["-1", "1.5", "0", "Infinity", "9007199254740992"])
     expect(() => loadApiEnvironment({ ...api, ROBINHOOD_CHAIN_ID: chain })).toThrow();
-  for (const field of ["API_AUTH_ORIGIN", "INDEXER_URL", "SETTLEMENT_WORKER_URL"])
+  for (const field of ["API_AUTH_ORIGIN", "INDEXER_URL"])
     expect(() => loadApiEnvironment({ ...api, [field]: "file:///bad" })).toThrow("HTTP(S)");
-  expect(() => loadApiEnvironment({ ...api, API_RELAYER_PRIVATE_KEY: "0x12" })).toThrow("32 bytes");
-  expect(() => loadApiEnvironment({ ...api, ROBINHOOD_CHAIN_ID: "4663" })).toThrow(
-    "INTERNAL_TESTER",
-  );
+  expect(loadApiEnvironment({ ...api, ROBINHOOD_CHAIN_ID: "4663" }).chainId).toBe(4663);
   const production = loadApiEnvironment({
     ...api,
     ROBINHOOD_CHAIN_ID: "4663",
-    INTERNAL_TESTER_ADDRESSES: `${maker}, ${other},`,
-    API_RELAYER_PRIVATE_KEY: `0x${"01".repeat(32)}`,
     API_AUTH_ORIGIN: "https://probabl.test",
     API_AUTH_DOMAIN: "probabl.test",
     INDEXER_URL: "https://indexer.probabl.test",
-    SETTLEMENT_WORKER_URL: "https://worker.probabl.test",
   });
-  expect(production.internalTesters?.size).toBe(2);
+  expect(production.chainId).toBe(4663);
   expect(production.authDomain).toBe("probabl.test");
+});
+
+test("obsolete tester configuration cannot restrict trading or prevent mainnet API startup", () => {
+  const mainnet = { ...api, ROBINHOOD_CHAIN_ID: "4663" };
+  for (const legacyValue of ["", maker, `${maker},${other}`, "not-an-address"]) {
+    expect(loadApiEnvironment({ ...mainnet, INTERNAL_TESTER_ADDRESSES: legacyValue })).toEqual(
+      loadApiEnvironment(mainnet),
+    );
+  }
 });
 
 test("admin evidence configuration is opt-in and requires distinct operators and public HTTPS downloads", () => {

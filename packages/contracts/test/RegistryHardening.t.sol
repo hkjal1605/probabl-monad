@@ -3,13 +3,13 @@ pragma solidity 0.8.30;
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
+import { AtomicOrderRouter } from "../src/AtomicOrderRouter.sol";
 import { ConditionalExchange } from "../src/ConditionalExchange.sol";
-import { IOCRouter } from "../src/IOCRouter.sol";
 import { ManualResolutionController } from "../src/ManualResolutionController.sol";
 import { MarketRegistry } from "../src/MarketRegistry.sol";
 import { ProtocolAuthority } from "../src/ProtocolAuthority.sol";
+import { IAtomicExchange } from "../src/interfaces/IAtomicExchange.sol";
 import { IConditionalTokens } from "../src/interfaces/IConditionalTokens.sol";
-import { IIOCExchange } from "../src/interfaces/IIOCExchange.sol";
 import { IProtocolAuthority } from "../src/interfaces/IProtocolAuthority.sol";
 import { MarketConfigMath } from "../src/libraries/MarketConfigMath.sol";
 import {
@@ -107,13 +107,13 @@ contract RegistryHardeningTest is ProtocolFixture {
 
     function testAllSharedAuthorityWiringRejectsASecondAuthority() public {
         IProtocolAuthority other =
-            IProtocolAuthority(address(new ProtocolAuthority(buyer, buyer, buyer, buyer, buyer)));
+            IProtocolAuthority(address(new ProtocolAuthority(buyer, buyer, buyer, buyer)));
         vm.expectRevert(ConditionalExchange.InvalidAddress.selector);
         new ConditionalExchange(ctf, registry, other);
         vm.expectRevert(ManualResolutionController.InvalidAddress.selector);
         new ManualResolutionController(ctf, registry, other);
-        vm.expectRevert(IOCRouter.InvalidAddress.selector);
-        new IOCRouter(IIOCExchange(address(exchange)), other);
+        vm.expectRevert(AtomicOrderRouter.InvalidAddress.selector);
+        new AtomicOrderRouter(IAtomicExchange(address(exchange)), other);
         MarketRegistry fresh =
             new MarketRegistry(ctf, IProtocolAuthority(address(authority)), quote);
         WrongAuthorityController wrong = new WrongAuthorityController(ctf, fresh, other);
@@ -175,10 +175,10 @@ contract RegistryHardeningTest is ProtocolFixture {
         );
         bid.marketId = id;
         ask.marketId = id;
-        bytes32 bidHash = exchange.openOrder(bid, _sign(bid, BUYER_KEY));
-        exchange.openOrder(ask, _sign(ask, SELLER_KEY));
+        bytes32 bidHash = _openOrder(bid, _sign(bid, BUYER_KEY));
+        _openOrder(ask, _sign(ask, SELLER_KEY));
         assertEq(exchange.marketOpenNotional(id), 2 * notional, "both orders fit exactly");
-        exchange.matchOrders(bid, ask, config.baseStep);
+        _matchOrders(bid, ask, config.baseStep);
         assertEq(exchange.marketOpenNotional(id), 0, "both orders executed");
         assertEq(
             uint256(exchange.getOrderState(bidHash).status),

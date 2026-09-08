@@ -1,10 +1,15 @@
-# Conditional Stocks
+# probabl
 
 Database deployment: follow the [shared PostgreSQL runbook](./docs/runbooks/shared-postgres.md).
 All services now require the same PostgreSQL database; local embedded stores are unsupported.
 Migration verification and test-coverage progress are tracked in the [implementation record](./docs/architecture/shared-postgres-migration.md).
 
+Public UI hosting: use the [Cloudflare Workers deployment runbook](./docs/runbooks/ui-cloudflare-workers.md)
+for `apps/ui`, including build/runtime settings, local runtime checks and deployment commands.
+
 Conditional Stocks is a fully collateralized event-conditional Stock Token exchange for Robinhood Chain. See [`CONDITIONAL_STOCKS_IMPLEMENTATION_PLAN.md`](./CONDITIONAL_STOCKS_IMPLEMENTATION_PLAN.md) for the product architecture and [`plans/README.md`](./plans/README.md) for the delivery roadmap.
+
+Execution now uses [permissionless atomic placement](./docs/architecture/atomic-placement.md): the API selects candidates and the user's wallet opens and settles the order in one transaction. There is no protocol-owned matcher or settlement broadcaster. [Checked execution v2](./docs/architecture/atomic-hardening.md) adds deferred-payout recovery, final-state caps and stale-order cleanup. See the [current hardening report](./audit/2026-09-08/atomic-hardening/REPORT.md) for evidence and limitations.
 
 The current pricing and migration specification is [`raw-unit ratio v2`](./docs/architecture/raw-unit-ratio-v2.md), alongside the core lifecycle architecture in [`protocol-v1.md`](./docs/architecture/protocol-v1.md). Production boundaries and explicit trust assumptions are in [`SECURITY.md`](./SECURITY.md).
 
@@ -33,14 +38,11 @@ bun run lint
 bun run test
 bun run build
 bun run generate:bindings
-bun run --filter @conditional-stocks/orderbook benchmark
 bun run anvil:indexer
 bun run anvil:indexer:bootstrap
 bun run dev:indexer:anvil
 bun run reconcile:indexer:anvil
-bun run dev:settlement:anvil
 bun run dev:api:anvil
-bun run e2e:milestone11:anvil
 bun run dev:polymarket:anvil
 bun run e2e:milestone12:anvil
 ```
@@ -58,14 +60,12 @@ packages/db          Central schemas, transactional queries and indexer projecti
 packages/shared      Browser/backend structured logger and request middleware
 packages/domain      Shared hashes, schemas, and integer math
 packages/gateway     Shared order parsing, validation, funding, and payoff previews
-packages/orderbook   Pure deterministic price-time matching and slow shadow
+packages/orderbook   Stateless bounded price/FIFO atomic-plan selection
 packages/market-data Strict Polymarket normalization, YES book, and evidence hashing
 packages/contracts   Non-upgradeable Solidity protocol
 packages/contract-bindings  Reproducibly generated TypeScript ABIs
 packages/ui           Shared design tokens and shadcn-style interface primitives
-services/matcher     Fenced journal, checkpoints, recovery, fairness records
-services/rh-indexer  Ponder projections, confirmed matcher stream, reconciliation
-services/settlement-worker  Durable explicit-nonce match/IOC submission and confirmation
+services/rh-indexer   Ponder projections, canonical match candidates, reconciliation
 services/polymarket-ingestor Display-only metadata/probability ingestion and alerts
 ```
 

@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { fileURLToPath } from "node:url";
 import { Logger } from "@conditional-stocks/shared";
-import { and, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { readMigrationFiles } from "drizzle-orm/migrator";
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
@@ -191,36 +191,6 @@ export async function openDatabase(options: DatabaseOptions): Promise<Applicatio
     await database.close();
     throw error;
   }
-}
-
-export function nonceQueries(database: ApplicationDatabase) {
-  const key = (address: Address) =>
-    and(
-      eq(schema.relayerNonces.chainId, database.chainId),
-      eq(schema.relayerNonces.address, address.toLowerCase()),
-    );
-  const peekNonce = async (address: Address, pending: bigint) => {
-    if (pending < 0n || pending >= 1n << 256n) throw new RangeError("invalid pending nonce");
-    const [row] = await database.session.select().from(schema.relayerNonces).where(key(address));
-    return row && row.nextNonce > pending ? row.nextNonce : pending;
-  };
-  const allocateNonce = async (address: Address, pending: bigint) =>
-    database.locked(`nonce:${database.chainId}:${address.toLowerCase()}`, async () => {
-      const nonce = await peekNonce(address, pending);
-      await database.session
-        .insert(schema.relayerNonces)
-        .values({
-          chainId: database.chainId,
-          address: address.toLowerCase(),
-          nextNonce: nonce + 1n,
-        })
-        .onConflictDoUpdate({
-          target: [schema.relayerNonces.chainId, schema.relayerNonces.address],
-          set: { nextNonce: nonce + 1n },
-        });
-      return nonce;
-    });
-  return { peekNonce, allocateNonce };
 }
 
 export function boundedLimit(value: number, fallback = 100, maximum = 500) {

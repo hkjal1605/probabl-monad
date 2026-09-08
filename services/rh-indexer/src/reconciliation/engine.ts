@@ -2,6 +2,7 @@ import {
   conditionalExchangeAbi,
   conditionalTokensAbi,
   manualResolutionControllerAbi,
+  payoutVaultAbi,
 } from "@conditional-stocks/contract-bindings";
 import type {
   ReconciliationIssue,
@@ -26,6 +27,14 @@ interface ReadRequest {
 
 export const hashProjection = (snapshot: ReconciliationSnapshot): Hex =>
   hashCanonical({
+    payoutCredits: [...snapshot.payoutCredits].sort((a, b) =>
+      `${a.beneficiary}:${a.asset}:${a.tokenId}`.localeCompare(
+        `${b.beneficiary}:${b.asset}:${b.tokenId}`,
+      ),
+    ),
+    payoutTotals: [...snapshot.payoutTotals].sort((a, b) =>
+      `${a.asset}:${a.tokenId}`.localeCompare(`${b.asset}:${b.tokenId}`),
+    ),
     claimTotals: [...snapshot.claimTotals].sort((left, right) =>
       left.positionId.localeCompare(right.positionId),
     ),
@@ -37,7 +46,7 @@ export const hashProjection = (snapshot: ReconciliationSnapshot): Hex =>
     ),
     markets: [...snapshot.markets].sort((left, right) => left.id.localeCompare(right.id)),
     openOrders: [...snapshot.openOrders].sort((left, right) => left.id.localeCompare(right.id)),
-    projectionVersion: 2,
+    projectionVersion: 3,
     reservationTotals: [...snapshot.reservationTotals].sort((left, right) =>
       `${left.assetAddress}:${left.tokenId ?? "erc20"}`.localeCompare(
         `${right.assetAddress}:${right.tokenId ?? "erc20"}`,
@@ -183,12 +192,14 @@ export const runReconciliation = async (
     const expected = expectedCustody.get(custodyKey) ?? 0n;
     if (actual !== expected) {
       const scopes = marketScopesForAsset(snapshot.markets, asset.assetAddress);
+      const donation = asset.tokenId === null && actual > expected;
       issue(issues, {
         actual: actual.toString(),
-        code: "EXCHANGE_CUSTODY_MISMATCH",
+        code: donation ? "EXCHANGE_COLLATERAL_DONATION" : "EXCHANGE_CUSTODY_MISMATCH",
         details: `exchange custody ${request.label} differs from summed open reservations`,
         expected: expected.toString(),
-        freezeScope: scopes[0] ?? "global",
+        freezeScope: donation ? null : (scopes[0] ?? "global"),
+        severity: donation ? "warning" : "critical",
       });
     }
   }
@@ -266,18 +277,21 @@ export const runReconciliation = async (
     const actual = lockedBalances[index];
     if (!entry || actual === undefined) throw new Error("liability read mismatch");
     const [token, expected] = entry;
-    const invalid = options.exclusiveConditionalTokens ? actual !== expected : actual < expected;
-    if (invalid) {
+    // Anyone can donate ERC-20 collateral directly, and pro-rata redemptions may
+    // leave rounding dust. Excess backing is not insolvency or a safe freeze signal.
+    if (actual < expected || (options.exclusiveConditionalTokens && actual > expected)) {
+      const surplus = actual > expected;
       issue(issues, {
         actual: actual.toString(),
-        code: "CTF_COLLATERAL_LIABILITY_MISMATCH",
-        details: options.exclusiveConditionalTokens
-          ? `dedicated CTF collateral ${token} must exactly equal product liabilities`
+        code: surplus ? "CTF_COLLATERAL_SURPLUS" : "CTF_COLLATERAL_LIABILITY_MISMATCH",
+        details: surplus
+          ? `CTF collateral ${token} includes unallocated backing or redemption dust`
           : `CTF collateral ${token} is below product liabilities`,
-        expected: options.exclusiveConditionalTokens
-          ? expected.toString()
-          : `at least ${expected.toString()}`,
-        freezeScope: marketScopesForAsset(snapshot.markets, token as Address)[0] ?? "global",
+        expected: `at least ${expected}`,
+        severity: surplus ? "warning" : "critical",
+        freezeScope: surplus
+          ? null
+          : (marketScopesForAsset(snapshot.markets, token as Address)[0] ?? "global"),
       });
     }
   }
@@ -290,6 +304,70 @@ export const runReconciliation = async (
   );
   const uniquePositionIds = new Set(
     snapshot.markets.flatMap((market) => requiredPositionIds(market).map(String)),
+  );
+  // Credits are ownership within vault custody, not additional CTF supply. Compare the
+  // separate liability ledger and actual backing, including known assets with zero DB rows
+  // so a missed first PayoutDeferred event cannot disappear from reconciliation.
+  const payoutAssets = new Map<string, { asset: Address; tokenId: bigint }>();
+  const payoutKey = (asset: Address, id: bigint) => `${canonicalAddress(asset)}:${id}`;
+  const addPayoutAsset = (asset: Address, tokenId: bigint) =>
+    payoutAssets.set(payoutKey(asset, tokenId), { asset, tokenId });
+  for (const token of uniqueTokens) addPayoutAsset(token as Address, 0n);
+  for (const id of uniquePositionIds)
+    addPayoutAsset(environment.contracts.conditionalTokens, BigInt(id));
+  for (const row of snapshot.payoutTotals) addPayoutAsset(row.asset, BigInt(row.tokenId));
+  const expectedPayouts = new Map(
+    snapshot.payoutTotals.map((row) => [
+      payoutKey(row.asset, BigInt(row.tokenId)),
+      BigInt(row.amount),
+    ]),
+  );
+  await Promise.all(
+    [...payoutAssets.values()].map(async ({ asset, tokenId }) => {
+      const ctfAsset =
+        canonicalAddress(asset) === canonicalAddress(environment.contracts.conditionalTokens);
+      const [liability, backing] = await Promise.all([
+        client.readContract({
+          abi: payoutVaultAbi,
+          address: environment.contracts.payoutVault,
+          functionName: "totalClaimable",
+          args: [asset, tokenId],
+          blockNumber,
+        }),
+        ctfAsset
+          ? client.readContract({
+              abi: conditionalTokensAbi,
+              address: asset,
+              functionName: "balanceOf",
+              args: [environment.contracts.payoutVault, tokenId],
+              blockNumber,
+            })
+          : client.readContract({
+              abi: erc20Abi,
+              address: asset,
+              functionName: "balanceOf",
+              args: [environment.contracts.payoutVault],
+              blockNumber,
+            }),
+      ]);
+      const expected = expectedPayouts.get(payoutKey(asset, tokenId)) ?? 0n;
+      if (liability !== expected)
+        issue(issues, {
+          code: "PAYOUT_LIABILITY_MISMATCH",
+          actual: String(liability),
+          expected: String(expected),
+          details: `vault ${asset}:${tokenId} liabilities differ from indexed beneficiary credits`,
+          freezeScope: "global",
+        });
+      if (backing < liability || (ctfAsset && backing !== liability))
+        issue(issues, {
+          code: "PAYOUT_BACKING_MISMATCH",
+          actual: String(backing),
+          expected: ctfAsset ? String(liability) : `at least ${liability}`,
+          details: `vault ${asset}:${tokenId} custody does not back its outstanding credits`,
+          freezeScope: "global",
+        });
+    }),
   );
   const residualReads: Array<{ asset: string; holder: Address; read: () => Promise<bigint> }> = [];
   for (const holder of [environment.contracts.settlement, environment.contracts.positionRouter]) {
@@ -328,17 +406,38 @@ export const runReconciliation = async (
     const actual = residuals[index];
     if (!request || actual === undefined) throw new Error("residual read mismatch");
     if (actual !== 0n) {
+      const donation = !request.asset.startsWith("ctf:");
       issue(issues, {
         actual: actual.toString(),
-        code: "ROUTER_RESIDUAL_BALANCE",
+        code: donation ? "ROUTER_COLLATERAL_DONATION" : "ROUTER_RESIDUAL_BALANCE",
         details: `${request.holder} retained unexpected ${request.asset}`,
         expected: "0",
-        freezeScope: "global",
+        freezeScope: donation ? null : "global",
+        severity: donation ? "warning" : "critical",
       });
     }
   }
 
   if (options.deep) {
+    await Promise.all(
+      snapshot.payoutCredits.map(async (row) => {
+        const amount = await client.readContract({
+          abi: payoutVaultAbi,
+          address: environment.contracts.payoutVault,
+          functionName: "claimable",
+          args: [row.beneficiary, row.asset, BigInt(row.tokenId)],
+          blockNumber,
+        });
+        if (amount !== BigInt(row.amount))
+          issue(issues, {
+            code: "PAYOUT_BENEFICIARY_MISMATCH",
+            actual: String(amount),
+            expected: row.amount,
+            details: `vault credit owner ${row.beneficiary} for ${row.asset}:${row.tokenId} differs from projection`,
+            freezeScope: "global",
+          });
+      }),
+    );
     const projectedMarketInterest = new Map(
       snapshot.marketOpenInterest.map((row) => [row.marketId.toLowerCase(), BigInt(row.amount)]),
     );
@@ -523,7 +622,7 @@ export const runReconciliation = async (
     indexedBlockHash: snapshot.state.indexedBlockHash,
     issues,
     projectionHash,
-    projectionVersion: 2,
+    projectionVersion: 3,
     startedAt,
     status: issues.some((entry) => entry.severity === "critical") ? "mismatch" : "ok",
   };

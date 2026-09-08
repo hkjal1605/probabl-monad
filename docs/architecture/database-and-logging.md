@@ -6,13 +6,11 @@
 
 | Import | Responsibility |
 | --- | --- |
-| `@conditional-stocks/db/gateway` | Authentication challenges/sessions, operations, outbox and relayer nonces |
+| `@conditional-stocks/db/gateway` | Authentication challenges/sessions, user recovery operations and signed outbox |
 | `@conditional-stocks/db/evidence` | Append-only operator evidence/reviews, previews, observations and attachment storage |
-| `@conditional-stocks/db/matcher` | Canonical event journal, checkpoints, fencing leases and proposals |
-| `@conditional-stocks/db/settlement` | Settlement batches, IOC intents, signed attempts and worker nonces |
 | `@conditional-stocks/db/reconciliation` | Reconciliation reports and persistent freeze signals |
 | `@conditional-stocks/db/polymarket` | Immutable metadata/subscriptions, latest metadata pointers, one latest tick per condition and alerts |
-| `@conditional-stocks/db/indexer/reads` | Read-only projected state, books, fills and consistent reconciliation snapshots |
+| `@conditional-stocks/db/indexer/reads` | Read-only projected state, bounded atomic candidates, books, fills and consistent reconciliation snapshots |
 | `@conditional-stocks/db/indexer/writes` | Named projection writes using Ponder's event-scoped database context |
 | `@conditional-stocks/db/indexer/schema` | Canonical PostgreSQL projection schema |
 
@@ -29,13 +27,13 @@ const pending = await pendingOperations();
 await database.close();
 ```
 
-Create one bounded pool per service process and share it among that process's query collections. Migrations run explicitly using an administrative credential; runtime startup verifies migration hashes and chain/exchange/order-version identity. Gateway and settlement share a chain/address nonce table. Raw integer encodings and synchronous commits are retained; nonce + signed outbox persistence is atomic. Persisted server-clock leases and fencing reject stale gateway, matcher and settlement writers. Read the [shared PostgreSQL runbook](../runbooks/shared-postgres.md) for ownership, roles, pool budgets and deployment checks. Earlier audit reports describe the earlier architecture, not the current implementation.
+Create one bounded pool per service process and share it among that process's query collections. Migrations run explicitly using an administrative credential; runtime startup verifies migration hashes and chain/exchange/order-version identity. Atomic trading needs no nonce allocation or operational trading store: users sign and broadcast their own atomic placement. Raw integer encodings and synchronous commits remain mandatory. Cancellation/position outboxes persist exact user-signed bytes atomically; server-clock ownership tokens reject stale gateway writers. Read the [shared PostgreSQL runbook](../runbooks/shared-postgres.md) for ownership, roles, pool budgets and deployment checks. Earlier audit reports describe the earlier architecture, not the current implementation.
 
 The indexer injects Ponder's existing read-only connection into `createIndexerQueries(db)` and passes the event's writer context to named write functions. Do not open a second PostgreSQL pool to bypass Ponder's transaction/reorg semantics. Reconciliation reads its head and grouped rows in one SELECT: all subqueries use the same committed PostgreSQL snapshot. EVM integers are cast to text before JSON aggregation, not rounded through JavaScript numbers. The service separately verifies that anchor and finality through RPC. See [PostgreSQL snapshot semantics](https://www.postgresql.org/docs/current/transaction-iso.html) and the [Ponder indexing model](https://github.com/ponder-sh/ponder).
 
-The September 7 storage revision removes unused indexer projections and chain-wide ERC-20 transfer indexing. Use a **new Ponder schema and replay**, following the rebuild runbook; do not alter a populated projection in place. The v2 raw-unit wire/checkpoint meaning is unchanged. `/balances/:account?token=...` still returns pinned canonical ERC-20 balances and decimals; historical transfer-delta fields now return `null`. No current UI or custody function consumes those deltas.
+The atomic-placement revision also removes the duplicate matcher-event journal. The September 7 storage revision removes unused indexer projections and chain-wide ERC-20 transfer indexing. Use a **new Ponder schema and replay**, following the rebuild runbook; do not alter a populated projection in place. The v2 raw-unit wire/checkpoint meaning is unchanged. `/balances/:account?token=...` still returns pinned canonical ERC-20 balances and decimals; historical transfer-delta fields now return `null`. No current UI or custody function consumes those deltas.
 
-PostgreSQL autovacuum/autoanalyze maintains live table statistics and reclaims dead tuples. Monitor its progress and storage/connection budgets. Expired API authentication rows are pruned in bounded batches using skip-locked row selection. This does not prune operation IDs, signed transactions, nonce records, matcher journals/checkpoints, reconciliation reports or reviewed evidence. User-owned legacy test files are not opened, migrated or deleted automatically.
+PostgreSQL autovacuum/autoanalyze maintains live table statistics and reclaims dead tuples. Monitor its progress and storage/connection budgets. Expired API authentication rows are pruned in bounded batches using skip-locked row selection. This does not prune operation IDs, signed transactions, reconciliation reports or reviewed evidence. User-owned legacy test files are not opened, migrated or deleted automatically.
 
 RPC clients, upstream HTTP adapters and UI fetches stay in their runtime layers: they are not direct database access. Browser bundles must not import database/Ponder entrypoints or receive database credentials. The database package never imports an application, service or `ponder:*` runtime virtual module. Automated boundary tests enforce these rules for authored runtime code. Historical audit evidence is retained as a historical snapshot, not rewritten to resemble the current source.
 
@@ -56,7 +54,7 @@ Records contain `timestamp`, `level`, `service`, `event`, and structured `fields
 - `LOG_LEVEL=info` configures backend services. Valid levels: `debug`, `info`, `warn`, `error`, `silent`.
 - `NEXT_PUBLIC_LOG_LEVEL=info` configures both UIs at build time. Change it and rebuild to change browser verbosity. Browser logs use the browser console; they are not uploaded automatically.
 - API middleware logs every completed request at the configured threshold, including rejected requests and handled errors, with a server-generated `x-request-id`, method, matched route template, status and duration. It does not consume bodies or log arbitrary paths, URL queries or headers. UI gateway proxies preserve valid request IDs on upstream responses.
-- High-frequency internal health/book/status polling is logged at debug; errors remain warning/error. Startup/shutdown, indexer milestones, order and settlement transitions, matcher recovery/reorgs, reconciliation results, and Polymarket quality changes use normal operational levels.
+- High-frequency internal health/book/status polling is logged at debug; errors remain warning/error. Startup/shutdown, indexer milestones, atomic quote milestones, user recovery transitions, reconciliation results, and Polymarket quality changes use normal operational levels.
 - Indexer `indexer.event.applied` / `indexer.progress` means the handler completed, **not** that Ponder committed/finalized the block. RPC finality and reconciliation remain the source of trading readiness.
 - Reconciler logs go to stderr so its one-shot JSON report on stdout remains machine-readable. Other services use stdout for info/debug and stderr for warn/error. Existing framework logs may retain Ponder/Next's native formatting.
 

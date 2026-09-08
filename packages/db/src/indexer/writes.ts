@@ -1,10 +1,9 @@
 import { quoteForReservation } from "@conditional-stocks/domain";
-import { canonicalStringify } from "@conditional-stocks/orderbook";
 import type { Virtual } from "ponder";
 import type { Address, Hex } from "viem";
 
 import * as schema from "./schema.ts";
-import { chainEvent, chainTransaction, matcherEvent } from "./schema.ts";
+import { chainEvent, chainTransaction } from "./schema.ts";
 
 export type IndexerWriter = Pick<
   Virtual.Context<
@@ -17,7 +16,7 @@ export type IndexerWriter = Pick<
     typeof schema,
     never
   >["db"],
-  "find" | "insert" | "update"
+  "find" | "insert" | "update" | "delete"
 >;
 type AppDb = IndexerWriter;
 
@@ -193,31 +192,42 @@ export const persistProtocolEvent = async (
   return true;
 };
 
-export const persistMatcherEvent = async (
-  db: AppDb,
-  chainId: number,
-  event: ProtocolLogEvent,
-  _eventType: string,
-  payload: unknown,
-): Promise<void> => {
-  await db.insert(matcherEvent).values({
-    id: event.id,
-    blockHash: event.block.hash,
-    blockNumber: event.block.number,
-    blockTimestamp: event.block.timestamp,
-    chainId: BigInt(chainId),
-    logIndex: event.log.logIndex,
-    payload: canonicalStringify(payload),
-    transactionHash: event.transaction.hash,
-    transactionIndex: event.transaction.transactionIndex,
-  });
-};
-
 export const balanceKey = (account: Address, asset: Address, tokenId?: bigint): string =>
   `${account.toLowerCase()}:${asset.toLowerCase()}:${tokenId?.toString() ?? "erc20"}`;
 
 export const walletMarketKey = (marketId: Hex, account: Address): string =>
   `${marketId.toLowerCase()}:${account.toLowerCase()}`;
+
+export async function adjustPayoutCredit(
+  db: IndexerWriter,
+  input: {
+    beneficiary: Address;
+    asset: Address;
+    tokenId: bigint;
+    delta: bigint;
+    blockNumber: bigint;
+  },
+) {
+  const { tokenId, delta, blockNumber } = input;
+  if (delta === 0n || tokenId < 0n || tokenId >= 1n << 256n)
+    throw new Error("Invalid payout credit change");
+  const beneficiary = input.beneficiary.toLowerCase() as Address;
+  const asset = input.asset.toLowerCase() as Address;
+  const id = balanceKey(beneficiary, asset, tokenId);
+  const before = await db.find(schema.payoutCredit, { id });
+  const amount = (before?.amount ?? 0n) + delta;
+  if (amount < 0n || amount >= 1n << 256n) throw new Error(`Invalid payout liability for ${id}`);
+  if (amount === 0n) {
+    await db.delete(schema.payoutCredit, { id });
+    return;
+  }
+  if (before)
+    await db.update(schema.payoutCredit, { id }).set({ amount, updatedBlock: blockNumber });
+  else
+    await db
+      .insert(schema.payoutCredit)
+      .values({ id, beneficiary, asset, tokenId, amount, updatedBlock: blockNumber });
+}
 
 export const updateClaimBalance = async (
   db: AppDb,

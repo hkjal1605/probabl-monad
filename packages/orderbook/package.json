@@ -7,7 +7,6 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "benchmark": "bun run benchmarks/matcher.bench.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

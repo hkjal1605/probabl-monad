@@ -1,13 +1,13 @@
-/** Local-only integration of real Ponder handlers, HTTP gateway, matcher, worker and rebuild. */
+/** Local-only integration of Ponder, HTTP quotes, user-paid atomic placement and replay. */
 import { resolve } from "node:path";
 import { createDatabase, databaseUrl } from "@conditional-stocks/db/connection";
 import { createGatewayQueries } from "@conditional-stocks/db/gateway";
 import type { ReconciliationSnapshot } from "@conditional-stocks/db/reconciliation/types";
-import { createSettlementQueries } from "@conditional-stocks/db/settlement";
 import {
   type Abi,
   type Address,
   createPublicClient,
+  createWalletClient,
   erc20Abi,
   type Hex,
   http,
@@ -17,19 +17,21 @@ import {
 import type { PrivateKeyAccount } from "viem/accounts";
 import { createApp } from "../../../apps/api/src/app.ts";
 import { IndexerClient, ViemGatewayChain } from "../../../apps/api/src/chain.ts";
-import { GatewayService, HttpSettlementIntentSink } from "../../../apps/api/src/service.ts";
+import { GatewayService } from "../../../apps/api/src/service.ts";
+import {
+  atomicTransaction,
+  verifyAtomicResponse,
+} from "../../../apps/ui/src/lib/trading/atomic.ts";
 import { createOrder } from "../../../apps/ui/src/lib/trading/order.ts";
+import {
+  payoutWithdrawal,
+  verifyPayoutResponse,
+} from "../../../apps/ui/src/lib/trading/payouts.ts";
 import { loadIndexerEnvironment } from "../../../services/rh-indexer/src/environment.ts";
 import {
   hashProjection,
   runReconciliation,
 } from "../../../services/rh-indexer/src/reconciliation/engine.ts";
-import {
-  PonderSettlementSource,
-  type SettlementEnvironment,
-  ViemSettlementChain,
-} from "../../../services/settlement-worker/src/chain.ts";
-import { SettlementWorker } from "../../../services/settlement-worker/src/worker.ts";
 import {
   assertMarketUnits,
   hashOrder,
@@ -37,13 +39,8 @@ import {
   orderTypedData,
 } from "../../domain/src/index.ts";
 import { parseOrder } from "../../gateway/src/index.ts";
-import {
-  canonicalParse,
-  DeterministicMatcher,
-  type MatcherEventEnvelope,
-  makeBookKey,
-  SlowReferenceMatcher,
-} from "../../orderbook/src/index.ts";
+import { forkReceipt } from "./fork-receipt.ts";
+import { loadArtifact } from "./lib.ts";
 
 interface Context {
   account: PrivateKeyAccount;
@@ -55,7 +52,8 @@ interface Context {
   controller: Address;
   exchange: Address;
   settlement: Address;
-  ioc: Address;
+  atomicRouter: Address;
+  payoutVault: Address;
   recovery: Address;
   authority: Address;
   ctf: Address;
@@ -89,7 +87,6 @@ export async function verifyRawRatioFullstack(ctx: Context): Promise<void> {
   const rebuiltUrl = "http://127.0.0.1:18550";
   const children: { process: ReturnType<typeof Bun.spawn>; logs: Promise<void> }[] = [];
   const store = createGatewayQueries(database);
-  const settlementStore = createSettlementQueries(database);
   let apiServer: ReturnType<typeof Bun.serve> | undefined;
   const json = <T>(value: T): string =>
     JSON.stringify(value, (_, item) => (typeof item === "bigint" ? item.toString() : item));
@@ -134,6 +131,8 @@ export async function verifyRawRatioFullstack(ctx: Context): Promise<void> {
     INDEXER_END_BLOCK: "",
     CONDITIONAL_TOKENS_ADDRESS: ctx.ctf,
     EXCHANGE_ADDRESS: ctx.exchange,
+    ATOMIC_ORDER_ROUTER_ADDRESS: ctx.atomicRouter,
+    PAYOUT_VAULT_ADDRESS: ctx.payoutVault,
     MARKET_REGISTRY_ADDRESS: ctx.registry,
     ORDER_RECOVERY_ROUTER_ADDRESS: ctx.recovery,
     POSITION_ROUTER_ADDRESS: ctx.router,
@@ -224,13 +223,11 @@ export async function verifyRawRatioFullstack(ctx: Context): Promise<void> {
       conditionalTokens: ctx.ctf,
       exchange: ctx.exchange,
       indexerUrl,
-      iocRouter: ctx.ioc,
+      atomicRouter: ctx.atomicRouter,
+      payoutVault: ctx.payoutVault,
       marketRegistry: ctx.registry,
       positionRouter: ctx.router,
-      relayerPrivateKey: null,
       rpcUrl: ctx.localUrl,
-      settlementWorkerUrl: "http://127.0.0.1:1",
-      settlementWorkerToken: "local-only",
     };
     const gatewayChain = new ViemGatewayChain(apiEnvironment);
     await gatewayChain.assertNetwork();
@@ -239,7 +236,6 @@ export async function verifyRawRatioFullstack(ctx: Context): Promise<void> {
       store,
       gatewayChain,
       new IndexerClient(indexerUrl),
-      new HttpSettlementIntentSink(apiEnvironment.settlementWorkerUrl, "local-only"),
     );
     apiServer = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: createApp(service).fetch });
     const apiUrl = `http://127.0.0.1:${apiServer.port}`;
@@ -268,30 +264,6 @@ export async function verifyRawRatioFullstack(ctx: Context): Promise<void> {
       });
       sessions.set(actor.address, session.token);
     }
-    const settlementEnvironment: SettlementEnvironment = {
-      chainId: 4663,
-      exchange: ctx.exchange,
-      indexerUrl,
-      internalToken: "local-only",
-      iocRouter: ctx.ioc,
-      leaseTtlMs: 15_000n,
-      matcherCallbackUrl: null,
-      ownerId: "raw-ratio-e2e",
-      port: 0,
-      privateKey: ctx.privateKey,
-      protocolAuthority: ctx.authority,
-      replacementBumpBps: 1250n,
-      rpcUrl: ctx.localUrl,
-      stuckMs: 30_000n,
-    };
-    const settlementChain = new ViemSettlementChain(settlementEnvironment);
-    await settlementChain.preflight();
-    const worker = new SettlementWorker(
-      settlementStore,
-      settlementChain,
-      new PonderSettlementSource(indexerUrl),
-      { environment: settlementEnvironment },
-    );
     for (const { id, symbol } of marketIds) {
       const market = await fetchJson<Record<string, unknown>>(`${indexerUrl}/markets/${id}`);
       assertMarketUnits(market);
@@ -301,6 +273,7 @@ export async function verifyRawRatioFullstack(ctx: Context): Promise<void> {
       );
       const now = (await local.getBlock()).timestamp;
       const orders: Order[] = [];
+      const placements: unknown[] = [];
       for (const [actor, side, price, quantity] of [
         [ctx.seller, "sell", "200", "1"],
         [ctx.account, "buy", "210", "2"],
@@ -325,6 +298,7 @@ export async function verifyRawRatioFullstack(ctx: Context): Promise<void> {
           notional: string;
           funding: { amount: string; decimals: number };
           schemaVersion: number;
+          plan: unknown;
         }>("/v1/orders/prepare", { order: wire }, sessions.get(actor.address));
         assert(
           preparation.schemaVersion === 2 && preparation.fundingReady,
@@ -341,80 +315,65 @@ export async function verifyRawRatioFullstack(ctx: Context): Promise<void> {
           );
         const order = parseOrder(wire);
         orders.push(order);
-        await ctx.write(
-          ctx.exchange,
-          ctx.abi("ConditionalExchange"),
-          "openOrder",
-          [
-            order,
-            await actor.signTypedData(
-              orderTypedData(order, { chainId: 4663n, verifyingContract: ctx.exchange }),
-            ),
-          ],
-          actor,
+        const signature = await actor.signTypedData(
+          orderTypedData(order, { chainId: 4663n, verifyingContract: ctx.exchange }),
         );
-      }
-      await sync();
-      const response = await fetch(
-        `${indexerUrl}/internal/matcher-events?afterBlock=${ctx.deploymentBlock - 1n}&limit=1000`,
-      );
-      assert(response.ok, "Matcher event stream unavailable");
-      const stream = canonicalParse<{
-        events: MatcherEventEnvelope[];
-        schemaVersion: number;
-        hasMore: boolean;
-      }>(await response.text());
-      assert(
-        stream.schemaVersion === 2 && !stream.hasMore,
-        "Unexpected event stream version/pagination",
-      );
-      const matcher = new DeterministicMatcher();
-      const reference = new SlowReferenceMatcher();
-      for (const event of stream.events) {
-        matcher.apply(event);
-        reference.apply(event);
-      }
-      const preview = matcher.preview(makeBookKey(id, 0));
-      assert(
-        json(preview) === json(reference.preview(makeBookKey(id, 0))),
-        "Live matcher/reference divergence",
-      );
-      const proposal = preview.proposal;
-      if (!proposal) throw new Error("Live orderbook produced no proposal");
-      assert(
-        proposal.fills.length === 1 &&
-          proposal.fills[0]?.executionPriceRawX18 === 200_000_000n &&
-          proposal.fills[0]?.fillQuantity === 10n ** 18n,
-        "Live proposal units mismatch",
-      );
-      await worker.enqueueProposal(proposal);
-      await waitFor("worker confirms real-token fill", async () => {
-        const result = await worker.process(proposal.batchId);
-        if (result.status === "failed" || result.status === "quarantined")
-          throw new Error(json(result.error));
-        if (result.status === "confirmed") return true;
-        await advance();
-        return false;
-      });
-      for (const attempt of await settlementStore.attempts(proposal.batchId)) {
-        const receipt = await local.getTransactionReceipt({ hash: attempt.transactionHash });
-        ctx.record({
-          functionName: "settlementWorkerMatch",
-          hash: attempt.transactionHash,
-          blockNumber: receipt.blockNumber,
-          gasUsed: receipt.gasUsed,
-          status: receipt.status,
+        const expected = atomicTransaction({
+          order: wire,
+          plan: preparation.plan,
+          signature,
+          account: actor.address,
+          config: { chainId: 4663, exchange: ctx.exchange, atomicRouter: ctx.atomicRouter },
+          nowSeconds: (await local.getBlock()).timestamp,
         });
+        const prepared = await api<unknown>(
+          "/v1/orders/transaction",
+          {
+            order: wire,
+            plan: preparation.plan,
+            signature,
+          },
+          sessions.get(actor.address),
+        );
+        const transaction = verifyAtomicResponse(expected, prepared);
+        const hash = await createWalletClient({
+          account: actor,
+          transport: http(ctx.localUrl),
+        }).sendTransaction({
+          account: actor,
+          chain: null,
+          to: transaction.to,
+          data: transaction.data,
+          value: BigInt(transaction.value),
+          maxFeePerGas: 100_000_000_000n,
+          maxPriorityFeePerGas: 1_000_000_000n,
+        });
+        const receipt = await forkReceipt(local, hash);
+        assert(receipt.status === "success", "Atomic user transaction reverted");
+        const evidence = {
+          hash,
+          from: actor.address,
+          plan: preparation.plan,
+          gasUsed: receipt.gasUsed,
+          blockNumber: receipt.blockNumber,
+          status: receipt.status,
+        };
+        placements.push(evidence);
+        ctx.record({ functionName: "placeAndMatch", ...evidence });
+        // The next incoming order must see the just-persisted resting maker.
+        await sync();
       }
       await sync();
       const bid = orders[1];
       if (!bid) throw new Error("Missing bid");
       const bidHash = hashOrder(bid, { chainId: 4663n, verifyingContract: ctx.exchange });
-      const indexed = await fetchJson<{ remaining: string; reserved: string }>(
+      const indexed = await fetchJson<{ remaining: string; reserved: string; filled: string }>(
         `${indexerUrl}/orders/${bidHash}`,
       );
       assert(
-        indexed.remaining === "1000000000000000000" && indexed.reserved === "210000000",
+        indexed.remaining === "1000000000000000000" &&
+          indexed.reserved === "210000000" &&
+          indexed.filled === "1000000000000000000",
         "Indexer partial reservation units mismatch",
       );
       await api(
@@ -424,6 +383,15 @@ export async function verifyRawRatioFullstack(ctx: Context): Promise<void> {
       );
       await ctx.write(ctx.exchange, ctx.abi("ConditionalExchange"), "cancelOrder", [bidHash]);
       await sync();
+      const cancelled = await fetchJson<{ status: string; remaining: string; filled: string }>(
+        `${indexerUrl}/orders/${bidHash}`,
+      );
+      assert(
+        cancelled.status === "cancelled" &&
+          cancelled.remaining === "0" &&
+          cancelled.filled === indexed.filled,
+        "Cancelled order history lost the actual filled quantity",
+      );
       const positions = await fetchJson<{
         positions: {
           marketId: string;
@@ -458,15 +426,197 @@ export async function verifyRawRatioFullstack(ctx: Context): Promise<void> {
       );
       await ctx.save(`fullstack-${symbol}.json`, {
         market,
-        proposal,
+        placements,
         indexedPartialBid: indexed,
+        indexedCancelledBid: cancelled,
         positions,
         whole,
       });
       ctx.pass(
-        `${symbol}/USDG live UI input → HTTP API → Ponder → matcher/reference → settlement worker → indexed claims/cancellation`,
+        `${symbol}/USDG UI input → HTTP plan → same user transaction fills → indexed claims/cancellation`,
       );
     }
+    // Two independently signed users race the same reviewed maker in one mined block.
+    // Its recipient deliberately rejects, so the winner also exercises the full credit path.
+    const walletArtifact = await loadArtifact("AtomicTestWallet", "AtomicPlacement.t");
+    const userWallet = createWalletClient({ account: ctx.account, transport: http(ctx.localUrl) });
+    const deployment = await userWallet.deployContract({
+      abi: walletArtifact.abi,
+      bytecode: walletArtifact.bytecode.object,
+      args: [ctx.account.address],
+      chain: null,
+    });
+    const receiver = (await forkReceipt(local, deployment)).contractAddress;
+    if (!receiver) throw new Error("Missing test recipient");
+    await ctx.write(receiver, walletArtifact.abi, "setBehavior", [true, false]);
+    const first = marketIds[0];
+    if (!first) throw new Error("Missing concurrent market");
+    const market = await fetchJson<Record<string, unknown>>(`${indexerUrl}/markets/${first.id}`);
+    assertMarketUnits(market);
+    const makeWire = (actor: PrivateKeyAccount, side: "buy" | "sell", label: string) =>
+      createOrder(
+        {
+          ...market,
+          account: actor.address,
+          branch: "YES",
+          cutoff: new Date(Number(awaitTime + 3500n) * 1000).toISOString(),
+          funding: "whole",
+          marketId: first.id,
+          price: "200",
+          quantity: "0.1",
+          side,
+          tif: "gtc",
+        },
+        { nowMs: Number(awaitTime * 1000n), salt: keccak256(toHex(label)) },
+      );
+    const awaitTime = (await local.getBlock()).timestamp;
+    const placeThroughApi = async (
+      wire: ReturnType<typeof createOrder>,
+      actor: PrivateKeyAccount,
+    ) => {
+      const quote = await api<{ plan: unknown }>(
+        "/v1/orders/prepare",
+        { order: wire },
+        sessions.get(actor.address),
+      );
+      const signature = await actor.signTypedData(
+        orderTypedData(parseOrder(wire), { chainId: 4663n, verifyingContract: ctx.exchange }),
+      );
+      const expected = atomicTransaction({
+        order: wire,
+        plan: quote.plan,
+        signature,
+        account: actor.address,
+        config: { chainId: 4663, exchange: ctx.exchange, atomicRouter: ctx.atomicRouter },
+        nowSeconds: (await local.getBlock()).timestamp,
+      });
+      const response = await api<unknown>(
+        "/v1/orders/transaction",
+        { order: wire, signature, plan: quote.plan },
+        sessions.get(actor.address),
+      );
+      return verifyAtomicResponse(expected, response);
+    };
+    const makerWire = {
+      ...makeWire(ctx.seller, "sell", "rejecting-race-maker"),
+      recipient: receiver,
+    };
+    const makerTx = await placeThroughApi(makerWire, ctx.seller);
+    await ctx.write(ctx.quote, erc20Abi, "transfer", [ctx.seller.address, 40_000_000n]);
+    const submit = (actor: PrivateKeyAccount, tx: { to: Address; data: Hex }) =>
+      createWalletClient({ account: actor, transport: http(ctx.localUrl) }).sendTransaction({
+        chain: null,
+        to: tx.to,
+        data: tx.data,
+        value: 0n,
+        gas: 8_000_000n,
+        maxFeePerGas: 100_000_000_000n,
+        maxPriorityFeePerGas: 1_000_000_000n,
+      });
+    assert(
+      (await forkReceipt(local, await submit(ctx.seller, makerTx))).status === "success",
+      "Race maker did not rest",
+    );
+    await sync();
+    const [firstTx, secondTx] = await Promise.all([
+      placeThroughApi(makeWire(ctx.account, "buy", "race-one"), ctx.account),
+      placeThroughApi(makeWire(ctx.seller, "buy", "race-two"), ctx.seller),
+    ]);
+    let race: Hex[] = [];
+    await rpc("evm_setAutomine", [false]);
+    try {
+      race = await Promise.all([submit(ctx.account, firstTx), submit(ctx.seller, secondTx)]);
+      await rpc("evm_mine");
+    } finally {
+      await rpc("evm_setAutomine", [true]);
+    }
+    const receipts = await Promise.all(race.map((hash) => forkReceipt(local, hash)));
+    assert(receipts[0]?.blockNumber === receipts[1]?.blockNumber, "Race was not in one block");
+    assert(
+      receipts.filter((receipt) => receipt.status === "success").length === 1,
+      "Concurrent quotes double-filled or both failed",
+    );
+    for (const receipt of receipts)
+      ctx.record({
+        functionName: "checked-atomic-race",
+        hash: receipt.transactionHash,
+        status: receipt.status,
+        gasUsed: receipt.gasUsed,
+        blockNumber: receipt.blockNumber,
+      });
+    await sync();
+    type Credit = {
+      beneficiary: string;
+      asset: string;
+      tokenId: string;
+      amount: string;
+      decimals: number;
+    };
+    const credits = () =>
+      fetchJson<{ vault: Address; payouts: Credit[] }>(`${indexerUrl}/payouts/${receiver}`);
+    const credit = (await credits()).payouts[0];
+    assert(
+      credit?.amount === "20000000" &&
+        credit.decimals === 6 &&
+        credit.asset.toLowerCase() === ctx.ctf.toLowerCase(),
+      "Rejected quote claims were not indexed exactly",
+    );
+    if (!credit) throw new Error("Missing payout credit");
+    const receiverChallenge = await api<{ message: string; challengeId: string }>(
+      "/v1/auth/challenge",
+      { address: receiver },
+    );
+    const receiverSession = await api<{ token: string }>("/v1/auth/verify", {
+      address: receiver,
+      challengeId: receiverChallenge.challengeId,
+      signature: await ctx.account.signMessage({ message: receiverChallenge.message }),
+    });
+    const withdrawHalf = async () => {
+      const expected = payoutWithdrawal({
+        credit,
+        amount: 10_000_000n,
+        recipient: ctx.account.address,
+        account: receiver,
+        config: { chainId: 4663, payoutVault: ctx.payoutVault, conditionalTokens: ctx.ctf },
+      });
+      const response = await api<unknown>(
+        "/v1/payouts/withdraw/prepare",
+        {
+          asset: credit.asset,
+          tokenId: credit.tokenId,
+          amount: "10000000",
+          recipient: ctx.account.address,
+        },
+        receiverSession.token,
+      );
+      const tx = verifyPayoutResponse(expected, response);
+      await ctx.write(receiver, walletArtifact.abi, "execute", [tx.to, tx.data]);
+      await sync();
+      assert(
+        (await credits()).payouts[0]?.amount === "10000000",
+        "Partial withdrawal projection is wrong",
+      );
+    };
+    const rewind = await rpc("evm_snapshot");
+    await withdrawHalf();
+    assert(await rpc("evm_revert", [rewind]), "Credit reorg rewind failed");
+    await rpc("evm_increaseTime", [5]);
+    await sync();
+    assert(
+      (await credits()).payouts[0]?.amount === "20000000",
+      "Reorg did not restore beneficiary credit",
+    );
+    await withdrawHalf();
+    await ctx.save("fullstack-payout-race.json", {
+      vault: ctx.payoutVault,
+      recipient: receiver,
+      race: receipts,
+      credits: await credits(),
+      rollbackVerified: true,
+    });
+    ctx.pass(
+      "Same-block competing quotes settle once; rejected recipient credit supports authenticated partial withdrawal and reorg rollback",
+    );
     const primary = await fetchJson<ReconciliationSnapshot>(
       `${indexerUrl}/internal/reconciliation-snapshot?deep=true`,
     );
@@ -494,7 +644,7 @@ export async function verifyRawRatioFullstack(ctx: Context): Promise<void> {
       primaryHash: hashProjection(primary),
       rebuiltHash: hashProjection(rebuilt),
       indexedBlock: primary.state.indexedBlock,
-      projectionVersion: 2,
+      projectionVersion: 3,
     });
     ctx.pass("Real-token live indexer deep reconciliation and clean database replay match exactly");
   } finally {

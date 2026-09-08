@@ -8,7 +8,7 @@ Prepare responses include verified token units and per-asset decimals for displa
 
 Raw amount and price integers in request JSON are decimal strings. Enums and `maxFeeBps` are JSON
 integers; the fee cap must be 0–1000. Responses also render bigint values as
-decimal strings. State-changing submission endpoints require an `Idempotency-Key` header containing
+decimal strings. Only cancellation/position submission endpoints require an `Idempotency-Key` header containing
 8–128 safe ASCII characters.
 
 ## Authentication
@@ -51,16 +51,20 @@ An admin rate increase above the signed cap cannot fill the order; cancellation 
 ## Endpoints
 
 - `POST /v1/orders/prepare` — body `{ "order": Order }`; returns exact EIP-712 typed data, hash,
-  safe-block context, reservation, approval call, and payoff preview.
-- `POST /v1/orders/submit` — body `{ "order": Order, "signature": "0x…" }`. An optional
-  `signedTransaction` selects the wallet-paid exact raw-transaction fallback.
-- IOC submission additionally requires `protection: { maxQuantity, maxNotional,
-  worstPriceRawX18 }`; it returns a durable intent in `waiting-match` until the matcher supplies a plan.
+  safe-block context, reservation, approval call, payoff preview, `atomicRouter`, `executionVersion: 1`, current fee rates and `plan`.
+- `POST /v1/orders/transaction` — body `{ "order": Order, "signature": "0x…", "plan": Plan }`;
+  verifies the owner, safety, funding, fee caps and exact latest-chain simulation, then returns HTTP 200
+  `{ orderHash, executionVersion: 1, transaction: { chainId, from, to, value: "0", data } }`.
+  This is read-only: no server signing, transaction broadcast, durable intent or order queue.
+- `POST /v1/orders/submit` was removed and returns 404. There is no legacy fallback.
 - `POST /v1/orders/cancel/prepare` — body `{ "orderHash": "0x…" }`; returns maker-only calldata.
 - `POST /v1/orders/cancel/submit` — adds `signedTransaction` and broadcasts only after recovering
   and validating its signer, chain, target, value, and exact calldata.
 - `GET /v1/orders/:orderHash` — returns `{ application, canonical }`; canonical data comes from
   Ponder.
+- Canonical indexed orders include `filled` (executed raw base units). Cancellation
+  clears live `remaining` and `reserved` to zero but preserves `filled`; never infer
+  historical execution as `quantity - remaining` for a cancelled order.
 - `GET /v1/operations/:operationId` — returns attempts, replacement links, persisted receipt, and
   current application state.
 - `POST /v1/positions/merge/{prepare,submit}` — accepts `marketId`, `collateral` (`base` or `quote`),
@@ -69,7 +73,37 @@ An admin rate increase above the signed cap cannot fill the order; cancellation 
   index sets (`"1"` YES, `"2"` NO), matching amounts, and recipient. The preview uses the canonical
   manual resolution vector.
 
-## Application states
+## Atomic plan and wallet execution
+
+`Plan` contains `makers: Order[]`, `quantities: string[]`, `expectedRemaining: string[]`,
+and `deadline: string`. Arrays must have equal lengths and at most 32 distinct makers.
+The API also returns derived `filledQuantity`, `remainingQuantity` and `executionQuote`;
+the UI recomputes these from the execution fields. Prices and quantities stay in raw units.
+Execution quote is gross, before received-claim fees.
+
+The API selects eligible opposite-side GTC makers, best price first and FIFO within a price.
+Its canonical query filters expiry, nonce invalidation, fee caps, side/branch, crossing price
+and anchor eligibility **before** the 33-row window. A sweep requiring maker 33 is rejected.
+An empty plan is valid: GTC rests fully funded, IOC cancels/refunds in the same transaction.
+
+The UI builds EIP-712 data from its configured chain/exchange and the user's retained order.
+After signing, it reconstructs the router calldata locally, compares every transaction field
+returned by the API, and asks the wallet to broadcast that exact transaction. The wallet
+must be the order owner. Required ERC-20/ERC-1155 approvals are separate transactions.
+Quotes normally expire after 60 seconds (or the order expiry, if sooner).
+
+The transaction opens escrow and settles all quoted legs or reverts entirely. It never
+silently falls back to resting after an execution failure. Changed maker remainders, expiry,
+cancellation, reorgs or insufficient fee caps require a fresh reviewed quote. Gas is payable
+even on revert. Use the transaction receipt and canonical indexed state, not a successful
+HTTP quote, as execution evidence. New atomic orders have no gateway operation record;
+`GET /v1/orders/:orderHash` may therefore return `application: null`.
+
+The contract verifies validity, not global best-price, FIFO or plan completeness.
+Concurrent placements may leave crossed resting orders; no background process clears them.
+See [the execution specification](../architecture/atomic-placement.md).
+
+## Cancellation/position application states
 
 - `accepted`: request and digest persisted.
 - `prepared`: serialized signed transaction persisted before broadcast.
@@ -77,7 +111,6 @@ An admin rate increase above the signed cap cannot fill the order; cancellation 
 - `retryable`: a transient indexer/RPC failure occurred; retry the same idempotency key.
 - `canonical`: Ponder indexed the transaction/order state; `finalReceipt` is persisted.
 - `failed`: non-retryable validation, simulation, or canonical transaction failure.
-- `submitted`: an IOC intent was durably handed to the settlement worker.
 
 An API `202` is never evidence of escrow or execution. Clients must use canonical state.
 

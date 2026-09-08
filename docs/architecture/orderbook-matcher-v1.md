@@ -1,5 +1,7 @@
 # Order-book matcher v1
 
+> Historical design record, superseded for trading execution on 2026-09-08 by [permissionless atomic placement](./atomic-placement.md). The matcher and settlement-worker runtime code, trading queues and nonce allocator have been removed. Do not use the old startup commands or trading endpoints below.
+
 ## Scope
 
 The matcher maintains one independent price-time-priority book for each `(marketId, branch)`. It

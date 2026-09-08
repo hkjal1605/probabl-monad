@@ -78,9 +78,9 @@ contract ProtocolFeeVaultTest is ProtocolFixture {
         bid.maxFeeBps = 1000;
         ask.maxFeeBps = 1000;
         bid.recipient = buyerRecipient;
-        exchange.openOrder(bid, _sign(bid, BUYER_KEY));
-        exchange.openOrder(ask, _sign(ask, SELLER_KEY));
-        exchange.matchOrders(bid, ask, 1e18);
+        _openOrder(bid, _sign(bid, BUYER_KEY));
+        _openOrder(ask, _sign(ask, SELLER_KEY));
+        _matchOrders(bid, ask, 1e18);
     }
 
     function _ids() private view returns (uint256[] memory ids, uint256[] memory amounts) {
@@ -142,7 +142,7 @@ contract ProtocolFeeVaultTest is ProtocolFixture {
             0,
             keccak256("LIVE_ESCROW")
         );
-        exchange.openOrder(bid, _sign(bid, SECOND_BUYER_KEY));
+        _openOrder(bid, _sign(bid, SECOND_BUYER_KEY));
         uint256 escrow = quote.balanceOf(address(exchange));
         uint256 collateral = quote.balanceOf(address(ctf));
         feeVault.claimFees(secondBuyer, ids, amounts);
@@ -254,7 +254,7 @@ contract ProtocolFeeVaultTest is ProtocolFixture {
         new ProtocolFeeVault(ctf, IProtocolAuthority(address(0)));
         vm.expectRevert(ConditionalSettlement.InvalidAddress.selector);
         new ConditionalSettlement(ctf, registry, address(exchange), ProtocolFeeVault(address(0)));
-        ProtocolAuthority other = new ProtocolAuthority(buyer, buyer, buyer, buyer, buyer);
+        ProtocolAuthority other = new ProtocolAuthority(buyer, buyer, buyer, buyer);
         ProtocolFeeVault wrong = new ProtocolFeeVault(ctf, IProtocolAuthority(address(other)));
         vm.expectRevert(ConditionalSettlement.InvalidAddress.selector);
         new ConditionalSettlement(ctf, registry, address(exchange), wrong);
@@ -388,10 +388,10 @@ contract ProtocolFeeVaultTest is ProtocolFixture {
         bid.recipient = address(receiver);
         bid.maxFeeBps = 100;
         ask.maxFeeBps = 200;
-        exchange.openOrder(bid, _sign(bid, BUYER_KEY));
-        exchange.openOrder(ask, _sign(ask, SELLER_KEY));
+        _openOrder(bid, _sign(bid, BUYER_KEY));
+        _openOrder(ask, _sign(ask, SELLER_KEY));
         _transferAdmin(address(receiver));
-        exchange.matchOrders(bid, ask, 1e18);
+        _matchOrders(bid, ask, 1e18);
         assertTrue(receiver.callbackSucceeded(), "admin rate change actually happened");
         assertEq(feeVault.takerFeeBps(), 1000, "new rate applies after this snapshot");
         assertEq(

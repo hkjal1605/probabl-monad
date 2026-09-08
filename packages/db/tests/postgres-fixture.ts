@@ -12,8 +12,8 @@ type Query = <T extends QueryResultRow = QueryResultRow>(
 ) => Promise<QueryResult<T>>;
 
 /** Build test DDL from the real schema, including its actual partial/order indexes. */
-export async function postgresFixture() {
-  const fixture = await postgresClient();
+export async function postgresFixture(options: { cleanup?: "test" | "file" } = {}) {
+  const fixture = await postgresClient(options);
   const { client } = fixture;
   const dialect = new PgDialect();
   for (const table of Object.values(schema)) {
@@ -48,7 +48,9 @@ export async function postgresFixture() {
 }
 
 /** SQL test client backed by a real server, with explicit transaction connection pinning. */
-export async function postgresClient(options: { cleanup?: "test" | "file" } = {}) {
+export async function postgresClient(
+  options: { cleanup?: "test" | "file"; migrate?: boolean } = {},
+) {
   const fixture = await testDatabase(options);
   const pool = new Pool({ connectionString: fixture.connectionString, max: 4 });
   fixture.registerClose(() => pool.end());

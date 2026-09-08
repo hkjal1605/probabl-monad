@@ -3,9 +3,9 @@ pragma solidity 0.8.30;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { AtomicOrderRouter } from "../src/AtomicOrderRouter.sol";
 import { ConditionalExchange } from "../src/ConditionalExchange.sol";
 import { ConditionalSettlement } from "../src/ConditionalSettlement.sol";
-import { IOCRouter } from "../src/IOCRouter.sol";
 import { ManualResolutionController } from "../src/ManualResolutionController.sol";
 import { MarketRegistry } from "../src/MarketRegistry.sol";
 import { OrderRecoveryRouter } from "../src/OrderRecoveryRouter.sol";
@@ -13,10 +13,10 @@ import { OrderValidator } from "../src/OrderValidator.sol";
 import { PositionRouter } from "../src/PositionRouter.sol";
 import { ProtocolAuthority } from "../src/ProtocolAuthority.sol";
 import { ProtocolFeeVault } from "../src/ProtocolFeeVault.sol";
+import { IAtomicExchange } from "../src/interfaces/IAtomicExchange.sol";
+import { IAtomicOrderRouter } from "../src/interfaces/IAtomicOrderRouter.sol";
 import { IConditionalSettlement } from "../src/interfaces/IConditionalSettlement.sol";
 import { IConditionalTokens } from "../src/interfaces/IConditionalTokens.sol";
-import { IIOCExchange } from "../src/interfaces/IIOCExchange.sol";
-import { IIOCRouter } from "../src/interfaces/IIOCRouter.sol";
 import { IOrderRecoveryExchange } from "../src/interfaces/IOrderRecoveryExchange.sol";
 import { IProtocolAuthority } from "../src/interfaces/IProtocolAuthority.sol";
 import { ProtocolConstants } from "../src/libraries/ProtocolConstants.sol";
@@ -26,6 +26,7 @@ import {
     Market,
     MarketConfig,
     Order,
+    Payout,
     Side,
     TimeInForce
 } from "../src/types/ProtocolTypes.sol";
@@ -50,7 +51,7 @@ abstract contract ProtocolFixture is TestBase {
     ConditionalSettlement internal settlement;
     ProtocolFeeVault internal feeVault;
     OrderValidator internal validator;
-    IOCRouter internal iocRouter;
+    AtomicOrderRouter internal atomicRouter;
     OrderRecoveryRouter internal recoveryRouter;
     PositionRouter internal positionRouter;
     MockStockToken internal stock;
@@ -69,9 +70,8 @@ abstract contract ProtocolFixture is TestBase {
         ctf = _deployConditionalTokens();
         stock = new MockStockToken();
         quote = _newQuoteToken();
-        authority = new ProtocolAuthority(
-            address(this), address(this), address(this), address(this), address(this)
-        );
+        authority =
+            new ProtocolAuthority(address(this), address(this), address(this), address(this));
         IProtocolAuthority protocolAuthority = IProtocolAuthority(address(authority));
         registry = new MarketRegistry(ctf, protocolAuthority, quote);
         resolutionController = new ManualResolutionController(ctf, registry, protocolAuthority);
@@ -81,11 +81,11 @@ abstract contract ProtocolFixture is TestBase {
         validator = new OrderValidator(address(exchange));
         feeVault = new ProtocolFeeVault(ctf, protocolAuthority);
         settlement = new ConditionalSettlement(ctf, registry, address(exchange), feeVault);
-        iocRouter = new IOCRouter(IIOCExchange(address(exchange)), protocolAuthority);
+        atomicRouter = new AtomicOrderRouter(IAtomicExchange(address(exchange)), protocolAuthority);
         recoveryRouter = new OrderRecoveryRouter(IOrderRecoveryExchange(address(exchange)));
         exchange.configureOrderValidator(validator);
         exchange.configureSettlement(IConditionalSettlement(address(settlement)));
-        exchange.configureIocRouter(IIOCRouter(address(iocRouter)));
+        exchange.configureAtomicRouter(IAtomicOrderRouter(address(atomicRouter)));
         positionRouter = new PositionRouter(ctf);
 
         cutoff = uint64(block.timestamp + 30 days);
@@ -209,6 +209,61 @@ abstract contract ProtocolFixture is TestBase {
             market.conditionId,
             partition,
             amount
+        );
+    }
+
+    /// @dev All normal test placement uses the actual owner-authorized public router.
+    function _openOrder(
+        Order memory order,
+        bytes memory signature
+    ) internal returns (bytes32) {
+        vm.prank(order.maker);
+        return atomicRouter.placeAndMatch(
+            order,
+            signature,
+            new Order[](0),
+            new uint128[](0),
+            new uint128[](0),
+            order.expiry < block.timestamp + 60 ? order.expiry : uint64(block.timestamp + 60)
+        );
+    }
+
+    /// @dev Unit-test the exchange settlement kernel independently of router plan validation.
+    /// Production callers cannot impersonate the immutable router. Atomic integration tests
+    /// exercise the complete public entry point, including multi-leg rollback and authorization.
+    function _matchOrders(
+        Order memory bid,
+        Order memory ask,
+        uint128 quantity
+    ) internal {
+        vm.startPrank(address(atomicRouter));
+        Payout[5] memory leg = exchange.matchOrders(bid, ask, quantity);
+        Payout[] memory payouts = new Payout[](5);
+        for (uint256 i; i < 5; ++i) {
+            payouts[i] = leg[i];
+        }
+        exchange.finalizeAtomicPlacement(exchange.hashOrder(bid), payouts);
+        vm.stopPrank();
+    }
+
+    function _executeIOC(
+        Order memory taker,
+        bytes memory signature,
+        Order[] memory makers,
+        uint128[] memory amounts
+    ) internal returns (bytes32) {
+        uint128[] memory remaining = new uint128[](makers.length);
+        for (uint256 i; i < makers.length; ++i) {
+            remaining[i] = makers[i].quantity;
+        }
+        vm.prank(taker.maker);
+        return atomicRouter.placeAndMatch(
+            taker,
+            signature,
+            makers,
+            amounts,
+            remaining,
+            taker.expiry < block.timestamp + 60 ? taker.expiry : uint64(block.timestamp + 60)
         );
     }
 }

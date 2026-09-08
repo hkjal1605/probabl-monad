@@ -5,6 +5,7 @@ import { decodeFunctionData, erc20Abi, getAddress, type Hex } from "viem";
 import {
   fundingRequirement,
   GatewayError,
+  parseAtomicPlan,
   parseOrder,
   payoffPreview,
   preparedOrder,
@@ -35,6 +36,7 @@ const wire = {
 };
 
 const snapshot: ValidationSnapshot = {
+  safeBlockHash: `0x${"11".repeat(32)}`,
   chainId: 31337n,
   market: {
     baseTokenDecimals: 18,
@@ -62,6 +64,7 @@ const snapshot: ValidationSnapshot = {
   },
   marketOpenNotional: 0n,
   minimumNonce: 7n,
+  nextSequence: 10n,
   safeBlockNumber: 100n,
   safeBlockTimestamp: 1_500n,
   tradingPaused: false,
@@ -69,6 +72,68 @@ const snapshot: ValidationSnapshot = {
 };
 
 describe("gateway domain", () => {
+  test("atomic wire plans derive totals and reject malformed, oversized or noncrossing legs", () => {
+    const taker = parseOrder(wire);
+    const resting = { ...wire, side: Side.Sell };
+    const plan = {
+      guard: { nextSequence: "10", makerFeeBps: 0, takerFeeBps: 0 },
+      releaseOrders: [],
+      makers: [resting],
+      quantities: [wire.quantity],
+      expectedRemaining: [wire.quantity],
+      deadline: "1560",
+    };
+    const parsed = parseAtomicPlan({ ...plan, filledQuantity: "0", executionQuote: "1" }, taker);
+    expect(parsed.filledQuantity).toBe(taker.quantity);
+    expect(parsed.remainingQuantity).toBe(0n);
+    expect(parsed.executionQuote).toBe(200n * 10n ** 18n);
+    expect(
+      parseAtomicPlan(
+        { ...plan, makers: [], quantities: [], expectedRemaining: [], deadline: "1560" },
+        taker,
+      ).remainingQuantity,
+    ).toBe(taker.quantity);
+    for (const patch of [
+      { makers: null },
+      { quantities: {} },
+      { expectedRemaining: [] },
+      { makers: Array(33).fill(resting) },
+      { deadline: "0" },
+      { deadline: "1901" },
+      { deadline: (1n << 64n).toString() },
+      ...[0, "-1", "01", "1.1", "1e18", "0x10", (1n << 128n).toString(), "9".repeat(10000)].map(
+        (value) => ({ quantities: [value] }),
+      ),
+      { quantities: ["0"] },
+      { quantities: [(taker.quantity + 1n).toString()] },
+      { expectedRemaining: ["0"] },
+      { expectedRemaining: [(taker.quantity + 1n).toString()] },
+      {
+        makers: [resting, resting],
+        quantities: ["1", "1"],
+        expectedRemaining: [wire.quantity, wire.quantity],
+      },
+      ...[
+        { side: Side.Buy },
+        { branch: Branch.No },
+        { tif: TimeInForce.Ioc },
+        { marketId: salt },
+        { limitPriceRawX18: (taker.limitPriceRawX18 + 1n).toString() },
+        { limitPriceRawX18: "0" },
+      ].map((value) => ({ makers: [{ ...resting, ...value }] })),
+      { makers: [{ ...resting, limitPriceRawX18: "1" }], quantities: ["1"] },
+    ])
+      expect(() => parseAtomicPlan({ ...plan, ...patch }, taker)).toThrow();
+    for (const invalid of [null, [], "plan"])
+      expect(() => parseAtomicPlan(invalid, taker)).toThrow();
+    const sell = { ...taker, side: Side.Sell };
+    expect(parseAtomicPlan({ ...plan, makers: [wire] }, sell).executionQuote).toBe(
+      parsed.executionQuote,
+    );
+    expect(() =>
+      parseAtomicPlan({ ...plan, makers: [{ ...wire, limitPriceRawX18: "1" }] }, sell),
+    ).toThrow();
+  });
   test("fee caps are exact and signature-bound without extra funding", () => {
     expect(parseOrder(wire).maxFeeBps).toBe(0);
     for (const value of [-1, 1001, 65535, 0.1, "100", Number.NaN, Infinity]) {
@@ -223,6 +288,6 @@ describe("gateway domain", () => {
         exchange,
         { allowance: 0n, approvedForAll: null, balance: 0n },
       ),
-    ).toThrow("wallet open-notional cap exceeded");
+    ).not.toThrow(); // Aggregate caps are evaluated after the complete atomic plan is known.
   });
 });

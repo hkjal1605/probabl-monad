@@ -33,10 +33,10 @@ contract TradingFeesTest is ProtocolFixture {
         );
         ask.quantity = 1e18;
         _openPair(bid, ask, false);
-        exchange.matchOrders(bid, ask, 1e18);
+        _matchOrders(bid, ask, 1e18);
         ask.salt = keccak256("NEW_RESTING_ASK");
-        exchange.openOrder(ask, _sign(ask, SELLER_KEY));
-        exchange.matchOrders(bid, ask, 1e18);
+        _openOrder(ask, _sign(ask, SELLER_KEY));
+        _matchOrders(bid, ask, 1e18);
         assertEq(
             ctf.balanceOf(address(feeVault), market.stockYesPositionId),
             3e16,
@@ -58,7 +58,7 @@ contract TradingFeesTest is ProtocolFixture {
         _openPair(bid, ask, true);
         bytes32 askHash = exchange.hashOrder(ask);
         vm.recordLogs();
-        exchange.matchOrders(bid, ask, 1e18);
+        _matchOrders(bid, ask, 1e18);
         Vm.Log[] memory logs = vm.getRecordedLogs();
         uint256 found;
         for (uint256 i; i < logs.length; ++i) {
@@ -131,11 +131,11 @@ contract TradingFeesTest is ProtocolFixture {
         bool bidIsMaker
     ) internal {
         if (bidIsMaker) {
-            exchange.openOrder(bid, _sign(bid, BUYER_KEY));
-            exchange.openOrder(ask, _sign(ask, SELLER_KEY));
+            _openOrder(bid, _sign(bid, BUYER_KEY));
+            _openOrder(ask, _sign(ask, SELLER_KEY));
         } else {
-            exchange.openOrder(ask, _sign(ask, SELLER_KEY));
-            exchange.openOrder(bid, _sign(bid, BUYER_KEY));
+            _openOrder(ask, _sign(ask, SELLER_KEY));
+            _openOrder(bid, _sign(bid, BUYER_KEY));
         }
     }
 
@@ -168,7 +168,7 @@ contract TradingFeesTest is ProtocolFixture {
             uint256 executionQuote = (bidIsMaker ? 440 : 400) * _quoteUnit();
             uint256 stockFee = uint256(2e18) * (bidIsMaker ? 25 : 75) / 10000;
             uint256 cashFee = executionQuote * (bidIsMaker ? 75 : 25) / 10000;
-            exchange.matchOrders(bid, ask, 2e18);
+            _matchOrders(bid, ask, 2e18);
             assertEq(
                 ctf.balanceOf(buyer, stockId) - beforeStock,
                 2e18 - stockFee,
@@ -216,7 +216,7 @@ contract TradingFeesTest is ProtocolFixture {
         );
         uint256 beforeQuote = quote.balanceOf(buyer);
         _openPair(bid, ask, false);
-        exchange.matchOrders(bid, ask, 1e18);
+        _matchOrders(bid, ask, 1e18);
         assertEq(
             quote.balanceOf(buyer),
             beforeQuote - 420 * _quoteUnit(),
@@ -259,7 +259,7 @@ contract TradingFeesTest is ProtocolFixture {
                 uint16(10)
             )
         );
-        exchange.matchOrders(bid, ask, 1e18);
+        _matchOrders(bid, ask, 1e18);
         feeVault.setFeeRates(10, 21);
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -269,7 +269,7 @@ contract TradingFeesTest is ProtocolFixture {
                 uint16(20)
             )
         );
-        exchange.matchOrders(bid, ask, 1e18);
+        _matchOrders(bid, ask, 1e18);
         assertEq(
             exchange.getOrderState(bidHash).remaining, 2e18, "failed fill does not consume quantity"
         );
@@ -279,9 +279,9 @@ contract TradingFeesTest is ProtocolFixture {
             "failed fill has no fees"
         );
         feeVault.setFeeRates(10, 20);
-        exchange.matchOrders(bid, ask, 1e18);
+        _matchOrders(bid, ask, 1e18);
         feeVault.setFeeRates(0, 0);
-        exchange.matchOrders(bid, ask, 1e18);
+        _matchOrders(bid, ask, 1e18);
         assertEq(
             ctf.balanceOf(address(feeVault), market.stockYesPositionId),
             1e15,
@@ -307,11 +307,11 @@ contract TradingFeesTest is ProtocolFixture {
         bytes memory signature = _sign(bid, BUYER_KEY);
         bid.maxFeeBps = 1000;
         vm.expectRevert(OrderValidator.InvalidSignature.selector);
-        exchange.openOrder(bid, signature);
+        _openOrder(bid, signature);
         bid.maxFeeBps = 1001;
         signature = _sign(bid, BUYER_KEY);
         vm.expectRevert(OrderValidator.InvalidFeeCap.selector);
-        exchange.openOrder(bid, signature);
+        _openOrder(bid, signature);
     }
 
     function testZeroCapStillProtectsOrdersSignedBeforeRateIncrease() public {
@@ -335,7 +335,7 @@ contract TradingFeesTest is ProtocolFixture {
                 uint16(0)
             )
         );
-        exchange.matchOrders(bid, ask, 1e18);
+        _matchOrders(bid, ask, 1e18);
         vm.startPrank(buyer);
         exchange.cancelOrder(exchange.hashOrder(bid));
         vm.stopPrank();
@@ -378,17 +378,17 @@ contract TradingFeesTest is ProtocolFixture {
         );
         _openPair(bid, ask, true);
         feeVault.setFeeRates(1, 2);
-        exchange.matchOrders(bid, ask, 3333);
+        _matchOrders(bid, ask, 3333);
         assertEq(settlement.feeRemainder(exchange.hashOrder(bid)), 3333, "fraction saved");
         feeVault.setFeeRates(0, 0);
-        exchange.matchOrders(bid, ask, 1);
+        _matchOrders(bid, ask, 1);
         assertEq(
             settlement.feeRemainder(exchange.hashOrder(bid)),
             3333,
             "zero fee does not erase fractional carry"
         );
         feeVault.setFeeRates(2, 3);
-        exchange.matchOrders(bid, ask, 6666);
+        _matchOrders(bid, ask, 6666);
         assertEq(
             ctf.balanceOf(address(feeVault), market.stockYesPositionId), 1, "weighted buyer fee"
         );
@@ -410,13 +410,13 @@ contract TradingFeesTest is ProtocolFixture {
             uint128(200 * _quoteUnit())
         );
         bid.tif = TimeInForce.IOC;
-        exchange.openOrder(ask, _sign(ask, SELLER_KEY));
+        _openOrder(ask, _sign(ask, SELLER_KEY));
         Order[] memory makers = new Order[](1);
         makers[0] = ask;
         uint128[] memory quantities = new uint128[](1);
         quantities[0] = 1e18;
         uint256 beforeQuote = quote.balanceOf(buyer);
-        iocRouter.executeIOC(bid, _sign(bid, BUYER_KEY), makers, quantities);
+        _executeIOC(bid, _sign(bid, BUYER_KEY), makers, quantities);
         assertEq(
             quote.balanceOf(buyer), beforeQuote - 200 * _quoteUnit(), "only filled quote spent"
         );
@@ -435,7 +435,7 @@ contract TradingFeesTest is ProtocolFixture {
         );
     }
 
-    function testRejectingRecipientRollsBackFeesReservationsAndCarry() public {
+    function testRejectingRecipientPaysNormalFeesAndReceivesExactNetCredit() public {
         _tinyMarket();
         feeVault.setFeeRates(3, 7);
         MutableReceiver receiver = new MutableReceiver(buyer);
@@ -450,19 +450,54 @@ contract TradingFeesTest is ProtocolFixture {
         ask.recipient = address(receiver);
         _openPair(bid, ask, true);
         receiver.setBehavior(true, false);
-        vm.expectRevert();
-        exchange.matchOrders(bid, ask, 3333);
-        assertEq(settlement.feeRemainder(exchange.hashOrder(bid)), 0, "buyer carry rollback");
-        assertEq(settlement.feeRemainder(exchange.hashOrder(ask)), 0, "seller carry rollback");
+        _matchOrders(bid, ask, 3333);
+        assertEq(settlement.feeRemainder(exchange.hashOrder(bid)), 9999, "buyer carry preserved");
+        assertEq(settlement.feeRemainder(exchange.hashOrder(ask)), 3331, "seller carry preserved");
         assertEq(
             ctf.balanceOf(address(feeVault), market.stockYesPositionId),
             0,
-            "already delivered fee rolled back"
+            "stock fee below one raw unit"
         );
         assertEq(
             exchange.getOrderState(exchange.hashOrder(bid)).remaining,
-            10_000,
-            "reservation rollback"
+            6667,
+            "fill consumed normally"
+        );
+        assertEq(
+            ctf.balanceOf(address(feeVault), market.quoteYesPositionId), 2, "normal fee charged"
+        );
+        assertEq(
+            exchange.payoutVault()
+                .claimable(address(receiver), address(ctf), market.quoteYesPositionId),
+            3331,
+            "only net proceeds credited"
+        );
+        assertEq(
+            ctf.balanceOf(buyer, market.stockYesPositionId), 3333, "counterparty paid normally"
+        );
+    }
+
+    function testCarriedFeeCanConsumeEntireDustFillWithoutCreatingZeroPayout() public {
+        _tinyMarket();
+        feeVault.setFeeRates(1000, 1000);
+        (Order memory bid, Order memory ask) = _pair(
+            Branch.YES, FundingKind.WHOLE_COLLATERAL, FundingKind.WHOLE_COLLATERAL, 10, 1e18, 1e18
+        );
+        _openPair(bid, ask, true);
+        _matchOrders(bid, ask, 9);
+        _matchOrders(bid, ask, 1);
+        assertEq(ctf.balanceOf(buyer, market.stockYesPositionId), 9, "zero net last fill");
+        assertEq(ctf.balanceOf(seller, market.quoteYesPositionId), 9, "zero net quote last fill");
+        assertEq(
+            ctf.balanceOf(address(feeVault), market.stockYesPositionId), 1, "full carried stock fee"
+        );
+        assertEq(
+            ctf.balanceOf(address(feeVault), market.quoteYesPositionId), 1, "full carried quote fee"
+        );
+        assertEq(
+            exchange.payoutVault().totalClaimable(address(ctf), market.stockYesPositionId),
+            0,
+            "no zero credit"
         );
     }
 
@@ -485,7 +520,7 @@ contract TradingFeesTest is ProtocolFixture {
             uint128(200 * _quoteUnit())
         );
         _openPair(bid, ask, bidIsMaker);
-        exchange.matchOrders(bid, ask, quantity);
+        _matchOrders(bid, ask, quantity);
         uint256 stockFee = uint256(quantity) * (bidIsMaker ? makerBps : takerBps) / 10000;
         uint256 cashGross = uint256(quantity) * 200 * _quoteUnit() / 1e18;
         uint256 cashFee = cashGross * (bidIsMaker ? takerBps : makerBps) / 10000;

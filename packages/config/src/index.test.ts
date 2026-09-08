@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { loadApiConfig, loadMatcherConfig, loadProtocolConfig } from "./index.ts";
+import { loadApiConfig, loadProtocolConfig } from "./index.ts";
 
 describe("configuration", () => {
   test("loads API defaults", () => {
@@ -29,21 +29,6 @@ describe("configuration", () => {
         MARKET_REGISTRY_ADDRESS: "0x3333333333333333333333333333333333333333",
         ROBINHOOD_CHAIN_ID: "46630",
         ROBINHOOD_RPC_URL: "file:///tmp/rpc",
-      }),
-    ).toThrow();
-  });
-
-  test("loads bounded matcher durability and lease settings", () => {
-    expect(loadMatcherConfig({ MATCHER_OWNER_ID: "matcher-a" })).toEqual({
-      checkpointEveryEvents: 100n,
-      leaseTtlMs: 15_000n,
-      maxFillsPerProposal: 32,
-      ownerId: "matcher-a",
-    });
-    expect(() =>
-      loadMatcherConfig({
-        MATCHER_MAX_FILLS_PER_PROPOSAL: "33",
-        MATCHER_OWNER_ID: "matcher-a",
       }),
     ).toThrow();
   });

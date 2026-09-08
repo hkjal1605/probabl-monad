@@ -136,3 +136,20 @@ struct SettlementFill {
     uint16 sellMaxFeeBps;
     bool bidIsMaker;
 }
+
+/// @notice Exact-asset delivery, staged until every fill has finished accounting.
+/// @dev asset == conditionalTokens identifies an ERC1155 claim; other assets are ERC20
+///      collateral with tokenId zero. Zero amounts are unused slots, never liabilities.
+struct Payout {
+    address beneficiary;
+    address asset;
+    uint256 tokenId;
+    uint256 amount;
+}
+
+/// @notice Opt-in reviewed-book guard used by the first-party API/UI.
+struct ExecutionGuard {
+    uint64 nextSequence;
+    uint16 makerFeeBps;
+    uint16 takerFeeBps;
+}

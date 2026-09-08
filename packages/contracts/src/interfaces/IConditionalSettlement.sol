@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import { SettlementFill } from "../types/ProtocolTypes.sol";
+import { Payout, SettlementFill } from "../types/ProtocolTypes.sol";
 import { IConditionalTokens } from "./IConditionalTokens.sol";
 import { IMarketRegistry } from "./IMarketRegistry.sol";
 
@@ -11,5 +11,5 @@ interface IConditionalSettlement {
     function exchange() external view returns (address);
     function settleFill(
         SettlementFill calldata fill
-    ) external;
+    ) external returns (Payout[4] memory);
 }

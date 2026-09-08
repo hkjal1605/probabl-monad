@@ -10,7 +10,7 @@ import { IndexerClient, ViemGatewayChain } from "./chain.ts";
 import { loadApiEnvironment } from "./environment.ts";
 import { logger } from "./logger.ts";
 import { PolymarketIngestorClient } from "./polymarket-client.ts";
-import { GatewayService, HttpSettlementIntentSink } from "./service.ts";
+import { GatewayService } from "./service.ts";
 
 async function main() {
   const config = loadApiConfig(Bun.env);
@@ -29,10 +29,6 @@ async function main() {
     store,
     chain,
     new IndexerClient(environment.indexerUrl),
-    new HttpSettlementIntentSink(
-      environment.settlementWorkerUrl,
-      environment.settlementWorkerToken,
-    ),
     new HttpTradingSafety(Bun.env),
   );
   const adminEnvironment = loadAdminEvidenceEnvironment(Bun.env);

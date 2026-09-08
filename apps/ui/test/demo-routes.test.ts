@@ -103,4 +103,28 @@ describe("demo server isolation", () => {
       expect(response.headers.get("set-cookie")).toBeNull();
     }
   });
+  test("loopback previews preserve the exact origin, port and CSRF boundary", async () => {
+    for (const [host, origin, expectedStatus] of [
+      ["127.0.0.1:8787", "http://127.0.0.1:8787", 303],
+      ["[::1]:8787", "http://[::1]:8787", 303],
+      ["127.0.0.1:8787", "http://localhost:8787", 403],
+      ["127.0.0.1:8787", "http://127.0.0.1:3001", 403],
+      ["127.0.0.1:8787", "https://127.0.0.1:8787", 403],
+      ["attacker.test", "http://attacker.test", 403],
+    ] as const) {
+      const response = await switchMode(
+        new NextRequest("http://localhost:8787/api/mode", {
+          method: "POST",
+          headers: {
+            host,
+            origin,
+            "x-forwarded-host": "attacker.test",
+            "content-type": "application/x-www-form-urlencoded",
+          },
+          body: "mode=demo",
+        }),
+      );
+      expect(response.status).toBe(expectedStatus);
+    }
+  });
 });

@@ -53,6 +53,8 @@ export interface SnapshotReservation {
 }
 
 export interface ReconciliationSnapshot {
+  payoutCredits: Array<{ beneficiary: Address; asset: Address; tokenId: string; amount: string }>;
+  payoutTotals: Array<{ asset: Address; tokenId: string; amount: string }>;
   claimTotals: Array<{ amount: string | null; positionId: string }>;
   deep: boolean;
   marketOpenInterest: Array<{ amount: string; marketId: Hex }>;
@@ -90,7 +92,7 @@ export interface ReconciliationReport {
   indexedBlockHash: Hex;
   issues: ReconciliationIssue[];
   projectionHash: Hex;
-  projectionVersion: 2;
+  projectionVersion: 3;
   startedAt: string;
   status: "ok" | "mismatch";
 }

@@ -13,6 +13,7 @@ export interface IndexerEnvironment {
   contracts: {
     conditionalTokens: Address;
     exchange: Address;
+    payoutVault: Address;
     marketRegistry: Address;
     orderRecoveryRouter: Address;
     positionRouter: Address;
@@ -167,6 +168,7 @@ export const loadIndexerEnvironment = (
     contracts: {
       conditionalTokens: address(environment, "CONDITIONAL_TOKENS_ADDRESS", allowPlaceholders),
       exchange: address(environment, "EXCHANGE_ADDRESS", allowPlaceholders),
+      payoutVault: address(environment, "PAYOUT_VAULT_ADDRESS", allowPlaceholders),
       marketRegistry: address(environment, "MARKET_REGISTRY_ADDRESS", allowPlaceholders),
       orderRecoveryRouter: address(environment, "ORDER_RECOVERY_ROUTER_ADDRESS", allowPlaceholders),
       positionRouter: address(environment, "POSITION_ROUTER_ADDRESS", allowPlaceholders),

@@ -30,13 +30,13 @@ const root = resolve(import.meta.dir, "../../..");
 const started = new Date().toISOString();
 const output = resolve(
   root,
-  "audit/2026-09-06/real-token-fork/evidence",
+  "audit/2026-09-08/atomic-placement/real-token-evidence",
   started.replaceAll(":", "-"),
 );
 await mkdir(output, { recursive: true });
 const upstreamUrl = "https://rpc.mainnet.chain.robinhood.com";
-const blockNumber = 56_647_011n;
-const blockHash = "0x3e74877c2488a6b48cde767a4b00d119b122a8f7f87fa57d5784fe3edc9b44c8";
+let blockNumber = 0n;
+let blockHash: Hex = zeroHash;
 const tokens = [
   {
     symbol: "USDG",
@@ -256,8 +256,11 @@ async function deploy(name: string, abi: Abi, bytecode: Hex, args: readonly unkn
 
 try {
   assert((await source.getChainId()) === 4663, "Upstream is not RH mainnet");
-  const block = await source.getBlock({ blockNumber });
-  assert(block.hash === blockHash, "Pinned block hash differs");
+  // Pin a single current canonical block for the entire run. Public RPC providers
+  // need not retain arbitrary historical account state for the old audit's block.
+  const block = await source.getBlock({ blockTag: "latest" });
+  blockNumber = block.number;
+  blockHash = block.hash;
   await save("block.json", {
     number: block.number,
     hash: block.hash,
@@ -531,7 +534,7 @@ try {
     "ProtocolAuthority",
     authorityArtifact.abi,
     authorityArtifact.bytecode.object,
-    Array(5).fill(account.address),
+    Array(4).fill(account.address),
   );
   await runRawRatioForkLifecycle({
     account,

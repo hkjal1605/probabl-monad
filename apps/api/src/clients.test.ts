@@ -1,13 +1,79 @@
 import { expect, test } from "bun:test";
-import { Branch, FundingKind, type Order, Side, TimeInForce } from "@conditional-stocks/domain";
-import { canonicalParse } from "@conditional-stocks/orderbook";
+import { parseOrder, type ValidationSnapshot } from "@conditional-stocks/gateway";
 import type { Hex } from "viem";
 import { IndexerClient } from "./chain.ts";
 import { PolymarketIngestorClient } from "./polymarket-client.ts";
-import { HttpSettlementIntentSink } from "./service.ts";
 
 const hash: Hex = `0x${"11".repeat(32)}`;
-const maker = "0x1000000000000000000000000000000000000001";
+
+test("candidate transport binds chain/exchange/block hash and rejects malformed or unbounded rows", async () => {
+  const exchange = "0x1000000000000000000000000000000000000001";
+  const order = parseOrder({
+    maker: exchange,
+    recipient: exchange,
+    marketId: hash,
+    side: 0,
+    branch: 0,
+    fundingKind: 0,
+    quantity: "1000000000000000000",
+    tif: 0,
+    limitPriceRawX18: "200000000",
+    expiry: "2000",
+    nonce: "0",
+    salt: hash,
+    maxFeeBps: 0,
+  });
+  const snapshot = {
+    chainId: 31337n,
+    safeBlockNumber: 100n,
+    safeBlockHash: hash,
+  } as ValidationSnapshot;
+  const row = {
+    order: { ...order, side: 1 },
+    orderHash: hash,
+    remaining: "1000000000000000000",
+    sequence: "1",
+  };
+  const good = { chainId: 31337, exchange, blockNumber: "100", blockHash: hash, candidates: [row] };
+  let body: unknown = good;
+  const server = Bun.serve({
+    hostname: "127.0.0.1",
+    port: 0,
+    fetch(request) {
+      const query = new URL(request.url).searchParams;
+      expect(query.get("timestamp")).toBe("1501");
+      expect(query.get("side")).toBe("1");
+      return new Response(
+        JSON.stringify(body, (_, v) => (typeof v === "bigint" ? String(v) : v)),
+        { headers: { "content-type": "application/json" } },
+      );
+    },
+  });
+  const client = new IndexerClient(server.url.href.replace(/\/$/, ""));
+  const read = () => client.matchCandidates(order, snapshot, 0, exchange, 1501n);
+  try {
+    expect(await read()).toMatchObject([{ remaining: 10n ** 18n, sequence: 1n }]);
+    for (const patch of [
+      { chainId: 1 },
+      { exchange: undefined },
+      { blockHash: "0x" },
+      { blockNumber: "101" },
+      { candidates: null },
+      { candidates: Array(34).fill(row) },
+      { candidates: [null] },
+      { candidates: [{ ...row, remaining: 1e18 }] },
+      { candidates: [{ ...row, sequence: "1e3" }] },
+      { candidates: [{ ...row, orderHash: "0x" }] },
+    ]) {
+      body = { ...good, ...patch };
+      await expect(read()).rejects.toMatchObject({ status: 503 });
+    }
+    body = null;
+    await expect(read()).rejects.toMatchObject({ status: 503 });
+  } finally {
+    await server.stop(true);
+  }
+});
 test("indexer HTTP reads distinguish missing, unhealthy, unavailable and successful responses", async () => {
   let status = 200;
   const calls: string[] = [];
@@ -92,63 +158,4 @@ test("ingestor HTTP client sends credentials only on internal routes and preserv
     code: "POLYMARKET_INGESTOR_UNAVAILABLE",
   });
   await expect(client.probability(hash)).rejects.toMatchObject({ status: 503 });
-});
-
-test("IOC HTTP sink preserves exact raw bigint quantities and rejects incomplete acknowledgements", async () => {
-  let status = 200;
-  let response: unknown = { state: "queued", batchId: hash, error: null };
-  let received: unknown;
-  const server = Bun.serve({
-    hostname: "127.0.0.1",
-    port: 0,
-    async fetch(request) {
-      expect(request.headers.get("authorization")).toBe("Bearer test-token");
-      if (request.method === "POST") received = canonicalParse(await request.text());
-      return Response.json(response, { status });
-    },
-  });
-  const client = new HttpSettlementIntentSink(server.url.href.replace(/\/$/, ""), "test-token");
-  const order: Order = {
-    branch: Branch.Yes,
-    expiry: 1900n,
-    fundingKind: FundingKind.WholeCollateral,
-    limitPriceRawX18: 200_000_000n,
-    maker,
-    marketId: hash,
-    nonce: 7n,
-    quantity: 10n ** 18n,
-    recipient: maker,
-    salt: hash,
-    side: Side.Buy,
-    tif: TimeInForce.Ioc,
-    maxFeeBps: 0,
-  };
-  const input = {
-    order,
-    orderHash: hash,
-    signature: "0x12" as const,
-    protection: {
-      maxQuantity: order.quantity,
-      maxNotional: 200_000_000n,
-      worstPriceRawX18: order.limitPriceRawX18,
-    },
-  };
-  try {
-    expect(await client.enqueueIoc(input)).toEqual({ batchId: hash, state: "queued" });
-    expect(received).toEqual(input);
-    expect((await client.status(hash)).state).toBe("queued");
-    for (const body of [{}, { batchId: hash }, { state: "queued" }]) {
-      response = body;
-      await expect(client.enqueueIoc(input)).rejects.toMatchObject({ status: 503 });
-    }
-    status = 500;
-    response = { error: "worker unavailable" };
-    await expect(client.enqueueIoc(input)).rejects.toMatchObject({
-      message: "worker unavailable",
-      status: 503,
-    });
-    await expect(client.status(hash)).rejects.toMatchObject({ status: 503 });
-  } finally {
-    await server.stop(true);
-  }
 });

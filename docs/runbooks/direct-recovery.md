@@ -1,6 +1,6 @@
 # Direct recovery runbook
 
-This runbook does not depend on the API, matcher, indexer, or web application.
+This runbook does not depend on the API, indexer, or web application.
 
 ## Recover an open or partially filled order
 
@@ -16,7 +16,27 @@ This runbook does not depend on the API, matcher, indexer, or web application.
   its attempt. Wallets needing more gas can use a direct exchange release or maker cancellation.
   Revert data is copied up to 256 bytes; longer data is recorded as `keccak256(abi.encode(fullLength, prefix))`.
 
-The global trading pause does not block these paths.
+The global trading pause does not block these paths. A rejected escrow delivery becomes a
+credit for its intended beneficiary in `PayoutVault`; it does not grant the caller ownership.
+
+## Claim a rejected payout
+
+Read `ConditionalExchange.payoutVault()` and verify it against the deployment manifest.
+Read `claimable(beneficiary, asset, tokenId)` on that vault. The beneficiary itself calls
+`withdraw(asset, tokenId, amount, recipient)`; a smart-wallet beneficiary must execute that
+call through its own authorized wallet mechanism. The amount is an exact raw integer,
+and may be less than the total credit. For ERC-20 collateral use token ID `0`; for claims
+use the canonical Conditional Tokens address and the exact branch-specific position ID.
+
+Choose an address that can receive that asset. A failed withdrawal restores the credit
+atomically. Explicit withdrawal has no automatic-delivery stipend and no protocol fee,
+but requires network gas and cannot bypass issuer restrictions. No administrator or
+third-party caller can withdraw for a beneficiary. A contract that cannot authorize the
+call cannot recover its credit through an admin override. The credit has no expiry.
+
+Only the failed payout leg is deferred. The counterparty's successful payouts still arrive
+in the original transaction. Vault credits are separate from wallet balances; withdraw
+claims before attempting to merge, redeem or use them as order funding.
 
 ## Merge before resolution
 

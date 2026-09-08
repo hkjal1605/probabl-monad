@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { sql } from "drizzle-orm";
-import { databaseUrl, loadDatabaseOptions, nonceQueries } from "../src/connection.ts";
+import { databaseUrl, loadDatabaseOptions } from "../src/connection.ts";
 import { createGatewayQueries } from "../src/gateway/queries.ts";
 import { testDatabase } from "../src/testing.ts";
 import { postgresClient } from "./postgres-fixture.ts";
@@ -17,27 +17,16 @@ test("shared database configuration rejects local files and obsolete storage set
     expect(() => databaseUrl(value)).toThrow();
   expect(() => loadDatabaseOptions({ API_DB_PATH: "old" }, "test")).toThrow("obsolete");
 });
-test("real PostgreSQL migrations, durable commits, and shared nonce ownership", async () => {
+test("real PostgreSQL migrations preserve durable commits without trading queues", async () => {
   const fixture = await testDatabase();
-  const second = fixture.connect();
-  await Promise.all([fixture.database.verify(), second.verify()]);
-  const a = nonceQueries(fixture.database);
-  const b = nonceQueries(second);
-  const allocated = await Promise.all(
-    Array.from({ length: 20 }, (_, i) => (i % 2 ? a : b).allocateNonce(address, 7n)),
-  );
-  expect(allocated.toSorted((a, b) => (a < b ? -1 : 1))).toEqual(
-    Array.from({ length: 20 }, (_, i) => BigInt(i + 7)),
-  );
+  await Promise.all([fixture.database.verify(), fixture.connect().verify()]);
   const settings = await fixture.database.session.execute(sql`SHOW synchronous_commit`);
   expect(settings.rows[0]?.synchronous_commit).toBe("on");
-  await expect(
-    fixture.database.transaction(async () => {
-      await a.allocateNonce(address, 0n);
-      throw new Error("rollback");
-    }),
-  ).rejects.toThrow("rollback");
-  expect(await b.peekNonce(address, 0n)).toBe(27n);
+  const obsolete = await fixture.database.session.execute(sql`
+    SELECT to_regnamespace('matching') AS matching,
+      to_regnamespace('settlement') AS settlement,
+      to_regclass('probabl.relayer_nonces') AS nonces`);
+  expect(obsolete.rows[0]).toEqual({ matching: null, settlement: null, nonces: null });
 });
 test("challenge consumption is atomic across connections and survives reconnect", async () => {
   const fixture = await testDatabase();
@@ -76,10 +65,6 @@ test("runtime privilege groups cannot rewrite evidence or let Ponder rebuild ope
   expect(await permission("probabl_gateway_role", "operations.evidence_reviews", "TRUNCATE")).toBe(
     false,
   );
-  expect(await permission("probabl_settlement_role", "probabl.relayer_nonces", "UPDATE")).toBe(
-    true,
-  );
-  expect(await permission("probabl_indexer_role", "matching.events", "UPDATE")).toBe(false);
   expect(await permission("probabl_indexer_role", "gateway.operations", "DELETE")).toBe(false);
   expect(await permission("probabl_indexer_role", "probabl.deployment_identity", "SELECT")).toBe(
     true,
@@ -92,7 +77,7 @@ test("runtime privilege groups cannot rewrite evidence or let Ponder rebuild ope
   );
   for (const command of [
     "DROP SCHEMA gateway CASCADE",
-    "TRUNCATE matching.events",
+    "TRUNCATE gateway.operations",
     "UPDATE probabl.deployment_identity SET order_version = 1",
   ])
     await expect(

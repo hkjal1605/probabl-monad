@@ -46,7 +46,7 @@ separate review and monitoring. Boolean-returning exact transfers remain require
 - Registry protocol version and market/question IDs are v2. The subsequent [fee extension](./trading-fees.md) uses EIP-712 Order domain version `3` and signs `maxFeeBps`, without changing these raw-unit definitions.
 - Signed/event fields are `limitPriceRawX18`, `executionPriceRawX18`, `priceTickRawX18`;
   IOC protection is `worstPriceRawX18`.
-- Gateway, matcher checkpoints/proposals, settlement payloads and indexer projections are v2.
+- Gateway and indexer market payloads use raw-unit v2 semantics. Order signing is v3 (fee caps); execution uses the [atomic v1 router](./atomic-placement.md), with no matcher checkpoints/proposals or settlement worker.
   Creation evidence is v2; the unchanged binary resolution commitment construction remains v1.
 - Services require the shared PostgreSQL database and reject legacy local-store configuration. Old
   signatures, calldata and persisted orders must not be relabeled or numerically converted.

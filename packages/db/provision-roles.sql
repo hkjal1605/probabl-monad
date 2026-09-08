@@ -8,7 +8,7 @@ DO $$
 DECLARE role_name text;
 BEGIN
   FOREACH role_name IN ARRAY ARRAY[
-    'probabl_gateway_role', 'probabl_matcher_role', 'probabl_settlement_role',
+    'probabl_gateway_role',
     'probabl_polymarket_role', 'probabl_reconciler_role', 'probabl_indexer_role'
   ] LOOP
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = role_name) THEN
@@ -23,17 +23,16 @@ BEGIN
   EXECUTE format('GRANT CREATE ON DATABASE %I TO probabl_indexer_role', current_database());
 END;
 $$;
-REVOKE ALL ON SCHEMA probabl, gateway, matching, settlement, operations, probabl_migrations FROM PUBLIC;
+REVOKE ALL ON SCHEMA probabl, gateway, operations, probabl_migrations FROM PUBLIC;
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
-GRANT USAGE ON SCHEMA probabl TO probabl_gateway_role, probabl_matcher_role,
-  probabl_settlement_role, probabl_polymarket_role, probabl_reconciler_role, probabl_indexer_role;
-GRANT SELECT ON probabl.deployment_identity TO probabl_gateway_role, probabl_matcher_role,
-  probabl_settlement_role, probabl_polymarket_role, probabl_reconciler_role, probabl_indexer_role;
-GRANT USAGE ON SCHEMA probabl_migrations TO probabl_gateway_role, probabl_matcher_role,
-  probabl_settlement_role, probabl_polymarket_role, probabl_reconciler_role, probabl_indexer_role;
-GRANT SELECT ON probabl_migrations.__drizzle_migrations TO probabl_gateway_role, probabl_matcher_role,
-  probabl_settlement_role, probabl_polymarket_role, probabl_reconciler_role, probabl_indexer_role;
-GRANT SELECT, INSERT, UPDATE ON probabl.relayer_nonces TO probabl_gateway_role, probabl_settlement_role;
+GRANT USAGE ON SCHEMA probabl TO probabl_gateway_role,
+  probabl_polymarket_role, probabl_reconciler_role, probabl_indexer_role;
+GRANT SELECT ON probabl.deployment_identity TO probabl_gateway_role,
+  probabl_polymarket_role, probabl_reconciler_role, probabl_indexer_role;
+GRANT USAGE ON SCHEMA probabl_migrations TO probabl_gateway_role,
+  probabl_polymarket_role, probabl_reconciler_role, probabl_indexer_role;
+GRANT SELECT ON probabl_migrations.__drizzle_migrations TO probabl_gateway_role,
+  probabl_polymarket_role, probabl_reconciler_role, probabl_indexer_role;
 
 GRANT USAGE ON SCHEMA gateway, operations TO probabl_gateway_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON gateway.auth_challenges, gateway.auth_sessions TO probabl_gateway_role;
@@ -47,13 +46,7 @@ GRANT USAGE, SELECT ON SEQUENCE operations.evidence_packets_sequence_seq,
   operations.evidence_reviews_sequence_seq, operations.evidence_previews_sequence_seq,
   operations.evidence_observations_sequence_seq, operations.evidence_actions_sequence_seq TO probabl_gateway_role;
 
-GRANT USAGE ON SCHEMA matching TO probabl_matcher_role;
-GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA matching TO probabl_matcher_role;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA matching TO probabl_matcher_role;
 
-GRANT USAGE ON SCHEMA settlement TO probabl_settlement_role;
-GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA settlement TO probabl_settlement_role;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA settlement TO probabl_settlement_role;
 
 GRANT USAGE ON SCHEMA operations TO probabl_polymarket_role, probabl_reconciler_role;
 GRANT SELECT, INSERT ON operations.polymarket_snapshots, operations.polymarket_subscriptions,

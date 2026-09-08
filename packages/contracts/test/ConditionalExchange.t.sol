@@ -51,9 +51,9 @@ contract ConditionalExchangeTest is ProtocolFixture {
             keccak256("ASK")
         );
 
-        bytes32 bidHash = exchange.openOrder(bid, _sign(bid, BUYER_KEY));
-        bytes32 askHash = exchange.openOrder(ask, _sign(ask, SELLER_KEY));
-        exchange.matchOrders(bid, ask, ONE_STOCK);
+        bytes32 bidHash = _openOrder(bid, _sign(bid, BUYER_KEY));
+        bytes32 askHash = _openOrder(ask, _sign(ask, SELLER_KEY));
+        _matchOrders(bid, ask, ONE_STOCK);
 
         assertEq(ctf.balanceOf(buyer, market.stockYesPositionId), ONE_STOCK, "buyer stock YES");
         assertEq(ctf.balanceOf(buyer, market.quoteNoPositionId), BID_PRICE, "buyer quote NO");
@@ -101,9 +101,9 @@ contract ConditionalExchangeTest is ProtocolFixture {
             keccak256("NO_BID")
         );
 
-        exchange.openOrder(ask, _sign(ask, SELLER_KEY));
-        exchange.openOrder(bid, _sign(bid, BUYER_KEY));
-        exchange.matchOrders(bid, ask, ONE_STOCK);
+        _openOrder(ask, _sign(ask, SELLER_KEY));
+        _openOrder(bid, _sign(bid, BUYER_KEY));
+        _matchOrders(bid, ask, ONE_STOCK);
 
         assertEq(ctf.balanceOf(buyer, market.stockNoPositionId), ONE_STOCK, "buyer stock NO");
         assertEq(ctf.balanceOf(buyer, market.quoteYesPositionId), ASK_PRICE, "buyer quote YES");
@@ -139,9 +139,9 @@ contract ConditionalExchangeTest is ProtocolFixture {
             keccak256("CLAIM_ASK")
         );
 
-        exchange.openOrder(bid, _sign(bid, BUYER_KEY));
-        exchange.openOrder(ask, _sign(ask, SELLER_KEY));
-        exchange.matchOrders(bid, ask, ONE_STOCK);
+        _openOrder(bid, _sign(bid, BUYER_KEY));
+        _openOrder(ask, _sign(ask, SELLER_KEY));
+        _matchOrders(bid, ask, ONE_STOCK);
 
         assertEq(ctf.balanceOf(buyer, market.stockYesPositionId), ONE_STOCK, "stock delivered");
         assertEq(ctf.balanceOf(seller, market.quoteYesPositionId), BID_PRICE, "quote delivered");
@@ -202,10 +202,10 @@ contract ConditionalExchangeTest is ProtocolFixture {
             5,
             keccak256("PARTIAL_ASK")
         );
-        bytes32 bidHash = exchange.openOrder(bid, _sign(bid, BUYER_KEY));
-        bytes32 askHash = exchange.openOrder(ask, _sign(ask, SELLER_KEY));
+        bytes32 bidHash = _openOrder(bid, _sign(bid, BUYER_KEY));
+        bytes32 askHash = _openOrder(ask, _sign(ask, SELLER_KEY));
 
-        exchange.matchOrders(bid, ask, partialFill);
+        _matchOrders(bid, ask, partialFill);
         vm.prank(buyer);
         exchange.cancelOrder(bidHash);
         vm.prank(seller);
@@ -240,7 +240,7 @@ contract ConditionalExchangeTest is ProtocolFixture {
             6,
             keccak256("IOC_MAKER")
         );
-        exchange.openOrder(makerAsk, _sign(makerAsk, SELLER_KEY));
+        _openOrder(makerAsk, _sign(makerAsk, SELLER_KEY));
 
         Order memory takerBid = _order(
             buyer,
@@ -257,8 +257,7 @@ contract ConditionalExchangeTest is ProtocolFixture {
         makers[0] = makerAsk;
         uint128[] memory quantities = new uint128[](1);
         quantities[0] = ONE_STOCK;
-        bytes32 takerHash =
-            iocRouter.executeIOC(takerBid, _sign(takerBid, BUYER_KEY), makers, quantities);
+        bytes32 takerHash = _executeIOC(takerBid, _sign(takerBid, BUYER_KEY), makers, quantities);
 
         OrderStateData memory takerState = exchange.getOrderState(takerHash);
         assertEq(
@@ -281,7 +280,7 @@ contract ConditionalExchangeTest is ProtocolFixture {
             7,
             keccak256("PAUSE_BID")
         );
-        bytes32 bidHash = exchange.openOrder(bid, _sign(bid, BUYER_KEY));
+        bytes32 bidHash = _openOrder(bid, _sign(bid, BUYER_KEY));
         exchange.setTradingPaused(true, keccak256("INCIDENT"));
 
         vm.prank(buyer);
@@ -319,9 +318,9 @@ contract ConditionalExchangeTest is ProtocolFixture {
             11,
             keccak256("DUST_ASK")
         );
-        exchange.openOrder(bid, _sign(bid, BUYER_KEY));
-        exchange.openOrder(ask, _sign(ask, SELLER_KEY));
-        exchange.matchOrders(bid, ask, ONE_STOCK);
+        _openOrder(bid, _sign(bid, BUYER_KEY));
+        _openOrder(ask, _sign(ask, SELLER_KEY));
+        _matchOrders(bid, ask, ONE_STOCK);
 
         assertEq(quote.balanceOf(address(settlement)), 1, "dust preserved but harmless");
         assertEq(ctf.balanceOf(buyer, market.stockYesPositionId), ONE_STOCK, "fill succeeded");
@@ -343,7 +342,7 @@ contract ConditionalExchangeTest is ProtocolFixture {
 
         bytes memory invalidSignature = _sign(bid, SELLER_KEY);
         vm.expectRevert();
-        exchange.openOrder(bid, invalidSignature);
+        _openOrder(bid, invalidSignature);
         assertEq(quote.balanceOf(buyer), beforeBalance, "invalid signature moved no funds");
     }
 
@@ -363,7 +362,7 @@ contract ConditionalExchangeTest is ProtocolFixture {
         stock.setPaused(true);
 
         vm.expectRevert();
-        exchange.openOrder(ask, signature);
+        _openOrder(ask, signature);
         assertEq(stock.balanceOf(address(exchange)), 0, "paused transfer leaves no escrow");
         assertEq(
             uint256(exchange.getOrderState(exchange.hashOrder(ask)).status),
@@ -401,9 +400,9 @@ contract ConditionalExchangeTest is ProtocolFixture {
             17,
             keccak256("ERC1271_ASK")
         );
-        exchange.openOrder(bid, _sign(bid, walletSignerKey));
-        exchange.openOrder(ask, _sign(ask, SELLER_KEY));
-        exchange.matchOrders(bid, ask, ONE_STOCK);
+        _openOrder(bid, _sign(bid, walletSignerKey));
+        _openOrder(ask, _sign(ask, SELLER_KEY));
+        _matchOrders(bid, ask, ONE_STOCK);
 
         assertEq(
             ctf.balanceOf(address(wallet), market.stockYesPositionId),
@@ -430,7 +429,7 @@ contract ConditionalExchangeTest is ProtocolFixture {
             keccak256("EXPIRED")
         );
         expired.expiry = uint64(block.timestamp + 10);
-        bytes32 expiredHash = exchange.openOrder(expired, _sign(expired, BUYER_KEY));
+        bytes32 expiredHash = _openOrder(expired, _sign(expired, BUYER_KEY));
         vm.warp(block.timestamp + 10);
         vm.prank(secondBuyer);
         exchange.releaseExpiredOrder(expiredHash);
@@ -446,7 +445,7 @@ contract ConditionalExchangeTest is ProtocolFixture {
             9,
             keccak256("INVALIDATED")
         );
-        bytes32 invalidatedHash = exchange.openOrder(invalidated, _sign(invalidated, BUYER_KEY));
+        bytes32 invalidatedHash = _openOrder(invalidated, _sign(invalidated, BUYER_KEY));
         vm.prank(buyer);
         exchange.cancelUpTo(10);
         vm.prank(secondBuyer);
@@ -495,9 +494,9 @@ contract ConditionalExchangeTest is ProtocolFixture {
             40,
             keccak256("FUZZ_ASK")
         );
-        bytes32 bidHash = exchange.openOrder(bid, _sign(bid, BUYER_KEY));
-        bytes32 askHash = exchange.openOrder(ask, _sign(ask, SELLER_KEY));
-        exchange.matchOrders(bid, ask, fillQuantity);
+        bytes32 bidHash = _openOrder(bid, _sign(bid, BUYER_KEY));
+        bytes32 askHash = _openOrder(ask, _sign(ask, SELLER_KEY));
+        _matchOrders(bid, ask, fillQuantity);
 
         uint128 remaining = quantity - fillQuantity;
         OrderStateData memory bidState = exchange.getOrderState(bidHash);
@@ -542,9 +541,9 @@ contract ConditionalExchangeTest is ProtocolFixture {
             nonce,
             keccak256(abi.encode("MIXED_ASK", nonce))
         );
-        exchange.openOrder(bid, _sign(bid, BUYER_KEY));
-        exchange.openOrder(ask, _sign(ask, SELLER_KEY));
-        exchange.matchOrders(bid, ask, ONE_STOCK);
+        _openOrder(bid, _sign(bid, BUYER_KEY));
+        _openOrder(ask, _sign(ask, SELLER_KEY));
+        _matchOrders(bid, ask, ONE_STOCK);
 
         uint256 stockPosition =
             branch == Branch.YES ? market.stockYesPositionId : market.stockNoPositionId;

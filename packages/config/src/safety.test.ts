@@ -13,7 +13,7 @@ function fixture() {
     deep: true,
     indexedBlock: "100",
     indexedBlockHash: blockHash,
-    projectionVersion: 2,
+    projectionVersion: 3,
     status: "ok",
   };
   const head = {

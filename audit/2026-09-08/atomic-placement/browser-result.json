@@ -1,0 +1,159 @@
+{
+  "verified": true,
+  "verifiedAt": "2026-09-08T11:54:35.287Z",
+  "chainId": 31337,
+  "browser": "isolated Playwright Firefox; loopback-only injected Anvil provider",
+  "upstreamTransactions": 0,
+  "checks": [
+    "GTC rests via one real UI wallet transaction",
+    "indexed one-unit bid shown before counterparty placement",
+    "quantity-two IOC reviewed as one-unit fill and one-unit release",
+    "IOC opens, fills and refunds in the same wallet transaction",
+    "canonical GTC filled and IOC cancelled with exact executed units retained",
+    "browser renders cancelled partial IOC as 1.000 / 2.000 and empty IOC as 0.000 / 1.000",
+    "API readiness and clean deep reconciliation restored after intentionally paused storage benchmark"
+  ],
+  "transactions": [
+    {
+      "transactionHash": "0x690a28d86232e9b11b2b9173679ca931cc3e5696a25111925190375bd1309051",
+      "from": "0x14dc79964da2c08b23698b3d3cc7ca32193d9955",
+      "to": "0x610178da211fef7d417bc0e6fed39f05609ad788",
+      "status": "success",
+      "gasUsed": "336553",
+      "events": [
+        {
+          "eventName": "OrderOpened",
+          "args": {
+            "orderHash": "0x3333d1090686cc0ee5c2b73be1f7b5e8d0c49e2323da88094e4a23ca05ad9792",
+            "marketId": "0x7556cc36f04e445331a59adf44736cfff711cae3b95ed252ae3002cb0e54e7c4",
+            "maker": "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955",
+            "recipient": "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955",
+            "branch": 0,
+            "side": 0,
+            "fundingKind": 0,
+            "tif": 0,
+            "quantity": "1000000000000000000",
+            "limitPriceRawX18": "200000000",
+            "expiry": "1789472306",
+            "nonce": "1788868344828",
+            "salt": "0xf155cc591242f5b6041a0b22acc7e7251021ec53ee9cc15174385c7adf7bd560",
+            "sequence": "8",
+            "reserved": "200000000",
+            "maxFeeBps": 0
+          }
+        }
+      ]
+    },
+    {
+      "transactionHash": "0x4eff03e76e7f405aabee7939c06d72332a20cc0d378529d6168cd4a53a0d3243",
+      "from": "0x23618e81e3f5cdf7f54c3d65f7fbc0abf5b21e8f",
+      "to": "0x610178da211fef7d417bc0e6fed39f05609ad788",
+      "status": "success",
+      "gasUsed": "708695",
+      "events": [
+        {
+          "eventName": "OrderOpened",
+          "args": {
+            "orderHash": "0x5c4211be0af53b358c64a1785dd51acdcad447a1c81111dfcc370c8b637beed5",
+            "marketId": "0x7556cc36f04e445331a59adf44736cfff711cae3b95ed252ae3002cb0e54e7c4",
+            "maker": "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f",
+            "recipient": "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f",
+            "branch": 0,
+            "side": 1,
+            "fundingKind": 0,
+            "tif": 1,
+            "quantity": "2000000000000000000",
+            "limitPriceRawX18": "200000000",
+            "expiry": "1789472306",
+            "nonce": "1788868409916",
+            "salt": "0xd31cdc6ad7bbdbba4cb001d34cbe44794ba0af98370c7552753ca3c66743aa89",
+            "sequence": "9",
+            "reserved": "2000000000000000000",
+            "maxFeeBps": 0
+          }
+        },
+        {
+          "eventName": "OrderFilled",
+          "args": {
+            "buyOrderHash": "0x3333d1090686cc0ee5c2b73be1f7b5e8d0c49e2323da88094e4a23ca05ad9792",
+            "sellOrderHash": "0x5c4211be0af53b358c64a1785dd51acdcad447a1c81111dfcc370c8b637beed5",
+            "marketId": "0x7556cc36f04e445331a59adf44736cfff711cae3b95ed252ae3002cb0e54e7c4",
+            "branch": 0,
+            "fillQuantity": "1000000000000000000",
+            "executionPriceRawX18": "200000000",
+            "executionQuote": "200000000",
+            "makerOrderHash": "0x3333d1090686cc0ee5c2b73be1f7b5e8d0c49e2323da88094e4a23ca05ad9792"
+          }
+        },
+        {
+          "eventName": "OrderCancelled",
+          "args": {
+            "orderHash": "0x5c4211be0af53b358c64a1785dd51acdcad447a1c81111dfcc370c8b637beed5",
+            "maker": "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f",
+            "reasonHash": "0xc81604ac14899dcb1104839f10444db1b6b8002cbd8bc85a6fb01de3a6a107b7",
+            "unfilledQuantity": "1000000000000000000",
+            "releasedAmount": "1000000000000000000"
+          }
+        }
+      ]
+    }
+  ],
+  "orders": [
+    {
+      "id": "0x3333d1090686cc0ee5c2b73be1f7b5e8d0c49e2323da88094e4a23ca05ad9792",
+      "marketId": "0x7556cc36f04e445331a59adf44736cfff711cae3b95ed252ae3002cb0e54e7c4",
+      "maker": "0x14dc79964da2c08b23698b3d3cc7ca32193d9955",
+      "recipient": "0x14dc79964da2c08b23698b3d3cc7ca32193d9955",
+      "branch": 0,
+      "side": 0,
+      "fundingKind": 0,
+      "timeInForce": 0,
+      "quantity": "1000000000000000000",
+      "filled": "1000000000000000000",
+      "limitPriceRawX18": "200000000",
+      "maxFeeBps": 0,
+      "feesPaid": "0",
+      "expiry": "1789472306",
+      "nonce": "1788868344828",
+      "salt": "0xf155cc591242f5b6041a0b22acc7e7251021ec53ee9cc15174385c7adf7bd560",
+      "sequence": "8",
+      "initialReserved": "200000000",
+      "reserved": "0",
+      "remaining": "0",
+      "openNotional": "0",
+      "status": "filled",
+      "cancelReasonHash": null,
+      "openedBlock": "2918",
+      "updatedBlock": "2983",
+      "confirmation": "finalized"
+    },
+    {
+      "id": "0x5c4211be0af53b358c64a1785dd51acdcad447a1c81111dfcc370c8b637beed5",
+      "marketId": "0x7556cc36f04e445331a59adf44736cfff711cae3b95ed252ae3002cb0e54e7c4",
+      "maker": "0x23618e81e3f5cdf7f54c3d65f7fbc0abf5b21e8f",
+      "recipient": "0x23618e81e3f5cdf7f54c3d65f7fbc0abf5b21e8f",
+      "branch": 0,
+      "side": 1,
+      "fundingKind": 0,
+      "timeInForce": 1,
+      "quantity": "2000000000000000000",
+      "filled": "1000000000000000000",
+      "limitPriceRawX18": "200000000",
+      "maxFeeBps": 0,
+      "feesPaid": "0",
+      "expiry": "1789472306",
+      "nonce": "1788868409916",
+      "salt": "0xd31cdc6ad7bbdbba4cb001d34cbe44794ba0af98370c7552753ca3c66743aa89",
+      "sequence": "9",
+      "initialReserved": "2000000000000000000",
+      "reserved": "0",
+      "remaining": "0",
+      "openNotional": "0",
+      "status": "cancelled",
+      "cancelReasonHash": "0xc81604ac14899dcb1104839f10444db1b6b8002cbd8bc85a6fb01de3a6a107b7",
+      "openedBlock": "2983",
+      "updatedBlock": "2983",
+      "confirmation": "finalized"
+    }
+  ]
+}

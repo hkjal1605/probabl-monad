@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 const contractNames = [
   "ConditionalExchange",
   "ConditionalSettlement",
-  "IOCRouter",
+  "AtomicOrderRouter",
   "ManualResolutionController",
   "MarketRegistry",
   "OrderRecoveryRouter",
@@ -11,6 +11,7 @@ const contractNames = [
   "PositionRouter",
   "ProtocolAuthority",
   "ProtocolFeeVault",
+  "PayoutVault",
 ] as const;
 
 const externalArtifacts = [

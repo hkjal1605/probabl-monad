@@ -1,4 +1,9 @@
-import { conditionalExchangeAbi, marketRegistryAbi } from "@conditional-stocks/contract-bindings";
+import {
+  atomicOrderRouterAbi,
+  conditionalExchangeAbi,
+  marketRegistryAbi,
+} from "@conditional-stocks/contract-bindings";
+import { type Order, orderTypedData } from "@conditional-stocks/domain";
 import {
   type Abi,
   type Address,
@@ -36,16 +41,15 @@ const accounts = Array.from({ length: 4 }, (_, addressIndex) =>
 );
 const buyer = accounts[0];
 const seller = accounts[1];
-const matcher = accounts[3];
-if (!buyer || !seller || !matcher) throw new Error("could not derive Anvil accounts");
+if (!buyer || !seller) throw new Error("could not derive Anvil accounts");
 
 const publicClient = createPublicClient({ transport: http(rpcUrl) });
 if ((await publicClient.getChainId()) !== chainId) throw new Error("connected to the wrong chain");
 const wallet = (account: typeof buyer) => createWalletClient({ account, transport: http(rpcUrl) });
 const buyerWallet = wallet(buyer);
 const sellerWallet = wallet(seller);
-const matcherWallet = wallet(matcher);
 const exchange = address("EXCHANGE_ADDRESS");
+const atomicRouter = address("ATOMIC_ORDER_ROUTER_ADDRESS");
 const registry = address("MARKET_REGISTRY_ADDRESS");
 const stock = address("STOCK_ADDRESS");
 const quote = address("USDG_ADDRESS");
@@ -106,28 +110,7 @@ const market = (await publicClient.readContract({
 const head = await publicClient.getBlock();
 if (head.timestamp >= market.tradingCutoff - 1n) throw new Error("seed market has expired");
 
-const orderTypes = {
-  Order: [
-    { name: "maker", type: "address" },
-    { name: "recipient", type: "address" },
-    { name: "marketId", type: "bytes32" },
-    { name: "branch", type: "uint8" },
-    { name: "side", type: "uint8" },
-    { name: "fundingKind", type: "uint8" },
-    { name: "quantity", type: "uint128" },
-    { name: "limitPriceRawX18", type: "uint128" },
-    { name: "tif", type: "uint8" },
-    { name: "expiry", type: "uint64" },
-    { name: "nonce", type: "uint64" },
-    { name: "salt", type: "bytes32" },
-  ],
-} as const;
-const domain = {
-  chainId,
-  name: "ConditionalExchange",
-  verifyingContract: exchange,
-  version: "2",
-} as const;
+const domain = { chainId: BigInt(chainId), verifyingContract: exchange };
 const common = {
   branch: 0,
   expiry: market.tradingCutoff - 1n,
@@ -155,12 +138,7 @@ const ask = {
   maxFeeBps: 0,
   side: 1,
 } as const;
-const typedData = (message: typeof bid | typeof ask) => ({
-  domain,
-  message,
-  primaryType: "Order" as const,
-  types: orderTypes,
-});
+const typedData = (order: Order) => orderTypedData(order, domain);
 const [bidSignature, askSignature] = await Promise.all([
   buyer.signTypedData(typedData(bid)),
   seller.signTypedData(typedData(ask)),
@@ -183,28 +161,21 @@ if (bidHash !== hashTypedData(typedData(bid)) || askHash !== hashTypedData(typed
   throw new Error("local EIP-712 hashes do not match the exchange");
 }
 
-await transact("open bid", () =>
+const deadline = head.timestamp + 60n < common.expiry ? head.timestamp + 60n : common.expiry;
+await transact("place resting bid", () =>
   buyerWallet.writeContract({
-    abi: conditionalExchangeAbi,
-    address: exchange,
-    args: [bid, bidSignature],
-    functionName: "openOrder",
+    abi: atomicOrderRouterAbi,
+    address: atomicRouter,
+    args: [bid, bidSignature, [], [], [], deadline],
+    functionName: "placeAndMatch",
   } as never),
 );
-await transact("open ask", () =>
+await transact("place ask and fill bid atomically", () =>
   sellerWallet.writeContract({
-    abi: conditionalExchangeAbi,
-    address: exchange,
-    args: [ask, askSignature],
-    functionName: "openOrder",
-  } as never),
-);
-await transact("partially match orders", () =>
-  matcherWallet.writeContract({
-    abi: conditionalExchangeAbi,
-    address: exchange,
-    args: [bid, ask, fillQuantity],
-    functionName: "matchOrders",
+    abi: atomicOrderRouterAbi,
+    address: atomicRouter,
+    args: [ask, askSignature, [bid], [fillQuantity], [bid.quantity], deadline],
+    functionName: "placeAndMatch",
   } as never),
 );
 

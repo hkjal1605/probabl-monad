@@ -1,18 +1,11 @@
 import { expect, test } from "bun:test";
-import {
-  canonicalStringify,
-  MATCHER_ENGINE_VERSION,
-  MATCHER_SCHEMA_VERSION,
-} from "@conditional-stocks/orderbook";
 import { eq } from "drizzle-orm";
 import {
   createGatewayQueries,
   OperationLeaseLost,
   OperationLeaseUnavailable,
 } from "../src/gateway/queries.ts";
-import { gatewayOperations, settlementBatches } from "../src/schema.ts";
-import { createSettlementQueries } from "../src/settlement/queries.ts";
-import type { SettlementBatchPayload } from "../src/settlement/types.ts";
+import { gatewayOperations } from "../src/schema.ts";
 import { testDatabase } from "../src/testing.ts";
 
 const address = "0x1000000000000000000000000000000000000001";
@@ -30,29 +23,6 @@ const operation = {
   requestDigest: hash,
   state: "accepted" as const,
   transactionHash: null,
-};
-const batch: SettlementBatchPayload = {
-  kind: "gtc",
-  schemaVersion: 2,
-  proposal: {
-    batchId: hash,
-    proposalId: hash,
-    bookKey: `${hash}:0`,
-    decisions: [],
-    fills: [],
-    preBookHash: hash,
-    schemaVersion: MATCHER_SCHEMA_VERSION,
-    engineVersion: MATCHER_ENGINE_VERSION,
-    cursor: {
-      blockHash: hash,
-      blockNumber: 1n,
-      blockTimestamp: 1n,
-      chainId: 31337n,
-      logIndex: 0,
-      transactionHash: hash,
-      transactionIndex: 0,
-    },
-  },
 };
 
 test("operation leases reject competing requests and fence expired writers across independent pools", async () => {
@@ -87,23 +57,19 @@ test("operation leases reject competing requests and fence expired writers acros
       );
       await expect(a.renewOperation(id)).rejects.toBeInstanceOf(OperationLeaseLost);
       await expect(
-        a.persistPreparedAttempt(
-          {
-            operationId: id,
-            attempt: 0,
-            nonce: 1n,
-            createdAtMs: 1n,
-            replaces: null,
-            rawTransaction: "0x12",
-            transactionHash: hash,
-          },
-          { address, pendingNonce: 1n },
-        ),
+        a.persistPreparedAttempt({
+          operationId: id,
+          attempt: 0,
+          nonce: 1n,
+          createdAtMs: 1n,
+          replaces: null,
+          rawTransaction: "0x12",
+          transactionHash: hash,
+        }),
       ).rejects.toBeInstanceOf(OperationLeaseLost);
     });
   });
   expect((await b.getOperation(id))?.state).toBe("canonical");
-  expect(await b.peekNonce(address, 1n)).toBe(1n);
   expect(await b.listAttempts(id)).toEqual([]);
   await expect(
     a.withOperation(id, async () => {
@@ -143,40 +109,6 @@ test("an old request cannot release the lease of a replacement request", async (
     release.resolve();
     await replacement;
   }
-});
-
-test("settlement claims use server time, fence takeover and do not reopen terminal batches", async () => {
-  const fixture = await testDatabase();
-  const a = createSettlementQueries(fixture.database);
-  const b = createSettlementQueries(fixture.connect());
-  await a.enqueue(hash, batch);
-  await a.withClaim(hash, "owner-a", 60_000n, async () => {
-    expect(await b.claim(hash, "owner-b", 1n << 200n, 60_000n)).toBeNull();
-    await a.renewClaim(hash);
-    const existing = await a.getBatch(hash);
-    if (!existing) throw new Error("batch fixture missing");
-    await fixture.db
-      .update(settlementBatches)
-      .set({ payload: canonicalStringify({ ...existing, leaseExpiresAtMs: 0n }) })
-      .where(eq(settlementBatches.batchId, hash));
-    await b.withClaim(hash, "owner-b", 60_000n, async (newer) => {
-      expect(newer.leaseToken).toBe(existing.leaseToken + 1n);
-      await b.transition(hash, "simulated");
-      await expect(a.transition(hash, "failed")).rejects.toThrow("stale owner");
-      await expect(a.renewClaim(hash)).rejects.toThrow("stale owner");
-      await expect(b.transition(hash, "confirmed")).rejects.toThrow(
-        "invalid settlement transition",
-      );
-      await b.transition(hash, "failed");
-      await expect(b.transition(hash, "simulated")).rejects.toThrow("stale owner");
-    });
-  });
-  expect(await a.claim(hash, "owner-a", 0n, 60_000n)).toBeNull();
-  expect((await b.getBatch(hash))?.status).toBe("failed");
-  expect(await b.listProcessable()).toEqual([]);
-  expect(await b.listFeedbackPending()).toHaveLength(1);
-  await b.markFeedbackDelivered(hash, 1n);
-  expect(await b.listFeedbackPending()).toEqual([]);
 });
 
 test("transaction failures never implicitly replay in-memory side effects", async () => {

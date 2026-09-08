@@ -17,8 +17,10 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useDemo } from "@/components/providers/DemoProvider";
 import { useWallet } from "@/components/providers/WalletProvider";
+import { protocolConfig } from "@/config/protocol";
 import type { IndexedOrder, MarketView } from "@/lib/api/types";
 import { displayPrice, shortAddress, tokenAmount } from "@/lib/format/display";
+import { orderRecovery, type RecoveryKind, verifyRecoveryResponse } from "@/lib/trading/recovery";
 
 const variant = (status: string) =>
   status === "open"
@@ -55,7 +57,7 @@ export function OrdersClient({ markets }: { markets: MarketView[] }) {
       return next.size === current.size ? current : next;
     });
   }, [query.data?.orders]);
-  const cancel = async (orderHash: string) => {
+  const cancel = async (orderHash: string, kind: RecoveryKind = "cancel") => {
     setCanceling(orderHash);
     try {
       if (demo) {
@@ -64,11 +66,22 @@ export function OrdersClient({ markets }: { markets: MarketView[] }) {
         return;
       }
       const token = wallet.sessionToken ?? (await wallet.authenticate());
-      const response = await fetch("/api/gateway/orders/cancel/prepare", {
-        body: JSON.stringify({ orderHash }),
-        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-        method: "POST",
+      if (!wallet.account) throw new Error("Connect your wallet");
+      const expected = orderRecovery({
+        orderHash,
+        kind,
+        account: wallet.account,
+        config: protocolConfig,
       });
+      if (wallet.chainId !== protocolConfig.chainId) await wallet.ensureNetwork();
+      const response = await fetch(
+        `/api/gateway/orders/${kind === "cancel" ? "cancel" : "recovery"}/prepare`,
+        {
+          body: JSON.stringify({ orderHash, kind }),
+          headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+          method: "POST",
+        },
+      );
       if (!response.ok) {
         const body = (await response.json()) as { error?: { message?: string } };
         throw new Error(body.error?.message ?? "Cancellation could not be prepared");
@@ -76,7 +89,7 @@ export function OrdersClient({ markets }: { markets: MarketView[] }) {
       const prepared = (await response.json()) as {
         transaction: { data: string; to: string; value: string };
       };
-      const hash = await wallet.sendTransaction(prepared.transaction);
+      const hash = await wallet.sendTransaction(verifyRecoveryResponse(expected, prepared));
       setPendingCancellations((current) => new Set(current).add(orderHash));
       toast.success(`Cancellation pending onchain: ${hash.slice(0, 10)}…`);
       await queryClient.invalidateQueries({ queryKey: ["wallet-orders", wallet.account] });
@@ -125,7 +138,9 @@ export function OrdersClient({ markets }: { markets: MarketView[] }) {
             <TableBody>
               {orders.map((order) => {
                 const market = markets.find((candidate) => candidate.id === order.marketId);
-                const filled = BigInt(order.quantity) - BigInt(order.remaining);
+                const filled = BigInt(order.filled);
+                const expired =
+                  !demo && BigInt(order.expiry) <= BigInt(Math.floor(Date.now() / 1000));
                 const status =
                   order.status === "open" && filled > 0n ? "partially filled" : order.status;
                 return (
@@ -173,7 +188,7 @@ export function OrdersClient({ markets }: { markets: MarketView[] }) {
                         <Button
                           variant="destructive"
                           size="sm"
-                          onClick={() => cancel(order.id)}
+                          onClick={() => cancel(order.id, expired ? "expired" : "cancel")}
                           disabled={canceling === order.id || pendingCancellations.has(order.id)}
                         >
                           {canceling === order.id ? (
@@ -183,7 +198,11 @@ export function OrdersClient({ markets }: { markets: MarketView[] }) {
                           ) : (
                             <Ban />
                           )}
-                          {pendingCancellations.has(order.id) ? "Pending chain" : "Cancel"}
+                          {pendingCancellations.has(order.id)
+                            ? "Pending chain"
+                            : expired
+                              ? "Release escrow"
+                              : "Cancel"}
                         </Button>
                       )}
                     </TableCell>

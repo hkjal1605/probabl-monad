@@ -9,6 +9,7 @@ const deepOnly = [
   "ORDER_STATE_MISMATCH",
   "RESOLUTION_EVIDENCE_MISMATCH",
   "WALLET_OPEN_INTEREST_MISMATCH",
+  "PAYOUT_BENEFICIARY_MISMATCH",
 ];
 export function createReconciliationQueries(database: ApplicationDatabase) {
   const db = () => database.session;
@@ -30,8 +31,8 @@ export function createReconciliationQueries(database: ApplicationDatabase) {
     return row ? JSON.parse(row.payload) : null;
   }
   async function record(report: ReconciliationReport): Promise<bigint> {
-    if (report.projectionVersion !== 2)
-      throw new Error("Reconciliation requires v2 raw-unit projection reports");
+    if (report.projectionVersion !== 3)
+      throw new Error("Reconciliation requires payout-aware v3 projection reports");
     const started = Date.parse(report.startedAt);
     if (!Number.isFinite(started) || !Number.isFinite(Date.parse(report.completedAt)))
       throw new Error("invalid reconciliation timestamps");

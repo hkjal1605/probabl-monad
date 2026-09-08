@@ -25,8 +25,6 @@ export const uint = customType<{ data: bigint; driverData: string }>({
 const bytes = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
 export const sharedSchema = pgSchema("probabl");
 export const gatewaySchema = pgSchema("gateway");
-export const matchingSchema = pgSchema("matching");
-export const settlementSchema = pgSchema("settlement");
 export const operationsSchema = pgSchema("operations");
 const sequence = () => bigserial("sequence", { mode: "bigint" }).notNull().unique();
 const payload = () => text("payload").notNull();
@@ -37,19 +35,6 @@ export const deploymentIdentity = sharedSchema.table("deployment_identity", {
   exchange: text("exchange").notNull(),
   orderVersion: integer("order_version").notNull(),
 });
-export const relayerNonces = sharedSchema.table(
-  "relayer_nonces",
-  {
-    chainId: uint("chain_id").notNull(),
-    address: text("address").notNull(),
-    nextNonce: uint("next_nonce").notNull(),
-  },
-  (t) => [
-    primaryKey({ columns: [t.chainId, t.address] }),
-    check("nonnegative_nonce", sql`${t.nextNonce} >= 0`),
-  ],
-);
-
 export const authChallenges = gatewaySchema.table(
   "auth_challenges",
   {
@@ -105,123 +90,6 @@ export const gatewayAttempts = gatewaySchema.table(
     payload: payload(),
   },
   (t) => [primaryKey({ columns: [t.operationId, t.attempt] })],
-);
-
-export const matcherEvents = matchingSchema.table(
-  "events",
-  {
-    eventIndex: bigserial("event_index", { mode: "bigint" }).primaryKey(),
-    canonical: boolean("canonical").notNull(),
-    blockNumber: uint("block_number").notNull(),
-    cursorKey: text("cursor_key").notNull(),
-    eventHash: text("event_hash").notNull(),
-    payload: payload(),
-  },
-  (t) => [
-    uniqueIndex("matcher_canonical_cursor_idx").on(t.cursorKey).where(sql`${t.canonical}`),
-    index("matcher_canonical_index_idx").on(t.eventIndex).where(sql`${t.canonical}`),
-    index("matcher_canonical_block_idx").on(t.blockNumber).where(sql`${t.canonical}`),
-  ],
-);
-export const matcherCheckpoints = matchingSchema.table("checkpoints", {
-  eventIndex: uint("event_index").primaryKey(),
-  payload: payload(),
-});
-export const matcherLeases = matchingSchema.table("leases", {
-  bookKey: text("book_key").primaryKey(),
-  ownerId: text("owner_id").notNull(),
-  fencingToken: uint("fencing_token").notNull(),
-  expiresAtMs: uint("expires_at_ms").notNull(),
-});
-export const matcherProposals = matchingSchema.table(
-  "proposals",
-  {
-    proposalId: text("proposal_id").primaryKey(),
-    bookKey: text("book_key").notNull(),
-    status: text("status").notNull(),
-    createdAfterEventIndex: uint("created_after_event_index").notNull(),
-    lastCanonicalEventIndex: uint("last_canonical_event_index"),
-    payload: payload(),
-  },
-  (t) => [
-    index("matcher_proposal_created_idx").on(t.createdAfterEventIndex),
-    index("matcher_proposal_canonical_idx").on(t.lastCanonicalEventIndex),
-    index("matcher_active_idx")
-      .on(t.createdAfterEventIndex)
-      .where(sql`${t.status} IN ('persisted','submitted','mined')`),
-    uniqueIndex("matcher_active_book_idx")
-      .on(t.bookKey)
-      .where(sql`${t.status} IN ('persisted','submitted','mined')`),
-  ],
-);
-export const matcherDecisions = matchingSchema.table(
-  "decisions",
-  {
-    decisionIndex: bigserial("decision_index", { mode: "bigint" }).primaryKey(),
-    bookKey: text("book_key").notNull(),
-    fingerprint: text("fingerprint").notNull(),
-    payload: payload(),
-  },
-  (t) => [index("matcher_decision_book_idx").on(t.bookKey, t.decisionIndex)],
-);
-
-export const settlementBatches = settlementSchema.table(
-  "batches",
-  {
-    batchId: text("batch_id").primaryKey(),
-    sequence: sequence(),
-    status: text("status").notNull(),
-    payloadHash: text("payload_hash").notNull(),
-    feedbackPending: boolean("feedback_pending").notNull().default(false),
-    intentId: text("intent_id"),
-    payload: payload(),
-  },
-  (t) => [
-    index("settlement_pending_idx")
-      .on(t.sequence)
-      .where(sql`${t.status} IN ('queued','simulated','submitted','mined')`),
-    index("settlement_feedback_idx").on(t.sequence).where(sql`${t.feedbackPending}`),
-    index("settlement_intent_idx").on(t.intentId, t.sequence),
-  ],
-);
-// Indexed book membership avoids scanning/deserializing every queued batch for each IOC.
-export const settlementBooks = settlementSchema.table(
-  "batch_books",
-  {
-    batchId: text("batch_id")
-      .notNull()
-      .references(() => settlementBatches.batchId),
-    marketId: text("market_id").notNull(),
-    branch: integer("branch").notNull(),
-  },
-  (t) => [
-    primaryKey({ columns: [t.batchId, t.marketId, t.branch] }),
-    index("settlement_book_idx").on(t.marketId, t.branch),
-  ],
-);
-export const settlementAttempts = settlementSchema.table(
-  "attempts",
-  {
-    batchId: text("batch_id")
-      .notNull()
-      .references(() => settlementBatches.batchId),
-    callIndex: integer("call_index").notNull(),
-    attempt: integer("attempt").notNull(),
-    transactionHash: text("transaction_hash").notNull().unique(),
-    nonce: uint("nonce").notNull(),
-    payload: payload(),
-  },
-  (t) => [primaryKey({ columns: [t.batchId, t.callIndex, t.attempt] })],
-);
-export const iocIntents = settlementSchema.table(
-  "ioc_intents",
-  {
-    intentId: text("intent_id").primaryKey(),
-    sequence: sequence(),
-    status: text("status").notNull(),
-    payload: payload(),
-  },
-  (t) => [index("ioc_waiting_idx").on(t.sequence).where(sql`${t.status} = 'waiting-match'`)],
 );
 
 export const evidencePackets = operationsSchema.table(

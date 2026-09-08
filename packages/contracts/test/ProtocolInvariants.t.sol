@@ -122,67 +122,79 @@ contract ProtocolStatefulHandler is ProtocolFixture {
         if (order.expiry >= cutoff) order.expiry = cutoff - 1;
         if (order.expiry <= block.timestamp) return;
         _fund(order);
-        _track(order, exchange.openOrder(order, _sign(order, key)), 0, false);
+        _track(order, _openOrder(order, _sign(order, key)), 0, false);
         ++successfulOpens;
     }
 
+    /// @dev Every fill is now reached through a fresh user's GTC placement, never a kernel prank.
     function matchPair(
         uint256 seed
     ) public {
         ++actionCalls;
-        if (!_canTrade() || orders.length < 2) return;
-        uint256 first = seed % orders.length;
-        if (!_live(first)) return;
-        for (uint256 second; second < orders.length; ++second) {
-            if (
-                !_live(second) || orders[first].maker == orders[second].maker
-                    || orders[first].side == orders[second].side
-                    || orders[first].branch != orders[second].branch
-            ) continue;
-            uint256 bid = orders[first].side == Side.BUY ? first : second;
-            uint256 ask = bid == first ? second : first;
-            if (orders[bid].limitPriceRawX18 < orders[ask].limitPriceRawX18) continue;
-            uint256 available = orders[bid].quantity - filled[bid];
-            uint256 askAvailable = orders[ask].quantity - filled[ask];
-            if (askAvailable < available) available = askAvailable;
-            uint128 amount = uint128((seed % (available / market.baseStep) + 1) * market.baseStep);
-            OrderStateData memory bidBefore = exchange.getOrderState(hashes[bid]);
-            OrderStateData memory askBefore = exchange.getOrderState(hashes[ask]);
-            uint256 price = bidBefore.sequence < askBefore.sequence
-                ? orders[bid].limitPriceRawX18
-                : orders[ask].limitPriceRawX18;
-            assertTrue(
-                price >= orders[ask].limitPriceRawX18 && price <= orders[bid].limitPriceRawX18,
-                "maker price within both limits"
-            );
-            uint256 stockId = orders[bid].branch == Branch.YES
-                ? market.stockYesPositionId
-                : market.stockNoPositionId;
-            uint256 quoteId = orders[bid].branch == Branch.YES
-                ? market.quoteYesPositionId
-                : market.quoteNoPositionId;
-            uint256 stockBefore = ctf.balanceOf(orders[bid].recipient, stockId);
-            uint256 quoteBefore = ctf.balanceOf(orders[ask].recipient, quoteId);
-            exchange.matchOrders(orders[bid], orders[ask], amount);
-            bool bidIsMaker = bidBefore.sequence < askBefore.sequence;
-            uint256 buyerFee = _recordFee(orders[bid], hashes[bid], amount, bidIsMaker);
-            uint256 sellerFee =
-                _recordFee(orders[ask], hashes[ask], uint256(amount) * price / WAD, !bidIsMaker);
-            filled[bid] += amount;
-            filled[ask] += amount;
-            assertEq(
-                ctf.balanceOf(orders[bid].recipient, stockId),
-                stockBefore + amount - buyerFee,
-                "exact active stock delivery"
-            );
-            assertEq(
-                ctf.balanceOf(orders[ask].recipient, quoteId),
-                quoteBefore + uint256(amount) * price / WAD - sellerFee,
-                "exact maker-price quote delivery"
-            );
-            ++successfulFills;
-            return;
-        }
+        if (!_canTrade() || orders.length == 0 || orders.length >= 160) return;
+        uint256 index = seed % orders.length;
+        if (!_live(index) || orders[index].tif != TimeInForce.GTC) return;
+        Order memory maker = orders[index];
+        (address account, uint256 key) = _actor(seed / 3);
+        if (account == maker.maker) (account, key) = _actor(seed / 3 + 1);
+        uint128 available = uint128(maker.quantity - filled[index]);
+        uint128 amount = uint128((seed % (available / market.baseStep) + 1) * market.baseStep);
+        Order memory taker = _order(
+            account,
+            maker.branch,
+            maker.side == Side.BUY ? Side.SELL : Side.BUY,
+            FundingKind((seed / 9) % 2),
+            amount + market.baseStep,
+            maker.limitPriceRawX18,
+            TimeInForce.GTC,
+            exchange.minimumNonce(account),
+            bytes32(++saltCounter)
+        );
+        taker.maxFeeBps = feesEnabled ? 1000 : 0;
+        _fund(taker);
+        Order[] memory makers = new Order[](1);
+        makers[0] = maker;
+        uint128[] memory amounts = new uint128[](1);
+        amounts[0] = amount;
+        uint128[] memory remaining = new uint128[](1);
+        remaining[0] = available;
+        uint256 stockId =
+            maker.branch == Branch.YES ? market.stockYesPositionId : market.stockNoPositionId;
+        uint256 quoteId =
+            maker.branch == Branch.YES ? market.quoteYesPositionId : market.quoteNoPositionId;
+        address stockRecipient = maker.side == Side.BUY ? maker.recipient : taker.recipient;
+        address quoteRecipient = maker.side == Side.SELL ? maker.recipient : taker.recipient;
+        uint256 stockBefore = ctf.balanceOf(stockRecipient, stockId);
+        uint256 quoteBefore = ctf.balanceOf(quoteRecipient, quoteId);
+        bytes memory signature = _sign(taker, key);
+        vm.prank(account);
+        bytes32 hash = atomicRouter.placeAndMatch(
+            taker,
+            signature,
+            makers,
+            amounts,
+            remaining,
+            taker.expiry < block.timestamp + 60 ? taker.expiry : uint64(block.timestamp + 60)
+        );
+        uint256 executionQuote = uint256(amount) * maker.limitPriceRawX18 / WAD;
+        uint256 makerFee = _recordFee(
+            maker, hashes[index], maker.side == Side.BUY ? amount : executionQuote, true
+        );
+        uint256 takerFee =
+            _recordFee(taker, hash, taker.side == Side.BUY ? amount : executionQuote, false);
+        filled[index] += amount;
+        _track(taker, hash, amount, false);
+        assertEq(
+            ctf.balanceOf(stockRecipient, stockId),
+            stockBefore + amount - (maker.side == Side.BUY ? makerFee : takerFee),
+            "atomic stock delivery"
+        );
+        assertEq(
+            ctf.balanceOf(quoteRecipient, quoteId),
+            quoteBefore + executionQuote - (maker.side == Side.SELL ? makerFee : takerFee),
+            "atomic quote delivery"
+        );
+        ++successfulFills;
     }
 
     function executeIOC(
@@ -217,7 +229,18 @@ contract ProtocolStatefulHandler is ProtocolFixture {
         makers[0] = maker;
         uint128[] memory amounts = new uint128[](1);
         amounts[0] = amount;
-        bytes32 hash = iocRouter.executeIOC(taker, _sign(taker, key), makers, amounts);
+        uint128[] memory quotedRemaining = new uint128[](1);
+        quotedRemaining[0] = uint128(orders[index].quantity - filled[index]);
+        bytes memory signature = _sign(taker, key);
+        vm.prank(taker.maker);
+        bytes32 hash = atomicRouter.placeAndMatch(
+            taker,
+            signature,
+            makers,
+            amounts,
+            quotedRemaining,
+            taker.expiry < block.timestamp + 60 ? taker.expiry : uint64(block.timestamp + 60)
+        );
         uint256 executionQuote = uint256(amount) * maker.limitPriceRawX18 / WAD;
         _recordFee(maker, hashes[index], maker.side == Side.BUY ? amount : executionQuote, true);
         _recordFee(taker, hash, taker.side == Side.BUY ? amount : executionQuote, false);
@@ -459,7 +482,16 @@ contract ProtocolStatefulHandler is ProtocolFixture {
             ? BUYER_KEY
             : order.maker == seller ? SELLER_KEY : SECOND_BUYER_KEY;
         bytes32 beforeState = keccak256(abi.encode(exchange.getOrderState(hashes[index])));
-        try exchange.openOrder(order, _sign(order, key)) {
+        bytes memory signature = _sign(order, key);
+        vm.prank(order.maker);
+        try atomicRouter.placeAndMatch(
+            order,
+            signature,
+            new Order[](0),
+            new uint128[](0),
+            new uint128[](0),
+            uint64(block.timestamp + 60)
+        ) {
             revert AssertionFailed("duplicate order reopened");
         } catch { }
         assertEq(
@@ -669,7 +701,7 @@ contract StatefulReachabilityTest is TestBase {
         exercised.assertAccounting();
         exercised.cancel(0);
         exercised.invalidate(0);
-        exercised.release(2);
+        exercised.release(3);
         assertTrue(
             exercised.successfulRecoveries() >= 2, "real cancellation and invalidated release"
         );

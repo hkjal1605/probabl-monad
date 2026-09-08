@@ -69,7 +69,7 @@ contract OrderValidator is IOrderValidator {
     ) external view override returns (bytes32 orderHash) {
         if (order.maxFeeBps > FeeMath.MAX_FEE_BPS) revert InvalidFeeCap();
         // Both makers can receive inactive claims, price improvement, or cancelled claim escrow.
-        // ERC-165 detects incompatibility only at open time; matchers must still simulate fills.
+        // ERC-165 detects incompatibility only at open time; clients must still simulate fills.
         _requireClaimDestination(order.maker);
         if (order.recipient != order.maker) _requireClaimDestination(order.recipient);
         orderHash = hashOrder(order);

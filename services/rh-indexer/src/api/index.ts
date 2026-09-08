@@ -2,11 +2,10 @@ import { db, publicClients } from "ponder:api";
 import { createIndexerQueries } from "@conditional-stocks/db/indexer/reads";
 import type * as schema from "@conditional-stocks/db/indexer/schema";
 import { tokenDecimals } from "@conditional-stocks/domain";
-import { canonicalParse, canonicalStringify } from "@conditional-stocks/orderbook";
 import { requestLogging } from "@conditional-stocks/shared/http";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { type Address, erc20Abi, type Hex, isAddress, isHex, zeroHash } from "viem";
+import { type Address, erc20Abi, type Hex, isAddress, isHex } from "viem";
 import { indexerEnvironment } from "../../ponder.config.ts";
 import {
   CanonicalBlockReorged,
@@ -23,10 +22,7 @@ app.use(
     quietPaths: [
       "/indexer/health",
       "/internal/canonical-block/:number",
-      "/internal/matcher-events",
       "/internal/reconciliation-snapshot",
-      "/internal/settlement-context",
-      "/internal/settlement-confirmation",
     ],
   }),
 );
@@ -62,17 +58,9 @@ const json = (value: unknown, status = 200): Response =>
     },
   );
 
-const canonicalJson = (value: unknown, status = 200): Response =>
-  new Response(canonicalStringify(value), {
-    headers: {
-      "content-type": "application/vnd.conditional-stocks.canonical+json; version=2; charset=utf-8",
-    },
-    status,
-  });
-
 const parseBigIntParameter = (value: string | undefined, fallback: bigint): bigint => {
   if (value === undefined) return fallback;
-  if (!/^(0|[1-9][0-9]*)$/.test(value)) throw new Error("invalid non-negative integer");
+  if (!/^(0|[1-9][0-9]{0,77})$/.test(value)) throw new Error("invalid non-negative integer");
   return BigInt(value);
 };
 
@@ -146,68 +134,6 @@ app.get("/indexer/health", async () => {
     healthy: true,
     protocolVersion: 2,
     priceFormat: "raw-unit-ratio-x18",
-  });
-});
-
-app.get("/internal/matcher-events", async (context) => {
-  const state = await readState();
-  if (!state) return json({ error: "indexer-not-ready" }, 503);
-
-  const afterBlock = parseBigIntParameter(
-    context.req.query("afterBlock"),
-    BigInt(indexerEnvironment.deploymentBlock) - 1n,
-  );
-  const afterTransactionIndex = parseIntParameter(context.req.query("afterTransactionIndex"), 0);
-  const afterLogIndex = parseIntParameter(context.req.query("afterLogIndex"), 0);
-  const requestedLimit = parseIntParameter(context.req.query("limit"), 500);
-  const limit = Math.min(Math.max(requestedLimit, 1), 1_000);
-  const afterBlockHash = context.req.query("afterBlockHash");
-
-  if (afterBlockHash && afterBlock >= BigInt(indexerEnvironment.deploymentBlock)) {
-    const anchor = await canonicalBlock(afterBlock, state);
-    if (anchor.hash.toLowerCase() !== afterBlockHash.toLowerCase()) {
-      const deploymentBlock = BigInt(indexerEnvironment.deploymentBlock);
-      // No guessed common ancestor: replay from before deployment on a cursor mismatch.
-      const rewindToBlock = deploymentBlock > 0n ? deploymentBlock - 1n : 0n;
-      return canonicalJson(
-        {
-          canonicalHash: anchor.hash,
-          encoding: "conditional-stocks-canonical-json-v1",
-          error: "cursor-reorged",
-          rewindToBlock,
-          schemaVersion: 2,
-        },
-        409,
-      );
-    }
-  }
-
-  const rows = await queries.matcherEvents({
-    afterBlock,
-    afterTransactionIndex,
-    afterLogIndex,
-    confirmedThrough: state.confirmedBlock,
-    limit,
-  });
-
-  return canonicalJson({
-    confirmedThrough: state.confirmedBlock,
-    encoding: "conditional-stocks-canonical-json-v1",
-    events: rows.map((row) => ({
-      cursor: {
-        blockHash: row.blockHash,
-        blockNumber: row.blockNumber,
-        blockTimestamp: row.blockTimestamp,
-        chainId: row.chainId,
-        logIndex: row.logIndex,
-        transactionHash: row.transactionHash,
-        transactionIndex: row.transactionIndex,
-      },
-      event: canonicalParse(row.payload),
-    })),
-    finalizedThrough: state.finalizedBlock,
-    hasMore: rows.length === limit,
-    schemaVersion: 2,
   });
 });
 
@@ -371,6 +297,83 @@ app.get("/positions/:account", async (context) => {
   });
 });
 
+app.get("/payouts/:account", async (context) => {
+  const rawAccount = context.req.param("account");
+  if (!isAddress(rawAccount)) return json({ error: "invalid-account" }, 400);
+  const account = canonicalAddress(rawAccount);
+  const after = context.req.query("after");
+  if (
+    after &&
+    (!/^0x[0-9a-f]{40}:0x[0-9a-f]{40}:(0|[1-9][0-9]{0,77})$/.test(after) ||
+      !after.startsWith(`${account}:`))
+  )
+    return json({ error: "invalid-cursor" }, 400);
+  const [state, rows] = await Promise.all([readState(), queries.payoutCredits(account, after)]);
+  if (!state) return json({ error: "indexer-not-ready" }, 503);
+  const marketRows = rows.length ? await queries.markets() : [];
+  const metadata = new Map<
+    string,
+    {
+      collateralToken: Address;
+      decimals: number;
+      branch: "YES" | "NO" | null;
+      kind: "stock" | "quote";
+      marketId: Hex | null;
+    }
+  >();
+  const ctf = indexerEnvironment.contracts.conditionalTokens.toLowerCase();
+  for (const market of marketRows) {
+    for (const [kind, token, decimals, yes, no] of [
+      [
+        "stock",
+        market.baseToken,
+        market.baseTokenDecimals,
+        market.stockYesPositionId,
+        market.stockNoPositionId,
+      ],
+      [
+        "quote",
+        market.quoteToken,
+        market.quoteTokenDecimals,
+        market.quoteYesPositionId,
+        market.quoteNoPositionId,
+      ],
+    ] as const) {
+      metadata.set(`${token.toLowerCase()}:0`, {
+        collateralToken: token,
+        decimals,
+        branch: null,
+        kind,
+        marketId: null,
+      });
+      for (const [branch, id] of [
+        ["YES", yes],
+        ["NO", no],
+      ] as const) {
+        if (id !== null)
+          metadata.set(`${ctf}:${id}`, {
+            collateralToken: token,
+            decimals,
+            branch,
+            kind,
+            marketId: market.id,
+          });
+      }
+    }
+  }
+  const page = rows.slice(0, 100);
+  return json({
+    account,
+    vault: indexerEnvironment.contracts.payoutVault,
+    nextCursor: rows.length > 100 ? page.at(-1)?.id : null,
+    payouts: page.map((row) => {
+      const display = metadata.get(`${row.asset.toLowerCase()}:${row.tokenId}`);
+      if (!display) throw new HTTPException(503, { message: "payout token metadata unavailable" });
+      return { ...row, ...display, confirmation: confirmationState(row.updatedBlock, state) };
+    }),
+  });
+});
+
 app.get("/resolutions/:marketId", async (context) => {
   const marketId = parseHash(context.req.param("marketId"));
   if (!marketId) return json({ error: "invalid-market-id" }, 400);
@@ -383,32 +386,45 @@ app.get("/internal/reservations", async () => {
   return json({ reservations: rows });
 });
 
-app.get("/internal/ioc-book", async (context) => {
+app.get("/internal/match-candidates", async (context) => {
   const marketId = parseHash(context.req.query("marketId") ?? "");
   const branch = parseIntParameter(context.req.query("branch"), 2);
   const side = parseIntParameter(context.req.query("side"), 2);
-  if (!marketId || branch > 1 || side > 1) return json({ error: "invalid-book" }, 400);
+  const makerFeeBps = parseIntParameter(context.req.query("makerFeeBps"), 1001);
+  const timestamp = parseBigIntParameter(context.req.query("timestamp"), 0n);
+  const limitPriceRawX18 = parseBigIntParameter(context.req.query("limitPriceRawX18"), 0n);
+  const atBlock = parseBigIntParameter(context.req.query("atBlock"), 0n);
+  if (
+    !marketId ||
+    branch > 1 ||
+    side > 1 ||
+    makerFeeBps > 1000 ||
+    limitPriceRawX18 <= 0n ||
+    limitPriceRawX18 >= 1n << 128n ||
+    timestamp <= 0n ||
+    timestamp >= 1n << 64n
+  )
+    return json({ error: "invalid-match-query" }, 400);
   const state = await readState();
-  if (!state) return json({ error: "indexer-not-ready" }, 503);
-  const anchor = await canonicalBlock(state.confirmedBlock, state);
-  const rows = await queries.iocBook({
+  if (!state || atBlock > state.confirmedBlock) return json({ error: "unconfirmed-book" }, 503);
+  const anchor = await canonicalBlock(atBlock, state);
+  if (timestamp < anchor.timestamp) return json({ error: "timestamp-before-anchor" }, 400);
+  const rows = await queries.matchCandidates({
     marketId,
     branch,
     side,
-    confirmedThrough: state.confirmedBlock,
-    timestamp: anchor.timestamp,
+    makerFeeBps,
+    limitPriceRawX18,
+    confirmedThrough: atBlock,
+    timestamp,
   });
-  return canonicalJson({
-    cursor: {
-      blockHash: anchor.hash,
-      blockNumber: anchor.number,
-      blockTimestamp: anchor.timestamp,
-      chainId: BigInt(indexerEnvironment.chainId),
-      logIndex: 0,
-      transactionIndex: 0,
-      transactionHash: zeroHash,
-    },
-    orders: rows.map((row) => ({
+  return json({
+    chainId: indexerEnvironment.chainId,
+    exchange: indexerEnvironment.contracts.exchange,
+    blockNumber: anchor.number,
+    blockHash: anchor.hash,
+    candidates: rows.map((row) => ({
+      orderHash: row.id,
       remaining: row.remaining,
       sequence: row.sequence,
       order: {
@@ -430,69 +446,29 @@ app.get("/internal/ioc-book", async (context) => {
   });
 });
 
-app.get("/internal/settlement-context", async (context) => {
-  const orderHashes = context.req.queries("orderHash") ?? [];
-  if (orderHashes.length === 0 || orderHashes.length > 64) {
-    return json({ error: "orderHash must contain 1-64 values" }, 400);
-  }
-  const parsedOrderHashes = orderHashes.map(parseHash);
-  if (parsedOrderHashes.some((value) => value === null)) {
-    return json({ error: "invalid-order-hash" }, 400);
-  }
-  const anchorBlock = parseBigIntParameter(context.req.query("anchorBlock"), 0n);
-  const anchorHashInput = context.req.query("anchorHash");
-  const anchorHash = anchorHashInput ? parseHash(anchorHashInput) : null;
-  if (anchorHashInput && !anchorHash) return json({ error: "invalid-anchor-hash" }, 400);
-
-  const [state, orders, protocol] = await Promise.all([
-    readState(),
-    queries.ordersByHashes(parsedOrderHashes as Hex[]),
-    queries.protocolState(),
-  ]);
-  if (!state) return json({ error: "indexer-not-ready" }, 503);
-  const anchor =
-    anchorBlock <= state.indexedBlock ? await canonicalBlock(anchorBlock, state) : undefined;
-  const marketIds = [...new Set(orders.map((order) => order.marketId))];
-  const markets = await queries.marketsByIds(marketIds);
-  return json({
-    anchorCanonical: anchorHash !== null && anchor?.hash.toLowerCase() === anchorHash.toLowerCase(),
-    confirmedThrough: state.confirmedBlock,
-    finalizedThrough: state.finalizedBlock,
-    marketStates: markets.map((market) => ({ marketId: market.id, state: market.state })),
-    orders: orders.map((order) => ({
-      id: order.id,
-      remaining: order.remaining,
-      sequence: order.sequence,
-      status: order.status,
-    })),
-    tradingPaused: protocol?.tradingPaused ?? false,
+app.get("/internal/stale-reservations", async (context) => {
+  const marketId = parseHash(context.req.query("marketId") ?? "");
+  const maker = context.req.query("maker") ?? "";
+  const timestamp = parseBigIntParameter(context.req.query("timestamp"), 0n);
+  const atBlock = parseBigIntParameter(context.req.query("atBlock"), 0n);
+  if (!marketId || !isAddress(maker) || timestamp <= 0n || timestamp >= 1n << 64n)
+    return json({ error: "invalid-recovery-query" }, 400);
+  const state = await readState();
+  if (!state || atBlock > state.confirmedBlock) return json({ error: "unconfirmed-book" }, 503);
+  const anchor = await canonicalBlock(atBlock, state);
+  if (timestamp < anchor.timestamp) return json({ error: "timestamp-before-anchor" }, 400);
+  const candidates = await queries.staleReservations({
+    marketId,
+    maker: canonicalAddress(maker),
+    confirmedThrough: atBlock,
+    timestamp,
   });
-});
-
-app.get("/internal/settlement-confirmation", async (context) => {
-  const transactionHashes = context.req.queries("transactionHash") ?? [];
-  if (transactionHashes.length === 0 || transactionHashes.length > 64) {
-    return json({ error: "transactionHash must contain 1-64 values" }, 400);
-  }
-  const parsedHashes = transactionHashes.map(parseHash);
-  if (parsedHashes.some((value) => value === null)) {
-    return json({ error: "invalid-transaction-hash" }, 400);
-  }
-  const [state, fills] = await Promise.all([
-    readState(),
-    queries.fillsByTransactions(parsedHashes as Hex[]),
-  ]);
-  if (!state) return json({ error: "indexer-not-ready" }, 503);
   return json({
-    confirmed: fills.length > 0 && fills.every((fill) => fill.blockNumber <= state.confirmedBlock),
-    confirmedThrough: state.confirmedBlock,
-    fills: fills.map((fill) => ({
-      buyOrderHash: fill.buyOrderHash,
-      executionPriceRawX18: fill.executionPriceRawX18,
-      fillQuantity: fill.fillQuantity,
-      sellOrderHash: fill.sellOrderHash,
-      transactionHash: fill.transactionHash,
-    })),
+    chainId: indexerEnvironment.chainId,
+    exchange: indexerEnvironment.contracts.exchange,
+    blockNumber: anchor.number,
+    blockHash: anchor.hash,
+    candidates,
   });
 });
 

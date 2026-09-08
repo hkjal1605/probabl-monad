@@ -30,7 +30,7 @@ process.stdout.write(
       indexedBlock: primary.state.indexedBlock,
       indexedBlockHash: primary.state.indexedBlockHash,
       projectionHash: primaryHash,
-      projectionVersion: 2,
+      projectionVersion: 3,
     },
     null,
     2,

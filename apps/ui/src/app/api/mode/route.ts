@@ -4,7 +4,15 @@ import { MODE_COOKIE } from "@/lib/demo/mode";
 export async function POST(request: NextRequest) {
   // Mode changes require a same-origin form, not a cross-site POST/link.
   const origin = request.headers.get("origin");
-  if (!origin || !URL.canParse(origin) || new URL(origin).origin !== request.nextUrl.origin)
+  const requestOrigin = new URL(request.url);
+  // NextURL normalizes loopback IPs to localhost. Recover the actual loopback
+  // Host (same port only), without trusting arbitrary forwarded-host headers.
+  if (requestOrigin.hostname === "localhost") {
+    const port = requestOrigin.port ? `:${requestOrigin.port}` : "";
+    const host = request.headers.get("host");
+    if (host === `127.0.0.1${port}` || host === `[::1]${port}`) requestOrigin.host = host;
+  }
+  if (!origin || !URL.canParse(origin) || new URL(origin).origin !== requestOrigin.origin)
     return new Response("Invalid origin", { status: 403 });
   let body: FormData;
   try {

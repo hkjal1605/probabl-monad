@@ -43,7 +43,7 @@ const reportSchema = z.object({
   deep: z.boolean(),
   indexedBlock: decimal,
   indexedBlockHash: hash,
-  projectionVersion: z.literal(2),
+  projectionVersion: z.literal(3),
   status: z.enum(["ok", "mismatch"]),
 });
 const controlSchema = z.object({

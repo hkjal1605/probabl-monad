@@ -99,9 +99,9 @@ contract AuditFindingsTest is ProtocolFixture {
             bid.marketId = cappedMarketId;
             ask.marketId = cappedMarketId;
 
-            exchange.openOrder(bid, _sign(bid, BUYER_KEY));
-            exchange.openOrder(ask, _sign(ask, SELLER_KEY));
-            exchange.matchOrders(bid, ask, 1e18);
+            _openOrder(bid, _sign(bid, BUYER_KEY));
+            _openOrder(ask, _sign(ask, SELLER_KEY));
+            _matchOrders(bid, ask, 1e18);
             assertEq(exchange.marketOpenNotional(cappedMarketId), 0, "cap resets after fill");
         }
 
@@ -145,11 +145,12 @@ contract AuditFindingsTest is ProtocolFixture {
                 OrderValidator.UnsupportedClaimDestination.selector, address(recipient)
             )
         );
-        exchange.openOrder(bid, signature);
+        _openOrder(bid, signature);
         assertEq(quote.balanceOf(buyer), balanceBefore, "no funding pulled");
         assertEq(exchange.marketOpenNotional(marketId), 0, "no phantom open notional");
-        exchange.openOrder(ask, _sign(ask, SELLER_KEY));
+        _openOrder(ask, _sign(ask, SELLER_KEY));
         vm.expectRevert();
+        vm.prank(address(atomicRouter));
         exchange.matchOrders(bid, ask, 1e18);
     }
 

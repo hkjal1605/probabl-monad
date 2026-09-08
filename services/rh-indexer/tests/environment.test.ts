@@ -16,6 +16,7 @@ const baseEnvironment = (): NodeJS.ProcessEnv => ({
   ROBINHOOD_CHAIN_ID: "46630",
   ROBINHOOD_RPC_URL: "https://rpc-1.example, https://rpc-2.example",
   SETTLEMENT_ADDRESS: "0x0000000000000000000000000000000000000008",
+  PAYOUT_VAULT_ADDRESS: "0x0000000000000000000000000000000000000009",
 });
 
 describe("indexer environment", () => {

@@ -70,6 +70,7 @@ export interface IndexedOrder {
   maker: string;
   marketId: string;
   quantity: string;
+  filled: string;
   remaining: string;
   reserved: string;
   side: number;
@@ -83,6 +84,19 @@ export interface WholeBalanceView {
   blockNumber: string;
   canonicalBalance: string;
   token: string;
+}
+export interface PayoutCreditView {
+  id: string;
+  beneficiary: string;
+  asset: string;
+  tokenId: string;
+  amount: string;
+  collateralToken: string;
+  decimals: number;
+  branch: "YES" | "NO" | null;
+  kind: "stock" | "quote";
+  marketId: string | null;
+  confirmation: string;
 }
 export interface PositionView extends MarketUnits {
   conditionId: string;

@@ -89,19 +89,6 @@ export const conditionalExchangeAbi = [
   },
   {
     "type": "function",
-    "name": "MATCHER_ROLE",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "NONCE_INVALIDATED",
     "inputs": [],
     "outputs": [
@@ -122,6 +109,19 @@ export const conditionalExchangeAbi = [
         "name": "",
         "type": "bytes32",
         "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "atomicRouter",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "view"
@@ -149,7 +149,35 @@ export const conditionalExchangeAbi = [
         "internalType": "bytes32"
       }
     ],
-    "outputs": [],
+    "outputs": [
+      {
+        "name": "payout",
+        "type": "tuple",
+        "internalType": "struct Payout",
+        "components": [
+          {
+            "name": "beneficiary",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "asset",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenId",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "amount",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
     "stateMutability": "nonpayable"
   },
   {
@@ -211,12 +239,12 @@ export const conditionalExchangeAbi = [
   },
   {
     "type": "function",
-    "name": "configureIocRouter",
+    "name": "configureAtomicRouter",
     "inputs": [
       {
         "name": "router_",
         "type": "address",
-        "internalType": "contract IIOCRouter"
+        "internalType": "contract IAtomicOrderRouter"
       }
     ],
     "outputs": [],
@@ -243,6 +271,46 @@ export const conditionalExchangeAbi = [
         "name": "settlement_",
         "type": "address",
         "internalType": "contract IConditionalSettlement"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "finalizeAtomicPlacement",
+    "inputs": [
+      {
+        "name": "orderHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "payouts",
+        "type": "tuple[]",
+        "internalType": "struct Payout[]",
+        "components": [
+          {
+            "name": "beneficiary",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "asset",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenId",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "amount",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
       }
     ],
     "outputs": [],
@@ -422,19 +490,6 @@ export const conditionalExchangeAbi = [
   },
   {
     "type": "function",
-    "name": "iocRouter",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "marketOpenNotional",
     "inputs": [
       {
@@ -451,163 +506,6 @@ export const conditionalExchangeAbi = [
       }
     ],
     "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "matchIOCOrders",
-    "inputs": [
-      {
-        "name": "takerOrder",
-        "type": "tuple",
-        "internalType": "struct Order",
-        "components": [
-          {
-            "name": "maker",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "recipient",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "marketId",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          },
-          {
-            "name": "branch",
-            "type": "uint8",
-            "internalType": "enum Branch"
-          },
-          {
-            "name": "side",
-            "type": "uint8",
-            "internalType": "enum Side"
-          },
-          {
-            "name": "fundingKind",
-            "type": "uint8",
-            "internalType": "enum FundingKind"
-          },
-          {
-            "name": "quantity",
-            "type": "uint128",
-            "internalType": "uint128"
-          },
-          {
-            "name": "limitPriceRawX18",
-            "type": "uint128",
-            "internalType": "uint128"
-          },
-          {
-            "name": "tif",
-            "type": "uint8",
-            "internalType": "enum TimeInForce"
-          },
-          {
-            "name": "expiry",
-            "type": "uint64",
-            "internalType": "uint64"
-          },
-          {
-            "name": "nonce",
-            "type": "uint64",
-            "internalType": "uint64"
-          },
-          {
-            "name": "salt",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          },
-          {
-            "name": "maxFeeBps",
-            "type": "uint16",
-            "internalType": "uint16"
-          }
-        ]
-      },
-      {
-        "name": "makerOrder",
-        "type": "tuple",
-        "internalType": "struct Order",
-        "components": [
-          {
-            "name": "maker",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "recipient",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "marketId",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          },
-          {
-            "name": "branch",
-            "type": "uint8",
-            "internalType": "enum Branch"
-          },
-          {
-            "name": "side",
-            "type": "uint8",
-            "internalType": "enum Side"
-          },
-          {
-            "name": "fundingKind",
-            "type": "uint8",
-            "internalType": "enum FundingKind"
-          },
-          {
-            "name": "quantity",
-            "type": "uint128",
-            "internalType": "uint128"
-          },
-          {
-            "name": "limitPriceRawX18",
-            "type": "uint128",
-            "internalType": "uint128"
-          },
-          {
-            "name": "tif",
-            "type": "uint8",
-            "internalType": "enum TimeInForce"
-          },
-          {
-            "name": "expiry",
-            "type": "uint64",
-            "internalType": "uint64"
-          },
-          {
-            "name": "nonce",
-            "type": "uint64",
-            "internalType": "uint64"
-          },
-          {
-            "name": "salt",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          },
-          {
-            "name": "maxFeeBps",
-            "type": "uint16",
-            "internalType": "uint16"
-          }
-        ]
-      },
-      {
-        "name": "fillQuantity",
-        "type": "uint128",
-        "internalType": "uint128"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -763,7 +661,35 @@ export const conditionalExchangeAbi = [
         "internalType": "uint128"
       }
     ],
-    "outputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple[5]",
+        "internalType": "struct Payout[5]",
+        "components": [
+          {
+            "name": "beneficiary",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "asset",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenId",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "amount",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
     "stateMutability": "nonpayable"
   },
   {
@@ -889,97 +815,6 @@ export const conditionalExchangeAbi = [
   },
   {
     "type": "function",
-    "name": "openIOCOrder",
-    "inputs": [
-      {
-        "name": "order",
-        "type": "tuple",
-        "internalType": "struct Order",
-        "components": [
-          {
-            "name": "maker",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "recipient",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "marketId",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          },
-          {
-            "name": "branch",
-            "type": "uint8",
-            "internalType": "enum Branch"
-          },
-          {
-            "name": "side",
-            "type": "uint8",
-            "internalType": "enum Side"
-          },
-          {
-            "name": "fundingKind",
-            "type": "uint8",
-            "internalType": "enum FundingKind"
-          },
-          {
-            "name": "quantity",
-            "type": "uint128",
-            "internalType": "uint128"
-          },
-          {
-            "name": "limitPriceRawX18",
-            "type": "uint128",
-            "internalType": "uint128"
-          },
-          {
-            "name": "tif",
-            "type": "uint8",
-            "internalType": "enum TimeInForce"
-          },
-          {
-            "name": "expiry",
-            "type": "uint64",
-            "internalType": "uint64"
-          },
-          {
-            "name": "nonce",
-            "type": "uint64",
-            "internalType": "uint64"
-          },
-          {
-            "name": "salt",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          },
-          {
-            "name": "maxFeeBps",
-            "type": "uint16",
-            "internalType": "uint16"
-          }
-        ]
-      },
-      {
-        "name": "signature",
-        "type": "bytes",
-        "internalType": "bytes"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "orderHash",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "openOrder",
     "inputs": [
       {
@@ -1084,6 +919,19 @@ export const conditionalExchangeAbi = [
   },
   {
     "type": "function",
+    "name": "payoutVault",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract PayoutVault"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "registry",
     "inputs": [],
     "outputs": [
@@ -1132,6 +980,52 @@ export const conditionalExchangeAbi = [
       }
     ],
     "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "releaseStaleOrder",
+    "inputs": [
+      {
+        "name": "orderHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "marketId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "payout",
+        "type": "tuple",
+        "internalType": "struct Payout",
+        "components": [
+          {
+            "name": "beneficiary",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "asset",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenId",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "amount",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
     "stateMutability": "nonpayable"
   },
   {
@@ -1223,6 +1117,19 @@ export const conditionalExchangeAbi = [
   },
   {
     "type": "event",
+    "name": "AtomicRouterConfigured",
+    "inputs": [
+      {
+        "name": "router",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "EmergencyPauseChanged",
     "inputs": [
       {
@@ -1239,19 +1146,6 @@ export const conditionalExchangeAbi = [
       },
       {
         "name": "caller",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "IocRouterConfigured",
-    "inputs": [
-      {
-        "name": "router",
         "type": "address",
         "indexed": true,
         "internalType": "address"
@@ -1532,6 +1426,11 @@ export const conditionalExchangeAbi = [
   },
   {
     "type": "error",
+    "name": "AtomicRouterAlreadyConfigured",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "ConditionalTokenTransferNotReceived",
     "inputs": []
   },
@@ -1600,11 +1499,6 @@ export const conditionalExchangeAbi = [
   },
   {
     "type": "error",
-    "name": "IocRouterAlreadyConfigured",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "MarketNotOpen",
     "inputs": [
       {
@@ -1657,7 +1551,7 @@ export const conditionalExchangeAbi = [
   },
   {
     "type": "error",
-    "name": "UnauthorizedIocRouter",
+    "name": "UnauthorizedAtomicRouter",
     "inputs": [
       {
         "name": "caller",
@@ -1864,6 +1758,19 @@ export const conditionalSettlementAbi = [
   },
   {
     "type": "function",
+    "name": "payoutVault",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract PayoutVault"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "registry",
     "inputs": [],
     "outputs": [
@@ -1962,7 +1869,35 @@ export const conditionalSettlementAbi = [
         ]
       }
     ],
-    "outputs": [],
+    "outputs": [
+      {
+        "name": "payouts",
+        "type": "tuple[4]",
+        "internalType": "struct Payout[4]",
+        "components": [
+          {
+            "name": "beneficiary",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "asset",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenId",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "amount",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
     "stateMutability": "nonpayable"
   },
   {
@@ -2188,14 +2123,14 @@ export const conditionalSettlementAbi = [
   }
 ] as const;
 
-export const iOCRouterAbi = [
+export const atomicOrderRouterAbi = [
   {
     "type": "constructor",
     "inputs": [
       {
         "name": "exchange_",
         "type": "address",
-        "internalType": "contract IIOCExchange"
+        "internalType": "contract IAtomicExchange"
       },
       {
         "name": "authority_",
@@ -2207,7 +2142,33 @@ export const iOCRouterAbi = [
   },
   {
     "type": "function",
-    "name": "MAX_IOC_MAKERS",
+    "name": "EXECUTION_VERSION",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "MAX_MAKERS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "MAX_RELEASES",
     "inputs": [],
     "outputs": [
       {
@@ -2239,17 +2200,17 @@ export const iOCRouterAbi = [
       {
         "name": "",
         "type": "address",
-        "internalType": "contract IIOCExchange"
+        "internalType": "contract IAtomicExchange"
       }
     ],
     "stateMutability": "view"
   },
   {
     "type": "function",
-    "name": "executeIOC",
+    "name": "placeAndMatch",
     "inputs": [
       {
-        "name": "takerOrder",
+        "name": "taker",
         "type": "tuple",
         "internalType": "struct Order",
         "components": [
@@ -2321,12 +2282,12 @@ export const iOCRouterAbi = [
         ]
       },
       {
-        "name": "takerSignature",
+        "name": "signature",
         "type": "bytes",
         "internalType": "bytes"
       },
       {
-        "name": "makerOrders",
+        "name": "makers",
         "type": "tuple[]",
         "internalType": "struct Order[]",
         "components": [
@@ -2398,14 +2359,229 @@ export const iOCRouterAbi = [
         ]
       },
       {
-        "name": "fillQuantities",
+        "name": "quantities",
         "type": "uint128[]",
         "internalType": "uint128[]"
+      },
+      {
+        "name": "expectedRemaining",
+        "type": "uint128[]",
+        "internalType": "uint128[]"
+      },
+      {
+        "name": "deadline",
+        "type": "uint64",
+        "internalType": "uint64"
       }
     ],
     "outputs": [
       {
-        "name": "takerOrderHash",
+        "name": "orderHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "placeAndMatchChecked",
+    "inputs": [
+      {
+        "name": "taker",
+        "type": "tuple",
+        "internalType": "struct Order",
+        "components": [
+          {
+            "name": "maker",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "recipient",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "marketId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "branch",
+            "type": "uint8",
+            "internalType": "enum Branch"
+          },
+          {
+            "name": "side",
+            "type": "uint8",
+            "internalType": "enum Side"
+          },
+          {
+            "name": "fundingKind",
+            "type": "uint8",
+            "internalType": "enum FundingKind"
+          },
+          {
+            "name": "quantity",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "limitPriceRawX18",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "tif",
+            "type": "uint8",
+            "internalType": "enum TimeInForce"
+          },
+          {
+            "name": "expiry",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "nonce",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "salt",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "maxFeeBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          }
+        ]
+      },
+      {
+        "name": "signature",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "makers",
+        "type": "tuple[]",
+        "internalType": "struct Order[]",
+        "components": [
+          {
+            "name": "maker",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "recipient",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "marketId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "branch",
+            "type": "uint8",
+            "internalType": "enum Branch"
+          },
+          {
+            "name": "side",
+            "type": "uint8",
+            "internalType": "enum Side"
+          },
+          {
+            "name": "fundingKind",
+            "type": "uint8",
+            "internalType": "enum FundingKind"
+          },
+          {
+            "name": "quantity",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "limitPriceRawX18",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "tif",
+            "type": "uint8",
+            "internalType": "enum TimeInForce"
+          },
+          {
+            "name": "expiry",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "nonce",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "salt",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "maxFeeBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          }
+        ]
+      },
+      {
+        "name": "quantities",
+        "type": "uint128[]",
+        "internalType": "uint128[]"
+      },
+      {
+        "name": "expectedRemaining",
+        "type": "uint128[]",
+        "internalType": "uint128[]"
+      },
+      {
+        "name": "deadline",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "guard",
+        "type": "tuple",
+        "internalType": "struct ExecutionGuard",
+        "components": [
+          {
+            "name": "nextSequence",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "makerFeeBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "takerFeeBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          }
+        ]
+      },
+      {
+        "name": "releaseOrders",
+        "type": "bytes32[]",
+        "internalType": "bytes32[]"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "orderHash",
         "type": "bytes32",
         "internalType": "bytes32"
       }
@@ -2419,12 +2595,17 @@ export const iOCRouterAbi = [
   },
   {
     "type": "error",
-    "name": "InvalidAuthority",
+    "name": "InvalidPlan",
     "inputs": []
   },
   {
     "type": "error",
-    "name": "InvalidIOC",
+    "name": "NotOrderOwner",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "QuoteExpired",
     "inputs": []
   },
   {
@@ -2434,17 +2615,22 @@ export const iOCRouterAbi = [
   },
   {
     "type": "error",
-    "name": "UnauthorizedProtocolRole",
+    "name": "StaleBook",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "StaleFees",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "StaleMaker",
     "inputs": [
       {
-        "name": "role",
+        "name": "orderHash",
         "type": "bytes32",
         "internalType": "bytes32"
-      },
-      {
-        "name": "account",
-        "type": "address",
-        "internalType": "address"
       }
     ]
   }
@@ -4591,11 +4777,6 @@ export const protocolAuthorityAbi = [
         "internalType": "address"
       },
       {
-        "name": "initialMatcher",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
         "name": "initialGuardian",
         "type": "address",
         "internalType": "address"
@@ -5514,6 +5695,480 @@ export const protocolFeeVaultAbi = [
   {
     "type": "error",
     "name": "UnsupportedToken",
+    "inputs": []
+  }
+] as const;
+
+export const payoutVaultAbi = [
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "conditionalTokens_",
+        "type": "address",
+        "internalType": "contract IConditionalTokens"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "DELIVERY_GAS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "MAX_PAYOUTS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "attemptDelivery",
+    "inputs": [
+      {
+        "name": "payout",
+        "type": "tuple",
+        "internalType": "struct Payout",
+        "components": [
+          {
+            "name": "beneficiary",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "asset",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenId",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "amount",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "claimable",
+    "inputs": [
+      {
+        "name": "beneficiary",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "asset",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "conditionalTokens",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IConditionalTokens"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "deliver",
+    "inputs": [
+      {
+        "name": "payouts",
+        "type": "tuple[]",
+        "internalType": "struct Payout[]",
+        "components": [
+          {
+            "name": "beneficiary",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "asset",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenId",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "amount",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "exchange",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "fundClaim",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "fundWhole",
+    "inputs": [
+      {
+        "name": "asset",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "onERC1155BatchReceived",
+    "inputs": [
+      {
+        "name": "operator",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "from",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "ids",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "values",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes4",
+        "internalType": "bytes4"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "onERC1155Received",
+    "inputs": [
+      {
+        "name": "operator",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "from",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "value",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes4",
+        "internalType": "bytes4"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "supportsInterface",
+    "inputs": [
+      {
+        "name": "interfaceId",
+        "type": "bytes4",
+        "internalType": "bytes4"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "totalClaimable",
+    "inputs": [
+      {
+        "name": "asset",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "withdraw",
+    "inputs": [
+      {
+        "name": "asset",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "recipient",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "PayoutClaimed",
+    "inputs": [
+      {
+        "name": "beneficiary",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "asset",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "recipient",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "PayoutDeferred",
+    "inputs": [
+      {
+        "name": "beneficiary",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "asset",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "ConditionalTokenTransferNotReceived",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InsufficientBacking",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InsufficientCredit",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InsufficientDeliveryGas",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidPayout",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ReentrancyGuardReentrantCall",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "SafeERC20FailedOperation",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "Unauthorized",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnexpectedConditionalTokenTransfer",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnsupportedTransfer",
     "inputs": []
   }
 ] as const;

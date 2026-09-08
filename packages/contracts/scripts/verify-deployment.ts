@@ -28,9 +28,10 @@ export const protocolContractNames = [
   "MarketRegistry",
   "ManualResolutionController",
   "ConditionalExchange",
+  "PayoutVault",
   "OrderValidator",
   "ConditionalSettlement",
-  "IOCRouter",
+  "AtomicOrderRouter",
   "OrderRecoveryRouter",
   "PositionRouter",
 ] as const;
@@ -53,6 +54,17 @@ export async function verifyWiring(
   const exchange = address("ConditionalExchange");
   const ctf = address("ConditionalTokens");
   const registryArtifact = await loadArtifact("MarketRegistry");
+  const atomicArtifact = await loadArtifact("AtomicOrderRouter");
+  if (
+    Number(
+      await client.readContract({
+        abi: atomicArtifact.abi,
+        address: address("AtomicOrderRouter"),
+        functionName: "EXECUTION_VERSION",
+      }),
+    ) !== 2
+  )
+    throw new Error("Expected checked atomic execution version 2");
   const validatorArtifact = await loadArtifact("OrderValidator");
   const signingVersion = await client.readContract({
     abi: validatorArtifact.abi,
@@ -85,16 +97,20 @@ export async function verifyWiring(
     ["ConditionalExchange", "authority", authority],
     ["ConditionalExchange", "settlement", address("ConditionalSettlement")],
     ["ConditionalExchange", "orderValidator", address("OrderValidator")],
-    ["ConditionalExchange", "iocRouter", address("IOCRouter")],
+    ["ConditionalExchange", "atomicRouter", address("AtomicOrderRouter")],
+    ["ConditionalExchange", "payoutVault", address("PayoutVault")],
+    ["PayoutVault", "exchange", exchange],
+    ["PayoutVault", "conditionalTokens", ctf],
     ["ConditionalSettlement", "exchange", exchange],
     ["ConditionalSettlement", "registry", registry],
     ["ConditionalSettlement", "conditionalTokens", ctf],
     ["ConditionalSettlement", "feeVault", address("ProtocolFeeVault")],
+    ["ConditionalSettlement", "payoutVault", address("PayoutVault")],
     ["ProtocolFeeVault", "conditionalTokens", ctf],
     ["ProtocolFeeVault", "authority", authority],
     ["OrderValidator", "exchange", exchange],
-    ["IOCRouter", "exchange", exchange],
-    ["IOCRouter", "authority", authority],
+    ["AtomicOrderRouter", "exchange", exchange],
+    ["AtomicOrderRouter", "authority", authority],
     ["OrderRecoveryRouter", "exchange", exchange],
     ["PositionRouter", "conditionalTokens", ctf],
     ["ProtocolAuthority", "defaultAdmin", expectedAdmin],
@@ -169,6 +185,7 @@ export interface DeploymentManifest {
   productionApproved?: false;
   release?: { mode: string; productionApproved: false; riskAcknowledgement?: string };
   protocolVersion: 2;
+  executionVersion: 2;
   priceFormat: "raw-unit-ratio-x18";
   chainId: number;
   deployer: Address;
@@ -194,8 +211,12 @@ export async function verifyDeploymentManifest(
     throw new Error(
       "Mainnet manifest must retain explicit experimental risk acknowledgement and productionApproved=false",
     );
-  if (manifest.protocolVersion !== 2 || manifest.priceFormat !== "raw-unit-ratio-x18")
-    throw new Error("Legacy manifest requires a fresh v2 deployment");
+  if (
+    manifest.protocolVersion !== 2 ||
+    manifest.executionVersion !== 2 ||
+    manifest.priceFormat !== "raw-unit-ratio-x18"
+  )
+    throw new Error("Legacy manifest requires a fresh atomic-execution deployment");
   if ((await client.getChainId()) !== manifest.chainId) throw new Error("Manifest chain mismatch");
   const currentSource = await sourceManifest();
   if (
@@ -223,7 +244,21 @@ export async function verifyDeploymentManifest(
     } as never);
     if (keccak256(initcode) !== record.initcodeHash)
       throw new Error(`${name} constructor arguments differ from manifest`);
-    const expected = await client.call({ account: manifest.deployer, data: initcode });
+    const parent = name === "PayoutVault" ? manifest.deployments.ConditionalExchange : undefined;
+    if (
+      name === "PayoutVault" &&
+      (!parent ||
+        record.creator?.toLowerCase() !== parent.address.toLowerCase() ||
+        record.transactionHash !== parent.transactionHash ||
+        record.blockHash !== parent.blockHash)
+    )
+      throw new Error("PayoutVault must be created by the recorded exchange deployment");
+    if (name !== "PayoutVault" && record.creator !== undefined)
+      throw new Error(`Unexpected ${name} creator`);
+    const expected = await client.call({
+      account: parent?.address ?? manifest.deployer,
+      data: initcode,
+    });
     if (!expected.data || expected.data === "0x")
       throw new Error(`${name} reference deployment returned no runtime`);
     const runtime = await client.getBytecode({ address: record.address });
@@ -235,8 +270,9 @@ export async function verifyDeploymentManifest(
       receipt.status !== "success" ||
       receipt.blockHash !== record.blockHash ||
       receipt.blockNumber.toString() !== record.blockNumber ||
-      receipt.contractAddress?.toLowerCase() !== record.address.toLowerCase() ||
-      transaction.input !== initcode ||
+      receipt.contractAddress?.toLowerCase() !==
+        (parent?.address ?? record.address).toLowerCase() ||
+      (!parent && transaction.input !== initcode) ||
       getAddress(transaction.from) !== getAddress(manifest.deployer)
     )
       throw new Error(`${name} deployment receipt/transaction mismatch`);

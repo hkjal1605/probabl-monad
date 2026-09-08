@@ -38,7 +38,6 @@ const finalAdmin = environmentAddress("FINAL_ADMIN");
 const roleAddresses = {
   guardian: environmentAddress("GUARDIAN"),
   marketAdmin: environmentAddress("MARKET_ADMIN"),
-  matcher: environmentAddress("MATCHER"),
   resolutionAdmin: environmentAddress("RESOLUTION_ADMIN"),
 } as const;
 const distinctAuthorities = new Set(
@@ -46,9 +45,9 @@ const distinctAuthorities = new Set(
     address.toLowerCase(),
   ),
 );
-if (distinctAuthorities.size !== 6) {
+if (distinctAuthorities.size !== 5) {
   throw new Error(
-    "Temporary admin, final admin, and all four operational role addresses must be distinct",
+    "Temporary admin, final admin, and all three operational role addresses must be distinct",
   );
 }
 
@@ -122,7 +121,6 @@ await assertContract(publicClient, usdg, "USDG");
 const authority = await deployFoundry("ProtocolAuthority", [
   initialAdmin,
   roleAddresses.marketAdmin,
-  roleAddresses.matcher,
   roleAddresses.guardian,
   roleAddresses.resolutionAdmin,
 ]);
@@ -138,6 +136,39 @@ const exchange = await deployFoundry("ConditionalExchange", [
   authority,
 ]);
 const orderValidator = await deployFoundry("OrderValidator", [exchange]);
+const payoutArtifact = await loadArtifact("PayoutVault");
+const payoutAddress = getAddress(
+  (await publicClient.readContract({
+    abi: (await loadArtifact("ConditionalExchange")).abi,
+    address: exchange,
+    functionName: "payoutVault",
+  })) as Address,
+);
+const payoutInitcode = encodeDeployData({
+  abi: payoutArtifact.abi,
+  bytecode: payoutArtifact.bytecode.object,
+  args: [conditionalTokens],
+} as never);
+const payoutReference = await publicClient.call({ account: exchange, data: payoutInitcode });
+if (!payoutReference.data || payoutReference.data === "0x")
+  throw new Error("Missing payout vault reference runtime");
+const exchangeRecord = deployments.ConditionalExchange;
+if (!exchangeRecord?.blockNumber || !exchangeRecord.blockHash || !exchangeRecord.transactionHash)
+  throw new Error("Missing exchange creation evidence");
+deployments.PayoutVault = {
+  address: payoutAddress,
+  creator: exchange,
+  constructorArgs: [conditionalTokens],
+  blockNumber: exchangeRecord.blockNumber,
+  blockHash: exchangeRecord.blockHash,
+  transactionHash: exchangeRecord.transactionHash,
+  initcodeHash: keccak256(payoutInitcode),
+  bytecodeHash: assertRuntime(
+    await publicClient.getBytecode({ address: payoutAddress }),
+    keccak256(payoutReference.data),
+    "PayoutVault",
+  ),
+};
 const feeVault = await deployFoundry("ProtocolFeeVault", [conditionalTokens, authority]);
 const settlement = await deployFoundry("ConditionalSettlement", [
   conditionalTokens,
@@ -145,7 +176,7 @@ const settlement = await deployFoundry("ConditionalSettlement", [
   exchange,
   feeVault,
 ]);
-const iocRouter = await deployFoundry("IOCRouter", [exchange, authority]);
+const atomicRouter = await deployFoundry("AtomicOrderRouter", [exchange, authority]);
 await deployFoundry("OrderRecoveryRouter", [exchange]);
 await deployFoundry("PositionRouter", [conditionalTokens]);
 
@@ -201,8 +232,8 @@ await configure(
 await configure("configureSettlement", exchange, exchangeArtifact.abi, "configureSettlement", [
   settlement,
 ]);
-await configure("configureIocRouter", exchange, exchangeArtifact.abi, "configureIocRouter", [
-  iocRouter,
+await configure("configureAtomicRouter", exchange, exchangeArtifact.abi, "configureAtomicRouter", [
+  atomicRouter,
 ]);
 await verifyWiring(publicClient, deployments, usdg, roleAddresses, initialAdmin, initialAdmin);
 const adminTransferTransactionHash = await configure(
@@ -225,6 +256,7 @@ const latestBlock = (await publicClient.getBlock({ blockTag: "latest" })).number
 const manifest = {
   release: releasePolicy(chainId, Bun.env),
   protocolVersion: 2,
+  executionVersion: 2,
   priceFormat: "raw-unit-ratio-x18",
   chainId,
   deployer: initialAdmin,

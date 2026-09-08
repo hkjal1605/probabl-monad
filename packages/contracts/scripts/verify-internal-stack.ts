@@ -14,6 +14,10 @@ import {
   toHex,
 } from "viem";
 import { mnemonicToAccount } from "viem/accounts";
+import {
+  atomicTransaction,
+  verifyAtomicResponse,
+} from "../../../apps/ui/src/lib/trading/atomic.ts";
 import { conditionalExchangeAbi } from "../../contract-bindings/src/index.ts";
 import { hashOrder, type Order, orderTypedData } from "../../domain/src/index.ts";
 
@@ -23,8 +27,6 @@ const rpcUrl = "http://127.0.0.1:19545";
 const ports = {
   indexer: 19546,
   reconciler: 19547,
-  worker: 19548,
-  matcher: 19549,
   api: 19550,
   polymarket: 19551,
   ui: 19552,
@@ -236,18 +238,14 @@ try {
     RECONCILIATION_INTERVAL_MS: "1000",
     RECONCILIATION_DEEP_INTERVAL_MS: "1000",
     RECONCILIATION_MAX_AGE_MS: "120000",
-    SETTLEMENT_WORKER_URL: url("worker"),
-    SETTLEMENT_PORT: String(ports.worker),
-    SETTLEMENT_INTERNAL_TOKEN: "local-only-settlement-token-32-characters",
-    MATCHER_CALLBACK_URL: url("matcher"),
-    MATCHER_PORT: String(ports.matcher),
-    MATCHER_OWNER_ID: "smoke-matcher",
-    MATCHER_HEALTH_URL: url("matcher"),
     POLYMARKET_INGESTOR_URL: url("polymarket"),
     POLYMARKET_PORT: String(ports.polymarket),
     NEXT_PUBLIC_ROBINHOOD_CHAIN_ID: "31337",
     NEXT_PUBLIC_ROBINHOOD_CHAIN_NAME: "Owned Anvil test",
     NEXT_PUBLIC_ROBINHOOD_RPC_URL: rpcUrl,
+    NEXT_PUBLIC_ATOMIC_ORDER_ROUTER_ADDRESS: fixture.ATOMIC_ORDER_ROUTER_ADDRESS as string,
+    NEXT_PUBLIC_PAYOUT_VAULT_ADDRESS: fixture.PAYOUT_VAULT_ADDRESS as string,
+    NEXT_PUBLIC_POSITION_ROUTER_ADDRESS: fixture.POSITION_ROUTER_ADDRESS as string,
     NEXT_PUBLIC_EXCHANGE_ADDRESS: fixture.EXCHANGE_ADDRESS as string,
     NEXT_PUBLIC_CONDITIONAL_TOKENS_ADDRESS: fixture.CONDITIONAL_TOKENS_ADDRESS as string,
     NEXT_PUBLIC_MARKET_REGISTRY_ADDRESS: fixture.MARKET_REGISTRY_ADDRESS as string,
@@ -279,14 +277,8 @@ try {
   spawn("reconciler", ["bun", "scripts/reconcile.ts", "watch"], join(root, "services/rh-indexer"));
   await until("reconciler", () => healthy(`${url("reconciler")}/health`));
   spawn("polymarket", ["bun", "src/main.ts"], join(root, "services/polymarket-ingestor"));
-  spawn("worker", ["bun", "src/main.ts"], join(root, "services/settlement-worker"));
-  spawn("matcher", ["bun", "src/main.ts"], join(root, "services/matcher"));
   spawn("api", ["bun", "src/index.ts"], join(root, "apps/api"));
-  for (const [component, path] of [
-    ["worker", "/ready"],
-    ["matcher", "/health"],
-    ["api", "/ready"],
-  ] as const)
+  for (const [component, path] of [["api", "/ready"]] as const)
     await until(component, () => healthy(`${url(component)}${path}`));
   pass("all standalone entrypoints ready with active reconciliation");
   const mnemonic = "test test test test test test test test test test test junk";
@@ -375,49 +367,60 @@ try {
     const signature = await account.signTypedData(
       orderTypedData(order, { chainId: 31337n, verifyingContract: exchange }),
     );
-    const body = {
-      order,
-      signature,
-      ...(tif === 1
-        ? {
-            protection: {
-              maxQuantity: quantity,
-              maxNotional: 200_000_000n,
-              worstPriceRawX18: order.limitPriceRawX18,
-            },
-          }
-        : {}),
-    };
-    const result = await json<{ operation: { operationId: string } }>(
-      `${url("api")}/v1/orders/submit`,
-      {
+    const serialize = (value: unknown) =>
+      JSON.stringify(value, (_, item) => (typeof item === "bigint" ? String(item) : item));
+    const post = (path: string, body: unknown) =>
+      json<unknown>(`${url("api")}/v1${path}`, {
         method: "POST",
         headers: {
           authorization: `Bearer ${tokens.get(account.address)}`,
           "content-type": "application/json",
-          "idempotency-key": crypto.randomUUID(),
         },
-        body: JSON.stringify(body, (_, value) =>
-          typeof value === "bigint" ? String(value) : value,
-        ),
-      },
+        body: serialize(body),
+      });
+    const preparation = (await post("/orders/prepare", { order })) as { plan: unknown };
+    const expected = atomicTransaction({
+      order: JSON.parse(serialize(order)),
+      plan: preparation.plan,
+      signature,
+      account: account.address,
+      config: { chainId: 31337, exchange, atomicRouter: env.ATOMIC_ORDER_ROUTER_ADDRESS as string },
+      nowSeconds: (await client.getBlock()).timestamp,
+    });
+    const transaction = verifyAtomicResponse(
+      expected,
+      await post("/orders/transaction", { order, plan: preparation.plan, signature }),
     );
-    return {
-      order,
-      hash: hashOrder(order, { chainId: 31337n, verifyingContract: exchange }),
-      operationId: result.operation.operationId,
-    };
+    const transactionHash = await createWalletClient({
+      account,
+      transport: http(rpcUrl),
+    }).sendTransaction({
+      account,
+      chain: null,
+      to: transaction.to,
+      data: transaction.data,
+      value: 0n,
+    });
+    await receipt(transactionHash);
+    const hash = hashOrder(order, { chainId: 31337n, verifyingContract: exchange });
+    await until(
+      "user placement confirmed in indexer",
+      async () =>
+        (await json<{ confirmation: string }>(`${url("indexer")}/orders/${hash}`)).confirmation !==
+        "observed",
+    );
+    return { order, hash, transactionHash };
   };
   // Allow confirmation policy to catch up with approvals.
   await Bun.sleep(2500);
   await submit(seller, 1, 0);
   const bid = await submit(buyer, 0, 0);
   await until(
-    "autonomous GTC match",
+    "atomic GTC fill",
     async () =>
       (await json<{ status: string }>(`${url("indexer")}/orders/${bid.hash}`)).status === "filled",
   );
-  pass("GTC order API -> continuous matcher -> worker -> canonical fill");
+  pass("GTC quote -> user atomic placement -> canonical fill");
   const ask2 = await submit(seller, 1, 0);
   await until(
     "IOC maker confirmed",
@@ -426,27 +429,36 @@ try {
         .confirmation !== "observed",
   );
   const ioc = await submit(buyer, 0, 1);
-  await until(
-    "autonomous IOC completion",
-    async () =>
-      (
-        await json<{ state: string }>(`${url("worker")}/internal/ioc-intents/${ioc.hash}`, {
-          headers: { authorization: `Bearer ${env.SETTLEMENT_INTERNAL_TOKEN}` },
-        })
-      ).state === "confirmed",
-  );
-  pass("IOC intent automatically planned, settled and confirmed");
+  if ((await json<{ status: string }>(`${url("indexer")}/orders/${ioc.hash}`)).status !== "filled")
+    throw new Error("Atomic IOC did not fill");
+  pass("IOC fills in its user placement transaction");
   const emptyIoc = await submit(buyer, 0, 1);
-  await until(
-    "empty IOC terminal",
-    async () =>
-      (
-        await json<{ state: string }>(`${url("worker")}/internal/ioc-intents/${emptyIoc.hash}`, {
-          headers: { authorization: `Bearer ${env.SETTLEMENT_INTERNAL_TOKEN}` },
-        })
-      ).state === "unfilled",
+  const emptyIndexed = await json<{ status: string; filled: string; remaining: string }>(
+    `${url("indexer")}/orders/${emptyIoc.hash}`,
   );
-  pass("IOC with no liquidity terminates without taking collateral");
+  if (
+    emptyIndexed.status !== "cancelled" ||
+    emptyIndexed.filled !== "0" ||
+    emptyIndexed.remaining !== "0"
+  )
+    throw new Error("Empty IOC did not refund");
+  pass("IOC with no liquidity terminates and refunds in the same transaction");
+  await submit(seller, 1, 0);
+  const partialIoc = await submit(buyer, 0, 1, 2n * 10n ** 18n);
+  const partialIndexed = await json<{
+    status: string;
+    filled: string;
+    remaining: string;
+    reserved: string;
+  }>(`${url("indexer")}/orders/${partialIoc.hash}`);
+  if (
+    partialIndexed.status !== "cancelled" ||
+    partialIndexed.filled !== "1000000000000000000" ||
+    partialIndexed.remaining !== "0" ||
+    partialIndexed.reserved !== "0"
+  )
+    throw new Error("IOC history confused the refunded remainder with executed quantity");
+  pass("partially filled IOC history preserves executed quantity after atomic refund");
   const recovery = await submit(seller, 1, 0);
   await until(
     "recovery order indexed",
@@ -487,16 +499,7 @@ try {
     join(root, "services/rh-indexer"),
   );
   await until("reconciler restart", async () => (await fetch(`${url("reconciler")}/health`)).ok);
-  const matcher = children.find((child) => child.name === "matcher");
-  matcher?.process.kill("SIGTERM");
-  if (matcher) {
-    await matcher.process.exited;
-    await matcher.logs;
-    children.splice(children.indexOf(matcher), 1);
-  }
-  spawn("matcher-restarted", ["bun", "src/main.ts"], join(root, "services/matcher"));
-  await until("matcher recovered", async () => (await fetch(`${url("matcher")}/health`)).ok);
-  pass("matcher and reconciler restart from durable stores");
+  pass("reconciler restarts from its durable store");
   if (storageChecks) {
     const probe = createStorageProbe(env.DATABASE_URL as string, env.DATABASE_SCHEMA as string);
     const storageEvidence: Record<string, unknown> = {};
@@ -552,14 +555,7 @@ try {
     try {
       // Freeze signing activity; the following workload consists only of local blocks,
       // explicit test cancellation and read-only API/reconciliation requests.
-      for (const name of [
-        "matcher-restarted",
-        "worker",
-        "api",
-        "polymarket",
-        "reconciler-restarted",
-      ])
-        await stopChild(name);
+      for (const name of ["api", "polymarket", "reconciler-restarted"]) await stopChild(name);
       await rpc("anvil_setIntervalMining", [0]);
       await mine(256);
       await until(
@@ -591,25 +587,20 @@ try {
         `${url("indexer")}/internal/canonical-block/${anchorNumber}`,
       );
       assert(old.hash === anchorHash, "evicted block fallback returned wrong hash");
-      const resumed = await fetch(
-        `${url("indexer")}/internal/matcher-events?afterBlock=${anchorNumber}&afterBlockHash=${anchorHash}`,
+      const candidateQuery = new URLSearchParams({
+        marketId,
+        branch: "0",
+        side: "1",
+        atBlock: String(anchorNumber),
+        makerFeeBps: "0",
+        limitPriceRawX18: "200000000",
+        timestamp: String((await client.getBlock()).timestamp),
+      });
+      const candidates = await json<{ blockHash: Hex }>(
+        `${url("indexer")}/internal/match-candidates?${candidateQuery}`,
       );
-      assert(resumed.ok, "pruned canonical cursor caused false matcher rewind");
-      await resumed.arrayBuffer();
-      const orphan = await fetch(
-        `${url("indexer")}/internal/matcher-events?afterBlock=${anchorNumber}&afterBlockHash=0x${"ff".repeat(32)}`,
-      );
-      assert(orphan.status === 409, "wrong old matcher hash accepted");
-      await orphan.arrayBuffer();
-      const settlement = await json<{ anchorCanonical: boolean }>(
-        `${url("indexer")}/internal/settlement-context?orderHash=${bid.hash}&anchorBlock=${anchorNumber}&anchorHash=${anchorHash}`,
-      );
-      assert(settlement.anchorCanonical, "evicted settlement anchor rejected");
-      assert(
-        await healthy(`${url("indexer")}/internal/ioc-book?marketId=${marketId}&branch=0&side=1`),
-        "IOC anchor unavailable",
-      );
-      pass("evicted matcher, settlement, canonical-block and IOC anchor paths remain correct");
+      assert(candidates.blockHash === anchorHash, "evicted candidate anchor mismatch");
+      pass("evicted canonical-block and atomic candidate anchors remain correct");
 
       const preRestart = await probe.stats();
       const recoveryBlock = BigInt(preRestart.safe_checkpoint.slice(26, 42));
@@ -826,6 +817,25 @@ try {
       recordRpc = false;
       await writeJson(join(scratch, "storage-evidence.json"), storageEvidence);
       await probe.close();
+    }
+    // Storage comparisons freeze the block clock. Resume it for --hold/browser
+    // checks so canonical freshness and confirmation gates can keep advancing.
+    await rpc("anvil_setIntervalMining", [1]);
+    await rpc("evm_mine");
+    if (Bun.argv.includes("--hold") || Bun.argv.includes("--production-ui")) {
+      spawn(
+        "reconciler-after-storage",
+        ["bun", "scripts/reconcile.ts", "watch"],
+        join(root, "services/rh-indexer"),
+      );
+      spawn(
+        "polymarket-after-storage",
+        ["bun", "src/main.ts"],
+        join(root, "services/polymarket-ingestor"),
+      );
+      spawn("api-after-storage", ["bun", "src/index.ts"], join(root, "apps/api"));
+      await until("post-storage trading readiness", () => healthy(`${url("api")}/ready`));
+      pass("backend readiness restored after isolated storage benchmark");
     }
   }
   const report = {

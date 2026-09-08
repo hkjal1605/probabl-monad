@@ -6,7 +6,7 @@ the APIs; never put database credentials in frontend environment variables.
 
 `packages/db` owns Drizzle schemas, migrations, pools, transactions and named query functions.
 Ponder owns only the configured projection schema and `cs_sync_<projection>` cache schema.
-Operational schemas are `probabl`, `gateway`, `matching`, `settlement`, and `operations`.
+Operational schemas are `probabl`, `gateway`, and `operations`.
 Their names are forbidden as Ponder projection names. Replaying chain history cannot recover
 sessions, pending signed transactions or human evidence: back up the whole database.
 
@@ -25,8 +25,8 @@ sessions, pending signed transactions or human evidence: back up the whole datab
 5. Set `DATABASE_POOL_SIZE` per ordinary service (default 10, allowed 1–100).
    `PONDER_DATABASE_POOL_SIZE` is Ponder's separate total budget (default 20, allowed 5–100).
    Budget the sum across replicas, migrations and administration below the server limit.
-6. Use `DATABASE_SCHEMA=probabl_indexer_v3` for the indexer; keep it and retention settings
-   stable on restart. Start indexer, reconciler, ingestor, settlement, matcher, then API/UI.
+6. Use `DATABASE_SCHEMA=probabl_atomic_v1` for the indexer; keep it and retention settings
+   stable on restart. Start indexer, reconciler, ingestor, then API/UI.
    Wait for initial deep reconciliation and all readiness gates before accepting orders.
 
 Remove obsolete local-store environment variables. They are rejected, not silently ignored.
@@ -41,29 +41,38 @@ bounds read-pool `work_mem` to 16 MB. Keep server `fsync`/durability enabled. Th
 and transaction deadlines bound contention; load-test them on the chosen Aurora instance.
 No guarantee of zero added network latency is implied by replacing in-process storage.
 
-Gateway and settlement share the chain/address-keyed nonce allocator. Nonce reservations and
-signed outbox writes commit atomically; external signing/broadcast happens outside transactions.
-Gateway operations have server-clock ownership tokens too; an expired request cannot overwrite
-newer state. Recovery rotates bounded keyset pages separately from intake, so a slow RPC or
-old unprepared requests do not block new submissions. An accepted request that never persisted
-a signed transaction is resumed by retrying the original request with the same idempotency key.
-Retries after uncertain RPC responses rebroadcast persisted bytes. A nonce must never be shared
-with a separate deployment/database or an uncontrolled external signer.
+Atomic trading has no database queue, trading signer, nonce allocator or matcher journal.
+The API computes a bounded plan from Ponder's canonical order projection; the user's wallet
+broadcasts it. Only user-signed cancellation/merge/redemption operations retain the durable
+gateway outbox. Exact signed bytes commit before broadcast; retries rebroadcast those bytes,
+not newly signed orders. Server-clock ownership tokens reject stale recovery writers.
+Bounded recovery pages run separately from intake.
 
-Matcher operations serialize in-memory mutations and use a consistent locked PostgreSQL journal
-view. Worker leases use server time and fencing tokens. A worker that loses ownership cannot
-change a batch or persist another replacement. Duplicate network delivery remains possible;
-onchain nonces and canonical confirmations provide idempotency, not a promise of exactly-once RPC.
 Keep one active Polymarket feed process until multi-instance upstream subscription ownership
 has been separately rehearsed. A common database does not itself validate arbitrary HA scaling.
 Socket generations fence late callbacks; a 1,000-event backlog ceiling triggers disconnect and
-fresh snapshot recovery instead of unbounded buffering. Different books can progress concurrently.
+fresh snapshot recovery instead of unbounded buffering. Independent quote requests can progress concurrently; quotes do not reserve liquidity.
 
 Evidence bytes, immutable packets/reviews and their indexed content links live in PostgreSQL.
 Point `ADMIN_EVIDENCE_PUBLIC_BASE_URL` at the API's HTTPS `/v1/attachments` route (or a reverse
 proxy to it). Only attachments referenced by approved evidence can be downloaded there;
 draft/unreferenced content returns 404. Downloads are attachment-only and `nosniff`.
 Packet validation failure rolls back newly inserted bytes as well as packet/audit records.
+
+## Retiring the development matcher
+
+Applied migration history 0000–0003 is retained unchanged. Migration 0004 locks and checks
+legacy proposal/batch/IOC/order-outbox tables, refuses pending trading work, then removes
+the retired matching and settlement tables/schemas. Migration 0005 removes the unused
+relayer nonce table. Back up any development history you want to keep **before** migrating;
+terminal legacy operational records are deliberately removed. No live database is modified
+by the test suite. Stop old processes before running migrations and never bypass the pending
+work guard. Prefer a fresh database for a fresh non-upgradeable contract deployment.
+
+Use a fresh Ponder projection schema and replay for this release: the duplicate matcher
+event projection is gone, and order history now retains an explicit executed `filled`
+quantity independently of cancelled escrow. Authentication, user recovery outboxes, operator evidence,
+reconciliation and Polymarket records remain in their operational schemas.
 
 ## Tests and recovery
 
@@ -87,6 +96,6 @@ external so migration discovery remains relative to the database package; do not
 artifacts again using the deployment environment, not the local rehearsal settings.
 
 Restore the whole database to a consistent recovery point during disaster recovery. Stop
-trading first, reconcile stored outboxes/nonces with chain receipts, then rebuild projections
+trading first, reconcile stored user recovery outboxes with chain receipts, then rebuild projections
 if necessary. Never truncate operational schemas to repair Ponder. Old local database files
 and historical audit artifacts are not read, migrated or deleted by service startup.

@@ -17,6 +17,7 @@ import { useDemo } from "@/components/providers/DemoProvider";
 import { useWallet } from "@/components/providers/WalletProvider";
 import type { IndexedOrder, MarketView, PositionView, WholeBalanceView } from "@/lib/api/types";
 import { shortAddress, tokenAmount } from "@/lib/format/display";
+import { PendingPayouts } from "./PendingPayouts";
 import { PositionActions } from "./PositionActions";
 
 const fetchJson = async <T,>(path: string): Promise<T> => {
@@ -122,6 +123,7 @@ export function PortfolioClient({ markets }: { markets: MarketView[] }) {
     }, 0n);
   return (
     <div className="mt-10 space-y-5">
+      {!demo && <PendingPayouts markets={markets} />}
       <div className="grid gap-3 sm:grid-cols-3">
         <Summary label="Markets with exposure" value={String(rows.length)} />
         <Summary label="Open orders" value={String(activeOrders.length)} />
@@ -243,7 +245,7 @@ export function PortfolioClient({ markets }: { markets: MarketView[] }) {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <PositionActions position={position} />
+                        {market && <PositionActions position={position} market={market} />}
                       </TableCell>
                     </TableRow>
                   );

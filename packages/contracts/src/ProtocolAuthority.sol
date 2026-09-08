@@ -18,17 +18,15 @@ contract ProtocolAuthority is AccessControlDefaultAdminRules {
     constructor(
         address initialAdmin,
         address initialMarketAdmin,
-        address initialMatcher,
         address initialGuardian,
         address initialResolutionAdmin
     ) AccessControlDefaultAdminRules(DEFAULT_ADMIN_TRANSFER_DELAY, initialAdmin) {
         if (
-            initialMarketAdmin == address(0) || initialMatcher == address(0)
-                || initialGuardian == address(0) || initialResolutionAdmin == address(0)
+            initialMarketAdmin == address(0) || initialGuardian == address(0)
+                || initialResolutionAdmin == address(0)
         ) revert InvalidAddress();
 
         _grantRole(ProtocolRoles.MARKET_ADMIN_ROLE, initialMarketAdmin);
-        _grantRole(ProtocolRoles.MATCHER_ROLE, initialMatcher);
         _grantRole(ProtocolRoles.GUARDIAN_ROLE, initialGuardian);
         _grantRole(ProtocolRoles.RESOLUTION_ADMIN_ROLE, initialResolutionAdmin);
     }

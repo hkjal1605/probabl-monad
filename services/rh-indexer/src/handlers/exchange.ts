@@ -5,7 +5,6 @@ import {
   insertFill,
   insertOrder,
   insertReservation,
-  persistMatcherEvent,
   persistProtocolEvent,
   quoteUp,
   updateMarketInterest,
@@ -50,6 +49,7 @@ ponder.on("ConditionalExchange:OrderOpened", async ({ event, context }) => {
     openedBlock: event.block.number,
     openNotional,
     quantity: args.quantity,
+    filled: 0n,
     recipient: args.recipient,
     remaining: args.quantity,
     reserved: args.reserved,
@@ -90,27 +90,6 @@ ponder.on("ConditionalExchange:OrderOpened", async ({ event, context }) => {
     openNotional,
     event.block.number,
   );
-  await persistMatcherEvent(context.db, context.chain.id, event, "order-opened", {
-    order: {
-      branch: args.branch,
-      expiry: args.expiry,
-      fundingKind: args.fundingKind,
-      limitPriceRawX18: args.limitPriceRawX18,
-      maxFeeBps: args.maxFeeBps,
-      maker: args.maker,
-      marketId: args.marketId,
-      nonce: args.nonce,
-      quantity: args.quantity,
-      recipient: args.recipient,
-      salt: args.salt,
-      side: args.side,
-      tif: args.tif,
-    },
-    orderHash: args.orderHash,
-    reserved: args.reserved,
-    sequence: args.sequence,
-    type: "order-opened",
-  });
 });
 
 ponder.on("ConditionalExchange:OrderCancelled", async ({ event, context }) => {
@@ -162,14 +141,6 @@ ponder.on("ConditionalExchange:OrderCancelled", async ({ event, context }) => {
     -current.openNotional,
     event.block.number,
   );
-  await persistMatcherEvent(context.db, context.chain.id, event, "order-cancelled", {
-    maker: args.maker,
-    orderHash: args.orderHash,
-    reasonHash: args.reasonHash,
-    releasedAmount: args.releasedAmount,
-    type: "order-cancelled",
-    unfilledQuantity: args.unfilledQuantity,
-  });
 });
 
 ponder.on("ConditionalExchange:OrderFilled", async ({ event, context }) => {
@@ -211,6 +182,7 @@ ponder.on("ConditionalExchange:OrderFilled", async ({ event, context }) => {
   const sellOpenNotional = quoteUp(sellRemaining, sell.limitPriceRawX18);
   const sellReserved = sellRemaining;
   await updateOrder(context.db, buy.id, {
+    filled: buy.filled + args.fillQuantity,
     openNotional: buyOpenNotional,
     remaining: buyRemaining,
     reserved: buyReserved,
@@ -218,6 +190,7 @@ ponder.on("ConditionalExchange:OrderFilled", async ({ event, context }) => {
     updatedBlock: event.block.number,
   });
   await updateOrder(context.db, sell.id, {
+    filled: sell.filled + args.fillQuantity,
     openNotional: sellOpenNotional,
     remaining: sellRemaining,
     reserved: sellReserved,
@@ -267,17 +240,6 @@ ponder.on("ConditionalExchange:OrderFilled", async ({ event, context }) => {
     sellOrderHash: args.sellOrderHash,
     transactionHash: event.transaction.hash,
   });
-  await persistMatcherEvent(context.db, context.chain.id, event, "order-filled", {
-    branch: args.branch,
-    buyOrderHash: args.buyOrderHash,
-    executionPriceRawX18: args.executionPriceRawX18,
-    executionQuote: args.executionQuote,
-    fillQuantity: args.fillQuantity,
-    makerOrderHash: args.makerOrderHash,
-    marketId: args.marketId,
-    sellOrderHash: args.sellOrderHash,
-    type: "order-filled",
-  });
 });
 
 ponder.on("ConditionalExchange:NonceInvalidated", async ({ event, context }) => {
@@ -302,12 +264,6 @@ ponder.on("ConditionalExchange:NonceInvalidated", async ({ event, context }) => 
     minimumNonce: args.newMinimumNonce,
     updatedBlock: event.block.number,
   });
-  await persistMatcherEvent(context.db, context.chain.id, event, "nonce-invalidated", {
-    maker: args.maker,
-    newMinimumNonce: args.newMinimumNonce,
-    oldMinimumNonce: args.oldMinimumNonce,
-    type: "nonce-invalidated",
-  });
 });
 
 ponder.on("ConditionalExchange:EmergencyPauseChanged", async ({ event, context }) => {
@@ -330,17 +286,12 @@ ponder.on("ConditionalExchange:EmergencyPauseChanged", async ({ event, context }
     tradingPaused: args.paused,
     updatedBlock: event.block.number,
   });
-  await persistMatcherEvent(context.db, context.chain.id, event, "emergency-pause-changed", {
-    paused: args.paused,
-    reasonHash: args.reasonHash,
-    type: "emergency-pause-changed",
-  });
 });
 
 for (const [eventName, configuredField] of [
   ["SettlementConfigured", "settlement"],
   ["OrderValidatorConfigured", "validator"],
-  ["IocRouterConfigured", "router"],
+  ["AtomicRouterConfigured", "router"],
 ] as const) {
   ponder.on(`ConditionalExchange:${eventName}`, async ({ event, context }) => {
     const args = event.args as unknown as Record<string, unknown>;

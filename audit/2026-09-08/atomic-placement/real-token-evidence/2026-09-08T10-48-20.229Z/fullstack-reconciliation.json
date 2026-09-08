@@ -1,0 +1,14 @@
+{
+  "chainId": 4663,
+  "completedAt": "2026-09-08T10:49:22.610Z",
+  "deep": true,
+  "freezeRequired": false,
+  "freezeScopes": [],
+  "indexedBlock": "57631007",
+  "indexedBlockHash": "0xee995381090f64f1baa6db86a1ba89abff565a38be32f76b9fe473d88abe2ee6",
+  "issues": [],
+  "projectionHash": "0x211502c7caca16aa55f9bf492603b5686239436b696d019a00721a547d755541",
+  "projectionVersion": 2,
+  "startedAt": "2026-09-08T10:49:22.300Z",
+  "status": "ok"
+}

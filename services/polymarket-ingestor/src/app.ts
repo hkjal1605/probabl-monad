@@ -23,6 +23,9 @@ export const createPolymarketApp = (
   environment: PolymarketEnvironment,
 ) => {
   const app = new Hono();
+  const streams = new Set<() => void>();
+  const pendingSends = new Set<Promise<void>>();
+  let stopping = false;
   app.use(
     "*",
     requestLogging(logger, {
@@ -80,23 +83,39 @@ export const createPolymarketApp = (
     upgradeWebSocket((context) => {
       let unsubscribe: (() => void) | null = null;
       let timer: ReturnType<typeof setInterval> | null = null;
+      let closed = false;
+      let busy = false;
+      let closeSocket: (() => void) | null = null;
       const cleanup = () => {
+        closed = true;
         unsubscribe?.();
+        unsubscribe = null;
         if (timer) clearInterval(timer);
+        timer = null;
+        if (closeSocket) streams.delete(closeSocket);
       };
       return {
         onClose: cleanup,
         onError: cleanup,
         onOpen: (_event, socket) => {
+          if (stopping) {
+            socket.close(1001, "server stopping");
+            return;
+          }
+          closeSocket = () => {
+            cleanup();
+            socket.close(1001, "server stopping");
+          };
+          streams.add(closeSocket);
           const conditionId = context.req.param("conditionId");
           let previous = "";
-          const send = async () => {
+          const sendOnce = async () => {
             try {
               const payload = JSON.stringify({
                 topic: `probability.${conditionId}`,
                 value: await service.probability(conditionId),
               });
-              if (payload !== previous) {
+              if (!closed && payload !== previous) {
                 socket.send(payload);
                 previous = payload;
               }
@@ -104,6 +123,17 @@ export const createPolymarketApp = (
               cleanup();
               socket.close(1008, "probability unavailable");
             }
+          };
+          // One in-flight read per socket: slow DB reads must not accumulate on
+          // every timer tick and source update. Shutdown explicitly drains them.
+          const send = () => {
+            if (closed || busy) return;
+            busy = true;
+            const task = sendOnce().finally(() => {
+              busy = false;
+              pendingSends.delete(task);
+            });
+            pendingSends.add(task);
           };
           try {
             unsubscribe = service.subscribe(conditionId, send);
@@ -117,5 +147,11 @@ export const createPolymarketApp = (
       };
     }),
   );
-  return app;
+  return Object.assign(app, {
+    closeStreams: async () => {
+      stopping = true;
+      for (const close of [...streams]) close();
+      await Promise.allSettled([...pendingSends]);
+    },
+  });
 };

@@ -1,0 +1,53 @@
+{
+  "verifiedAt": "2026-09-08T17:33:56.595Z",
+  "chainId": 4663,
+  "manifest": "/Volumes/T9/conditional-stocks/packages/contracts/deployments/4663/v2-0x6bba1ddd7173d207daeb80cbc8f66eef7b2d8abb.json",
+  "deploymentIntegrityVerified": true,
+  "releaseVerificationPassed": false,
+  "releaseGate": "ProtocolAuthority.defaultAdmin mismatch",
+  "productionApproved": false,
+  "contracts": 12,
+  "successfulTransactions": 16,
+  "totalGas": "22742009",
+  "gasCostEth": "0.00547604087437",
+  "deployerBalanceEth": "0.00352395912563",
+  "deployerNonce": 16,
+  "pendingNonce": 16,
+  "makerFeeBps": 0,
+  "takerFeeBps": 0,
+  "pendingAdmin": "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f",
+  "acceptAfter": "1789061446",
+  "acceptAfterUTC": "2026-09-10T17:30:46.000Z",
+  "headBlock": "57872073",
+  "safeBlock": "57867575",
+  "finalizedBlock": "57863670",
+  "allDeploymentTransactionsSafe": false,
+  "allDeploymentTransactionsFinalized": false,
+  "finalityRecheck": {
+    "checkedAt": "2026-09-08T17:38:33.588Z",
+    "headBlock": "57874791",
+    "safeBlock": "57867575",
+    "finalizedBlock": "57863670",
+    "lastDeploymentBlock": "57870183",
+    "lastConfigurationReceiptStillCanonical": true,
+    "allDeploymentTransactionsSafe": false,
+    "allDeploymentTransactionsFinalized": false
+  },
+  "indexerPreflight": {
+    "passed": true,
+    "chainId": 4663,
+    "headBlock": "57873409"
+  },
+  "explorerSourceVerification": "Not completed: explorer API returns HTTP 403 browser challenge; source publication also requires explicit owner approval after permission-review rejection",
+  "checks": [
+    "source and lock hashes",
+    "reconstructed runtimes",
+    "deployment receipts and input",
+    "configuration receipts and input",
+    "exact wiring and role membership",
+    "pinned CTF runtime and creation input",
+    "initial fees zero",
+    "unchanged two-day delayed handover",
+    "gas and balance accounting"
+  ]
+}

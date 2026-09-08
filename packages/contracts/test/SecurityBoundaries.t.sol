@@ -36,23 +36,23 @@ contract SecurityBoundariesTest is ProtocolFixture {
         bytes memory signature = _sign(order, BUYER_KEY);
         order.recipient = secondBuyer;
         vm.expectRevert(OrderValidator.InvalidSignature.selector);
-        exchange.openOrder(order, signature);
+        _openOrder(order, signature);
         order.recipient = buyer;
         uint256 chain = vm.getChainId();
         vm.chainId(chain + 1);
         vm.expectRevert(OrderValidator.InvalidSignature.selector);
-        exchange.openOrder(order, signature);
+        _openOrder(order, signature);
         vm.chainId(chain);
         OrderValidator otherDomain = new OrderValidator(address(positionRouter));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(BUYER_KEY, otherDomain.hashOrder(order));
         bytes memory wrongDomain = abi.encodePacked(r, s, v);
         vm.expectRevert(OrderValidator.InvalidSignature.selector);
-        exchange.openOrder(order, wrongDomain);
+        _openOrder(order, wrongDomain);
         vm.expectRevert(OrderValidator.InvalidSignature.selector);
-        exchange.openOrder(order, "");
+        _openOrder(order, "");
         assertEq(exchange.marketOpenNotional(marketId), 0, "no unauthorized reservation");
         assertEq(quote.balanceOf(address(exchange)), 0, "no unauthorized pull");
-        exchange.openOrder(order, signature);
+        _openOrder(order, signature);
     }
 
     function testMalformedOrRevertingERC1271CannotCreateEscrow() public {
@@ -72,12 +72,12 @@ contract SecurityBoundariesTest is ProtocolFixture {
                 vm.mockCallRevert(address(wallet), selector, "SIGNER_REVERTED");
             }
             vm.expectRevert(OrderValidator.InvalidSignature.selector);
-            exchange.openOrder(order, signature);
+            _openOrder(order, signature);
             vm.clearMockedCalls();
             assertEq(quote.balanceOf(address(wallet)), 210e18, "wallet funding unchanged");
             assertEq(exchange.marketOpenNotional(marketId), 0, "no open order");
         }
-        exchange.openOrder(order, signature);
+        _openOrder(order, signature);
     }
 
     function testOrdersFromDifferentMarketsCannotConsumeEachOthersEscrow() public {
@@ -115,10 +115,10 @@ contract SecurityBoundariesTest is ProtocolFixture {
             0,
             keccak256("FIRST_MARKET_ASK")
         );
-        bytes32 bidHash = exchange.openOrder(bid, _sign(bid, BUYER_KEY));
-        bytes32 askHash = exchange.openOrder(ask, _sign(ask, SELLER_KEY));
+        bytes32 bidHash = _openOrder(bid, _sign(bid, BUYER_KEY));
+        bytes32 askHash = _openOrder(ask, _sign(ask, SELLER_KEY));
         vm.expectRevert(ConditionalExchange.InvalidFill.selector);
-        exchange.matchOrders(bid, ask, 1e18);
+        _matchOrders(bid, ask, 1e18);
         assertEq(exchange.marketOpenNotional(marketId), 200e18, "first market isolated");
         assertEq(exchange.marketOpenNotional(otherMarket), 210e18, "second market isolated");
         vm.prank(buyer);
@@ -138,7 +138,7 @@ contract SecurityBoundariesTest is ProtocolFixture {
             recoveryRouter.releaseClosedMarkets(invalid);
         }
         Order memory bid = _bid();
-        bytes32 hash = exchange.openOrder(bid, _sign(bid, BUYER_KEY));
+        bytes32 hash = _openOrder(bid, _sign(bid, BUYER_KEY));
         vm.prank(buyer);
         vm.expectRevert(ConditionalExchange.InvalidAddress.selector);
         exchange.cancelOrderTo(hash, address(0));

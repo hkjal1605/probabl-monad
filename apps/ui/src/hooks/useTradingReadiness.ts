@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useDemo } from "@/components/providers/DemoProvider";
+import { protocolConfig } from "@/config/protocol";
 import { logger } from "@/lib/logger";
 
 export function useTradingReadiness(marketId: string) {
@@ -10,6 +11,14 @@ export function useTradingReadiness(marketId: string) {
   const [reason, setReason] = useState("Checking trading services…");
   useEffect(() => {
     if (isDemo) return;
+    if (
+      !/^0x[0-9a-fA-F]{40}$/.test(protocolConfig.atomicRouter) ||
+      /^0x0{40}$/.test(protocolConfig.atomicRouter)
+    ) {
+      setReady(false);
+      setReason("Atomic trading contracts are not configured for this UI deployment.");
+      return;
+    }
     let stopped = false;
     let previousReady: boolean | undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -21,7 +30,12 @@ export function useTradingReadiness(marketId: string) {
         );
         const body = await response.json();
         if (!stopped) {
-          const healthy = response.ok && body.healthy === true;
+          const healthy =
+            response.ok &&
+            typeof body === "object" &&
+            body !== null &&
+            "healthy" in body &&
+            body.healthy === true;
           if (healthy !== previousReady) {
             logger.info("trading.readiness.changed", {
               marketId,
