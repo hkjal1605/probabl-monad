@@ -1,6 +1,5 @@
 "use client";
-
-import { parseTokenAmount } from "@conditional-stocks/domain";
+import { formatTokenAmount, parseTokenAmount } from "@conditional-stocks/domain";
 import { Button } from "@conditional-stocks/ui-kit/button";
 import {
   Dialog,
@@ -12,15 +11,19 @@ import {
 } from "@conditional-stocks/ui-kit/dialog";
 import { Input } from "@conditional-stocks/ui-kit/input";
 import { Label } from "@conditional-stocks/ui-kit/label";
-import { Tabs, TabsList, TabsTrigger } from "@conditional-stocks/ui-kit/tabs";
-import { Combine, Gift, LoaderCircle } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Combine, LoaderCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useDemo } from "@/components/providers/DemoProvider";
 import { useWallet } from "@/components/providers/WalletProvider";
+import { Segmented } from "@/components/ui/segmented";
 import { protocolConfig } from "@/config/protocol";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
+import { api } from "@/lib/api/client";
 import type { MarketView, PositionView } from "@/lib/api/types";
-import { positionAction, verifyPositionResponse } from "@/lib/trading/positions";
+import { positionAction, splitAction, verifyPositionResponse } from "@/lib/trading/positions";
+import { readClaimMarket, splitFunding, transactionReceipt } from "@/lib/trading/rpc";
 
 export function PositionActions({
   position,
@@ -29,166 +32,271 @@ export function PositionActions({
   position: PositionView;
   market: MarketView;
 }) {
-  const wallet = useWallet();
-  const demo = useDemo();
-  const [kind, setKind] = useState<"merge" | "redeem">(position.redeemable ? "redeem" : "merge");
-  const [collateral, setCollateral] = useState<"base" | "quote">("base");
-  const [branch, setBranch] = useState<"yes" | "no">("yes");
-  const [amount, setAmount] = useState("");
-  const [busy, setBusy] = useState(false);
-  const run = async () => {
-    if (!wallet.account) return;
-    setBusy(true);
-    try {
-      const rawAmount = parseTokenAmount(
-        amount.trim(),
-        collateral === "base" ? position.baseTokenDecimals : position.quoteTokenDecimals,
-      ).toString();
+  const wallet = useWallet(),
+    demo = useDemo(),
+    cache = useQueryClient();
+  const [open, setOpen] = useState(false),
+    [kind, setKind] = useState<"Split" | "Merge" | "Redeem">(
+      position.redeemable ? "Redeem" : "Merge",
+    );
+  const [collateral, setCollateral] = useState<"Stock" | "Cash">("Stock"),
+    [branch, setBranch] = useState<"YES" | "NO">("YES"),
+    [amount, setAmount] = useState("");
+  const [reviewed, setReviewed] = useState(false);
+  const { busy, run } = useAsyncAction(
+    [wallet.account, market.id, kind, collateral, branch, amount, open].join(":"),
+  );
+  const decimals = collateral === "Stock" ? market.baseTokenDecimals : market.quoteTokenDecimals,
+    symbol = collateral === "Stock" ? market.ticker : "USDG";
+  const yes = BigInt(collateral === "Stock" ? position.stockYes : position.quoteYes),
+    no = BigInt(collateral === "Stock" ? position.stockNo : position.quoteNo);
+  const available = kind === "Merge" ? (yes < no ? yes : no) : branch === "YES" ? yes : no;
+  const redeemable = position.redeemable;
+  let raw = 0n;
+  try {
+    raw = parseTokenAmount(amount.trim(), decimals);
+  } catch {
+    /* Invalid input is not actionable. */
+  }
+  const valid =
+    raw > 0n &&
+    raw < 1n << 256n &&
+    (kind === "Split" ? market.lifecycle === "open" : raw <= available) &&
+    (kind !== "Redeem" || redeemable);
+  const edit = (action: () => void) => {
+    setReviewed(false);
+    action();
+  };
+  const execute = () =>
+    run(async (assertCurrent) => {
+      if (!wallet.account || !valid || !reviewed)
+        throw new Error("Review a valid claim action first.");
+      const collateralKind = collateral === "Stock" ? "base" : "quote",
+        collateralToken = collateral === "Stock" ? market.baseToken : market.quoteToken;
       if (demo) {
-        if (!demo.state.approvals["claims-router"]) {
+        if (kind !== "Split" && !demo.state.approvals["claims-router"]) {
           demo.dispatch({ type: "approve", key: "claims-router" });
-          toast.success("Demo claim router approved. Prepare the action again to execute it.");
+          toast.success("Demo claim router approved. Confirm again to execute.");
           return;
         }
         demo.dispatch(
-          kind === "merge"
-            ? { type: "merge", marketId: position.marketId, amount: rawAmount, collateral }
-            : {
-                type: "redeem",
-                marketId: position.marketId,
-                amount: rawAmount,
-                collateral,
-                branch,
-              },
+          kind === "Split"
+            ? {
+                type: "split",
+                marketId: market.id,
+                collateral: collateralKind,
+                amount: String(raw),
+              }
+            : kind === "Merge"
+              ? {
+                  type: "merge",
+                  marketId: market.id,
+                  collateral: collateralKind,
+                  amount: String(raw),
+                }
+              : {
+                  type: "redeem",
+                  marketId: market.id,
+                  collateral: collateralKind,
+                  amount: String(raw),
+                  branch: branch === "YES" ? "yes" : "no",
+                },
         );
-        toast.success(`Demo ${kind} complete. Wallet and claims updated.`);
-        setAmount("");
+        toast.success(`Demo ${kind.toLowerCase()} complete.`);
+        setOpen(false);
         return;
       }
-      const token = wallet.sessionToken ?? (await wallet.authenticate());
-      const expected = positionAction({
-        kind,
-        amount: BigInt(rawAmount),
-        branch,
-        account: wallet.account,
-        collateralToken: collateral === "base" ? market.baseToken : market.quoteToken,
-        conditionId: position.conditionId,
-        config: protocolConfig,
-      });
       if (wallet.chainId !== protocolConfig.chainId) await wallet.ensureNetwork();
-      const body =
-        kind === "merge"
-          ? {
-              amount: rawAmount,
-              collateral,
-              marketId: position.marketId,
-              recipient: wallet.account,
-            }
-          : {
-              amounts: [rawAmount],
-              collateral,
-              indexSets: [branch === "yes" ? "1" : "2"],
-              marketId: position.marketId,
-              recipient: wallet.account,
-            };
-      const response = await fetch(`/api/gateway/positions/${kind}/prepare`, {
-        body: JSON.stringify(body),
-        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-        method: "POST",
-      });
-      if (!response.ok) {
-        const error = (await response.json()) as { error?: { message?: string } };
-        throw new Error(error.error?.message ?? "Could not prepare action");
+      const canonical = await readClaimMarket(market);
+      assertCurrent();
+      if (canonical.conditionId.toLowerCase() !== position.conditionId.toLowerCase())
+        throw new Error("Claim condition differs from the deployed market.");
+      let transaction: { to: string; data: string; value?: string },
+        approval = false;
+      if (kind === "Split") {
+        if (
+          canonical.state !== 2 ||
+          canonical.tradingCutoff <= BigInt(Math.floor(Date.now() / 1000))
+        )
+          throw new Error("This market is no longer open.");
+        const expected = splitAction({
+          collateralToken,
+          conditionId: canonical.conditionId,
+          amount: raw,
+          account: wallet.account,
+          config: protocolConfig,
+        });
+        const funding = await splitFunding(wallet.account, collateralToken, raw);
+        assertCurrent();
+        // Tokens requiring zero-first approvals must be reset explicitly in Permissions.
+        if (!funding.approved && funding.allowance !== 0n)
+          throw new Error(
+            "Reset this token’s Conditional Tokens allowance in Funds → Permissions, then retry.",
+          );
+        approval = !funding.approved;
+        transaction = approval ? expected.approval : expected.transaction;
+      } else {
+        const token = wallet.sessionToken ?? (await wallet.authenticate());
+        assertCurrent();
+        const expected = positionAction({
+          kind: kind === "Merge" ? "merge" : "redeem",
+          collateralToken,
+          conditionId: canonical.conditionId,
+          amount: raw,
+          branch: branch === "YES" ? "yes" : "no",
+          account: wallet.account,
+          config: protocolConfig,
+        });
+        const body =
+          kind === "Merge"
+            ? {
+                marketId: market.id,
+                collateral: collateralKind,
+                amount: String(raw),
+                recipient: wallet.account,
+              }
+            : {
+                marketId: market.id,
+                collateral: collateralKind,
+                amounts: [String(raw)],
+                indexSets: [branch === "YES" ? "1" : "2"],
+                recipient: wallet.account,
+              };
+        const prepared = verifyPositionResponse(
+          expected,
+          await api.prepare<unknown>(
+            `positions/${kind === "Merge" ? "merge" : "redeem"}/prepare`,
+            body,
+            token,
+          ),
+        );
+        approval = Boolean(prepared.approval);
+        transaction = prepared.approval ?? prepared.transaction;
       }
-      const prepared = verifyPositionResponse(expected, await response.json());
-      if (prepared.approval) {
-        await wallet.sendTransaction(prepared.approval);
-        toast.success("Claim approval submitted. Re-open this action after confirmation.");
-        return;
-      }
-      const hash = await wallet.sendTransaction(prepared.transaction);
+      assertCurrent();
+      const hash = await wallet.sendTransaction(transaction);
       toast.success(
-        `${kind === "merge" ? "Merge" : "Redemption"} submitted: ${hash.slice(0, 10)}…`,
+        `${approval ? "Approval" : kind} submitted: ${hash.slice(0, 10)}… Waiting for confirmation.`,
       );
-    } catch (cause) {
-      toast.error(cause instanceof Error ? cause.message : "Action failed");
-    } finally {
-      setBusy(false);
-    }
-  };
+      const receipt = await transactionReceipt(hash);
+      assertCurrent();
+      if (receipt.status !== "success")
+        throw new Error("Transaction reverted. Balances were not changed.");
+      await Promise.all(
+        ["positions", "whole-balances", "payout-credits"].map((key) =>
+          cache.invalidateQueries({ queryKey: [key] }),
+        ),
+      );
+      if (approval) toast.success("Approval confirmed. Review the claim action again to continue.");
+      else {
+        toast.success(`${kind} confirmed. Canonical balances update after indexing.`);
+        setOpen(false);
+        setAmount("");
+      }
+      setReviewed(false);
+    });
   return (
-    <Dialog>
+    <Dialog
+      open={open}
+      onOpenChange={(value) => {
+        if (!busy) {
+          setOpen(value);
+          setReviewed(false);
+        }
+      }}
+    >
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
-          {position.redeemable ? <Gift /> : <Combine />}
+        <Button variant="outline" size="sm">
+          <Combine />
           {position.redeemable ? "Redeem" : "Manage"}
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Manage conditional claims</DialogTitle>
           <DialogDescription>
-            Merge complementary claims before resolution, or redeem winning claims after the market
-            becomes redeemable.
+            {market.ticker} · {market.question}
           </DialogDescription>
         </DialogHeader>
-        <Tabs value={kind} onValueChange={(value) => setKind(value as "merge" | "redeem")}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="merge">Merge pair</TabsTrigger>
-            <TabsTrigger value="redeem" disabled={!position.redeemable}>
-              Redeem
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <Tabs
-          value={collateral}
-          onValueChange={(value) => setCollateral(value as "base" | "quote")}
-        >
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="base">Stock claims</TabsTrigger>
-            <TabsTrigger value="quote">Cash claims</TabsTrigger>
-          </TabsList>
-        </Tabs>
-        {kind === "redeem" && (
-          <Tabs value={branch} onValueChange={(value) => setBranch(value as "yes" | "no")}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="yes">YES claim</TabsTrigger>
-              <TabsTrigger value="no">NO claim</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        )}
-        <div>
-          <Label htmlFor="claim-amount">
-            Amount ({collateral === "base" ? market.ticker : "USDG"} claims)
-          </Label>
-          <Input
-            className="mt-2 font-mono"
-            id="claim-amount"
-            value={amount}
-            onChange={(event) => setAmount(event.target.value)}
-            inputMode="decimal"
-            placeholder="1.0"
+        <fieldset disabled={busy} className="space-y-5">
+          <Segmented
+            label="Claim action"
+            value={kind}
+            options={["Split", "Merge", "Redeem"]}
+            onChange={(value) => edit(() => setKind(value))}
+            className="w-full"
           />
-        </div>
-        <p className="text-xs leading-5 text-muted-foreground">
-          {demo
-            ? "Simulation only. A winning claim returns its collateral; an invalid outcome returns 50% (rounded down); a losing claim burns for zero."
-            : "Direct Conditional Tokens merge and redeem calls remain available if this app or API is offline. The app never has custody of your claims."}
-        </p>
-        <Button
-          variant="brand"
-          onClick={run}
-          disabled={busy || !/^(?:[0-9]+)(?:\.[0-9]+)?$/.test(amount)}
-        >
-          {busy ? (
-            <LoaderCircle className="animate-spin" />
-          ) : kind === "merge" ? (
-            <Combine />
-          ) : (
-            <Gift />
+          <Segmented
+            label="Claim collateral"
+            value={collateral}
+            options={["Stock", "Cash"]}
+            onChange={(value) => edit(() => setCollateral(value))}
+            className="w-full"
+          />
+          <p className="text-sm font-medium leading-6 text-muted-foreground">
+            {kind === "Split"
+              ? `1 whole ${symbol} → 1 YES + 1 NO claim. Exact collateral approval may be needed first.`
+              : kind === "Merge"
+                ? `1 YES + 1 NO claim → 1 whole ${symbol}.`
+                : "Redeem at the finalized payout. Losing claims burn for zero; invalid outcomes pay 50% per branch, rounded down. Review Resolution before confirming."}
+          </p>
+          {kind === "Redeem" && (
+            <Segmented
+              label="Redeem branch"
+              value={branch}
+              options={["YES", "NO"]}
+              onChange={(value) => edit(() => setBranch(value))}
+            />
           )}
-          Prepare {kind}
-        </Button>
+          <div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="claim-amount">Amount ({symbol})</Label>
+              {kind !== "Split" && (
+                <Button
+                  size="sm"
+                  variant="link"
+                  onClick={() => edit(() => setAmount(formatTokenAmount(available, decimals)))}
+                >
+                  Max · {formatTokenAmount(available, decimals)}
+                </Button>
+              )}
+            </div>
+            <Input
+              id="claim-amount"
+              className="mt-2 h-12 font-mono text-lg"
+              inputMode="decimal"
+              value={amount}
+              onChange={(e) => edit(() => setAmount(e.target.value))}
+              placeholder="0.00"
+            />
+          </div>
+          {kind === "Redeem" && !redeemable && (
+            <p role="status" className="text-sm text-warning">
+              Redemption is not yet enabled for this market.
+            </p>
+          )}
+          {reviewed && (
+            <div className="rounded-lg border bg-secondary p-4 text-sm leading-6">
+              Review: {kind} {formatTokenAmount(raw, decimals)} {symbol}
+              {kind === "Redeem" ? `-${branch} claims` : kind === "Merge" ? " claim pairs" : ""}.
+              Returned assets belong to your connected wallet. Network gas applies; confirmed
+              transactions cannot be undone.
+            </div>
+          )}
+          <Button
+            variant="brand"
+            className="w-full"
+            disabled={busy || !valid}
+            onClick={() => (reviewed ? execute() : setReviewed(true))}
+          >
+            {busy && <LoaderCircle className="animate-spin" />}
+            {reviewed ? `Confirm ${kind.toLowerCase()}` : `Review ${kind.toLowerCase()}`}
+          </Button>
+        </fieldset>
+        <p className="text-xs leading-5 text-muted-foreground">
+          Merge and redemption use the verified position router. Rejected payouts are recoverable
+          from Portfolio. The app never has custody of your claims.
+        </p>
       </DialogContent>
     </Dialog>
   );

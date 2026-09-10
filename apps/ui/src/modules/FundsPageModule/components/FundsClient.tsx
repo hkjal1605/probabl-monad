@@ -1,203 +1,286 @@
 "use client";
-
+import { conditionalTokensAbi } from "@conditional-stocks/contract-bindings";
+import { parseTokenAmount } from "@conditional-stocks/domain";
 import { Button } from "@conditional-stocks/ui-kit/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@conditional-stocks/ui-kit/card";
 import { Input } from "@conditional-stocks/ui-kit/input";
 import { Label } from "@conditional-stocks/ui-kit/label";
-import { ArrowUpRight, LoaderCircle, ShieldOff, WalletCards } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@conditional-stocks/ui-kit/select";
+import { Tabs, TabsContent } from "@conditional-stocks/ui-kit/tabs";
+import { LoaderCircle, ShieldOff } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { encodeFunctionData, erc20Abi } from "viem";
+import { encodeFunctionData, erc20Abi, getAddress } from "viem";
 import { useDemo } from "@/components/providers/DemoProvider";
+import { useUiStore } from "@/components/providers/UiStateProvider";
 import { useWallet } from "@/components/providers/WalletProvider";
+import {
+  LineTabsList as TabsList,
+  LineTabsTrigger as TabsTrigger,
+} from "@/components/ui/line-tabs";
+import { DataError, EmptyState } from "@/components/ui/page";
 import { protocolConfig } from "@/config/protocol";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
+import { useWalletAssets } from "@/hooks/useWalletAssets";
 import type { MarketView } from "@/lib/api/types";
+import { shortAddress, tokenAmount } from "@/lib/format/display";
+import { walletTransfer } from "@/lib/trading/funds";
+import type { FundsTab } from "@/stores/ui-store";
 
-const approvalAbi = [
-  {
-    inputs: [
-      { name: "operator", type: "address" },
-      { name: "approved", type: "bool" },
-    ],
-    name: "setApprovalForAll",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-] as const;
-export function FundsClient({ markets }: { markets: MarketView[] }) {
-  const wallet = useWallet();
-  const demo = useDemo();
-  const [token, setToken] = useState(markets[0]?.quoteToken ?? "");
-  const [recipient, setRecipient] = useState("");
-  const [amount, setAmount] = useState("");
-  const [busy, setBusy] = useState(false);
-  if (!wallet.account)
-    return (
-      <div className="mt-10 flex min-h-72 flex-col items-center justify-center rounded-2xl border border-dashed bg-card text-center">
-        <WalletCards className="text-muted-foreground" />
-        <p className="mt-4 font-semibold">Connect to manage wallet assets</p>
-        <p className="mt-2 max-w-md text-sm text-muted-foreground">
-          The app is self-custodied. It never holds deposits on your behalf.
-        </p>
-        <Button
-          className="mt-5"
-          variant="brand"
-          onClick={() => wallet.connect().catch(() => undefined)}
-        >
-          Connect wallet
-        </Button>
-      </div>
-    );
-  const transfer = async () => {
-    setBusy(true);
-    try {
-      if (demo) {
-        demo.dispatch({ type: "transfer", token, recipient, amount });
-        toast.success("Demo transfer complete. No real assets were sent.");
-        setAmount("");
-        return;
-      }
-      const data = encodeFunctionData({
-        abi: erc20Abi,
-        functionName: "transfer",
-        args: [recipient as `0x${string}`, BigInt(amount)],
+export function FundsClient({
+  markets,
+  embedded = false,
+}: {
+  markets: MarketView[];
+  embedded?: boolean;
+}) {
+  const wallet = useWallet(),
+    demo = useDemo(),
+    data = useWalletAssets(markets);
+  const modalTab = useUiStore((s) => s.funds),
+    setFunds = useUiStore((s) => s.setFunds);
+  const [tab, setTab] = useState<FundsTab>("Deposit"),
+    [token, setToken] = useState(""),
+    [recipient, setRecipient] = useState(""),
+    [amount, setAmount] = useState("");
+  const { busy, run } = useAsyncAction([wallet.account, token, recipient, amount].join(":"));
+  const asset = data.assets.find((a) => a.token === token) ?? data.assets[0];
+  const currentTab = embedded ? (modalTab ?? "Deposit") : tab;
+  const transfer = () =>
+    run(async (assertCurrent) => {
+      if (!asset || !wallet.account) return;
+      const transaction = walletTransfer({
+        token: asset.token,
+        recipient,
+        amount,
+        decimals: asset.decimals,
       });
-      const hash = await wallet.sendTransaction({ data, to: token });
-      toast.success(`Transfer submitted: ${hash.slice(0, 10)}…`);
-    } catch (cause) {
-      toast.error(cause instanceof Error ? cause.message : "Transfer failed");
-    } finally {
-      setBusy(false);
-    }
-  };
-  const revoke = async () => {
-    if (!demo && (!protocolConfig.conditionalTokens || !protocolConfig.exchange)) return;
-    setBusy(true);
-    try {
+      if (demo) {
+        demo.dispatch({
+          type: "transfer",
+          token: asset.token,
+          recipient,
+          amount: parseTokenAmount(amount.trim(), asset.decimals).toString(),
+        });
+        toast.success("Demo transfer complete. No real assets were sent.");
+      } else {
+        if (wallet.chainId !== protocolConfig.chainId) await wallet.ensureNetwork();
+        assertCurrent();
+        const hash = await wallet.sendTransaction(transaction);
+        toast.success(`Transfer submitted: ${hash.slice(0, 10)}… Balances update after indexing.`);
+      }
+      setAmount("");
+    });
+  const revoke = (kind: "claims" | "token" | "positions" | "split") =>
+    run(async (assertCurrent) => {
       if (demo) {
         demo.dispatch({ type: "revoke" });
-        toast.success("Demo exchange claim approval revoked.");
+        toast.success("Demo approval revoked.");
         return;
       }
-      const data = encodeFunctionData({
-        abi: approvalAbi,
-        functionName: "setApprovalForAll",
-        args: [protocolConfig.exchange as `0x${string}`, false],
-      });
-      const hash = await wallet.sendTransaction({ data, to: protocolConfig.conditionalTokens });
+      if (wallet.chainId !== protocolConfig.chainId) await wallet.ensureNetwork();
+      const operator = getAddress(
+        kind === "positions"
+          ? protocolConfig.positionRouter
+          : kind === "split"
+            ? protocolConfig.conditionalTokens
+            : protocolConfig.exchange,
+      );
+      if (/^0x0{40}$/i.test(operator) || ((kind === "token" || kind === "split") && !asset))
+        throw new Error("A valid asset and deployed spender are required.");
+      const transaction =
+        (kind === "token" || kind === "split") && asset
+          ? {
+              to: asset.token,
+              data: encodeFunctionData({
+                abi: erc20Abi,
+                functionName: "approve",
+                args: [operator, 0n],
+              }),
+            }
+          : {
+              to: protocolConfig.conditionalTokens,
+              data: encodeFunctionData({
+                abi: conditionalTokensAbi,
+                functionName: "setApprovalForAll",
+                args: [operator, false],
+              }),
+            };
+      assertCurrent();
+      const hash = await wallet.sendTransaction(transaction);
       toast.success(`Revocation submitted: ${hash.slice(0, 10)}…`);
-    } catch (cause) {
-      toast.error(cause instanceof Error ? cause.message : "Revocation failed");
-    } finally {
-      setBusy(false);
-    }
-  };
+    });
+  if (!wallet.account)
+    return (
+      <EmptyState>
+        <p>Connect to manage wallet assets.</p>
+        <Button variant="brand" onClick={() => wallet.connect().catch(() => undefined)}>
+          Connect wallet
+        </Button>
+        <p>Connecting does not grant spending permission.</p>
+      </EmptyState>
+    );
   return (
-    <div className="mt-10 grid gap-5 lg:grid-cols-2">
-      <Card>
-        <CardHeader>
-          <CardTitle>Self-custodied balances</CardTitle>
-        </CardHeader>
-        <CardContent>
+    <div className={embedded ? "min-w-0" : "panel mx-auto max-w-2xl p-5"}>
+      <Tabs
+        value={currentTab}
+        onValueChange={(value) => {
+          if (value === "Deposit" || value === "Withdraw" || value === "Permissions") {
+            if (embedded) setFunds(value);
+            else setTab(value);
+          }
+        }}
+      >
+        <TabsList aria-label="Funds action">
+          {["Deposit", "Withdraw", "Permissions"].map((value) => (
+            <TabsTrigger key={value} value={value}>
+              {value}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        <TabsContent value="Deposit" className="space-y-5 pt-4">
           <p className="text-sm leading-6 text-muted-foreground">
             {demo
-              ? "Fictitious demo address. Never send real tokens here. Use Add demo funds above to top up your local wallet."
-              : "Send supported Stock Tokens or USDG directly to this address. There is no protocol deposit account."}
+              ? "Fictitious demo address. Never send real tokens here."
+              : `Send supported tokens on ${protocolConfig.chainName} directly to your wallet. There is no protocol deposit account.`}
           </p>
-          <div className="mt-5 rounded-xl bg-muted/55 p-4">
-            <p className="text-xs text-muted-foreground">Connected address</p>
-            <code className="mt-2 block break-all text-xs">{wallet.account}</code>
+          <div className="rounded-lg border bg-secondary p-4">
+            <p className="eyebrow text-muted-foreground">Receiving address</p>
+            <code className="mt-3 block break-all text-xs">{wallet.account}</code>
           </div>
           <Button
-            className="mt-4"
             variant="outline"
             onClick={() =>
               navigator.clipboard
                 .writeText(wallet.account ?? "")
                 .then(() => toast.success("Address copied"))
+                .catch(() => toast.error("Clipboard is unavailable"))
             }
           >
-            {demo ? "Copy demo address" : "Copy deposit address"}
+            Copy {demo ? "demo" : "wallet"} address
           </Button>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Move assets out</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            {data.balances.map(({ token, symbol, balance }) => (
+              <div key={token} className="rounded-lg border p-3">
+                <p className="eyebrow text-muted-foreground">{symbol}</p>
+                <p className="mt-2 font-mono">
+                  {tokenAmount(balance.canonicalBalance, balance.decimals).toLocaleString("en-US", {
+                    maximumFractionDigits: 4,
+                  })}
+                </p>
+              </div>
+            ))}
+          </div>
+          {data.isError && !demo && (
+            <DataError
+              retry={() => {
+                void data.refetch();
+              }}
+              message="Canonical balances are unavailable."
+            />
+          )}
+        </TabsContent>
+        <TabsContent value="Withdraw" className="space-y-4 pt-4">
+          <fieldset disabled={busy} className="space-y-4">
             <div>
-              <Label htmlFor="asset-token">Token contract</Label>
-              <Input
-                id="asset-token"
-                className="mt-2 font-mono"
-                value={token}
-                onChange={(event) => setToken(event.target.value)}
-              />
+              <Label htmlFor="funds-token">Asset</Label>
+              <Select value={asset?.token ?? ""} onValueChange={setToken}>
+                <SelectTrigger id="funds-token" className="mt-2 w-full">
+                  <SelectValue placeholder="Choose a supported asset" />
+                </SelectTrigger>
+                <SelectContent>
+                  {data.assets.map((a) => (
+                    <SelectItem key={a.token} value={a.token}>
+                      {a.symbol} · {shortAddress(a.token)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
-              <Label htmlFor="asset-recipient">Recipient</Label>
+              <Label htmlFor="funds-recipient">Receiving address</Label>
               <Input
-                id="asset-recipient"
+                id="funds-recipient"
                 className="mt-2 font-mono"
                 value={recipient}
-                onChange={(event) => setRecipient(event.target.value)}
+                onChange={(e) => setRecipient(e.target.value)}
                 placeholder="0x…"
               />
             </div>
             <div>
-              <Label htmlFor="asset-amount">Raw token amount</Label>
+              <Label htmlFor="funds-amount">Amount ({asset?.symbol ?? "tokens"})</Label>
               <Input
-                id="asset-amount"
+                id="funds-amount"
                 className="mt-2 font-mono"
+                inputMode="decimal"
                 value={amount}
-                onChange={(event) => setAmount(event.target.value)}
-                placeholder="1000000000000000000"
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0.00"
               />
             </div>
+            <p className="text-xs leading-5 text-muted-foreground">
+              This is a wallet transfer. Verify the receiving address and network; confirmed
+              transfers cannot be reversed. Network gas applies.
+            </p>
             <Button
               className="w-full"
               variant="brand"
               onClick={transfer}
-              disabled={
-                busy ||
-                !/^0x[0-9a-fA-F]{40}$/.test(token) ||
-                !/^0x[0-9a-fA-F]{40}$/.test(recipient) ||
-                !/^[1-9][0-9]*$/.test(amount)
-              }
+              disabled={busy || !asset || !amount || !recipient}
             >
-              {busy ? <LoaderCircle className="animate-spin" /> : <ArrowUpRight />}
-              {demo ? "Simulate transfer" : "Submit wallet transfer"}
+              {busy && <LoaderCircle className="animate-spin" />}
+              {demo ? "Simulate transfer" : "Review in wallet"}
             </Button>
-          </div>
-        </CardContent>
-      </Card>
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle>Permissions</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="font-medium">Conditional claim operator approval</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Revoke the exchange’s ERC-1155 permission when you are not actively trading
-              claim-funded orders.
-            </p>
-          </div>
-          <Button
-            variant="destructive"
-            onClick={revoke}
-            disabled={
-              busy || (!demo && (!protocolConfig.conditionalTokens || !protocolConfig.exchange))
-            }
-          >
-            <ShieldOff />
-            Revoke approval
-          </Button>
-        </CardContent>
-      </Card>
+          </fieldset>
+        </TabsContent>
+        <TabsContent value="Permissions" className="space-y-4 pt-4">
+          <Select value={asset?.token ?? ""} onValueChange={setToken} disabled={busy}>
+            <SelectTrigger aria-label="Permission asset" className="w-full">
+              <SelectValue placeholder="Asset" />
+            </SelectTrigger>
+            <SelectContent>
+              {data.assets.map((a) => (
+                <SelectItem key={a.token} value={a.token}>
+                  {a.symbol}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-sm leading-6 text-muted-foreground">
+            Revoke spending access when you are not using it. Existing escrowed orders must be
+            cancelled separately.
+          </p>
+          {(
+            [
+              ["claims", "Exchange claim approval"],
+              ["positions", "Position router claim approval"],
+              ["token", `${asset?.symbol ?? "Token"} exchange allowance`],
+              ["split", `${asset?.symbol ?? "Token"} split allowance`],
+            ] as const
+          ).map(([kind, label]) => (
+            <div
+              key={kind}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"
+            >
+              <span className="text-sm font-medium">{label}</span>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={busy || (kind === "token" && !asset)}
+                onClick={() => revoke(kind)}
+              >
+                <ShieldOff />
+                Revoke
+              </Button>
+            </div>
+          ))}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

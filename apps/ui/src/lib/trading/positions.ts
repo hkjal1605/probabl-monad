@@ -1,5 +1,13 @@
 import { conditionalTokensAbi, positionRouterAbi } from "@conditional-stocks/contract-bindings";
-import { encodeFunctionData, getAddress, type Hex, isHex, zeroAddress } from "viem";
+import {
+  encodeFunctionData,
+  erc20Abi,
+  getAddress,
+  type Hex,
+  isHex,
+  zeroAddress,
+  zeroHash,
+} from "viem";
 import { verifyPayoutResponse } from "./payouts";
 
 export function positionAction(input: {
@@ -67,4 +75,51 @@ export function verifyPositionResponse(
     throw new Error("Invalid position approval response");
   verifyPayoutResponse(expected.approval, { transaction: value.approval });
   return expected;
+}
+
+export function splitAction(input: {
+  collateralToken: string;
+  conditionId: string;
+  amount: bigint;
+  account: string;
+  config: { chainId: number; conditionalTokens: string };
+}) {
+  const from = getAddress(input.account),
+    to = getAddress(input.config.conditionalTokens),
+    collateral = getAddress(input.collateralToken);
+  if (
+    [from, to, collateral].includes(zeroAddress) ||
+    input.amount <= 0n ||
+    input.amount >= 1n << 256n ||
+    !Number.isSafeInteger(input.config.chainId) ||
+    input.config.chainId <= 0 ||
+    !isHex(input.conditionId, { strict: true }) ||
+    input.conditionId.length !== 66 ||
+    input.conditionId === zeroHash
+  )
+    throw new Error("Invalid split or deployment configuration.");
+  return {
+    transaction: {
+      from,
+      to,
+      chainId: input.config.chainId,
+      value: "0",
+      data: encodeFunctionData({
+        abi: conditionalTokensAbi,
+        functionName: "splitPosition",
+        args: [collateral, zeroHash, input.conditionId as Hex, [1n, 2n], input.amount],
+      }),
+    },
+    approval: {
+      from,
+      to: collateral,
+      chainId: input.config.chainId,
+      value: "0",
+      data: encodeFunctionData({
+        abi: erc20Abi,
+        functionName: "approve",
+        args: [to, input.amount],
+      }),
+    },
+  };
 }

@@ -7,6 +7,7 @@ import {
 } from "@conditional-stocks/domain";
 
 import { isDemoMode } from "@/lib/demo/server";
+import { expireProbability, parseProbabilityMessage } from "./probability";
 import type {
   BranchBook,
   IndexedOrder,
@@ -104,26 +105,50 @@ async function liveMarkets(): Promise<MarketView[]> {
         json<Record<string, unknown>>(`${upstreamUrl("api")}/v1/markets/${id}/polymarket`).catch(
           () => ({}),
         ),
-        json<{ orders: Record<string, unknown>[] }>(
-          `${upstreamUrl("indexer")}/orderbook/${id}`,
-        ).catch(() => ({ orders: [] })),
+        json<{ orders: Record<string, unknown>[]; truncated?: boolean; unavailable?: boolean }>(
+          `${upstreamUrl("indexer")}/orderbook/${id}?limit=2000`,
+        ).catch(() => ({ orders: [], unavailable: true, truncated: false })),
       ]);
       const attachedRecord = record(attached);
       const metadata = record(record(attachedRecord.metadata).normalized);
       const probability = record(attachedRecord.probability);
-      const midpoint = number(probability.midpointX6);
-      const yes = aggregateBook(book.orders, 0, market);
-      const no = aggregateBook(book.orders, 1, market);
+      let probabilityView: MarketView["probability"] = {
+        ask: null,
+        bid: null,
+        observedAt: null,
+        quality: "disconnected",
+        value: null,
+      };
+      try {
+        probabilityView = expireProbability(
+          parseProbabilityMessage(
+            { topic: `probability.${text(market.polymarketConditionId)}`, value: probability },
+            text(market.polymarketConditionId),
+          ),
+        );
+      } catch {
+        /* Unverified reference data must not become a usable probability. */
+      }
+      // A capped response cannot establish best prices or total depth on both sides.
+      const usableOrders = book.truncated || book.unavailable ? [] : book.orders;
+      const yes = aggregateBook(usableOrders, 0, market);
+      const no = aggregateBook(usableOrders, 1, market);
       const yesMid =
-        yes.bestBid !== null && yes.bestAsk !== null ? (yes.bestBid + yes.bestAsk) / 2 : null;
+        yes.bestBid !== null && yes.bestAsk !== null && yes.bestAsk >= yes.bestBid
+          ? (yes.bestBid + yes.bestAsk) / 2
+          : null;
       const noMid =
-        no.bestBid !== null && no.bestAsk !== null ? (no.bestBid + no.bestAsk) / 2 : null;
+        no.bestBid !== null && no.bestAsk !== null && no.bestAsk >= no.bestBid
+          ? (no.bestBid + no.bestAsk) / 2
+          : null;
       return {
         baseTokenDecimals: market.baseTokenDecimals,
         quoteTokenDecimals: market.quoteTokenDecimals,
         protocolVersion: market.protocolVersion,
         priceFormat: market.priceFormat,
         baseStep: text(market.baseStep),
+        priceTickRawX18: text(market.priceTickRawX18, "1"),
+        bookQuality: book.unavailable ? "unavailable" : book.truncated ? "truncated" : "available",
         baseToken: text(market.baseToken),
         cutoff: isoSeconds(market.tradingCutoff),
         description: text(
@@ -141,18 +166,7 @@ async function liveMarkets(): Promise<MarketView[]> {
         },
         no,
         ordinaryReference: null,
-        probability: {
-          ask: number(probability.bestAskX6) === null ? null : Number(probability.bestAskX6) / 1e6,
-          bid: number(probability.bestBidX6) === null ? null : Number(probability.bestBidX6) / 1e6,
-          observedAt: probability.observedAtMs
-            ? new Date(Number(probability.observedAtMs)).toISOString()
-            : null,
-          quality: text(
-            probability.quality,
-            "disconnected",
-          ) as MarketView["probability"]["quality"],
-          value: midpoint === null ? null : midpoint / 1e6,
-        },
+        probability: probabilityView,
         question: text(metadata.question, `Conditional market ${id.slice(0, 8)}`),
         quoteToken: text(market.quoteToken),
         residual: null,
@@ -166,6 +180,7 @@ async function liveMarkets(): Promise<MarketView[]> {
 }
 
 export const serverApi = {
+  liveMarkets,
   markets: async (): Promise<MarketView[]> => {
     try {
       const markets = await liveMarkets();

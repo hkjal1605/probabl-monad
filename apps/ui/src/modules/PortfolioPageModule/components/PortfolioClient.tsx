@@ -1,270 +1,348 @@
 "use client";
-
-import { Badge } from "@conditional-stocks/ui-kit/badge";
 import { Button } from "@conditional-stocks/ui-kit/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@conditional-stocks/ui-kit/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@conditional-stocks/ui-kit/table";
-import { useQuery } from "@tanstack/react-query";
-import { BriefcaseBusiness, WalletCards } from "lucide-react";
+import { Tabs, TabsContent } from "@conditional-stocks/ui-kit/tabs";
+import { ArrowDownToLine, ArrowUpRight, Download } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
+import { LifecycleBadge } from "@/components/data/StatusBadge";
+import { ClaimTable } from "@/components/portfolio/ClaimTable";
+import { PositionTable } from "@/components/portfolio/PositionTable";
 import { useDemo } from "@/components/providers/DemoProvider";
+import { useUiStore } from "@/components/providers/UiStateProvider";
 import { useWallet } from "@/components/providers/WalletProvider";
-import type { IndexedOrder, MarketView, PositionView, WholeBalanceView } from "@/lib/api/types";
-import { shortAddress, tokenAmount } from "@/lib/format/display";
+import {
+  LineTabsList as TabsList,
+  LineTabsTrigger as TabsTrigger,
+} from "@/components/ui/line-tabs";
+import { DataError, EmptyState, Page, PageHeading } from "@/components/ui/page";
+import { useMarkets, useOrders, usePositions } from "@/hooks/useProtocolData";
+import { useWalletAssets } from "@/hooks/useWalletAssets";
+import type { IndexedOrder, MarketView } from "@/lib/api/types";
+import { formatNumber, shortAddress, tokenAmount } from "@/lib/format/display";
+import { groupMarkets } from "@/lib/markets/presentation";
+import { orderHistoryCsv, wholeReserved } from "@/lib/portfolio/presentation";
+import { OrdersClient } from "@/modules/OrdersPageModule/components/OrdersClient";
 import { PendingPayouts } from "./PendingPayouts";
-import { PositionActions } from "./PositionActions";
 
-const fetchJson = async <T,>(path: string): Promise<T> => {
-  const response = await fetch(path, { cache: "no-store" });
-  if (!response.ok) throw new Error("Canonical portfolio data is unavailable");
-  return response.json() as Promise<T>;
-};
-export function PortfolioClient({ markets }: { markets: MarketView[] }) {
-  const wallet = useWallet();
-  const demo = useDemo();
-  const assets = [
-    ...new Map(
-      markets.flatMap((market) => [
-        [market.baseToken.toLowerCase(), { symbol: market.ticker, token: market.baseToken }],
-        [market.quoteToken.toLowerCase(), { symbol: "USDG", token: market.quoteToken }],
-      ]),
-    ).values(),
-  ];
-  const positions = useQuery({
-    queryKey: ["positions", wallet.account],
-    queryFn: () =>
-      fetchJson<{ positions: PositionView[] }>(`/api/indexer/positions/${wallet.account}`),
-    enabled: Boolean(wallet.account) && !demo,
-    refetchInterval: 8_000,
-  });
-  const orders = useQuery({
-    queryKey: ["wallet-orders", wallet.account],
-    queryFn: () =>
-      fetchJson<{ orders: IndexedOrder[] }>(`/api/indexer/orders?maker=${wallet.account}`),
-    enabled: Boolean(wallet.account) && !demo,
-    refetchInterval: 8_000,
-  });
-  const balances = useQuery({
-    queryKey: ["whole-balances", wallet.account, assets.map((asset) => asset.token).join(",")],
-    queryFn: async () =>
-      (
-        await Promise.all(
-          assets.map(async (asset) => {
-            try {
-              const balance = await fetchJson<WholeBalanceView>(
-                `/api/indexer/balances/${wallet.account}?token=${asset.token}`,
-              );
-              return { ...asset, balance };
-            } catch {
-              return null;
-            }
-          }),
-        )
-      ).filter((item) => item !== null),
-    enabled: Boolean(wallet.account && assets.length > 0) && !demo,
-    refetchInterval: 8_000,
-  });
-  if (!wallet.account)
-    return (
-      <div className="mt-10 flex min-h-80 flex-col items-center justify-center rounded-2xl border border-dashed bg-card text-center">
-        <WalletCards className="size-7 text-muted-foreground" />
-        <h2 className="mt-4 text-lg font-semibold">Connect your wallet to see positions</h2>
-        <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-          Balances are read from the canonical indexer. Connecting does not grant spending
-          permission.
-        </p>
-        <Button
-          className="mt-5"
-          variant="brand"
-          onClick={() => wallet.connect().catch(() => undefined)}
-        >
-          Connect wallet
-        </Button>
-      </div>
-    );
-  const activeOrders = (demo?.state.orders ?? orders.data?.orders ?? []).filter(
-    (order) => order.status === "open",
-  );
-  const wholeBalances = demo
-    ? assets.map((asset) => ({
-        ...asset,
-        balance: {
-          canonicalBalance: demo.state.balances[asset.token.toLowerCase()] ?? "0",
-          decimals: asset.symbol === "USDG" ? 6 : 18,
-          blockNumber: String(demo.state.tick),
-        },
-      }))
-    : balances.data;
-  const rows =
-    (demo?.state.positions ?? positions.data?.positions ?? []).filter((position) =>
-      [position.stockYes, position.stockNo, position.quoteYes, position.quoteNo].some(
-        (value) => BigInt(value) > 0n,
+export function PortfolioClient({ markets: initial }: { markets: MarketView[] }) {
+  const wallet = useWallet(),
+    demo = useDemo(),
+    marketQuery = useMarkets(initial);
+  const { markets } = marketQuery,
+    ordersQuery = useOrders(),
+    positionsQuery = usePositions(),
+    assetQuery = useWalletAssets(markets);
+  const setFunds = useUiStore((s) => s.setFunds);
+  const groups = groupMarkets(markets),
+    activeOrders = ordersQuery.orders.filter((o) => o.status === "open");
+  const exposures = groups.filter((assets) =>
+    assets.some((m) =>
+      positionsQuery.positions.some(
+        (p) =>
+          p.marketId === m.id &&
+          [p.stockYes, p.stockNo, p.quoteYes, p.quoteNo].some((v) => BigInt(v) > 0n),
       ),
-    ) ?? [];
-  const reserved = (marketId: string, side: number) =>
-    activeOrders
-      .filter((order) => order.marketId === marketId && order.side === side)
-      .reduce((total, order) => total + BigInt(order.reserved), 0n);
-  const wholeReserved = (token: string) =>
-    activeOrders.reduce((total, order) => {
-      if (order.fundingKind !== 0) return total;
-      const market = markets.find((candidate) => candidate.id === order.marketId);
-      if (!market) return total;
-      const fundingToken = order.side === 0 ? market.quoteToken : market.baseToken;
-      return fundingToken.toLowerCase() === token.toLowerCase()
-        ? total + BigInt(order.reserved)
-        : total;
-    }, 0n);
+    ),
+  ).length;
+  const balances = assetQuery.balances.map((asset) => ({
+    ...asset,
+    reserved: wholeReserved(asset.token, activeOrders, markets),
+  }));
+  const known =
+    Boolean(
+      demo ||
+        (!assetQuery.isPending &&
+          !assetQuery.isError &&
+          !ordersQuery.isPending &&
+          !ordersQuery.isError &&
+          !ordersQuery.data?.openTruncated &&
+          !marketQuery.isError),
+    ) && balances.length > 0;
+  const total =
+    known &&
+    balances.every(
+      (a) => a.reference !== null || BigInt(a.balance.canonicalBalance) + a.reserved === 0n,
+    )
+      ? balances.reduce(
+          (sum, a) =>
+            sum +
+            tokenAmount((BigInt(a.balance.canonicalBalance) + a.reserved).toString(), a.decimals) *
+              (a.reference ?? 0),
+          0,
+        )
+      : null;
   return (
-    <div className="mt-10 space-y-5">
-      {!demo && <PendingPayouts markets={markets} />}
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Summary label="Markets with exposure" value={String(rows.length)} />
-        <Summary label="Open orders" value={String(activeOrders.length)} />
-        <Summary label="Canonical account" value={shortAddress(wallet.account)} />
-      </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Whole wallet assets</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {!demo && balances.isPending ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              Reading canonical balances…
-            </p>
-          ) : wholeBalances?.length ? (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {wholeBalances.map(({ balance, symbol, token }) => (
-                <div className="rounded-xl border bg-muted/25 p-4" key={token}>
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="font-semibold">{symbol}</p>
-                    <code className="text-[10px] text-muted-foreground">{shortAddress(token)}</code>
+    <Page>
+      <PageHeading
+        title="Portfolio"
+        description={
+          wallet.account
+            ? `${exposures} events with claims · ${activeOrders.length} open orders`
+            : "Your positions, orders, and claims in one place."
+        }
+      >
+        {wallet.account && (
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setFunds("Withdraw")}>
+              <ArrowUpRight />
+              Withdraw
+            </Button>
+            <Button variant="brand" onClick={() => setFunds("Deposit")}>
+              <ArrowDownToLine />
+              Deposit
+            </Button>
+          </div>
+        )}
+      </PageHeading>
+      {!wallet.account ? (
+        <section className="panel">
+          <EmptyState>
+            <p>Connect your wallet to see positions.</p>
+            <Button variant="brand" onClick={() => wallet.connect().catch(() => undefined)}>
+              Connect wallet
+            </Button>
+          </EmptyState>
+        </section>
+      ) : (
+        <>
+          {!demo && marketQuery.isError && (
+            <DataError
+              message="Market metadata is unavailable. Asset totals may be incomplete."
+              retry={() => {
+                void marketQuery.refetch();
+              }}
+            />
+          )}
+          {!demo && (ordersQuery.isError || positionsQuery.isError) && (
+            <DataError
+              message="Some holdings or order reservations could not be loaded."
+              retry={() => {
+                void ordersQuery.refetch();
+                void positionsQuery.refetch();
+              }}
+            />
+          )}
+          <section
+            className="panel mb-6 flex flex-col divide-y lg:flex-row lg:divide-x lg:divide-y-0"
+            aria-label="Wallet balances"
+          >
+            <div className="flex shrink-0 flex-col gap-2 p-6 lg:min-w-64">
+              <span className="eyebrow">Total balance</span>
+              <strong className="font-mono text-3xl tracking-tight">
+                {total === null ? "—" : `$${formatNumber(total)}`}
+              </strong>
+              <span className="text-xs font-medium text-muted-foreground">
+                Whole assets · estimated value
+              </span>
+              {total === null && known && (
+                <span className="max-w-52 text-xs text-muted-foreground">
+                  A stock reference price is unavailable.
+                </span>
+              )}
+            </div>
+            <div className="flex flex-1 flex-wrap gap-x-10 gap-y-5 p-6">
+              {balances.map((a) => (
+                <div className="min-w-28 space-y-2" key={a.token}>
+                  <div className="eyebrow">{a.symbol}</div>
+                  <div className="font-mono text-xl">
+                    {known
+                      ? formatNumber(
+                          tokenAmount(
+                            (BigInt(a.balance.canonicalBalance) + a.reserved).toString(),
+                            a.decimals,
+                          ),
+                          a.symbol === "USDG" ? 2 : 4,
+                        )
+                      : "—"}
                   </div>
-                  <p className="mt-4 text-2xl font-semibold">
-                    {tokenAmount(balance.canonicalBalance, balance.decimals).toFixed(
-                      symbol === "USDG" ? 2 : 4,
+                  <p className="text-xs font-medium text-muted-foreground">
+                    {formatNumber(
+                      tokenAmount(a.balance.canonicalBalance, a.decimals),
+                      a.symbol === "USDG" ? 2 : 4,
+                    )}{" "}
+                    available
+                    {a.reserved > 0n && (
+                      <>
+                        {" "}
+                        · {formatNumber(tokenAmount(a.reserved.toString(), a.decimals), 4)} reserved
+                      </>
                     )}
-                  </p>
-                  <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Available in wallet</span>
-                    <span>
-                      {tokenAmount(wholeReserved(token).toString(), balance.decimals).toFixed(4)}{" "}
-                      reserved
-                    </span>
-                  </div>
-                  <p className="mt-2 text-[10px] text-muted-foreground">
-                    {demo ? "Simulated at tick" : "Canonical at block"} {balance.blockNumber}
                   </p>
                 </div>
               ))}
+              {!demo && assetQuery.isError && (
+                <DataError
+                  message="Canonical wallet balances are unavailable."
+                  retry={() => {
+                    void assetQuery.refetch();
+                  }}
+                />
+              )}
+              {!balances.length && (
+                <span className="text-sm text-muted-foreground">
+                  {!demo && assetQuery.isFetching
+                    ? "Reading balances…"
+                    : "No supported assets indexed yet."}
+                </span>
+              )}
             </div>
-          ) : (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              Whole-token balances are unavailable from the canonical indexer.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BriefcaseBusiness />
-            Conditional claims
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {rows.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">
-              No indexed conditional positions yet.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Market</TableHead>
-                  <TableHead>Stock YES</TableHead>
-                  <TableHead>Stock NO</TableHead>
-                  <TableHead>Cash YES</TableHead>
-                  <TableHead>Cash NO</TableHead>
-                  <TableHead>Reserved</TableHead>
-                  <TableHead>
-                    <span className="sr-only">Actions</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((position) => {
-                  const market = markets.find((candidate) => candidate.id === position.marketId);
-                  return (
-                    <TableRow key={position.marketId}>
-                      <TableCell>
-                        <p className="max-w-56 truncate font-medium">
-                          {market?.question ?? shortAddress(position.marketId)}
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {market?.ticker ?? "Stock"}
-                        </p>
-                      </TableCell>
-                      <TableCell>
-                        {tokenAmount(position.stockYes, position.baseTokenDecimals).toFixed(4)}
-                      </TableCell>
-                      <TableCell>
-                        {tokenAmount(position.stockNo, position.baseTokenDecimals).toFixed(4)}
-                      </TableCell>
-                      <TableCell>
-                        {tokenAmount(position.quoteYes, position.quoteTokenDecimals).toFixed(2)}
-                      </TableCell>
-                      <TableCell>
-                        {tokenAmount(position.quoteNo, position.quoteTokenDecimals).toFixed(2)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            reserved(position.marketId, 0) > 0n ||
-                            reserved(position.marketId, 1) > 0n
-                              ? "warning"
-                              : "secondary"
-                          }
-                        >
-                          {tokenAmount(
-                            reserved(position.marketId, 1).toString(),
-                            position.baseTokenDecimals,
-                          ).toFixed(3)}{" "}
-                          stock /{" "}
-                          {tokenAmount(
-                            reserved(position.marketId, 0).toString(),
-                            position.quoteTokenDecimals,
-                          ).toFixed(2)}{" "}
-                          USDG
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {market && <PositionActions position={position} market={market} />}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+          </section>
+          <div className="grid items-start gap-6 min-[1101px]:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="min-w-0 space-y-5">
+              {groups.map((assets) => (
+                <MarketHoldings key={assets[0]?.id} markets={assets} orders={activeOrders} />
+              ))}
+              {!groups.length && (
+                <section className="panel">
+                  <EmptyState>No markets are indexed yet.</EmptyState>
+                </section>
+              )}
+              <p className="text-xs font-medium leading-6 text-muted-foreground">
+                Entry and mark-to-entry require a complete cost basis and are unavailable where it
+                is not indexed. Branch marks are estimates in USDG, not guaranteed redemption
+                values.
+              </p>
+              {!demo && <PendingPayouts markets={markets} />}
+            </div>
+            <OrderHistory
+              markets={markets}
+              orders={ordersQuery.orders}
+              error={!demo && ordersQuery.isError}
+              truncated={ordersQuery.data?.truncated ?? false}
+            />
+          </div>
+        </>
+      )}
+    </Page>
   );
 }
-function Summary({ label, value }: { label: string; value: string }) {
+function MarketHoldings({ markets, orders }: { markets: MarketView[]; orders: IndexedOrder[] }) {
+  const m = markets[0];
+  if (!m) return null;
+  const openCount = orders.filter((o) => markets.some((asset) => asset.id === o.marketId)).length;
   return (
-    <Card size="sm">
-      <CardContent>
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="mt-2 text-xl font-semibold">{value}</p>
-      </CardContent>
-    </Card>
+    <article className="panel overflow-hidden">
+      <div className="flex items-center justify-between gap-4 p-5">
+        <div>
+          <h2 className="text-base font-semibold leading-6">{m.question}</h2>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
+            <span>{markets.map((a) => a.ticker).join(" / ")}</span> ·{" "}
+            <LifecycleBadge state={m.lifecycle} /> ·{" "}
+            <span>
+              P(YES){" "}
+              {m.probability.value === null
+                ? "—"
+                : `${formatNumber(m.probability.value * 100, 0)}%`}{" "}
+              · Polymarket
+            </span>
+          </div>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <Link href={`/markets/${m.id}`}>
+            Trade <ArrowUpRight />
+          </Link>
+        </Button>
+      </div>
+      <Tabs defaultValue="positions">
+        <TabsList aria-label={`${m.ticker} holdings`}>
+          <TabsTrigger value="positions">Positions</TabsTrigger>
+          <TabsTrigger value="orders">
+            Open orders <span className="font-mono text-muted-foreground">{openCount}</span>
+          </TabsTrigger>
+          <TabsTrigger value="claims">Claims</TabsTrigger>
+        </TabsList>
+        <TabsContent value="positions">
+          <PositionTable markets={markets} />
+        </TabsContent>
+        <TabsContent value="orders">
+          <OrdersClient markets={markets} marketIds={markets.map((m) => m.id)} embedded />
+        </TabsContent>
+        <TabsContent value="claims">
+          <ClaimTable markets={markets} />
+        </TabsContent>
+      </Tabs>
+    </article>
+  );
+}
+function OrderHistory({
+  markets,
+  orders,
+  error,
+  truncated,
+}: {
+  markets: MarketView[];
+  orders: IndexedOrder[];
+  error: boolean;
+  truncated: boolean;
+}) {
+  const [limit, setLimit] = useState(20);
+  const rows = [...orders].sort((a, b) =>
+    BigInt(a.updatedBlock) === BigInt(b.updatedBlock)
+      ? b.id.localeCompare(a.id)
+      : BigInt(a.updatedBlock) > BigInt(b.updatedBlock)
+        ? -1
+        : 1,
+  );
+  const download = () => {
+    const url = URL.createObjectURL(
+      new Blob([orderHistoryCsv(rows, markets)], { type: "text/csv;charset=utf-8" }),
+    );
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "probabl-order-history.csv";
+    anchor.click();
+    // Give browsers time to acquire the blob before releasing it.
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  return (
+    <section className="panel overflow-hidden" aria-label="Order history">
+      <div className="panel-heading">
+        <h2 className="font-semibold">History</h2>
+        <Button size="sm" variant="ghost" onClick={download} disabled={error || !rows.length}>
+          <Download />
+          CSV
+        </Button>
+      </div>
+      <p className="border-b px-5 py-3 text-xs font-medium text-muted-foreground">
+        Canonical order updates · not a complete wallet ledger
+        {truncated && " · latest 1,000 orders"}
+      </p>
+      {error ? (
+        <EmptyState>History is unavailable.</EmptyState>
+      ) : !rows.length ? (
+        <EmptyState>No wallet orders yet.</EmptyState>
+      ) : (
+        rows.slice(0, limit).map((order) => {
+          const market = markets.find((m) => m.id === order.marketId);
+          return (
+            <div className="border-b px-5 py-4 last:border-0" key={order.id}>
+              <div className="flex justify-between gap-3 text-sm font-semibold">
+                <Link href={`/markets/${order.marketId}`}>
+                  {order.side === 0 ? "Buy" : "Sell"} {market?.ticker ?? "Stock"}-
+                  {order.branch === 0 ? "YES" : "NO"}
+                </Link>
+                <span className="text-muted-foreground">{order.status}</span>
+              </div>
+              <p className="mt-2 text-xs font-medium text-muted-foreground">
+                {market
+                  ? formatNumber(tokenAmount(order.filled, market.baseTokenDecimals), 4)
+                  : "—"}{" "}
+                filled · block {order.updatedBlock}
+              </p>
+              <code className="mt-1 block text-xs text-muted-foreground" title={order.id}>
+                {shortAddress(order.id, 8)}
+              </code>
+            </div>
+          );
+        })
+      )}
+      {rows.length > limit && (
+        <div className="p-4">
+          <Button variant="outline" className="w-full" onClick={() => setLimit((n) => n + 20)}>
+            Load more
+          </Button>
+        </div>
+      )}
+    </section>
   );
 }

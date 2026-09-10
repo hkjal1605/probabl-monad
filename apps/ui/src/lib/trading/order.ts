@@ -5,11 +5,13 @@ import {
   type MarketUnits,
   parsePriceRawX18,
   parseTokenAmount,
+  quoteForExecution,
   quoteForReservation,
 } from "@conditional-stocks/domain";
 import { toHex } from "viem";
 
 export interface OrderFormValues extends MarketUnits {
+  baseStep?: string;
   account: string;
   branch: "YES" | "NO";
   cutoff: string;
@@ -22,12 +24,23 @@ export interface OrderFormValues extends MarketUnits {
   tif: "gtc" | "ioc";
 }
 
-export const previewOrder = (quantity: string, price: string, units: MarketUnits) => {
+export const previewOrder = (
+  quantity: string,
+  price: string,
+  units: MarketUnits & { baseStep?: string },
+) => {
   try {
     assertMarketUnits(units);
     const quantityRaw = parseTokenAmount(quantity, units.baseTokenDecimals);
     const priceRawX18 = parsePriceRawX18(price, units);
     if (quantityRaw <= 0n || quantityRaw > MAX_ORDER_UINT128) throw new Error("invalid quantity");
+    if (
+      units.baseStep !== undefined &&
+      (BigInt(units.baseStep) <= 0n || quantityRaw % BigInt(units.baseStep) !== 0n)
+    )
+      throw new Error("invalid quantity step");
+    if (quoteForExecution(quantityRaw, priceRawX18) === 0n)
+      throw new Error("Order notional is below one raw quote unit.");
     const reservationRaw = quoteForReservation(quantityRaw, priceRawX18);
     return {
       cost: Number(formatTokenAmount(reservationRaw, units.quoteTokenDecimals)),

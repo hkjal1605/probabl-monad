@@ -12,7 +12,7 @@ export function ModeBar() {
   const pathname = usePathname();
   return (
     <section aria-label="Application mode" className="border-b bg-muted/50">
-      <div className="mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-3 px-5 py-2 text-xs sm:px-8">
+      <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-3 px-5 py-2 text-xs sm:px-8">
         <p role="status">
           {mode === "demo"
             ? "DEMO · Fictitious assets only. No wallet signatures or real transactions."

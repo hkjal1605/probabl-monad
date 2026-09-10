@@ -18,6 +18,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useWallet } from "@/components/providers/WalletProvider";
 import { protocolConfig } from "@/config/protocol";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
+import { api, requestJson } from "@/lib/api/client";
 import type { MarketView, PayoutCreditView } from "@/lib/api/types";
 import { shortAddress } from "@/lib/format/display";
 import { payoutWithdrawal, verifyPayoutResponse } from "@/lib/trading/payouts";
@@ -31,15 +33,13 @@ interface Page {
 export function PendingPayouts({ markets }: { markets: MarketView[] }) {
   const wallet = useWallet();
   const credits = useInfiniteQuery({
-    queryKey: ["payout-credits", wallet.account],
+    queryKey: ["payout-credits", wallet.account?.toLowerCase(), protocolConfig.chainId],
     initialPageParam: "",
-    queryFn: async ({ pageParam }): Promise<Page> => {
-      const response = await fetch(
+    queryFn: async ({ pageParam, signal }): Promise<Page> => {
+      const page = await requestJson<Page>(
         `/api/indexer/payouts/${wallet.account}${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
-        { cache: "no-store" },
+        { signal },
       );
-      if (!response.ok) throw new Error("Pending payouts are temporarily unavailable");
-      const page = (await response.json()) as Page;
       if (
         !protocolConfig.payoutVault ||
         page.vault?.toLowerCase() !== protocolConfig.payoutVault.toLowerCase()
@@ -124,11 +124,12 @@ function WithdrawPayout({ credit, symbol }: { credit: PayoutCreditView; symbol: 
   const [open, setOpen] = useState(false);
   const [recipient, setRecipient] = useState(credit.beneficiary);
   const [amount, setAmount] = useState(formatTokenAmount(BigInt(credit.amount), credit.decimals));
-  const [busy, setBusy] = useState(false);
-  const submit = async () => {
-    if (!wallet.account) return;
-    setBusy(true);
-    try {
+  const { busy, run } = useAsyncAction(
+    [wallet.account, credit.id, recipient, amount, open].join(":"),
+  );
+  const submit = () =>
+    run(async (assertCurrent) => {
+      if (!wallet.account) return;
       const raw = parseTokenAmount(amount.trim(), credit.decimals);
       const expected = payoutWithdrawal({
         credit,
@@ -139,30 +140,26 @@ function WithdrawPayout({ credit, symbol }: { credit: PayoutCreditView; symbol: 
       });
       if (wallet.chainId !== protocolConfig.chainId) await wallet.ensureNetwork();
       const token = wallet.sessionToken ?? (await wallet.authenticate());
-      const response = await fetch("/api/gateway/payouts/withdraw/prepare", {
-        method: "POST",
-        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-        body: JSON.stringify({
+      const result = await api.prepare<unknown>(
+        "payouts/withdraw/prepare",
+        {
           asset: credit.asset,
           tokenId: credit.tokenId,
           amount: String(raw),
           recipient: recipient.trim(),
-        }),
-      });
-      const result = (await response.json()) as { error?: { message?: string } };
-      if (!response.ok) throw new Error(result.error?.message ?? "Withdrawal preparation failed");
+        },
+        token,
+      );
+      assertCurrent();
       const hash = await wallet.sendTransaction(verifyPayoutResponse(expected, result));
       toast.success(
         `Payout withdrawal submitted: ${hash.slice(0, 10)}… Balances update after indexing.`,
       );
       setOpen(false);
-      await cache.invalidateQueries({ queryKey: ["payout-credits", wallet.account] });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Withdrawal failed");
-    } finally {
-      setBusy(false);
-    }
-  };
+      await cache.invalidateQueries({
+        queryKey: ["payout-credits", wallet.account?.toLowerCase()],
+      });
+    });
   return (
     <Dialog
       open={open}

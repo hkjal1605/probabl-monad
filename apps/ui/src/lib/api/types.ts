@@ -40,6 +40,8 @@ export interface ProbabilityView {
 }
 export interface MarketView extends MarketUnits {
   baseStep: string;
+  priceTickRawX18?: string;
+  bookQuality?: "available" | "unavailable" | "truncated";
   baseToken: string;
   cutoff: string;
   description: string;

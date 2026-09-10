@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import "@/styles/global.css";
-import { ModeBar } from "@/components/demo/ModeBar";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { AppProviders } from "@/components/providers/AppProviders";
@@ -13,9 +12,7 @@ export const metadata: Metadata = {
   applicationName: "probabl",
   description:
     "Trade conditional stock values across clear YES and NO event outcomes with onchain settlement.",
-  ...(process.env.NEXT_PUBLIC_APP_URL
-    ? { metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL) }
-    : {}),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://probabl.trade"),
   openGraph: {
     siteName: "probabl",
     images: [
@@ -29,10 +26,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const mode = await appMode();
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
-      <body>
+      <body className="flex min-h-dvh flex-col text-sm">
         <AppProviders mode={mode} key={mode}>
           <SiteHeader />
-          <ModeBar />
           {mode === "live" && protocolConfig.chainId === 4663 && (
             <div role="note" className="bg-warning-soft px-5 py-2 text-center text-sm text-warning">
               Internal mainnet testing · Real assets at risk · Not approved for public production

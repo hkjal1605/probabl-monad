@@ -1,8 +1,6 @@
 "use client";
-
 import { Badge } from "@conditional-stocks/ui-kit/badge";
 import { Button } from "@conditional-stocks/ui-kit/button";
-import { Card, CardContent } from "@conditional-stocks/ui-kit/card";
 import {
   Table,
   TableBody,
@@ -11,208 +9,200 @@ import {
   TableHeader,
   TableRow,
 } from "@conditional-stocks/ui-kit/table";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Ban, Clock3, LoaderCircle, WalletCards } from "lucide-react";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { LoaderCircle } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
 import { useDemo } from "@/components/providers/DemoProvider";
 import { useWallet } from "@/components/providers/WalletProvider";
-import { protocolConfig } from "@/config/protocol";
-import type { IndexedOrder, MarketView } from "@/lib/api/types";
-import { displayPrice, shortAddress, tokenAmount } from "@/lib/format/display";
-import { orderRecovery, type RecoveryKind, verifyRecoveryResponse } from "@/lib/trading/recovery";
+import { DataError, EmptyState } from "@/components/ui/page";
+import { Segmented } from "@/components/ui/segmented";
+import { useOrderRecovery } from "@/hooks/useOrderRecovery";
+import type { MarketView } from "@/lib/api/types";
+import { displayPrice, formatNumber, shortAddress, tokenAmount } from "@/lib/format/display";
 
-const variant = (status: string) =>
-  status === "open"
-    ? ("positive" as const)
-    : status === "filled"
-      ? ("brand" as const)
-      : ("secondary" as const);
-export function OrdersClient({ markets }: { markets: MarketView[] }) {
-  const wallet = useWallet();
-  const demo = useDemo();
-  const queryClient = useQueryClient();
-  const [canceling, setCanceling] = useState<string | null>(null);
-  const [pendingCancellations, setPendingCancellations] = useState<Set<string>>(() => new Set());
-  const query = useQuery({
-    queryKey: ["wallet-orders", wallet.account],
-    queryFn: async () => {
-      const response = await fetch(`/api/indexer/orders?maker=${wallet.account}`, {
-        cache: "no-store",
-      });
-      if (!response.ok) throw new Error("Order history is unavailable");
-      return response.json() as Promise<{ orders: IndexedOrder[] }>;
-    },
-    enabled: Boolean(wallet.account) && !demo,
-    refetchInterval: 6_000,
-  });
-  useEffect(() => {
-    const openIds = new Set(
-      (query.data?.orders ?? [])
-        .filter((order) => order.status === "open")
-        .map((order) => order.id),
-    );
-    setPendingCancellations((current) => {
-      const next = new Set([...current].filter((orderHash) => openIds.has(orderHash)));
-      return next.size === current.size ? current : next;
-    });
-  }, [query.data?.orders]);
-  const cancel = async (orderHash: string, kind: RecoveryKind = "cancel") => {
-    setCanceling(orderHash);
-    try {
-      if (demo) {
-        demo.dispatch({ type: "cancel", id: orderHash });
-        toast.success("Demo order cancelled. Remaining reservation returned.");
-        return;
-      }
-      const token = wallet.sessionToken ?? (await wallet.authenticate());
-      if (!wallet.account) throw new Error("Connect your wallet");
-      const expected = orderRecovery({
-        orderHash,
-        kind,
-        account: wallet.account,
-        config: protocolConfig,
-      });
-      if (wallet.chainId !== protocolConfig.chainId) await wallet.ensureNetwork();
-      const response = await fetch(
-        `/api/gateway/orders/${kind === "cancel" ? "cancel" : "recovery"}/prepare`,
-        {
-          body: JSON.stringify({ orderHash, kind }),
-          headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-          method: "POST",
-        },
-      );
-      if (!response.ok) {
-        const body = (await response.json()) as { error?: { message?: string } };
-        throw new Error(body.error?.message ?? "Cancellation could not be prepared");
-      }
-      const prepared = (await response.json()) as {
-        transaction: { data: string; to: string; value: string };
-      };
-      const hash = await wallet.sendTransaction(verifyRecoveryResponse(expected, prepared));
-      setPendingCancellations((current) => new Set(current).add(orderHash));
-      toast.success(`Cancellation pending onchain: ${hash.slice(0, 10)}…`);
-      await queryClient.invalidateQueries({ queryKey: ["wallet-orders", wallet.account] });
-    } catch (cause) {
-      toast.error(cause instanceof Error ? cause.message : "Cancellation failed");
-    } finally {
-      setCanceling(null);
-    }
-  };
+export function OrdersClient({
+  markets,
+  marketIds,
+  embedded = false,
+}: {
+  markets: MarketView[];
+  marketIds?: string[];
+  embedded?: boolean;
+}) {
+  const wallet = useWallet(),
+    demo = useDemo(),
+    query = useOrderRecovery();
+  const [view, setView] = useState<"Open orders" | "History" | "All">("Open orders");
   if (!wallet.account)
     return (
-      <div className="mt-10 flex min-h-72 flex-col items-center justify-center rounded-2xl border border-dashed bg-card text-center">
-        <WalletCards className="text-muted-foreground" />
-        <p className="mt-4 font-semibold">Connect to see canonical orders</p>
-        <Button
-          className="mt-5"
-          variant="brand"
-          onClick={() => wallet.connect().catch(() => undefined)}
-        >
+      <EmptyState>
+        <p>Connect to see canonical orders.</p>
+        <Button variant="brand" onClick={() => wallet.connect().catch(() => undefined)}>
           Connect wallet
         </Button>
-      </div>
+      </EmptyState>
     );
-  const orders = demo ? [...demo.state.orders].reverse() : (query.data?.orders ?? []);
+  const orders = [...query.orders].filter(
+    (o) =>
+      (!marketIds || marketIds.includes(o.marketId)) &&
+      (view === "All" || (view === "Open orders" ? o.status === "open" : o.status !== "open")),
+  );
   return (
-    <Card className="mt-10">
-      <CardContent>
-        {orders.length === 0 ? (
-          <p className="py-16 text-center text-sm text-muted-foreground">
-            No indexed orders for this wallet.
-          </p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Market</TableHead>
-                <TableHead>Order</TableHead>
-                <TableHead>Limit</TableHead>
-                <TableHead>Filled / quantity</TableHead>
-                <TableHead>Fees paid</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Hash</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {orders.map((order) => {
-                const market = markets.find((candidate) => candidate.id === order.marketId);
-                const filled = BigInt(order.filled);
-                const expired =
-                  !demo && BigInt(order.expiry) <= BigInt(Math.floor(Date.now() / 1000));
-                const status =
-                  order.status === "open" && filled > 0n ? "partially filled" : order.status;
-                return (
-                  <TableRow key={order.id}>
-                    <TableCell>
-                      <p className="max-w-48 truncate font-medium">
-                        {market?.question ?? shortAddress(order.marketId)}
-                      </p>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={order.branch === 0 ? "yes" : "no"}>
-                        {order.side === 0 ? "Buy" : "Sell"} {order.branch === 0 ? "YES" : "NO"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-mono">
-                      {market
-                        ? `$${displayPrice(order.limitPriceRawX18, market).toFixed(2)}`
-                        : "Units unavailable"}
-                    </TableCell>
-                    <TableCell>
-                      {market
-                        ? `${tokenAmount(filled.toString(), market.baseTokenDecimals).toFixed(3)} / ${tokenAmount(order.quantity, market.baseTokenDecimals).toFixed(3)}`
-                        : "Units unavailable"}
-                    </TableCell>
-                    <TableCell>
-                      {market && order.feesPaid !== undefined
-                        ? `${tokenAmount(order.feesPaid, order.side === 0 ? market.baseTokenDecimals : market.quoteTokenDecimals)} ${order.side === 0 ? market.ticker : "USDG"} ${order.branch === 0 ? "YES" : "NO"} claims`
-                        : "—"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col items-start gap-1">
-                        <Badge variant={variant(order.status)}>{status}</Badge>
-                        {order.confirmation && (
-                          <span className="text-[10px] text-muted-foreground">
-                            {order.confirmation} chain state
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <code className="text-xs">{shortAddress(order.id)}</code>
-                    </TableCell>
-                    <TableCell>
-                      {order.status === "open" && (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => cancel(order.id, expired ? "expired" : "cancel")}
-                          disabled={canceling === order.id || pendingCancellations.has(order.id)}
-                        >
-                          {canceling === order.id ? (
-                            <LoaderCircle className="animate-spin" />
-                          ) : pendingCancellations.has(order.id) ? (
-                            <Clock3 />
-                          ) : (
-                            <Ban />
-                          )}
-                          {pendingCancellations.has(order.id)
-                            ? "Pending chain"
-                            : expired
-                              ? "Release escrow"
-                              : "Cancel"}
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
+    <section className={embedded ? "min-w-0" : "panel"} aria-label="Orders">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3">
+        <span className="text-xs font-medium text-muted-foreground">
+          {orders.length} {view.toLowerCase()}
+        </span>
+        <Segmented
+          label="Order status"
+          value={view}
+          options={["Open orders", "History", "All"]}
+          onChange={setView}
+        />
+      </div>
+      {!demo && (query.data?.truncated || query.data?.openTruncated) && (
+        <p role="status" className="border-b px-5 py-3 text-xs font-medium text-warning">
+          {query.data.openTruncated
+            ? "The open-order limit was reached. This list and reservation totals may be incomplete."
+            : "Showing the most recent order history plus older open orders. Earlier closed orders are not included."}
+        </p>
+      )}
+      {!demo && query.isError ? (
+        <DataError
+          message="Order history is unavailable. Existing orders are not cancelled."
+          retry={() => {
+            void query.refetch();
+          }}
+        />
+      ) : !demo && query.isPending ? (
+        <EmptyState>Reading canonical orders…</EmptyState>
+      ) : !orders.length ? (
+        <EmptyState>
+          {view === "Open orders"
+            ? "No open orders. Your next opportunity is in Markets."
+            : "No closed orders yet."}
+        </EmptyState>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Market</TableHead>
+              <TableHead>Token / side</TableHead>
+              <TableHead>Limit</TableHead>
+              <TableHead>Filled / qty</TableHead>
+              <TableHead>TIF · Funding</TableHead>
+              <TableHead>Reserved / fees</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {orders.map((order) => {
+              const market = markets.find((m) => m.id === order.marketId),
+                partial = BigInt(order.filled) > 0n && BigInt(order.remaining) > 0n;
+              const expired =
+                !demo && BigInt(order.expiry) <= BigInt(Math.floor(Date.now() / 1000));
+              const closed =
+                !demo &&
+                Boolean(
+                  market &&
+                    [
+                      "frozen",
+                      "awaiting-resolution",
+                      "resolved",
+                      "redeemable",
+                      "archived",
+                    ].includes(market.lifecycle),
                 );
-              })}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
+              return (
+                <TableRow key={order.id}>
+                  <TableCell className="max-w-52 whitespace-normal">
+                    <Link href={`/markets/${order.marketId}`} className="line-clamp-2 font-medium">
+                      {market?.question ?? shortAddress(order.marketId)}
+                    </Link>
+                    <code className="mt-1 block text-xs text-muted-foreground" title={order.id}>
+                      {shortAddress(order.id)}
+                    </code>
+                  </TableCell>
+                  <TableCell>
+                    <strong className={order.branch === 0 ? "text-positive" : "text-danger"}>
+                      {market?.ticker ?? "Stock"}-{order.branch === 0 ? "YES" : "NO"}
+                    </strong>
+                    <p
+                      className={`text-xs font-medium ${order.side === 0 ? "text-positive" : "text-danger"}`}
+                    >
+                      {order.side === 0 ? "Buy" : "Sell"}
+                    </p>
+                  </TableCell>
+                  <TableCell className="font-mono">
+                    {market ? formatNumber(displayPrice(order.limitPriceRawX18, market)) : "—"}
+                  </TableCell>
+                  <TableCell className="font-mono">
+                    {market
+                      ? `${formatNumber(tokenAmount(order.filled, market.baseTokenDecimals), 3)} / ${formatNumber(tokenAmount(order.quantity, market.baseTokenDecimals), 3)}`
+                      : "—"}
+                    <div className="mt-2 h-1 rounded-full bg-muted">
+                      <span
+                        className="block h-full rounded-full bg-positive"
+                        style={{
+                          width: `${BigInt(order.quantity) > 0n ? Math.min(100, Number((BigInt(order.filled) * 10000n) / BigInt(order.quantity)) / 100) : 0}%`,
+                        }}
+                      />
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-xs font-medium text-muted-foreground">
+                    {order.tif === 0 ? "GTC" : "IOC"} ·{" "}
+                    {order.fundingKind === 0 ? "Whole" : "Active claim"}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">
+                    {market
+                      ? `${formatNumber(tokenAmount(order.reserved, order.side === 0 ? market.quoteTokenDecimals : market.baseTokenDecimals), 4)} ${order.side === 0 ? "USDG" : market.ticker}`
+                      : "—"}
+                    {order.fundingKind === 1 && `-${order.branch === 0 ? "YES" : "NO"}`}
+                    <p className="mt-1 text-muted-foreground">
+                      Fees:{" "}
+                      {market && order.feesPaid !== undefined
+                        ? `${formatNumber(tokenAmount(order.feesPaid, order.side === 0 ? market.baseTokenDecimals : market.quoteTokenDecimals), 4)} ${order.side === 0 ? market.ticker : "USDG"} claims`
+                        : "—"}
+                    </p>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        partial ? "warning" : order.status === "open" ? "positive" : "secondary"
+                      }
+                    >
+                      {partial ? "Partially filled" : order.status}
+                    </Badge>
+                    {order.confirmation && (
+                      <p className="mt-1 text-xs text-muted-foreground">{order.confirmation}</p>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {order.status === "open" && (
+                      <Button
+                        size="sm"
+                        variant="link"
+                        disabled={query.canceling !== null || query.pending.has(order.id)}
+                        onClick={() =>
+                          query.cancel(order.id, expired ? "expired" : closed ? "closed" : "cancel")
+                        }
+                      >
+                        {query.canceling === order.id && <LoaderCircle className="animate-spin" />}
+                        {query.pending.has(order.id)
+                          ? "Pending chain"
+                          : expired || closed
+                            ? "Release escrow"
+                            : "Cancel"}
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      )}
+    </section>
   );
 }

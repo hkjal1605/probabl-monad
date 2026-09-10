@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { type ReactNode, useState } from "react";
 import type { AppMode } from "@/lib/demo/mode";
 import { ModeProvider } from "./DemoProvider";
+import { UiStateProvider } from "./UiStateProvider";
 import { WalletProvider } from "./WalletProvider";
 
 export function AppProviders({ children, mode }: { children: ReactNode; mode: AppMode }) {
@@ -22,7 +23,7 @@ export function AppProviders({ children, mode }: { children: ReactNode; mode: Ap
         <ModeProvider mode={mode}>
           <WalletProvider>
             <TooltipProvider delayDuration={250}>
-              {children}
+              <UiStateProvider>{children}</UiStateProvider>
               <Toaster richColors position="bottom-right" />
             </TooltipProvider>
           </WalletProvider>

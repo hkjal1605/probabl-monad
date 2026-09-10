@@ -18,7 +18,8 @@ export default function ErrorPage({
       <CircleAlert className="size-8 text-danger" />
       <h1 className="mt-5 text-2xl font-semibold">This view could not be loaded</h1>
       <p className="mt-3 text-sm leading-6 text-muted-foreground">
-        No transaction was sent. Retry the canonical data request when the services are available.
+        Retry when the services are available. If you recently submitted a transaction, check its
+        status in your wallet before submitting again.
       </p>
       <Button className="mt-6" onClick={reset}>
         <RotateCcw />

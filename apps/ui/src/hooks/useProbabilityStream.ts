@@ -1,18 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useDemo } from "@/components/providers/DemoProvider";
 import { expireProbability, parseProbabilityMessage } from "@/lib/api/probability";
 import type { ProbabilityView } from "@/lib/api/types";
 import { logger } from "@/lib/logger";
 
 export function useProbabilityStream(conditionId: string, initial: ProbabilityView) {
+  const demo = useDemo();
+  const enabled = !demo && Boolean(conditionId);
   const [probability, setProbability] = useState(initial);
   const [connection, setConnection] = useState<"disabled" | "connecting" | "live" | "reconnecting">(
     "disabled",
   );
   useEffect(() => {
+    setProbability((previous) =>
+      Date.parse(previous.observedAt ?? "") > Date.parse(initial.observedAt ?? "") &&
+      connection === "live"
+        ? previous
+        : expireProbability(initial),
+    );
+  }, [initial, connection]);
+  useEffect(() => {
+    if (!enabled) return;
     const base = process.env.NEXT_PUBLIC_POLYMARKET_STREAM_URL;
-    setProbability(expireProbability(initial));
     const staleTimer = setInterval(() => setProbability((value) => expireProbability(value)), 1000);
     if (!base) return () => clearInterval(staleTimer);
     let socket: WebSocket | null = null;
@@ -21,9 +32,15 @@ export function useProbabilityStream(conditionId: string, initial: ProbabilityVi
     let attempt = 0;
     const connect = () => {
       setConnection(attempt === 0 ? "connecting" : "reconnecting");
-      socket = new WebSocket(
-        `${base.replace(/\/$/, "")}/v1/polymarket/conditions/${conditionId}/stream`,
-      );
+      try {
+        socket = new WebSocket(
+          `${base.replace(/\/$/, "")}/v1/polymarket/conditions/${encodeURIComponent(conditionId)}/stream`,
+        );
+      } catch {
+        setConnection("disabled");
+        setProbability((value) => ({ ...value, quality: "disconnected", value: null }));
+        return;
+      }
       socket.onopen = () => {
         logger.info("probability.stream.connected", { conditionId });
         attempt = 0;
@@ -56,6 +73,6 @@ export function useProbabilityStream(conditionId: string, initial: ProbabilityVi
       if (timer) clearTimeout(timer);
       socket?.close();
     };
-  }, [conditionId, initial]);
-  return { connection, probability };
+  }, [conditionId, enabled]);
+  return { connection, probability: demo ? initial : probability };
 }

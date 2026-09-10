@@ -28,10 +28,15 @@ export function WalletButton({ compact = false }: { compact?: boolean }) {
           <Button
             variant={wrongNetwork ? "destructive" : "outline"}
             size={compact ? "icon" : "default"}
+            className={compact ? undefined : "px-2 sm:px-4"}
             aria-label="Wallet details"
           >
             <WalletCards />
-            {!compact && (demo ? "Demo wallet" : shortAddress(wallet.account))}
+            {!compact && (
+              <span className="hidden sm:inline">
+                {demo ? "Demo wallet" : shortAddress(wallet.account)}
+              </span>
+            )}
           </Button>
         </DialogTrigger>
         <DialogContent>
@@ -87,6 +92,7 @@ export function WalletButton({ compact = false }: { compact?: boolean }) {
           )}
           {!wallet.sessionToken && (
             <Button
+              disabled={wallet.status === "signing" || wrongNetwork}
               onClick={() =>
                 wallet
                   .authenticate()
@@ -96,7 +102,7 @@ export function WalletButton({ compact = false }: { compact?: boolean }) {
                   )
               }
             >
-              Sign in to trade
+              {wallet.status === "signing" ? "Signing in…" : "Sign in to trade"}
             </Button>
           )}
           <Button variant="ghost" onClick={wallet.disconnect}>
@@ -111,11 +117,14 @@ export function WalletButton({ compact = false }: { compact?: boolean }) {
     <Button
       variant="brand"
       size={compact ? "icon" : "default"}
+      className={compact ? undefined : "px-2 sm:px-4"}
       onClick={() => wallet.connect().catch(() => undefined)}
       aria-label="Connect wallet"
     >
       <WalletCards />
-      {!compact && (demo ? "Connect demo wallet" : "Connect wallet")}
+      {!compact && (
+        <span className="hidden sm:inline">{demo ? "Connect demo wallet" : "Connect wallet"}</span>
+      )}
     </Button>
   );
 }

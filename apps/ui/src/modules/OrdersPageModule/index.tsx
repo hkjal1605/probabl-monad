@@ -1,23 +1,16 @@
-import { DemoPage } from "@/components/demo/DemoPage";
+import { Page, PageHeading } from "@/components/ui/page";
 import { serverApi } from "@/lib/api/server";
 import { isDemoMode } from "@/lib/demo/server";
-import { OrdersClient } from "./components/OrdersClient";
+import { OrdersPageClient } from "./components/OrdersPageClient";
 export async function OrdersPageModule() {
-  if (await isDemoMode()) return <DemoPage page="orders" />;
-  const markets = await serverApi.markets();
+  const markets = (await isDemoMode()) ? [] : await serverApi.markets();
   return (
-    <main className="mx-auto w-full max-w-[1280px] px-5 py-14 sm:px-8">
-      <p className="text-xs font-bold tracking-[0.12em] text-brand-strong uppercase">
-        Orders & fills
-      </p>
-      <h1 className="mt-4 font-display text-5xl font-medium tracking-[-0.06em] sm:text-6xl">
-        Canonical, not optimistic.
-      </h1>
-      <p className="mt-5 max-w-2xl text-lg leading-8 text-muted-foreground">
-        Submitted orders remain pending until OrderOpened is indexed. Cancellations remain pending
-        until the chain confirms them.
-      </p>
-      <OrdersClient markets={markets} />
-    </main>
+    <Page>
+      <PageHeading
+        title="Orders"
+        description="Open orders, fills, and released funds. Updates appear after canonical chain confirmation."
+      />
+      <OrdersPageClient markets={markets} />
+    </Page>
   );
 }
