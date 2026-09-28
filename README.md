@@ -1,76 +1,94 @@
 # probabl
 
-Database deployment: follow the [shared PostgreSQL runbook](./docs/runbooks/shared-postgres.md).
-All services now require the same PostgreSQL database; local embedded stores are unsupported.
-Migration verification and test-coverage progress are tracked in the [implementation record](./docs/architecture/shared-postgres-migration.md).
+Conditional Stocks is a fully collateralized, event-conditional stock-token exchange for EVM chains
+(Base and Robinhood Chain; one stock-token issuer per chain). Every market pairs one stock token with
+the deployment's quote token and one Polymarket condition: traders buy or sell the stock *if YES* or
+*if NO*, and resolution pays each branch's claims exactly (YES 1/0, NO 0/1, INVALID ½/½).
 
-Public UI hosting: use the [Cloudflare Workers deployment runbook](./docs/runbooks/ui-cloudflare-workers.md)
-for `apps/ui`, including build/runtime settings, local runtime checks and deployment commands.
+It is the EVM port of the Solana implementation, with the same product surface: the trading UI,
+admin evidence workflow, delegated one-click trading, testnet faucet, Pyth/Polymarket references and
+an inventory-managing market maker.
 
-Conditional Stocks is a fully collateralized event-conditional Stock Token exchange for Robinhood Chain. See [`CONDITIONAL_STOCKS_IMPLEMENTATION_PLAN.md`](./CONDITIONAL_STOCKS_IMPLEMENTATION_PLAN.md) for the product architecture and [`plans/README.md`](./plans/README.md) for the delivery roadmap.
+## Architecture
 
-Execution now uses [permissionless atomic placement](./docs/architecture/atomic-placement.md): the API selects candidates and the user's wallet opens and settles the order in one transaction. There is no protocol-owned matcher or settlement broadcaster. [Checked execution v2](./docs/architecture/atomic-hardening.md) adds deferred-payout recovery, final-state caps and stale-order cleanup. See the [current hardening report](./audit/2026-09-08/atomic-hardening/REPORT.md) for evidence and limitations.
+```text
+contracts/                 Solidity exchange: ConditionalStocks (trading hot path) + ConditionalStocksAdmin
+                           (governance module behind a delegatecall fallback), one address and ABI
+packages/evm-client        ABI, order packing, atomic planner, transaction builders, delegation,
+                           admin/evidence transactions, and an event-sourced ledger replica
+packages/database          PostgreSQL schema and queries (@conditional-stocks/db)
+packages/market-data       Polymarket normalization, evidence packets and hashing
+packages/shared            Logging, HTTP middleware, read caches, token catalog, spot-price types
+packages/domain            Exact decimal/raw-unit conversions shared by the UIs
+services/indexer           Chain follower (confirmed + finalized replicas, reorgs), projections, SSE
+services/polymarket-ingestor  Display-only Polymarket metadata and probability ingestion
+services/market-maker      Two-branch quoting from Pyth + Polymarket with risk and gas limits
+apps/server                API process: embeds the chain index and serves /v1 (auth, trading,
+                           custody, admin evidence, faucet, reference prices)
+apps/web                   Next.js trading UI (EIP-6963 wallets)
+apps/admin                 Next.js operator console (evidence review, market lifecycle, incidents)
+scripts/evm                Local anvil bootstrap, dev runner, demo seeding and exchange deployment
+```
 
-The current pricing and migration specification is [`raw-unit ratio v2`](./docs/architecture/raw-unit-ratio-v2.md), alongside the core lifecycle architecture in [`protocol-v1.md`](./docs/architecture/protocol-v1.md). Production boundaries and explicit trust assumptions are in [`SECURITY.md`](./SECURITY.md).
+**Ledger.** Deposits credit an internal balance; trading, splits, merges and redemptions move only
+ledger balances, so orders never transfer tokens. Each `(market, branch, owner)` account holds quote
+and base claims. A buy funded with *whole* tokens receives the opposite branch's claim of what it paid,
+so every claim stays backed 1:1.
 
-The [v2 security re-audit and real-token verification report](./audit/2026-09-06/raw-unit-ratio/REPORT.md) records the implemented migration, test evidence and remaining M-02 production blocker.
+**Orders** rest on chain keyed `market << 40 | branch << 32 | seq`. A placement carries a plan built by
+the API from the replica (next sequence, deadline, minimum fill and up to eight makers), is filled
+greedily, and rejects a plan that is stale or would leave a crossed book. `replace` cancels and places
+in one transaction for market makers. Fees carry fractional remainders per order.
 
-For the owner-approved supervised internal mainnet experiment, use the [internal readiness report](./audit/2026-09-07/internal-mainnet-readiness/REPORT.md) and [deployment/environment runbook](./docs/runbooks/internal-mainnet-testing.md). The complete local PostgreSQL/service/browser rehearsal passed; actual hosted infrastructure, archive RPC and funded RH acceptance remain pending. M-02 and the dependency advisories are deferred for this experiment, not resolved or approved for public production.
+**Delegated trading.** A wallet approves the service's trading key once (per-order and lifetime
+quote limits, fee cap, expiry); the API then submits orders for it without a wallet prompt. Retries
+with the same client id never place a second order.
 
-## Toolchain
+**Index.** The API process follows the exchange's logs into an in-memory replica (no database read on
+the trading path), persists finalized events and closed orders in batched transactions, checkpoints,
+reconciles against chain state, and pushes invalidations and wallet images over SSE.
 
-- Bun workspaces and runtime for TypeScript.
-- Hono for the API.
-- Biome for TypeScript/JSON formatting and linting.
-- Foundry for Solidity builds and tests.
-
-Solidity contracts are the necessary exception to the TypeScript-only application-code rule.
+Gas (Foundry, including test harness): resting bid 124k, resting claim-funded ask 119k, market buy
+filling one maker 85k (partial 93k), four makers 139k, eight makers 203k, cancel 34k.
 
 ## Commands
 
 ```bash
 bun install
-bun run dev:api
-bun run dev:ui
-bun run dev:admin-ui
+bun run build:contracts          # forge build, enforces the 24 KB runtime limit
+bun run test                     # Foundry suite + every TypeScript suite (owned local PostgreSQL)
 bun run typecheck
-bun run lint
-bun run test
-bun run build
-bun run generate:bindings
-bun run anvil:indexer
-bun run anvil:indexer:bootstrap
-bun run dev:indexer:anvil
-bun run reconcile:indexer:anvil
-bun run dev:api:anvil
-bun run dev:polymarket:anvil
-bun run e2e:milestone12:anvil
+bun run check                    # Biome, forge fmt/lint, typecheck and all tests
 ```
 
-`bun run check` runs Biome, Forge formatting/lint, TypeScript checks, Bun tests, and the Solidity suite. `bun run build:contracts` also enforces the EVM runtime-size limit. Run `bun run audit:deps` separately because it requires registry network access.
+Local stack on anvil:
 
-## Workspace
-
-```text
-apps/api             Hono API
-apps/ui              Next.js 16 public trading, portfolio, and resolution interface
-apps/admin-ui        Next.js 16 manual operator and evidence interface
-packages/config      Validated runtime configuration
-packages/db          Central schemas, transactional queries and indexer projections
-packages/shared      Browser/backend structured logger and request middleware
-packages/domain      Shared hashes, schemas, and integer math
-packages/gateway     Shared order parsing, validation, funding, and payoff previews
-packages/orderbook   Stateless bounded price/FIFO atomic-plan selection
-packages/market-data Strict Polymarket normalization, YES book, and evidence hashing
-packages/contracts   Non-upgradeable Solidity protocol
-packages/contract-bindings  Reproducibly generated TypeScript ABIs
-packages/ui           Shared design tokens and shadcn-style interface primitives
-services/rh-indexer   Ponder projections, canonical match candidates, reconciliation
-services/polymarket-ingestor Display-only metadata/probability ingestion and alerts
+```bash
+anvil --block-time 1                         # in another terminal
+bun run anvil:bootstrap                      # mock tokens, exchange, funded demo wallets → .local/anvil.env
+POLYMARKET_INTERNAL_TOKEN=<16+ chars> bun run dev   # PostgreSQL, API :3000, UI :3001, admin :3002, ingestor
+bun run seed:markets                         # demo catalogue through the admin evidence flow; funds the maker
 ```
 
-The v1 UI applications are documented in [`docs/architecture/web-admin-ux-v1.md`](./docs/architecture/web-admin-ux-v1.md). KYC/compliance services and automated cross-chain resolution remain intentionally absent from v1; market creation and resolution are manual admin-only workflows.
+Reference prices come from Pyth Hermes, whose price endpoints require an entitled key: set
+`PYTH_HERMES_API_KEY` (and optionally `PYTH_HERMES_URL`) for the API. Without it prices show as
+unavailable and the market maker does not quote.
 
-Database ownership, query functions, log events and verbosity settings are documented in [`database-and-logging.md`](./docs/architecture/database-and-logging.md).
+## Deployment
 
-The contracts are implementation-complete for the documented core milestone, but they are not production-approved until independent audits, Robinhood testnet validation, exact production token verification, and multisig/runbook rehearsals are complete. No unaudited smart-contract system can honestly guarantee zero exploitable defects.
+1. `bun run build:contracts`, then `bun run deploy:exchange` with `CHAIN_ID` (8453, 84532, 4663 or 46630),
+   `RPC_URL`, `DEPLOYER_PRIVATE_KEY`, `QUOTE_TOKEN` and dedicated `ADMIN`, `MARKET_ADMIN`, `GUARDIAN`,
+   `RESOLUTION_ADMIN` addresses (`--mainnet` for Base or Robinhood Chain). The record is written to
+   `deployments/<chainId>.json`.
+2. API (`apps/server`): `CHAIN_ID`, `RPC_URL`, `EXCHANGE_ADDRESS`, `DEPLOYMENT_BLOCK`, `DATABASE_URL`
+   (run `bun run db:migrate` first), `API_AUTH_ORIGINS`, optional `FINALITY_DEPTH`,
+   `TRADING_DELEGATE_ADDRESS`/`TRADING_DELEGATE_PRIVATE_KEY`, `POLYMARKET_INGESTOR_URL`/
+   `POLYMARKET_INTERNAL_TOKEN`, `EVIDENCE_PUBLIC_BASE_URL`, `PYTH_HERMES_API_KEY`, `REDIS_URL`, and
+   `FAUCET_PRIVATE_KEY` (testnets only).
+3. UIs: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_CHAIN_ID`, `NEXT_PUBLIC_CHAIN_NAME`, `NEXT_PUBLIC_RPC_URL`,
+   `NEXT_PUBLIC_EXCHANGE_ADDRESS` (and `API_URL` for the admin's server routes).
+4. Market maker: `MM_*` settings (see `scripts/evm/bootstrap.ts`) with a dedicated wallet; run `--fund`
+   once, then `MM_MODE=live … --execute`.
+
+`ops/ec2` runs the ingestor, the API and (when `.env.market-maker` exists) the market maker under PM2
+behind nginx.

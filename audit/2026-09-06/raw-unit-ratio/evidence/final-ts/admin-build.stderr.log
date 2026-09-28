@@ -1,1 +1,0 @@
-$ bun --filter @conditional-stocks/admin-ui build

@@ -1,0 +1,21 @@
+{
+  "name": "@conditional-stocks/indexer",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./projection": "./src/projection.ts",
+    "./follower": "./src/follower.ts"
+  },
+  "scripts": {
+    "test": "bun test test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@conditional-stocks/db": "workspace:*",
+    "@conditional-stocks/evm-client": "workspace:*",
+    "hono": "4.13.5",
+    "viem": "2.56.3"
+  }
+}

@@ -5,9 +5,19 @@ import { parseEnv } from "node:util";
 
 const root = resolve(import.meta.dir, "../..");
 const secrets = new Set<string>();
-for (const file of [".env", ".env.indexer", ".env.reconciler", ".env.polymarket"]) {
+for (const file of [".env", ".env.market-maker"]) {
+  if (!existsSync(resolve(root, file))) continue;
   const values = parseEnv(readFileSync(resolve(root, file), "utf8"));
-  if (values.POLYMARKET_INTERNAL_TOKEN) secrets.add(values.POLYMARKET_INTERNAL_TOKEN);
+  for (const [name, value] of Object.entries(values))
+    if (value && /PRIVATE_KEY|TOKEN|API_KEY/.test(name)) secrets.add(value);
+  for (const name of ["RPC_URL", "MM_RPC_URL"]) {
+    const endpoint = values[name];
+    if (!endpoint) continue;
+    secrets.add(endpoint);
+    // Also protect provider keys if a third-party logger separates URL components.
+    const key = new URL(endpoint).pathname.split("/").filter(Boolean).at(-1);
+    if (key && key.length >= 16) secrets.add(key);
+  }
   if (values.DATABASE_URL) {
     secrets.add(values.DATABASE_URL);
     const url = new URL(values.DATABASE_URL);
@@ -21,8 +31,9 @@ const redact = (input: string) => {
     output = output.split(secret).join("[REDACTED]");
   return output.replace(/postgres(?:ql)?:\/\/[^\s"']+/gi, "[REDACTED_DATABASE_URL]");
 };
-for (const service of ["indexer", "reconciler", "polymarket", "api"])
+for (const service of ["polymarket", "api", "market-maker"])
   for (const stream of ["out", "error"]) {
+    if (process.argv[2] && process.argv[2] !== service) continue;
     const path = `/home/ubuntu/.pm2/logs/probabl-${service}-${stream}.log`;
     if (!existsSync(path)) continue;
     const content = readFileSync(path);

@@ -1,0 +1,22 @@
+{
+  "name": "@conditional-stocks/evm-client",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./abi": "./src/abi.ts",
+    "./ledger": "./src/ledger.ts",
+    "./evidence": "./src/evidence.ts",
+    "./admin": "./src/admin.ts"
+  },
+  "scripts": {
+    "abi": "bun scripts/abi.ts",
+    "test": "bun test test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@conditional-stocks/market-data": "workspace:*",
+    "viem": "2.56.3"
+  }
+}

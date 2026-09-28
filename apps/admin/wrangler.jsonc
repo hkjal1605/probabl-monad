@@ -1,0 +1,20 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "probabl-admin-ui",
+  "main": ".open-next/worker.js",
+  // Current UTC date supported by the pinned workerd runtime.
+  "compatibility_date": "2026-09-07",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "workers_dev": true,
+  "preview_urls": false,
+  // Keep any service origins configured in the Cloudflare dashboard. Public
+  // Next variables are compiled into the client build from .env.local.
+  "keep_vars": true,
+  "vars": {
+    "API_URL": "https://api.probabl.trade"
+  },
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "probabl-admin-ui" }],
+  "observability": { "enabled": true },
+  "dev": { "ip": "127.0.0.1", "port": 8788 }
+}

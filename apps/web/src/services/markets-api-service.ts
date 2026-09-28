@@ -1,0 +1,302 @@
+import {
+  assertShareUnits,
+  formatPriceRawX18,
+  formatShareAmount,
+  type ShareUnits,
+  tokenDecimals,
+} from "@conditional-stocks/domain";
+import { polymarketImageUrl } from "@conditional-stocks/market-data";
+import { protocolConfig } from "../config/protocol";
+import { marketTokenDisplay } from "../lib/tokens/catalog";
+import type {
+  BaseLiveView,
+  BaseTokenView,
+  BranchBook,
+  MarketLifecycle,
+  MarketView,
+} from "../types/api";
+import { requestJson } from "./api";
+import { API_URL } from "./constants";
+import { expireCachedProbability, parseProbabilityMessage } from "./probability";
+
+const upstreamUrl = (_service: string) => API_URL;
+
+const record = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+const text = (value: unknown, fallback = "") => (typeof value === "string" ? value : fallback);
+const number = (value: unknown): number | null => {
+  if (typeof value !== "string" && typeof value !== "number") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+const lifecycle = (state: unknown): MarketLifecycle =>
+  (
+    [
+      "scheduled",
+      "open",
+      "frozen",
+      "awaiting-resolution",
+      "resolved",
+      "redeemable",
+      "archived",
+    ] as const
+  )[Math.max(0, Number(state) - 1)] ?? "scheduled";
+const isoSeconds = (value: unknown) => {
+  const seconds = number(value);
+  return seconds === null ? new Date(0).toISOString() : new Date(seconds * 1_000).toISOString();
+};
+function metadataProbability(attached: Record<string, unknown>): MarketView["probability"] | null {
+  const snapshot = record(attached.metadata);
+  const raw = record(snapshot.rawPayload);
+  const parseList = (value: unknown): unknown[] => {
+    if (Array.isArray(value)) return value;
+    if (typeof value !== "string") return [];
+    try {
+      const parsed: unknown = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+  const outcomes = parseList(raw.outcomes);
+  const prices = parseList(raw.outcomePrices);
+  const yes = outcomes.findIndex(
+    (outcome) => typeof outcome === "string" && outcome.trim().toLowerCase() === "yes",
+  );
+  const value = number(prices[yes]);
+  if (yes < 0 || value === null || value < 0 || value > 1) return null;
+  const observed = number(snapshot.fetchedAtMs);
+  return {
+    ask: null,
+    bid: null,
+    observedAt: observed === null ? null : new Date(observed).toISOString(),
+    quality: "stale",
+    value,
+  };
+}
+const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
+const DIGITS = /^(0|[1-9][0-9]{0,39})$/;
+const address = (value: unknown, label: string) => {
+  if (typeof value !== "string" || !ADDRESS.test(value))
+    throw new Error(`Invalid ${label} address`);
+  return value;
+};
+const digits = (value: unknown, label: string) => {
+  const raw = typeof value === "number" && Number.isSafeInteger(value) ? String(value) : value;
+  if (typeof raw !== "string" || !DIGITS.test(raw)) throw new Error(`Invalid ${label}`);
+  return raw;
+};
+
+/** The market's base token and its issuer's live state (pause, UI multiplier). */
+export function parseBase(
+  market: Record<string, unknown>,
+): Omit<BaseTokenView, "symbol" | "metadata"> & { symbol: string | null } {
+  const base = record(market.base);
+  const live = record(base.live);
+  const halt = live.halt === null || live.halt === undefined ? null : live.halt;
+  if (
+    typeof live.paused !== "boolean" ||
+    typeof live.tradable !== "boolean" ||
+    typeof live.multiplierValue !== "number" ||
+    !Number.isFinite(live.multiplierValue) ||
+    (halt !== null && halt !== "issuer-paused") ||
+    live.tradable !== (halt === null) ||
+    base.decimals !== market.shareDecimals
+  )
+    throw new Error("Invalid base token state");
+  return {
+    token: address(base.token, "base token"),
+    decimals: tokenDecimals(base.decimals),
+    symbol: typeof base.symbol === "string" && base.symbol ? base.symbol.slice(0, 32) : null,
+    name: typeof base.name === "string" && base.name ? base.name.slice(0, 64) : null,
+    live: {
+      multiplier: digits(live.multiplier, "multiplier"),
+      multiplierValue: live.multiplierValue,
+      paused: live.paused,
+      tradable: live.tradable,
+      halt: halt as BaseLiveView["halt"],
+    },
+  };
+}
+
+/** Aggregate price levels (or full indexed orders) into one branch book. */
+export function aggregateBook(
+  orders: Record<string, unknown>[],
+  branch: number,
+  units: ShareUnits,
+): BranchBook {
+  const side = (value: number) => {
+    const totals = new Map<bigint, bigint>();
+    for (const order of orders) {
+      if (Number(order.branch) !== branch || Number(order.side) !== value) continue;
+      const price = BigInt(text(order.limitPriceRawX18));
+      totals.set(price, (totals.get(price) ?? 0n) + BigInt(text(order.remaining)));
+    }
+    return [...totals]
+      .sort(([a], [b]) => (a === b ? 0 : (a < b ? -1 : 1) * (value === 0 ? -1 : 1)))
+      .map(([price, total]) => ({
+        priceExact: formatPriceRawX18(price, units),
+        price: Number(formatPriceRawX18(price, units)),
+        quantity: Number(formatShareAmount(total, units)),
+      }));
+  };
+  const bids = side(0);
+  const asks = side(1);
+  const bestBid = bids[0]?.price ?? null;
+  const bestAsk = asks[0]?.price ?? null;
+  return {
+    asks,
+    bestAskExact: asks[0]?.priceExact ?? null,
+    bestBidExact: bids[0]?.priceExact ?? null,
+    bestAsk,
+    bestBid,
+    bids,
+    depthUsd: [...bids, ...asks].reduce((total, item) => total + item.price * item.quantity, 0),
+    spread: bestAsk !== null && bestBid !== null ? bestAsk - bestBid : null,
+  };
+}
+
+async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<MarketView[]> {
+  const json = <T>(url: string): Promise<T> =>
+    requestJson<T>(new URL(url).pathname + new URL(url).search, signal ? { signal } : {});
+  // Start the all-books projection with the market list. Once market identities
+  // arrive, their metadata reads can overlap the remaining orderbook transfer.
+  const batchPromise = marketId
+    ? Promise.resolve(null)
+    : json<{
+        books: Record<
+          string,
+          { orders: Record<string, unknown>[]; truncated?: boolean; unavailable?: boolean }
+        >;
+      }>(`${upstreamUrl("indexer")}/orderbooks?view=levels`).catch(() => null);
+  const marketResponse = marketId
+    ? {
+        markets: [
+          await json<Record<string, unknown>>(
+            `${upstreamUrl("indexer")}/markets/${encodeURIComponent(marketId)}`,
+          ),
+        ],
+      }
+    : await json<{ markets: Record<string, unknown>[] }>(`${upstreamUrl("indexer")}/markets`);
+  // Sibling asset markets share one immutable Polymarket condition. Fetch its
+  // metadata/probability once so one event cannot randomly diverge per asset.
+  const attachments = new Map<string, Promise<Record<string, unknown>>>();
+  for (const market of marketResponse.markets) {
+    const condition = text(market.polymarketConditionId).toLowerCase();
+    if (!attachments.has(condition)) {
+      const id = text(market.id);
+      attachments.set(
+        condition,
+        json<Record<string, unknown>>(`${upstreamUrl("api")}/v1/markets/${id}/polymarket`).catch(
+          () => ({}),
+        ),
+      );
+    }
+  }
+  const batch = await batchPromise;
+  return Promise.all(
+    marketResponse.markets.map(async (market): Promise<MarketView> => {
+      assertShareUnits(market);
+      const id = text(market.id);
+      const base = parseBase(market);
+      const quoteToken = address(market.quoteToken, "quote token");
+      const condition = text(market.polymarketConditionId).toLowerCase();
+      const [attached, book] = await Promise.all([
+        attachments.get(condition) ?? Promise.resolve({}),
+        marketId
+          ? json<{ orders: Record<string, unknown>[]; truncated?: boolean; unavailable?: boolean }>(
+              `${upstreamUrl("indexer")}/orderbook/${id}?limit=2000`,
+            ).catch(() => ({ orders: [], unavailable: true, truncated: false }))
+          : Promise.resolve(
+              batch?.books?.[id] ?? { orders: [], unavailable: true, truncated: false },
+            ),
+      ]);
+      const attachedRecord = record(attached);
+      const metadata = record(record(attachedRecord.metadata).normalized);
+      const probability = record(attachedRecord.probability);
+      let probabilityView: MarketView["probability"] = {
+        ask: null,
+        bid: null,
+        observedAt: null,
+        quality: "disconnected",
+        value: null,
+      };
+      try {
+        probabilityView = expireCachedProbability(
+          parseProbabilityMessage(
+            { topic: `probability.${text(market.polymarketConditionId)}`, value: probability },
+            text(market.polymarketConditionId),
+          ),
+        );
+      } catch {
+        /* Unverified reference data must not become a usable probability. */
+      }
+      if (probabilityView.value === null)
+        probabilityView = metadataProbability(attachedRecord) ?? probabilityView;
+      // A capped response cannot establish best prices or total depth on both sides.
+      const usableOrders = book.truncated || book.unavailable ? [] : book.orders;
+      const yes = aggregateBook(usableOrders, 0, market);
+      const no = aggregateBook(usableOrders, 1, market);
+      const yesMid =
+        yes.bestBid !== null && yes.bestAsk !== null && yes.bestAsk >= yes.bestBid
+          ? (yes.bestBid + yes.bestAsk) / 2
+          : null;
+      const noMid =
+        no.bestBid !== null && no.bestAsk !== null && no.bestAsk >= no.bestBid
+          ? (no.bestBid + no.bestAsk) / 2
+          : null;
+      const display = marketTokenDisplay(
+        base,
+        { symbol: text(market.quoteSymbol) || null, name: text(market.quoteName) || null },
+        protocolConfig.chainId,
+        text(record(metadata.asset).symbol, "STOCK"),
+      );
+      return {
+        shareDecimals: market.shareDecimals,
+        quoteTokenDecimals: market.quoteTokenDecimals,
+        protocolVersion: market.protocolVersion,
+        priceFormat: market.priceFormat,
+        baseStep: text(market.baseStep),
+        priceTickRawX18: text(market.priceTickRawX18, "1"),
+        bookQuality: book.unavailable ? "unavailable" : book.truncated ? "truncated" : "available",
+        base: {
+          ...base,
+          symbol: base.symbol ?? display.ticker,
+          ...(display.assetMetadata ? { metadata: display.assetMetadata } : {}),
+        },
+        cutoff: isoSeconds(market.tradingCutoff),
+        createdAt: text(market.createdAt) || null,
+        description: text(
+          metadata.rules,
+          "Immutable conditional stock market with manual resolution.",
+        ),
+        eventImpact: yesMid !== null && noMid !== null ? yesMid - noMid : null,
+        id,
+        lifecycle: lifecycle(market.state),
+        mapping: {
+          conditionId: text(market.polymarketConditionId),
+          noIndex: text(market.polymarketNoIndex),
+          polymarketUrl: text(metadata.canonicalUrl, "https://polymarket.com"),
+          yesIndex: text(market.polymarketYesIndex),
+        },
+        no,
+        ordinaryReference: null,
+        probability: probabilityView,
+        question: text(metadata.question, `Conditional market ${id.slice(0, 8)}`),
+        imageUrl:
+          polymarketImageUrl(metadata) ??
+          polymarketImageUrl(record(attachedRecord.metadata).rawPayload),
+        quoteToken,
+        residual: null,
+        ticker: display.ticker,
+        assetKey: display.assetKey,
+        ...(display.assetMetadata ? { assetMetadata: display.assetMetadata } : {}),
+        ...(display.quoteTokenMetadata ? { quoteTokenMetadata: display.quoteTokenMetadata } : {}),
+        tradingOpen: isoSeconds(market.tradingOpen),
+        yes,
+      };
+    }),
+  );
+}
+
+export const marketsApi = { liveMarkets };

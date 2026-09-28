@@ -3,7 +3,9 @@ import type {
   PolymarketQueries,
   SubscriptionRecord,
 } from "@conditional-stocks/db/polymarket";
+import type { Hex } from "@conditional-stocks/market-data";
 import {
+  isHex32,
   MarketDataError,
   normalizeGammaMarket,
   object,
@@ -12,7 +14,6 @@ import {
   requiredString,
   yesOutcome,
 } from "@conditional-stocks/market-data";
-import { type Hex, isHex } from "viem";
 import type { PolymarketEnvironment } from "./environment.ts";
 import { logger } from "./logger.ts";
 import type { PolymarketSocket, PolymarketSource } from "./source.ts";
@@ -24,7 +25,7 @@ const MAX_PENDING_SOURCE_EVENTS = 1_000;
 const NON_RESOLUTION_STATUSES = new Set(["active", "open", "unresolved"]);
 
 const condition = (value: unknown): Hex => {
-  if (typeof value !== "string" || !isHex(value, { strict: true }) || value.length !== 66) {
+  if (!isHex32(value)) {
     throw new MarketDataError("INVALID_REQUEST", "conditionId must be bytes32");
   }
   return value.toLowerCase() as Hex;

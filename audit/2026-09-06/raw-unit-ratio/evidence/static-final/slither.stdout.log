@@ -1,2 +1,0 @@
---ignore-compile used, if something goes wrong, consider removing the ignore compile flag
-'forge config --json' running

@@ -16,10 +16,15 @@ import { gammaMarket } from "./helpers.ts";
 const preparer: Address = "0x0000000000000000000000000000000000000001";
 const metadata = normalizeGammaMarket(gammaMarket());
 const emptyAttachments: unknown[] = [];
+const deployment = {
+  chainId: "8453",
+  exchange: "0x0000000000000000000000000000000000000099" as Address,
+};
 
 describe("admin evidence packets", () => {
   test("canonicalizes creation packets and preserves exact market orientation", () => {
     const input = {
+      deployment,
       attachments: emptyAttachments,
       config: {
         baseStep: "1000000000000000000",
@@ -46,6 +51,12 @@ describe("admin evidence packets", () => {
     const first = buildCreationEvidence(input);
     const second = buildCreationEvidence({ ...input, config: { ...input.config } });
     expect(first.packetHash).toBe(second.packetHash);
+    expect(() =>
+      buildCreationEvidence({
+        ...input,
+        config: { ...input.config, maxOrderQuantity: "1500000000000000000" },
+      }),
+    ).toThrow("multiple of baseStep");
     expect(first.packet.config).toMatchObject({
       polymarketNoIndex: "2",
       polymarketYesIndex: "1",
@@ -61,9 +72,10 @@ describe("admin evidence packets", () => {
 
   test("rejects wrong Polygon network and conflicting outcome evidence", () => {
     const base = {
+      deployment,
       attachments: [],
-      conditionId: `0x${"34".repeat(32)}`,
-      marketId: `0x${"56".repeat(32)}`,
+      conditionId: "7",
+      marketId: "7",
       metadataRawHash: hashCanonical(gammaMarket()),
       metadataSnapshotId: "snapshot-1",
       officialStatus: "resolved",

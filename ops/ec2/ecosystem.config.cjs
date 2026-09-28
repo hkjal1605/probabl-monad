@@ -1,3 +1,4 @@
+const { existsSync } = require("node:fs");
 const { resolve } = require("node:path");
 
 const root = resolve(__dirname, "../..");
@@ -18,9 +19,6 @@ const common = {
     NODE_ENV: "production",
     TZ: "UTC",
     NO_COLOR: "1",
-    PONDER_TELEMETRY_DISABLED: "true",
-    PONDER_CACHE_BYTES: "268435456",
-    PONDER_MAX_THREADS: "2",
     DO_NOT_TRACK: "1",
   },
 };
@@ -32,29 +30,22 @@ function service(name, entry, memory, extra = []) {
     max_memory_restart: memory,
     args: [
       `--env-file=${resolve(root, ".env")}`,
-      ...(name === "api" ? [] : [`--env-file=${resolve(root, `.env.${name}`)}`]),
+      ...(name === "market-maker" ? [`--env-file=${resolve(root, ".env.market-maker")}`] : []),
       resolve(root, entry),
       ...extra,
     ],
   };
 }
 
-// Orderbook planning and gateway recovery run inside the API. No matcher/relayer,
-// Redis, frontend, or wallet signer belongs in this process list.
+// One API process runs the chain index (live replica, finalized persistence, reconciliation)
+// and the /v1 API. The market maker uses its own dedicated wallet and runs only when
+// .env.market-maker exists.
 module.exports = {
   apps: [
-    service("indexer", "ops/ec2/indexer.ts", "1400M", [
-      "start",
-      "--hostname",
-      "127.0.0.1",
-      "--port",
-      "42069",
-      "--disable-ui",
-      "--log-format",
-      "json",
-    ]),
-    service("reconciler", "services/rh-indexer/scripts/reconcile.ts", "384M", ["watch"]),
     service("polymarket", "services/polymarket-ingestor/src/main.ts", "384M"),
-    service("api", "apps/api/src/index.ts", "512M"),
+    service("api", "apps/server/src/main.ts", "1024M"),
+    ...(existsSync(resolve(root, ".env.market-maker"))
+      ? [service("market-maker", "services/market-maker/src/main.ts", "512M", ["--execute"])]
+      : []),
   ],
 };

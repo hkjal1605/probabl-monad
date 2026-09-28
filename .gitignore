@@ -2,7 +2,6 @@ node_modules/
 .worktrees/
 dist/
 .next/
-.next-rehearsal/
 .next-cloudflare/
 .open-next/
 .wrangler/
@@ -10,21 +9,18 @@ dist/
 .dev.vars.*
 !.dev.vars.example
 .playwright-cli/
-output/playwright/
-output/atomic-tmp/
 .env
 .env.*
 !.env.example
 
-packages/contracts/cache/
-packages/contracts/out/
-packages/contracts/broadcast/
-packages/contracts/lib/
+contracts/cache/
+contracts/out/
 
 .DS_Store
 coverage/
 lcov.info
 .data/
-.ponder/
 global-bundle.pem
 probabl-server-keypair.pem
+
+.local/

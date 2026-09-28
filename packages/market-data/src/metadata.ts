@@ -1,8 +1,8 @@
-import { type Hex, isHex } from "viem";
-
 import {
   decimalInteger,
+  type Hex,
   hashCanonical,
+  isHex32,
   MarketDataError,
   object,
   requiredString,
@@ -21,6 +21,7 @@ export interface NormalizedPolymarketMarket {
   conditionId: Hex;
   endTime: string;
   gammaMarketId: string;
+  imageUrl?: string | null;
   mappingHash: Hex;
   negRisk: false;
   outcomes: [PolymarketOutcome, PolymarketOutcome];
@@ -67,10 +68,26 @@ const optionalString = (value: unknown, name: string): string | null => {
   return requiredString(value, name);
 };
 
+/** Display-only metadata. Invalid artwork must not block market creation. */
+export const polymarketImageUrl = (input: unknown): string | null => {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return null;
+  const raw = input as Record<string, unknown>;
+  for (const value of [raw.imageUrl, raw.image, raw.icon]) {
+    if (typeof value !== "string" || value.length > 2048) continue;
+    try {
+      const url = new URL(value);
+      if (url.protocol === "https:" && !url.username && !url.password) return url.href;
+    } catch {
+      // Fall back to the icon when the full-size image is missing or invalid.
+    }
+  }
+  return null;
+};
+
 export const normalizeGammaMarket = (input: unknown): NormalizedPolymarketMarket => {
   const raw = object(input, "Gamma market");
   const conditionId = requiredString(raw.conditionId, "conditionId", 66).toLowerCase();
-  if (!isHex(conditionId, { strict: true }) || conditionId.length !== 66) {
+  if (!isHex32(conditionId)) {
     throw new MarketDataError("INVALID_METADATA", "conditionId must be bytes32");
   }
   if (raw.negRisk === true) {
@@ -113,6 +130,7 @@ export const normalizeGammaMarket = (input: unknown): NormalizedPolymarketMarket
     conditionId: conditionId as Hex,
     endTime: isoTime(raw.endDate ?? raw.endDateIso, "endDate"),
     gammaMarketId: requiredString(raw.id, "id", 256),
+    imageUrl: polymarketImageUrl(raw),
     mappingHash: hashCanonical(mapping),
     negRisk: false,
     outcomes,

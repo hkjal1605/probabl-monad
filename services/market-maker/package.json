@@ -1,0 +1,17 @@
+{
+  "name": "@conditional-stocks/market-maker",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "bun src/main.ts",
+    "test": "bun test test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@conditional-stocks/evm-client": "workspace:*",
+    "@conditional-stocks/indexer": "workspace:*",
+    "@conditional-stocks/shared": "workspace:*",
+    "viem": "2.56.3"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "@conditional-stocks/contracts",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "forge build --sizes",
+    "test": "forge test",
+    "gas": "forge test --match-contract GasTest --isolate -vvvv",
+    "fmt": "forge fmt"
+  }
+}

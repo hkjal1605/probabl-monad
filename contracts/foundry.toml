@@ -1,0 +1,35 @@
+[profile.default]
+src = "src"
+test = "test"
+script = "script"
+out = "out"
+cache_path = "cache"
+libs = []
+solc_version = "0.8.30"
+# Base (OP Stack) and Robinhood Chain (Arbitrum Orbit) both execute Cancun.
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 20_000
+via_ir = true
+bytecode_hash = "none"
+cbor_metadata = false
+fuzz = { runs = 1024 }
+invariant = { runs = 256, depth = 64, fail_on_revert = false }
+gas_reports = ["ConditionalStocks"]
+
+[profile.ci]
+fuzz = { runs = 10000 }
+invariant = { runs = 1000, depth = 128, fail_on_revert = false }
+
+[fmt]
+line_length = 100
+tab_width = 4
+bracket_spacing = true
+int_types = "long"
+quote_style = "double"
+sort_imports = true
+
+[lint]
+# Timestamps are the specified open/cutoff/expiry gates. Narrowing casts are bit-field
+# extraction from packed calldata/events or follow explicit bounds checks (_u64/_u96/_u128).
+exclude_lints = ["block-timestamp", "unsafe-typecast"]

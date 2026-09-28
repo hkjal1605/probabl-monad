@@ -1,2 +1,0 @@
-$ bun run --workspaces --if-present typecheck
-error: script "typecheck" exited with code 1

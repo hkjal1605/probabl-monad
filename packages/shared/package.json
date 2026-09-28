@@ -5,7 +5,12 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./http": "./src/http.ts"
+    "./http": "./src/http.ts",
+    "./endpoints": "./src/endpoints.ts",
+    "./spot-prices": "./src/spot-prices.ts",
+    "./read-cache": "./src/read-cache.ts",
+    "./redis-cache": "./src/redis-cache.ts",
+    "./token-catalog": "./src/token-catalog.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

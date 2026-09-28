@@ -4,9 +4,10 @@
     "includes": [
       "**",
       "!**/node_modules",
+      "!.worktrees",
+      "!.local",
       "!**/dist",
       "!**/.next",
-      "!**/.next-rehearsal",
       "!**/.next-cloudflare",
       "!**/.open-next",
       "!**/.wrangler",
@@ -14,18 +15,9 @@
       "!coverage",
       "!**/.playwright-cli",
       "!**/out",
-      "!output",
       "!**/cache",
       "!**/broadcast",
-      "!packages/contracts/lib",
-      "!audit/2026-09-06/remediation/evidence",
-      "!audit/2026-09-06/real-token-fork/evidence",
-      "!audit/2026-09-06/raw-unit-ratio/evidence",
-      "!audit/2026-09-07/internal-mainnet-readiness/evidence",
-      "!audit/2026-09-07/indexer-storage/evidence",
-      "!audit/2026-09-08/atomic-placement/real-token-evidence",
-      "!audit/2026-09-06/repro",
-      "!packages/contract-bindings/src/generated.ts"
+      "!packages/evm-client/src/abi.ts"
     ]
   },
   "formatter": {

@@ -2,10 +2,10 @@
 const origin = process.argv[2] ?? "http://127.0.0.1";
 const checks: [string, number[]][] = [
   ["/health", [200]],
-  ["/v1", [200]],
   ["/ready", [200, 503]],
   ["/v1/system/readiness", [200, 503]],
-  ["/markets", [200, 400, 503]],
+  ["/markets", [200, 503]],
+  ["/reconciliation", [200, 503]],
   ["/.env", [404]],
   ["/internal/reconciliation-snapshot", [404]],
   ["/internal/match-candidates", [404]],
@@ -29,20 +29,21 @@ for (const [path, allowed] of checks) {
     }),
   );
 }
-const invalidOrder = await fetch(`${origin}/v1/orders/prepare`, {
+// Mutations require a wallet session.
+const unauthenticated = await fetch(`${origin}/v1/trading/submit`, {
   method: "POST",
   headers: { "content-type": "application/json" },
   body: "{}",
   signal: AbortSignal.timeout(15_000),
 });
-await invalidOrder.body?.cancel();
-failed ||= invalidOrder.status !== 401;
+await unauthenticated.body?.cancel();
+failed ||= unauthenticated.status !== 401;
 console.log(
   JSON.stringify({
-    path: "/v1/orders/prepare",
+    path: "/v1/trading/submit",
     authenticated: false,
-    status: invalidOrder.status,
-    passed: invalidOrder.status === 401,
+    status: unauthenticated.status,
+    passed: unauthenticated.status === 401,
   }),
 );
 const indexedWrite = await fetch(`${origin}/markets`, {

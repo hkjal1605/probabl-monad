@@ -1,8 +1,10 @@
-import { type Address, getAddress, type Hex, isAddress, isHex, keccak256, toBytes } from "viem";
+import { type Address, getAddress, isAddress, keccak256, toBytes } from "viem";
 
 import {
   decimalInteger,
+  type Hex,
   hashCanonical,
+  isHex32,
   MarketDataError,
   object,
   requiredString,
@@ -22,7 +24,14 @@ export interface AttachmentReference {
   uri: string;
 }
 
+/** The one exchange contract (and chain) a packet can authorize transactions for. */
+export interface EvidenceDeployment {
+  chainId: string;
+  exchange: Address;
+}
+
 export interface MarketConfigEvidence {
+  /** Order step in raw base-token units. */
   baseStep: string;
   baseToken: Address;
   maxMarketOpenNotional: string;
@@ -43,6 +52,7 @@ export interface MarketConfigEvidence {
 }
 
 export interface CreationEvidencePacket {
+  deployment: EvidenceDeployment;
   attachments: AttachmentReference[];
   config: MarketConfigEvidence;
   kind: "market-creation";
@@ -61,7 +71,7 @@ export interface CreationEvidencePacket {
   };
   preparedAt: string;
   preparer: Address;
-  schemaVersion: 2;
+  schemaVersion: 5;
   sourceUrls: string[];
 }
 
@@ -72,11 +82,13 @@ export interface PayoutVector {
 }
 
 export interface ResolutionEvidencePacket {
+  deployment: EvidenceDeployment;
   attachments: AttachmentReference[];
   kind: "market-resolution";
   localMarket: {
-    conditionId: Hex;
-    marketId: Hex;
+    /** The local market id (decimal); markets have no separate local condition. */
+    conditionId: string;
+    marketId: string;
     polymarketConditionId: Hex;
     polymarketNoIndex: string;
     polymarketYesIndex: string;
@@ -97,7 +109,7 @@ export interface ResolutionEvidencePacket {
   };
   preparedAt: string;
   preparer: Address;
-  schemaVersion: 1;
+  schemaVersion: 3;
   sourceObservations: Array<{
     observedAt: string;
     payout: PayoutVector;
@@ -120,7 +132,7 @@ const address = (value: unknown, name: string): Address => {
 };
 
 const hex32 = (value: unknown, name: string): Hex => {
-  if (typeof value !== "string" || !isHex(value, { strict: true }) || value.length !== 66) {
+  if (!isHex32(value)) {
     throw new MarketDataError("INVALID_EVIDENCE", `${name} must be bytes32`);
   }
   return value.toLowerCase() as Hex;
@@ -221,6 +233,13 @@ const parseConfig = (
   if (config.baseToken === config.quoteToken) {
     throw new MarketDataError("INVALID_EVIDENCE", "base and quote tokens must differ");
   }
+  if (BigInt(config.maxOrderQuantity) % BigInt(config.baseStep) !== 0n)
+    throw new MarketDataError(
+      "INVALID_EVIDENCE",
+      "maxOrderQuantity must be a multiple of baseStep",
+    );
+  if (new TextEncoder().encode(metadataUri).length > 512)
+    throw new MarketDataError("INVALID_EVIDENCE", "metadataUri exceeds the onchain limit");
   return config;
 };
 
@@ -231,7 +250,23 @@ const sourceUrls = (input: unknown): string[] => {
   return [...new Set(input.map((value, index) => secureUrl(value, `sourceUrls[${index}]`)))];
 };
 
+const marketId = (value: unknown, name: string): string => {
+  const id = decimalInteger(value, name);
+  if (BigInt(id) > 4_294_967_295n)
+    throw new MarketDataError("INVALID_EVIDENCE", `${name} is invalid`);
+  return id;
+};
+
+export const validateDeployment = (value: unknown): EvidenceDeployment => {
+  const raw = object(value, "deployment");
+  return {
+    chainId: decimalInteger(raw.chainId, "deployment.chainId"),
+    exchange: address(raw.exchange, "deployment.exchange"),
+  };
+};
+
 export const buildCreationEvidence = (input: {
+  deployment: EvidenceDeployment;
   attachments: unknown;
   config: unknown;
   metadata: NormalizedPolymarketMarket;
@@ -245,6 +280,7 @@ export const buildCreationEvidence = (input: {
   const no = noOutcome(input.metadata);
   const config = parseConfig(input.config, input.metadata);
   const packet: CreationEvidencePacket = {
+    deployment: validateDeployment(input.deployment),
     attachments: parseAttachments(input.attachments),
     config,
     kind: "market-creation",
@@ -263,13 +299,14 @@ export const buildCreationEvidence = (input: {
     },
     preparedAt: isoTime(input.preparedAt, "preparedAt"),
     preparer: address(input.preparer, "preparer"),
-    schemaVersion: 2,
+    schemaVersion: 5,
     sourceUrls: sourceUrls(input.sourceUrls),
   };
   return { packet, packetHash: hashCanonical(packet) };
 };
 
 export const buildResolutionEvidence = (input: {
+  deployment: EvidenceDeployment;
   attachments: unknown;
   conditionId: unknown;
   marketId: unknown;
@@ -316,11 +353,12 @@ export const buildResolutionEvidence = (input: {
       ? null
       : decimalInteger(value, name, true);
   const packet: ResolutionEvidencePacket = {
+    deployment: validateDeployment(input.deployment),
     attachments: parseAttachments(input.attachments),
     kind: "market-resolution",
     localMarket: {
-      conditionId: hex32(input.conditionId, "conditionId"),
-      marketId: hex32(input.marketId, "marketId"),
+      conditionId: marketId(input.conditionId, "conditionId"),
+      marketId: marketId(input.marketId, "marketId"),
       polymarketConditionId: hex32(input.polymarketConditionId, "polymarketConditionId"),
       polymarketNoIndex: decimalInteger(input.polymarketNoIndex, "polymarketNoIndex"),
       polymarketYesIndex: decimalInteger(input.polymarketYesIndex, "polymarketYesIndex"),
@@ -344,7 +382,7 @@ export const buildResolutionEvidence = (input: {
     },
     preparedAt: isoTime(input.preparedAt, "preparedAt"),
     preparer: address(input.preparer, "preparer"),
-    schemaVersion: 1,
+    schemaVersion: 3,
     sourceObservations: observations,
     sourceReference: secureUrl(input.sourceReference, "sourceReference"),
   };
@@ -356,12 +394,27 @@ export const assertEvidenceIntegrity = <
 >(
   envelope: EvidenceEnvelope<T>,
 ): void => {
-  if (envelope.packet.kind === "market-creation" && envelope.packet.schemaVersion !== 2) {
+  if (
+    (envelope.packet.kind === "market-creation" && envelope.packet.schemaVersion !== 5) ||
+    (envelope.packet.kind === "market-resolution" && envelope.packet.schemaVersion !== 3)
+  ) {
     throw new MarketDataError(
       "INVALID_EVIDENCE",
-      "Legacy creation evidence cannot authorize a v2 raw-unit market",
+      "Unsupported evidence schema cannot authorize a transaction",
       409,
     );
+  }
+  validateDeployment(envelope.packet.deployment);
+  if (envelope.packet.kind === "market-resolution") {
+    payoutVector(envelope.packet.payout);
+    if (envelope.packet.localMarket.conditionId !== envelope.packet.localMarket.marketId)
+      throw new MarketDataError(
+        "INVALID_EVIDENCE",
+        "The local condition must identify the market",
+        409,
+      );
+    if (new TextEncoder().encode(envelope.packet.sourceReference).length > 512)
+      throw new MarketDataError("INVALID_EVIDENCE", "Evidence URI exceeds the onchain limit", 409);
   }
   if (hashCanonical(envelope.packet) !== envelope.packetHash) {
     throw new MarketDataError(

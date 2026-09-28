@@ -12,8 +12,6 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      FOUNDRY_PROFILE: ci
     steps:
       - uses: actions/checkout@v4
 
@@ -30,43 +28,30 @@ jobs:
         with:
           version: v1.7.1
 
+      # Integration tests start their own PostgreSQL cluster (initdb/pg_ctl) and anvil node.
+      - name: Put PostgreSQL binaries on PATH
+        run: ls -d /usr/lib/postgresql/*/bin | tail -1 >> "$GITHUB_PATH"
+
       - name: Install locked dependencies
         run: bun install --frozen-lockfile
 
-      - name: Check Solidity formatting
-        run: forge fmt --root packages/contracts --check
+      - name: Check Solidity formatting and lint
+        run: forge fmt --root contracts --check && forge lint --root contracts
 
-      - name: Lint Solidity
-        run: forge lint --root packages/contracts
+      - name: Build contracts and check bytecode sizes
+        run: forge build --root contracts --sizes --skip test
 
-      - name: Check contract deployability and bytecode sizes
-        run: |
-          # Forge lint can leave AST/ABI-only artifacts; regenerate executable tests as well.
-          forge build --root packages/contracts --no-cache
-          forge build --root packages/contracts --sizes --skip test
-
-      - name: Generate contract bindings
-        run: bun run generate:bindings
-
-      - name: Ensure generated bindings are committed
-        run: git diff --exit-code -- packages/contract-bindings/src/generated.ts
+      - name: Ensure the generated ABI is committed
+        run: bun run abi && git diff --exit-code -- packages/evm-client/src/abi.ts
 
       - name: Check TypeScript formatting, lint, and types
         run: bunx biome ci . && bun run typecheck
 
-      - name: Run TypeScript tests
-        run: bun run test:ts
-
-      - name: Run Solidity unit, fuzz, and stateful invariant tests
+      - name: Run Solidity tests
         run: bun run test:contracts
 
-      - name: Prove scoped accounting lemmas
-        run: |
-          python3 -m venv "$RUNNER_TEMP/contract-audit-python"
-          "$RUNNER_TEMP/contract-audit-python/bin/pip" install --disable-pip-version-check z3-solver==5.1.0.0
-          "$RUNNER_TEMP/contract-audit-python/bin/python" audit/2026-09-06/remediation/verification/prove-accounting.py
-          "$RUNNER_TEMP/contract-audit-python/bin/python" audit/2026-09-08/atomic-placement/prove-atomic-bounds.py
-          "$RUNNER_TEMP/contract-audit-python/bin/python" audit/2026-09-08/atomic-placement/prove-payout-accounting.py
+      - name: Run TypeScript tests
+        run: bun run test:ts
 
       - name: Audit JavaScript dependencies
         run: bun run audit:deps

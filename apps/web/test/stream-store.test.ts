@@ -1,0 +1,77 @@
+import { expect, test } from "bun:test";
+import type { SpotPricesResponse } from "@conditional-stocks/shared/spot-prices";
+import { protocolConfig } from "../src/config/protocol";
+import { fetchSpotPrices } from "../src/modules/MarketDetailPageModule/utils/fetchSpotPrices";
+import { subscribeProbability } from "../src/services/probability-stream";
+import { spotPricesStore } from "../src/stores/useSpotPricesStore";
+
+const TOKEN = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+
+test("an initial spot stream image satisfies concurrent consumers without an extra HTTP read", async () => {
+  const originalFetch = globalThis.fetch,
+    originalEventSource = globalThis.EventSource;
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls++;
+    throw new Error("Unexpected HTTP request");
+  }) as unknown as typeof fetch;
+  globalThis.EventSource = class {} as unknown as typeof EventSource;
+  const key = TOKEN;
+  const data: SpotPricesResponse = {
+    source: "pyth",
+    displayOnly: true,
+    chainId: protocolConfig.chainId,
+    asOf: Math.floor(Date.now() / 1000),
+    prices: [],
+  };
+  spotPricesStore.reset();
+  try {
+    const first = fetchSpotPrices(key),
+      second = fetchSpotPrices(key);
+    spotPricesStore.setData(key, data);
+    await Promise.all([first, second]);
+    expect(calls).toBe(0);
+    expect(spotPricesStore.get(key).data).toEqual(data);
+    expect(spotPricesStore.get(key).loading).toBe(false);
+  } finally {
+    globalThis.fetch = originalFetch;
+    globalThis.EventSource = originalEventSource;
+    spotPricesStore.reset();
+  }
+});
+
+test("an aborted initial stream wait never starts a background HTTP request", async () => {
+  const originalEventSource = globalThis.EventSource;
+  globalThis.EventSource = class {} as unknown as typeof EventSource;
+  try {
+    const pending = fetchSpotPrices(TOKEN);
+    spotPricesStore.reset();
+    await pending;
+    expect(spotPricesStore.get(TOKEN).data).toBeUndefined();
+    expect(spotPricesStore.pending.size).toBe(0);
+  } finally {
+    globalThis.EventSource = originalEventSource;
+    spotPricesStore.reset();
+  }
+});
+
+test("a probability SSE construction failure becomes reconnecting state, not a page exception", () => {
+  const original = globalThis.EventSource;
+  globalThis.EventSource = class {
+    constructor() {
+      throw new Error("offline");
+    }
+  } as unknown as typeof EventSource;
+  const states: string[] = [];
+  try {
+    const close = subscribeProbability(
+      `0x${"a".repeat(64)}`,
+      () => {},
+      (status) => states.push(status),
+    );
+    expect(states).toEqual(["connecting", "reconnecting"]);
+    close();
+  } finally {
+    globalThis.EventSource = original;
+  }
+});

@@ -1,15 +1,27 @@
-import { PROTOCOL_VERSION } from "./types.ts";
-
 export const PRICE_FORMAT = "raw-unit-ratio-x18" as const;
 export const MAX_TOKEN_DECIMALS = 36;
 export const MAX_ORDER_UINT128 = (1n << 128n) - 1n;
 
+/** Protocol v2 market metadata, still accepted by the display helpers. */
+const PROTOCOL_VERSION = 2;
 export interface MarketUnits {
   baseTokenDecimals: number;
   quoteTokenDecimals: number;
   protocolVersion: number;
   priceFormat: typeof PRICE_FORMAT;
 }
+
+/** Protocol v4 (the EVM ledger exchange): quantities are raw base-token units, so the quantity
+ * ("share") decimals are the base token's own; prices are raw quote per raw base unit x 1e18. */
+export const SHARE_PROTOCOL_VERSION = 4;
+export const SHARE_PRICE_FORMAT = PRICE_FORMAT;
+export interface ShareUnits {
+  shareDecimals: number;
+  quoteTokenDecimals: number;
+  protocolVersion: number;
+  priceFormat: typeof PRICE_FORMAT;
+}
+export type AnyMarketUnits = MarketUnits | ShareUnits;
 
 export function tokenDecimals(value: unknown): number {
   if (
@@ -32,6 +44,26 @@ export function assertMarketUnits(value: unknown): asserts value is MarketUnits 
   }
   tokenDecimals(units.baseTokenDecimals);
   tokenDecimals(units.quoteTokenDecimals);
+}
+
+/** Reject anything but v4 raw-unit semantics with verified decimals. */
+export function assertShareUnits(value: unknown): asserts value is ShareUnits {
+  if (!value || typeof value !== "object") throw new TypeError("Market units are required");
+  const units = value as ShareUnits;
+  if (units.protocolVersion !== SHARE_PROTOCOL_VERSION || units.priceFormat !== PRICE_FORMAT)
+    throw new RangeError("Unsupported market price semantics; v4 raw-unit ratio required");
+  tokenDecimals(units.shareDecimals);
+  tokenDecimals(units.quoteTokenDecimals);
+}
+
+/** Decimals of the quantity unit. */
+export function quantityDecimals(units: AnyMarketUnits): number {
+  if ("shareDecimals" in units) {
+    assertShareUnits(units);
+    return units.shareDecimals;
+  }
+  assertMarketUnits(units);
+  return units.baseTokenDecimals;
 }
 
 const pow10 = (exponent: number): bigint => 10n ** BigInt(exponent);
@@ -70,18 +102,25 @@ export const parseTokenAmount = (value: string, decimals: number): bigint =>
 export const formatTokenAmount = (value: bigint, decimals: number): string =>
   formatScaled(value, tokenDecimals(decimals));
 
-const priceExponent = (units: MarketUnits): number => {
-  assertMarketUnits(units);
-  return 18 + units.quoteTokenDecimals - units.baseTokenDecimals;
-};
+/** Human quantity -> raw quantity units. */
+export const parseShareAmount = (value: string, units: AnyMarketUnits): bigint =>
+  parseScaled(value, quantityDecimals(units));
+
+/** Raw quantity units -> exact human quantity. */
+export const formatShareAmount = (value: bigint, units: AnyMarketUnits): string =>
+  formatScaled(value, quantityDecimals(units));
+
+/** Decimal exponent of a price: 18 + quote decimals - quantity decimals. */
+export const priceExponent = (units: AnyMarketUnits): number =>
+  18 + units.quoteTokenDecimals - quantityDecimals(units);
 
 /** human quote/base -> signed raw quote/raw base * 1e18. Reject dust and uint128 overflow. */
-export function parsePriceRawX18(value: string, units: MarketUnits): bigint {
+export function parsePriceRawX18(value: string, units: AnyMarketUnits): bigint {
   const raw = parseScaled(value, priceExponent(units));
   if (raw <= 0n || raw > MAX_ORDER_UINT128)
     throw new RangeError("Price is outside uint128 positive range");
   return raw;
 }
 
-export const formatPriceRawX18 = (value: bigint, units: MarketUnits): string =>
+export const formatPriceRawX18 = (value: bigint, units: AnyMarketUnits): string =>
   formatScaled(value, priceExponent(units));

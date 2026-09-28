@@ -1,0 +1,2 @@
+# Copy to .dev.vars for local Workers preview only (never deployed).
+NEXTJS_ENV=development

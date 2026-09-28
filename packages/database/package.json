@@ -1,0 +1,26 @@
+{
+  "name": "@conditional-stocks/db",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts",
+    "./local": "./src/local.ts",
+    "./postgres-url": "./src/postgres-url.ts",
+    "./polymarket": "./src/polymarket/queries.ts",
+    "./polymarket/testing": "./src/polymarket/testing.ts"
+  },
+  "scripts": {
+    "migrate": "bun scripts/migrate.ts",
+    "test": "bun test test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@conditional-stocks/market-data": "workspace:*",
+    "pg": "8.23.0"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1"
+  }
+}
