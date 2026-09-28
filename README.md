@@ -46,7 +46,11 @@ with the same client id never place a second order.
 
 **Index.** The API process follows the exchange's logs into an in-memory replica (no database read on
 the trading path), persists finalized events and closed orders in batched transactions, checkpoints,
-reconciles against chain state, and pushes invalidations and wallet images over SSE.
+reconciles against chain state, and pushes invalidations and wallet images over SSE. Each poll is one
+header request: `logsBloom` skips blocks without exchange logs, logs are read by block hash, and
+parent-hash links detect reorgs. Backfills use parallel ranged `eth_getLogs` sized to the provider's
+limits, and finalized ranges are re-read so persisted history is exact. Contract reads share one
+Multicall3 call, and the database never holds up the live index.
 
 Gas (Foundry, including test harness): resting bid 124k, resting claim-funded ask 119k, market buy
 filling one maker 85k (partial 93k), four makers 139k, eight makers 203k, cancel 34k.
@@ -80,8 +84,9 @@ unavailable and the market maker does not quote.
    `RPC_URL`, `DEPLOYER_PRIVATE_KEY`, `QUOTE_TOKEN` and dedicated `ADMIN`, `MARKET_ADMIN`, `GUARDIAN`,
    `RESOLUTION_ADMIN` addresses (`--mainnet` for Base or Robinhood Chain). The record is written to
    `deployments/<chainId>.json`.
-2. API (`apps/server`): `CHAIN_ID`, `RPC_URL`, `EXCHANGE_ADDRESS`, `DEPLOYMENT_BLOCK`, `DATABASE_URL`
-   (run `bun run db:migrate` first), `API_AUTH_ORIGINS`, optional `FINALITY_DEPTH`,
+2. API (`apps/server`): `CHAIN_ID`, `RPC_URL` (comma-separated endpoints fail over),
+   `EXCHANGE_ADDRESS`, `DEPLOYMENT_BLOCK`, `DATABASE_URL` (run `bun run db:migrate` first),
+   `API_AUTH_ORIGINS`, optional `POLL_MS` and `FINALITY_DEPTH` (RPCs without the `finalized` tag),
    `TRADING_DELEGATE_ADDRESS`/`TRADING_DELEGATE_PRIVATE_KEY`, `POLYMARKET_INGESTOR_URL`/
    `POLYMARKET_INTERNAL_TOKEN`, `EVIDENCE_PUBLIC_BASE_URL`, `PYTH_HERMES_API_KEY`, `REDIS_URL`, and
    `FAUCET_PRIVATE_KEY` (testnets only).

@@ -8,9 +8,18 @@ import {
   packOrder,
   packPlan,
 } from "@conditional-stocks/evm-client";
-import { serializeState } from "@conditional-stocks/evm-client/ledger";
+import { creditOf, serializeState } from "@conditional-stocks/evm-client/ledger";
 import { Hono } from "hono";
-import { type Address, encodeFunctionData, keccak256, stringToBytes, zeroHash } from "viem";
+import {
+  type Address,
+  createPublicClient,
+  custom,
+  encodeFunctionData,
+  http,
+  keccak256,
+  stringToBytes,
+  zeroHash,
+} from "viem";
 import {
   type Anvil,
   accounts,
@@ -18,6 +27,8 @@ import {
   startAnvil,
   tokenAbi,
 } from "../../../packages/evm-client/test/anvil.ts";
+import { ChainFollower } from "../src/follower.ts";
+import { mayContain } from "../src/rpc.ts";
 import { IndexerService } from "../src/service.ts";
 
 const T0 = 1_800_000_000n;
@@ -109,6 +120,7 @@ beforeAll(async () => {
     chainId: 31337,
     db,
     pollMs: 100,
+    finalityMs: 200,
     checkpointMs: 0,
   });
   await service.start();
@@ -205,6 +217,7 @@ describe("indexer", () => {
       chainId: 31337,
       db,
       pollMs: 100,
+      finalityMs: 200,
     });
     await restarted.start();
     await settle(() => restarted.follower.confirmed.block >= service.follower.confirmed.block);
@@ -213,4 +226,113 @@ describe("indexer", () => {
     expect(strip(restarted.follower.base)).toBe(strip(service.follower.base));
     await restarted.stop();
   }, 60_000);
+
+  test("polls with one header request and reads logs only for blocks that can contain them", async () => {
+    const { exchange, usdc } = protocol;
+    const calls: string[] = [];
+    const inner = http(node.url)({});
+    const follower = new ChainFollower({
+      client: createPublicClient({
+        transport: custom({
+          request: (args) => {
+            calls.push(args.method);
+            return inner.request(args);
+          },
+        }),
+      }),
+      exchange,
+      quote: usdc,
+      deploymentBlock: 1n,
+      domain: "calls",
+      pollMs: 60_000,
+    });
+    await follower.start();
+    follower.stop();
+    const tick = async () => {
+      calls.length = 0;
+      await follower.tick();
+      return [...calls];
+    };
+    expect(await tick()).toEqual(["eth_getBlockByNumber"]);
+    // A block whose only log comes from another contract (init code `LOG0`): its bloom rules
+    // the exchange out.
+    const wallet = node.wallet(0);
+    const receipt = await wallet.waitForTransactionReceipt({
+      hash: await wallet.sendTransaction({
+        data: "0x60006000a000",
+        account: accounts[0]!,
+      } as never),
+    });
+    const block = await node.publicClient.getBlock({ blockHash: receipt.blockHash });
+    expect(mayContain(block.logsBloom, receipt.contractAddress!)).toBe(true);
+    expect(mayContain(block.logsBloom, exchange)).toBe(false);
+    expect(await tick()).toEqual(["eth_getBlockByNumber"]);
+    const before = creditOf(follower.confirmed, alice, usdc);
+    await send(1, tx.withdraw(exchange, usdc, 7n, alice));
+    expect(await tick()).toEqual(["eth_getBlockByNumber", "eth_getLogs"]);
+    expect(creditOf(follower.confirmed, alice, usdc)).toBe(before - 7n);
+  }, 30_000);
+
+  test("rebuilds the tip when a reorg removes an applied block", async () => {
+    const { exchange, usdc } = protocol;
+    const follower = new ChainFollower({
+      client: node.publicClient,
+      exchange,
+      quote: usdc,
+      deploymentBlock: 1n,
+      domain: "reorg",
+      pollMs: 60_000,
+    });
+    await follower.start();
+    follower.stop();
+    const before = creditOf(follower.confirmed, alice, usdc);
+    const snapshot = await node.client.snapshot();
+    await send(1, tx.withdraw(exchange, usdc, 5n, alice));
+    await follower.tick();
+    expect(creditOf(follower.confirmed, alice, usdc)).toBe(before - 5n);
+    await node.client.revert({ id: snapshot });
+    await node.client.mine({ blocks: 3 });
+    await follower.tick();
+    expect(creditOf(follower.confirmed, alice, usdc)).toBe(before);
+    expect(follower.confirmed.block).toBe(await node.publicClient.getBlockNumber());
+  }, 30_000);
+
+  test("repairs the tip from the finalized range when an endpoint dropped its logs", async () => {
+    const { exchange, usdc } = protocol;
+    const inner = http(node.url)({});
+    const follower = new ChainFollower({
+      // Block-hash log queries answer [] (a lagging endpoint); ranged queries are served.
+      client: createPublicClient({
+        transport: custom({
+          request: (args) =>
+            args.method === "eth_getLogs" &&
+            (args.params as [{ blockHash?: string }])[0].blockHash !== undefined
+              ? Promise.resolve([])
+              : inner.request(args),
+        }),
+      }),
+      exchange,
+      quote: usdc,
+      deploymentBlock: 1n,
+      domain: "repair",
+      pollMs: 60_000,
+      finalityMs: 1,
+    });
+    await follower.start();
+    follower.stop();
+    const before = creditOf(follower.confirmed, alice, usdc);
+    await send(1, tx.withdraw(exchange, usdc, 3n, alice));
+    await follower.tick();
+    expect(creditOf(follower.confirmed, alice, usdc)).toBe(before);
+    // The tip moves past the block; once it is final, the ranged re-read restores the event.
+    await node.client.mine({ blocks: 10 });
+    await follower.tick();
+    expect(creditOf(follower.confirmed, alice, usdc)).toBe(before);
+    await node.client.mine({ blocks: 63 });
+    await follower.tick();
+    // The tip was past the finalized block: the re-read differed from what it had applied.
+    expect(follower.base.block).toBeLessThan(follower.confirmed.block);
+    expect(creditOf(follower.base, alice, usdc)).toBe(before - 3n);
+    expect(creditOf(follower.confirmed, alice, usdc)).toBe(before - 3n);
+  }, 30_000);
 });

@@ -10,14 +10,13 @@ for (const file of [".env", ".env.market-maker"]) {
   const values = parseEnv(readFileSync(resolve(root, file), "utf8"));
   for (const [name, value] of Object.entries(values))
     if (value && /PRIVATE_KEY|TOKEN|API_KEY/.test(name)) secrets.add(value);
-  for (const name of ["RPC_URL", "MM_RPC_URL"]) {
-    const endpoint = values[name];
-    if (!endpoint) continue;
-    secrets.add(endpoint);
-    // Also protect provider keys if a third-party logger separates URL components.
-    const key = new URL(endpoint).pathname.split("/").filter(Boolean).at(-1);
-    if (key && key.length >= 16) secrets.add(key);
-  }
+  for (const name of ["RPC_URL", "MM_RPC_URL"])
+    for (const endpoint of (values[name] ?? "").split(",").filter(Boolean)) {
+      secrets.add(endpoint);
+      // Also protect provider keys if a third-party logger separates URL components.
+      const key = new URL(endpoint.trim()).pathname.split("/").filter(Boolean).at(-1);
+      if (key && key.length >= 16) secrets.add(key);
+    }
   if (values.DATABASE_URL) {
     secrets.add(values.DATABASE_URL);
     const url = new URL(values.DATABASE_URL);

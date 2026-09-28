@@ -10,7 +10,7 @@ import { RedisCache } from "@conditional-stocks/shared/redis-cache";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
-import { createPublicClient, defineChain, getAddress, http } from "viem";
+import { createPublicClient, defineChain, fallback, getAddress, http } from "viem";
 import { mountAdmin } from "./admin/routes.ts";
 import { mountAuthentication } from "./auth/routes.ts";
 import { browserCors } from "./common/browser-cors.ts";
@@ -30,20 +30,32 @@ const required = (name: string) => {
   return value;
 };
 const chainId = Number(required("CHAIN_ID"));
-const rpcUrl = required("RPC_URL");
+// Comma-separated endpoints: requests fail over to the next one, so no single provider is a
+// point of failure.
+const rpcUrls = required("RPC_URL")
+  .split(",")
+  .map((url) => url.trim())
+  .filter(Boolean);
 const exchange = getAddress(required("EXCHANGE_ADDRESS"));
 const chain = defineChain({
   id: chainId,
   name: `chain-${chainId}`,
   nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-  rpcUrls: { default: { http: [rpcUrl] } },
+  rpcUrls: { default: { http: rpcUrls } },
 });
+const transports = rpcUrls.map((url) =>
+  http(url, { batch: { batchSize: 100, wait: 5 }, retryCount: 2, timeout: 15_000 }),
+);
 const client = createPublicClient({
   chain,
-  transport: http(rpcUrl, { batch: { wait: 5 }, retryCount: 2, timeout: 15_000 }),
+  // Concurrent contract reads share one Multicall3 eth_call (deployless: works on any chain).
+  batch: { multicall: { deployless: true, batchSize: 16_384, wait: 5 } },
+  transport: transports.length > 1 ? fallback(transports) : transports[0]!,
 });
-if ((await client.getChainId()) !== chainId)
-  throw new Error("RPC_URL serves a different chain than CHAIN_ID");
+for (const transport of transports) {
+  const id = await createPublicClient({ transport }).getChainId();
+  if (id !== chainId) throw new Error("An RPC_URL endpoint serves a different chain than CHAIN_ID");
+}
 const quote = await client.readContract({
   address: exchange,
   abi: conditionalStocksAbi,

@@ -41,6 +41,7 @@ export interface IndexerOptions {
   chainId: number;
   db: Database;
   pollMs?: number;
+  finalityMs?: number;
   logRange?: bigint;
   finalityDepth?: bigint;
   /** Minimum interval between checkpoints of the finalized replica. */
@@ -62,8 +63,10 @@ export class IndexerService {
   persistError: string | null = null;
   private tail: TailTrade[] = [];
   private lastCheckpoint = 0;
-  /** Finalized batches not yet written (retried idempotently before newer ones). */
-  private queue: FinalizedBatch[] = [];
+  /** Finalized batches not yet written, in order (retried idempotently until they succeed). */
+  private queue: (FinalizedBatch & { block: bigint })[] = [];
+  private writing: Promise<void> | undefined;
+  private stopped = false;
   private timers: ReturnType<typeof setInterval>[] = [];
 
   constructor(readonly options: IndexerOptions) {
@@ -77,6 +80,7 @@ export class IndexerService {
       domain: this.domain,
       db: options.db,
       ...(options.pollMs ? { pollMs: options.pollMs } : {}),
+      ...(options.finalityMs ? { finalityMs: options.finalityMs } : {}),
       ...(options.logRange ? { logRange: options.logRange } : {}),
       ...(options.finalityDepth !== undefined ? { finalityDepth: options.finalityDepth } : {}),
       onCommit: (notice) => this.onCommit(notice),
@@ -102,6 +106,9 @@ export class IndexerService {
     for (const timer of this.timers) clearInterval(timer);
     this.follower.stop();
     await this.follower.drain();
+    this.stopped = true;
+    // Give queued finalized batches a bounded chance to land; the next start replays the rest.
+    await Promise.race([this.writing, new Promise((resolve) => setTimeout(resolve, 10_000))]);
   }
 
   /** Confirmed replica for trading reads; throws while the chain stream is unhealthy. */
@@ -120,6 +127,8 @@ export class IndexerService {
   }
 
   private onCommit(notice: CommitNotice) {
+    if (notice.rebuilt)
+      this.tail = this.tail.filter((t) => t.event.block <= this.follower.base.block);
     for (const event of notice.events)
       if (event.name === "Trade")
         this.tail.push({ event, trade: notice.trades.get(`${event.block}:${event.logIndex}`)! });
@@ -127,8 +136,13 @@ export class IndexerService {
     this.stream.publish(updateOf(notice.block, notice.changes));
   }
 
-  private async persist(notice: FinalizedNotice) {
+  /** Queues a finalized batch without waiting for the database: a slow or unavailable database
+   * never holds up the live index. The checkpoint is serialized now, matching `notice.block`. */
+  private persist(notice: FinalizedNotice) {
+    const due = Date.now() - this.lastCheckpoint >= (this.options.checkpointMs ?? 300_000);
+    if (due) this.lastCheckpoint = Date.now();
     this.queue.push({
+      block: notice.block,
       events: notice.events.map((e) =>
         storedFromDecoded(e, notice.trades.get(`${e.block}:${e.logIndex}`)),
       ),
@@ -139,34 +153,38 @@ export class IndexerService {
         updated_block: o.updatedBlock.toString(),
         data: orderView(o, notice.base.markets.get(o.market)!, "finalized"),
       })),
+      ...(due
+        ? {
+            checkpoint: {
+              block: notice.block.toString(),
+              hash: notice.hash,
+              state: serializeState(notice.base),
+            },
+          }
+        : {}),
     });
-    try {
-      while (this.queue.length) {
-        const batch = this.queue[0]!;
-        const last = this.queue.length === 1;
-        const due =
-          last && Date.now() - this.lastCheckpoint >= (this.options.checkpointMs ?? 300_000);
-        await this.options.db.persistFinalized(this.domain, {
-          ...batch,
-          ...(due
-            ? {
-                checkpoint: {
-                  block: notice.block.toString(),
-                  hash: notice.hash,
-                  state: serializeState(notice.base),
-                },
-              }
-            : {}),
-        });
-        if (due) this.lastCheckpoint = Date.now();
+    this.writing ??= this.write().finally(() => {
+      this.writing = undefined;
+    });
+  }
+
+  private async write() {
+    let delay = 500;
+    while (this.queue.length) {
+      const { block, ...batch } = this.queue[0]!;
+      try {
+        await this.options.db.persistFinalized(this.domain, batch);
         this.queue.shift();
+        this.tail = this.tail.filter((t) => t.event.block > block);
+        this.persistError = null;
+        delay = 500;
+      } catch (error) {
+        this.persistError = error instanceof Error ? error.message : String(error);
+        this.options.onError?.(error);
+        if (this.stopped) return;
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        delay = Math.min(delay * 2, 30_000);
       }
-      this.tail = this.tail.filter((t) => t.event.block > notice.block);
-      this.persistError = null;
-    } catch (error) {
-      this.persistError = error instanceof Error ? error.message : String(error);
-      if (this.queue.length > 10_000) throw new Error("Finalized persistence backlog exceeded");
-      this.options.onError?.(error);
     }
   }
 
