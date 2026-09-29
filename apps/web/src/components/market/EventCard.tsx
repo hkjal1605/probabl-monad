@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { marketPath } from "@/lib/markets/identity";
 import { currentSpotUsd, marketCategory } from "@/lib/markets/presentation";
 import type { MarketView } from "@/types/api";
 import { OutcomePrice } from "./OutcomePrice";
@@ -42,7 +43,7 @@ export function EventCard({ markets }: { markets: MarketView[] }) {
         </Avatar>
         <div className="min-w-0 flex-1">
           <CardTitle role="heading" aria-level={2}>
-            <Link href={`/markets/${market.id}`}>{market.question}</Link>
+            <Link href={marketPath(market)}>{market.question}</Link>
           </CardTitle>
         </div>
         <ProbabilityGauge
@@ -67,7 +68,7 @@ export function EventCard({ markets }: { markets: MarketView[] }) {
                 <TableRow key={asset.id} className="relative border-0">
                   <TableCell className="w-px px-2">
                     <Link
-                      href={`/markets/${asset.id}`}
+                      href={marketPath(asset)}
                       className="after:absolute after:inset-0"
                       aria-label={`Open ${asset.ticker} market: ${asset.question}`}
                     >

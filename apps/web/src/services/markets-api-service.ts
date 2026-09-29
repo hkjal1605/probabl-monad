@@ -6,7 +6,6 @@ import {
   tokenDecimals,
 } from "@conditional-stocks/domain";
 import { polymarketImageUrl } from "@conditional-stocks/market-data";
-import { protocolConfig } from "../config/protocol";
 import { marketTokenDisplay } from "../lib/tokens/catalog";
 import type {
   BaseLiveView,
@@ -14,6 +13,7 @@ import type {
   BranchBook,
   MarketLifecycle,
   MarketView,
+  VenueView,
 } from "../types/api";
 import { requestJson } from "./api";
 import { API_URL } from "./constants";
@@ -86,6 +86,19 @@ const digits = (value: unknown, label: string) => {
   if (typeof raw !== "string" || !DIGITS.test(raw)) throw new Error(`Invalid ${label}`);
   return raw;
 };
+
+const PUBLIC_ID = /^[0-9a-f]{16}$/;
+/** Where a market trades: its deployment and on-chain market id. */
+export function parseVenue(value: unknown): VenueView {
+  const venue = record(value);
+  const chainId = Number(venue.chainId);
+  if (!Number.isSafeInteger(chainId) || chainId <= 0) throw new Error("Invalid market venue");
+  return {
+    chainId,
+    exchange: address(venue.exchange, "venue exchange"),
+    marketId: digits(venue.marketId, "venue market id"),
+  };
+}
 
 /** The market's base token and its issuer's live state (pause, UI multiplier). */
 export function parseBase(
@@ -198,6 +211,8 @@ async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<Mar
     marketResponse.markets.map(async (market): Promise<MarketView> => {
       assertShareUnits(market);
       const id = text(market.id);
+      if (!PUBLIC_ID.test(id)) throw new Error("Invalid market id");
+      const venue = parseVenue(market.venue);
       const base = parseBase(market);
       const quoteToken = address(market.quoteToken, "quote token");
       const condition = text(market.polymarketConditionId).toLowerCase();
@@ -248,7 +263,7 @@ async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<Mar
       const display = marketTokenDisplay(
         base,
         { symbol: text(market.quoteSymbol) || null, name: text(market.quoteName) || null },
-        protocolConfig.chainId,
+        venue.chainId,
         text(record(metadata.asset).symbol, "STOCK"),
       );
       return {
@@ -272,6 +287,9 @@ async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<Mar
         ),
         eventImpact: yesMid !== null && noMid !== null ? yesMid - noMid : null,
         id,
+        slug: text(market.slug, id),
+        underlying: typeof market.underlying === "string" ? market.underlying : null,
+        venue,
         lifecycle: lifecycle(market.state),
         mapping: {
           conditionId: text(market.polymarketConditionId),

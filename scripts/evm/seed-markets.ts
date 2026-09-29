@@ -5,7 +5,7 @@
  *
  * Requires the dev stack (scripts/evm/dev.ts) with the Polymarket ingestor enabled. */
 import { resolve } from "node:path";
-import { conditionalStocksAbi } from "@conditional-stocks/evm-client";
+import { conditionalStocksAbi, underlyingId } from "@conditional-stocks/evm-client";
 import {
   type AdminPreview,
   type AdminTransaction,
@@ -13,7 +13,15 @@ import {
   lifecycleTransaction,
   type PacketEnvelope,
 } from "@conditional-stocks/evm-client/admin";
-import { createPublicClient, createWalletClient, type Hex, http, parseEventLogs } from "viem";
+import { catalogUnderlying } from "@conditional-stocks/shared/token-catalog";
+import {
+  createPublicClient,
+  createWalletClient,
+  erc20Abi,
+  type Hex,
+  http,
+  parseEventLogs,
+} from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { foundry } from "viem/chains";
 import { DEMO_MARKET_SEED, validateMarketSeed } from "./seed-policy.ts";
@@ -157,7 +165,7 @@ for (const event of DEMO_MARKET_SEED) {
           token,
         );
         // Sign only what this script builds from the approved evidence and the live chain.
-        const [[marketAdmin, , resolutionAdmin], count, pool] = await Promise.all([
+        const [[marketAdmin, , resolutionAdmin], count, pool, symbol] = await Promise.all([
           client.readContract({
             address: deployment.exchange,
             abi: conditionalStocksAbi,
@@ -174,7 +182,9 @@ for (const event of DEMO_MARKET_SEED) {
             functionName: "pool",
             args: [base],
           }),
+          client.readContract({ address: base, abi: erc20Abi, functionName: "symbol" }),
         ]);
+        const underlying = catalogUnderlying(symbol);
         const { transactions } = evidenceTransactions(view.envelope, "create-market", {
           chainId: foundry.id,
           exchange: deployment.exchange,
@@ -182,6 +192,7 @@ for (const event of DEMO_MARKET_SEED) {
           resolutionAdmin,
           nextMarketId: count + 1,
           basePoolListed: () => pool.listed,
+          baseUnderlying: () => (underlying ? underlyingId(underlying) : null),
         });
         const remote = [...preview.prerequisites, preview];
         if (

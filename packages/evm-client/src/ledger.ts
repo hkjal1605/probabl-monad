@@ -6,7 +6,7 @@
  * returns what fills or an immediate-or-cancel release do not use at the end of the transaction;
  * after each transaction every balance equals the contract's. Reconciliation compares a sample of
  * on-chain storage with this replica and fails closed on any difference. */
-import { type Address, decodeEventLog, getAddress, type Hex, type Log } from "viem";
+import { type Address, decodeEventLog, getAddress, type Hex, type Log, zeroHash } from "viem";
 import { conditionalStocksAbi } from "./abi.ts";
 import type { GrantState } from "./delegation.ts";
 import { AWAITING, quote, REDEEMABLE, reservation, U32_MAX, unpackOrder, WAD } from "./protocol.ts";
@@ -100,7 +100,8 @@ export interface ChainState {
   timestamp: bigint;
   quote: Address;
   config: Config;
-  pools: Map<Address, { liability: bigint; decimals: number }>;
+  /** `underlying` is the bytes32 asset id (zero for the quote token). */
+  pools: Map<Address, { liability: bigint; decimals: number; underlying: Hex }>;
   /** Key `${owner}:${token}`. */
   credits: Map<string, bigint>;
   markets: Map<number, MarketState>;
@@ -287,7 +288,16 @@ export function applyTransaction(
         for (const id of s.markets.keys()) changes.markets.add(id);
         break;
       case "PoolListed":
-        s.pools.set(addr(a.token), { liability: 0n, decimals: num(a.decimals) });
+        s.pools.set(addr(a.token), {
+          liability: 0n,
+          decimals: num(a.decimals),
+          underlying: a.underlying as Hex,
+        });
+        break;
+      // Governance only: an extension's own events are unknown here and stop the index.
+      case "ExtensionProposed":
+      case "ExtensionActivated":
+      case "ExtensionCancelled":
         break;
       case "Deposited": {
         const token = addr(a.token);
@@ -672,4 +682,9 @@ const reviver = (_key: string, value: unknown) => {
   return value;
 };
 export const serializeState = (s: ChainState) => JSON.stringify(s, replacer);
-export const deserializeState = (text: string) => JSON.parse(text, reviver) as ChainState;
+export function deserializeState(text: string) {
+  const s = JSON.parse(text, reviver) as ChainState;
+  // Checkpoints written before pools carried an underlying.
+  for (const pool of s.pools.values()) pool.underlying ??= zeroHash;
+  return s;
+}

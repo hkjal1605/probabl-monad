@@ -6,6 +6,7 @@ import { formatSpotUsd } from "@/components/market/SpotReference";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCompactUsd, formatNumber, formatProbability } from "@/lib/format/display";
+import { marketPath } from "@/lib/markets/identity";
 import {
   currentSpotUsd,
   type MarketCategory,
@@ -49,7 +50,7 @@ function FeaturedAsset({ market }: { market: MarketView }) {
   }));
   return (
     <Link
-      href={`/markets/${market.id}`}
+      href={marketPath(market)}
       className="group flex min-h-24 flex-col justify-between rounded-xl bg-background/75 p-4 transition-colors hover:bg-background"
       aria-label={`Trade ${market.ticker} for ${market.question}`}
     >
@@ -143,11 +144,11 @@ function FeaturedMarketCard({ selection }: { selection: BannerSelection }) {
             </span>
           </div>
           <div className="mt-7 flex flex-wrap items-center gap-4">
-            <Button size="lg" render={<Link href={`/markets/${market.id}`} />} nativeButton={false}>
+            <Button size="lg" render={<Link href={marketPath(market)} />} nativeButton={false}>
               Trade {market.ticker} if YES
             </Button>
             <Link
-              href={`/markets/${market.id}`}
+              href={marketPath(market)}
               className="text-sm font-medium text-white underline decoration-white/40 underline-offset-4"
             >
               All {markets.length} assets

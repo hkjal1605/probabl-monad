@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineTabsList, LineTabsTrigger } from "@/components/ui/line-tabs";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { marketPath } from "@/lib/markets/identity";
 import { OrdersClient } from "@/modules/OrdersPageModule/components/OrdersClient";
 import { positionHasClaims } from "@/services/index-stream";
 import type { IndexedOrder, MarketView, PositionView } from "@/types/api";
@@ -41,7 +42,7 @@ export function PortfolioEventCard({
           <Button
             variant="secondary"
             size="sm"
-            render={<Link href={`/markets/${tradeMarket.id}`} />}
+            render={<Link href={marketPath(tradeMarket)} />}
             nativeButton={false}
           >
             Trade →

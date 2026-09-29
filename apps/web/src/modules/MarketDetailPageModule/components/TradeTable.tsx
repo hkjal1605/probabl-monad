@@ -7,7 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { protocolConfig } from "@/config/protocol";
+import { explorerFor } from "@/config/protocol";
 import {
   displayPrice,
   formatNumber,
@@ -17,6 +17,7 @@ import {
 } from "@/lib/format/display";
 import type { MarketView, TradeView } from "@/types/api";
 export function TradeTable({ market, trades }: { market: MarketView; trades: TradeView[] }) {
+  const explorer = explorerFor(market.venue);
   if (!trades.length) return <EmptyState>No indexed fills for this market yet.</EmptyState>;
   return (
     <Table>
@@ -45,9 +46,9 @@ export function TradeTable({ market, trades }: { market: MarketView; trades: Tra
               {formatTime(new Date(Number(trade.blockTimestamp) * 1000).toISOString())}
             </TableCell>
             <TableCell>
-              {protocolConfig.explorerUrl ? (
+              {explorer ? (
                 <a
-                  href={`${protocolConfig.explorerUrl.replace(/\/$/, "")}/tx/${trade.transactionHash}`}
+                  href={`${explorer.replace(/\/$/, "")}/tx/${trade.transactionHash}`}
                   className="font-mono text-xs text-muted-foreground"
                   target="_blank"
                   rel="noopener noreferrer"

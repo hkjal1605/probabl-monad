@@ -2,7 +2,7 @@ import type { ChainState, Touched } from "@conditional-stocks/evm-client/ledger"
 import type { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { getAddress } from "viem";
-import { readiness } from "./projection.ts";
+import { marketIdentity, publicMarkets, readiness } from "./projection.ts";
 
 export interface IndexUpdate {
   block: string;
@@ -11,10 +11,15 @@ export interface IndexUpdate {
   owners: string[];
 }
 
-export const updateOf = (block: bigint, changes: Touched): IndexUpdate => ({
+/** `marketId` maps on-chain market ids to the public ids clients key markets by. */
+export const updateOf = (
+  block: bigint,
+  changes: Touched,
+  marketId: (id: number) => string = String,
+): IndexUpdate => ({
   block: block.toString(),
   observedAt: Date.now(),
-  markets: [...changes.markets].map(String),
+  markets: [...new Set([...changes.markets].map(marketId))],
   owners: [...changes.owners],
 });
 
@@ -80,8 +85,8 @@ export function createIndexStream() {
                   }),
                   wallet: image && image.observedAt !== walletStamp ? image : undefined,
                   readiness: Object.fromEntries(
-                    [...s.markets.values()].map((m) => [
-                      String(m.id),
+                    [...publicMarkets(s).values()].map((m) => [
+                      marketIdentity(s, m).id,
                       { ...readiness(s, m), checkedAt: Date.now(), chain: "evm" },
                     ]),
                   ),

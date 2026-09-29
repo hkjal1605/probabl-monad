@@ -13,6 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
+import { marketPath } from "@/lib/markets/identity";
 import { MarketSearchResults } from "./components/MarketSearchResults";
 import { useSearchMarkets } from "./hooks/useSearchMarkets";
 import { shouldOpenMarketSearch } from "./utils/searchMarkets";
@@ -25,7 +26,7 @@ function Content({ close }: { close: () => void }) {
       {...data}
       onSelect={(market) => {
         close();
-        router.push(`/markets/${encodeURIComponent(market.id)}`);
+        router.push(marketPath(market));
       }}
     />
   );

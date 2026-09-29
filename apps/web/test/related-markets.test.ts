@@ -61,7 +61,8 @@ test("asset switches navigate by market ID and remount the trading workspace", a
   const switcher = await readFile(new URL("components/MarketAssetSwitcher.tsx", base), "utf8");
   const module = await readFile(new URL("index.tsx", base), "utf8");
   expect(switcher).toContain("useMarketCatalogue()");
-  expect(switcher).toMatch(/href=\{`\/markets\/\$\{asset\.id\}`\}/);
+  // The canonical path carries the chain-independent market id (see market-identity tests).
+  expect(switcher).toContain("href={marketPath(asset)}");
   expect(switcher).toContain("aria-current");
   expect(module).toContain("key={marketId}");
 });

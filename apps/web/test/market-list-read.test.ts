@@ -7,8 +7,11 @@ import { fixtureMarkets } from "./fixtures/protocol";
 /** A market exactly as the indexer serves it (`marketView`). */
 const indexed = (m = fixtureMarkets[0]!, patch: Record<string, unknown> = {}) => ({
   id: m.id,
+  slug: m.slug,
+  underlying: m.underlying,
+  venue: m.venue,
   createdAt: m.createdAt ?? "2026-09-14T00:00:00.000Z",
-  conditionId: m.id,
+  conditionId: m.venue.marketId,
   polymarketConditionId: m.mapping.conditionId,
   polymarketYesIndex: m.mapping.yesIndex,
   polymarketNoIndex: m.mapping.noIndex,
@@ -36,12 +39,17 @@ const indexed = (m = fixtureMarkets[0]!, patch: Record<string, unknown> = {}) =>
 
 test("catalogue reads all books in one indexed batch and keeps one-sided executable prices", async () => {
   const originalFetch = globalThis.fetch;
-  const markets = [fixtureMarkets[0]!, { ...fixtureMarkets[0]!, id: "second-market" }].map(
-    (m, index) => ({
-      ...m,
-      createdAt: new Date(Date.UTC(2026, 8, 14 + index)).toISOString(),
-    }),
-  );
+  const markets = [
+    fixtureMarkets[0]!,
+    {
+      ...fixtureMarkets[0]!,
+      id: "00000000000000b2",
+      venue: { ...fixtureMarkets[0]!.venue, marketId: "2" },
+    },
+  ].map((m, index) => ({
+    ...m,
+    createdAt: new Date(Date.UTC(2026, 8, 14 + index)).toISOString(),
+  }));
   const paths: string[] = [];
   const orderbookView = { value: null as string | null };
   try {

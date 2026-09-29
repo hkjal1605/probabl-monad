@@ -5,7 +5,7 @@
  * Wallets are anvil's public development mnemonic: never use them outside a local node. */
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
-import { conditionalStocksAbi, listPool } from "@conditional-stocks/evm-client";
+import { conditionalStocksAbi, listPool, underlyingId } from "@conditional-stocks/evm-client";
 import {
   createPublicClient,
   createWalletClient,
@@ -72,8 +72,8 @@ const exchange = await deploy("ConditionalStocks.sol", "ConditionalStocks", [
   admin!.address,
   admin!.address,
 ]);
-for (const token of Object.values(stocks)) {
-  const tx = listPool(exchange.address, token);
+for (const [ticker, token] of Object.entries(stocks)) {
+  const tx = listPool(exchange.address, token, underlyingId(`US:${ticker}`));
   await send(wallet.sendTransaction({ to: tx.to, data: tx.data }));
 }
 // Demo balances: traders and the market maker get quote and every stock; the faucet holds a

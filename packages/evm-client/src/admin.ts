@@ -37,6 +37,9 @@ export interface AdminDeployment {
   nextMarketId: number;
   /** Whether the evidence's base token already has a custody pool. */
   basePoolListed: (token: Address) => boolean;
+  /** The underlying asset id an unlisted base token is listed with (`underlyingId`), or null
+   * when it is unknown, which blocks listing. */
+  baseUnderlying: (token: Address) => Hex | null;
 }
 
 /** On-chain parameters of an approved creation packet. */
@@ -86,10 +89,17 @@ export function evidenceTransactions(
   if (p.kind === "market-creation") {
     if (action !== "create-market") throw new Error("Action does not match the evidence packet");
     const params = creationParams(p.config);
+    const listing: AdminTransaction[] = [];
+    if (!deployment.basePoolListed(params.base)) {
+      const underlying = deployment.baseUnderlying(params.base);
+      if (!underlying)
+        throw new Error("The base token is not in the asset catalog; its underlying is unknown");
+      listing.push(
+        tx(listPool(deployment.exchange, params.base, underlying), deployment.marketAdmin),
+      );
+    }
     const transactions = [
-      ...(deployment.basePoolListed(params.base)
-        ? []
-        : [tx(listPool(deployment.exchange, params.base), deployment.marketAdmin)]),
+      ...listing,
       tx(createMarket(deployment.exchange, params, p.config.metadataUri), deployment.marketAdmin),
     ];
     return { transactions, expectedMarketId: String(deployment.nextMarketId) };

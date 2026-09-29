@@ -5,6 +5,7 @@ import {
   canonicalStringify,
   type NormalizedPolymarketMarket,
 } from "@conditional-stocks/market-data";
+import { catalogUnderlying } from "@conditional-stocks/shared/token-catalog";
 import { getAddress, isAddress } from "viem";
 import type { EvidenceView } from "./admin-api";
 import { inspectToken, readDeployment, type TokenCheck, type TokenInfo } from "./chain";
@@ -113,11 +114,16 @@ export function tokenIdentity(verified: VerifiedTokens) {
   });
 }
 
-/** Why a base token cannot be listed for trading against `quote`. */
-export function tokenProblems(check: TokenCheck, quote: TokenInfo): string[] {
+/** Why a base token cannot be listed for trading against `quote`. An unlisted token needs a
+ * catalogued underlying: it becomes part of every market's chain-independent identity. */
+export function tokenProblems(check: TokenCheck, quote: TokenInfo, listed = false): string[] {
   if (!check.ok) return [check.error];
   if (check.token.address === quote.address) return ["The stock token cannot be the quote token."];
   if (check.token.paused) return ["The issuer has paused this token."];
+  if (!listed && !catalogUnderlying(check.token.symbol))
+    return [
+      `"${check.token.symbol ?? "Unknown"}" is not in the asset catalog, so its underlying asset is unknown.`,
+    ];
   return [];
 }
 
@@ -134,7 +140,7 @@ export function resolveRows(
       address: row.token,
       error: "Token not verified. Load the tokens again.",
     };
-    const issues = tokenProblems(check, verified.quote);
+    const issues = tokenProblems(check, verified.quote, verified.listed[row.token] === true);
     try {
       validateMarketCaps(row.caps);
     } catch (error) {
@@ -229,7 +235,11 @@ export function buildBatchPlans(input: {
   )
     throw new Error("Trading cutoff must still be in the future.");
   return rows.map((row, index) => {
-    const problems = tokenProblems({ ok: true, token: row.base }, quote);
+    const problems = tokenProblems(
+      { ok: true, token: row.base },
+      quote,
+      deployment.basePoolListed(row.base.address),
+    );
     if (problems.length) throw new Error(`Market ${index + 1}: ${problems[0]}`);
     validateMarketCaps(row.caps);
     const config = {

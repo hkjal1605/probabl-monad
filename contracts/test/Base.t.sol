@@ -95,6 +95,7 @@ abstract contract Base {
     uint128 internal constant TICK = 1e4; // $0.01 per whole 18-decimal token, USDC raw x 1e18.
     uint96 internal constant STEP = 1e15; // 0.001 token.
     uint256 internal constant T0 = 1_800_000_000;
+    bytes32 internal constant NVDA_UNDERLYING = bytes32("US:NVDA");
 
     address internal admin = address(0xA11CE);
     address internal marketAdmin = address(0xA0);
@@ -118,7 +119,7 @@ abstract contract Base {
         cs = new ConditionalStocks(address(usdc), admin, marketAdmin, guardian, resolver);
         view_ = ConditionalStocksAdmin(address(cs));
         vm.prank(marketAdmin);
-        view_.listPool(address(stock));
+        view_.listPool(address(stock), NVDA_UNDERLYING);
         market = createMarket(uint40(T0 - 1), uint40(T0 + 30 days));
         vm.prank(marketAdmin);
         view_.lifecycle(market, 0, bytes32(0));

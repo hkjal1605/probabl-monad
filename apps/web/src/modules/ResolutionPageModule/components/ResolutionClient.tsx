@@ -21,10 +21,11 @@ import {
 import { Item, ItemContent } from "@/components/ui/item";
 import { DataError, EmptyState, LoadingState, Page, PageHeading, Stat } from "@/components/ui/page";
 import { Progress } from "@/components/ui/progress";
-import { protocolConfig } from "@/config/protocol";
+import { explorerFor } from "@/config/protocol";
 import { useMarkets } from "@/hooks/useProtocolData";
 import { useResource } from "@/hooks/useResource";
 import { formatTime } from "@/lib/format/display";
+import { marketPath } from "@/lib/markets/identity";
 import { outcomeLabel, safeExternalUrl } from "@/lib/markets/resolution";
 import { cn } from "@/lib/utils";
 import { MarketRules } from "@/modules/MarketDetailPageModule/components/MarketRules";
@@ -97,7 +98,7 @@ function ResolutionCard({ market, selected }: { market: MarketView; selected: bo
   const resolution = query.data ?? null;
   const index = market.lifecycle === "archived" ? 5 : stages.indexOf(market.lifecycle);
   const evidence = safeExternalUrl(resolution?.evidenceUri),
-    explorer = safeExternalUrl(protocolConfig.explorerUrl);
+    explorer = safeExternalUrl(explorerFor(market.venue));
   return (
     <Card id={market.id} className={cn("scroll-mt-20", selected && "ring-2 ring-primary")}>
       <CardHeader>
@@ -214,11 +215,7 @@ function ResolutionCard({ market, selected }: { market: MarketView; selected: bo
         </Accordion>
       </CardContent>
       <CardFooter className="flex-wrap justify-between gap-3">
-        <Button
-          variant="link"
-          render={<Link href={`/markets/${market.id}`} />}
-          nativeButton={false}
-        >
+        <Button variant="link" render={<Link href={marketPath(market)} />} nativeButton={false}>
           View market →
         </Button>
         {market.lifecycle === "redeemable" || market.lifecycle === "archived" ? (

@@ -4,7 +4,15 @@ import { SHARE_PROTOCOL_VERSION, tokenDecimals } from "@conditional-stocks/domai
 import type { PositionView, WholeBalanceView } from "../types/api";
 
 const address = (v: unknown): v is string => typeof v === "string" && /^0x[0-9a-fA-F]{40}$/.test(v);
-const marketId = (v: unknown): v is string => typeof v === "string" && /^[1-9][0-9]{0,9}$/.test(v);
+/** Public market ids: 16 hex digits. */
+const marketId = (v: unknown): v is string => typeof v === "string" && /^[0-9a-f]{16}$/.test(v);
+const onchainId = (v: unknown): v is string => typeof v === "string" && /^[1-9][0-9]{0,9}$/.test(v);
+const venue = (v: any) =>
+  !!v &&
+  Number.isSafeInteger(v.chainId) &&
+  v.chainId > 0 &&
+  address(v.exchange) &&
+  onchainId(v.marketId);
 const amount = (v: unknown, bits = 256) =>
   typeof v === "string" && /^(0|[1-9][0-9]{0,39})$/.test(v) && BigInt(v) < 1n << BigInt(bits);
 export interface StreamWallet {
@@ -52,7 +60,8 @@ export function parsePosition(p: any): PositionView {
   if (
     !p ||
     !marketId(p.marketId) ||
-    p.conditionId !== p.marketId ||
+    !venue(p.venue) ||
+    p.conditionId !== p.venue.marketId ||
     typeof p.redeemable !== "boolean" ||
     p.protocolVersion !== SHARE_PROTOCOL_VERSION ||
     !address(p.baseToken) ||

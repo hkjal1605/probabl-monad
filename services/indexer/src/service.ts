@@ -5,6 +5,7 @@
  * per finalized advance (events and closed orders) plus a checkpoint at a bounded cadence, and
  * serves only history (trades, closed orders). */
 import type { Database, FinalizedBatch, StoredEvent } from "@conditional-stocks/db";
+import { parseMarketRef } from "@conditional-stocks/evm-client";
 import {
   type ChainState,
   creditOf,
@@ -21,13 +22,18 @@ import {
   storedFromDecoded,
 } from "./follower.ts";
 import {
+  type Deployment,
   liveOrder,
+  marketIdentity,
   marketView,
   orderbookLevels,
   orderView,
   payoutCredits,
   positionsOf,
+  publicIdOf,
+  publicMarkets,
   reservedUnderlying,
+  venueOf,
 } from "./projection.ts";
 import { type Reconciliation, reconcile } from "./reconcile.ts";
 import { createIndexStream, updateOf } from "./stream.ts";
@@ -56,6 +62,7 @@ interface TailTrade {
 
 export class IndexerService {
   readonly domain: string;
+  readonly deployment: Deployment;
   readonly follower: ChainFollower;
   readonly tokens: TokenReader;
   readonly stream = createIndexStream();
@@ -71,6 +78,7 @@ export class IndexerService {
 
   constructor(readonly options: IndexerOptions) {
     this.domain = `${options.chainId}:${getAddress(options.exchange)}`;
+    this.deployment = { chainId: options.chainId, exchange: getAddress(options.exchange) };
     this.tokens = new TokenReader(options.client);
     this.follower = new ChainFollower({
       client: options.client,
@@ -117,6 +125,16 @@ export class IndexerService {
     return this.follower.confirmed;
   }
 
+  /** A market by public id (optionally slug-prefixed), market key, or on-chain venue id. A public
+   * id resolves to its current venue on this deployment. */
+  market(ref: string, s: ChainState = this.trading()) {
+    const parsed = parseMarketRef(ref);
+    if (!parsed) return undefined;
+    return "venueId" in parsed
+      ? s.markets.get(parsed.venueId)
+      : publicMarkets(s).get(parsed.publicId);
+  }
+
   /** Custody views additionally require healthy persistence and reconciliation. */
   custody(): ChainState {
     const s = this.trading();
@@ -133,7 +151,9 @@ export class IndexerService {
       if (event.name === "Trade")
         this.tail.push({ event, trade: notice.trades.get(`${event.block}:${event.logIndex}`)! });
     if (this.tail.length > 2_000) this.tail = this.tail.slice(-2_000);
-    this.stream.publish(updateOf(notice.block, notice.changes));
+    this.stream.publish(
+      updateOf(notice.block, notice.changes, (id) => publicIdOf(notice.state, id)),
+    );
   }
 
   /** Queues a finalized batch without waiting for the database: a slow or unavailable database
@@ -151,7 +171,13 @@ export class IndexerService {
         owner: o.owner,
         market: o.market,
         updated_block: o.updatedBlock.toString(),
-        data: orderView(o, notice.base.markets.get(o.market)!, "finalized"),
+        data: orderView(
+          notice.base,
+          o,
+          notice.base.markets.get(o.market)!,
+          this.deployment,
+          "finalized",
+        ),
       })),
       ...(due
         ? {
@@ -190,7 +216,7 @@ export class IndexerService {
 
   /** Market view with the base token's live issuer state and token identities. */
   view(s: ChainState, m: ChainState["markets"] extends Map<number, infer T> ? T : never) {
-    return marketView(s, m, this.tokens.live.get(m.base), (token) =>
+    return marketView(s, m, this.deployment, this.tokens.live.get(m.base), (token) =>
       this.tokens.identity.get(token),
     );
   }
@@ -201,9 +227,13 @@ export class IndexerService {
     const bases = [...new Set([...s.markets.values()].map((m) => m.base))];
     const changed = new Set(await this.tokens.refreshLive(bases));
     if (!changed.size) return;
-    const markets = [...s.markets.values()]
-      .filter((m) => changed.has(m.base))
-      .map((m) => String(m.id));
+    const markets = [
+      ...new Set(
+        [...s.markets.values()]
+          .filter((m) => changed.has(m.base))
+          .map((m) => marketIdentity(s, m).id),
+      ),
+    ];
     this.stream.publish({ block: s.block.toString(), observedAt: Date.now(), markets, owners: [] });
   }
 
@@ -236,7 +266,7 @@ export class IndexerService {
       owner,
       observedAt: Date.now(),
       blockNumber: s.block.toString(),
-      positions: positionsOf(s, owner),
+      positions: positionsOf(s, owner, this.deployment),
       balances,
     };
   }
@@ -248,9 +278,11 @@ export class IndexerService {
       amounts = BigInt(args.amounts as string | bigint),
       fees = BigInt(args.fees as string | bigint);
     const mask = (1n << 128n) - 1n;
+    const market = Number(args.market);
     return {
       id: `${stored ? event.tx : event.transactionHash}:${stored ? event.log_index : event.logIndex}`,
-      marketId: String(args.market),
+      marketId: publicIdOf(this.follower.confirmed, market),
+      venue: venueOf(this.deployment, market),
       branch: Number((fill >> 160n) & 0xffn),
       blockTimestamp: String(stored ? event.block_time : event.timestamp),
       executionPriceRawX18: trade.price,
@@ -296,17 +328,21 @@ export class IndexerService {
       if (!this.reconciliation) throw new Error("Reconciliation is not available yet");
       return c.json(this.reconciliation, this.reconciliation.healthy ? 200 : 503);
     });
+    // One entry per public market (its current venue); `?venues=all` lists every on-chain
+    // market, for venue-level tools such as the admin console.
     app.get("/markets", (c) => {
       const s = this.trading();
+      const markets =
+        c.req.query("venues") === "all" ? [...s.markets.values()] : [...publicMarkets(s).values()];
       return c.json({
-        markets: [...s.markets.values()].map((m) => this.view(s, m)),
+        markets: markets.map((m) => this.view(s, m)),
         block: s.block.toString(),
         confirmation: "confirmed",
       });
     });
     app.get("/markets/:id", (c) => {
       const s = this.trading();
-      const m = s.markets.get(Number(c.req.param("id")));
+      const m = this.market(c.req.param("id"), s);
       return m ? c.json(this.view(s, m)) : c.json({ error: "not-found" }, 404);
     });
     app.get("/orders", async (c) => {
@@ -316,7 +352,7 @@ export class IndexerService {
       const open = c.req.query("status") === "open";
       const rows = [...s.orders.values()]
         .filter((o) => (!maker || o.owner === maker) && (!open || o.status === "open"))
-        .map((o) => orderView(o, s.markets.get(o.market)!, "confirmed"));
+        .map((o) => orderView(s, o, s.markets.get(o.market)!, this.deployment, "confirmed"));
       if (maker && !open) {
         const seen = new Set(rows.map((o) => o.id));
         for (const row of await db.closedOrders(this.domain, maker)) {
@@ -329,13 +365,12 @@ export class IndexerService {
     });
     app.get("/orderbook/:id", (c) => {
       const s = this.trading();
-      const id = Number(c.req.param("id"));
-      const m = s.markets.get(id);
+      const m = this.market(c.req.param("id"), s);
       if (!m) return c.json({ error: "not-found" }, 404);
       return c.json({
         orders: [...s.orders.values()]
-          .filter((o) => o.market === id && liveOrder(o, s))
-          .map((o) => orderView(o, m, "confirmed")),
+          .filter((o) => o.market === m.id && liveOrder(o, s))
+          .map((o) => orderView(s, o, m, this.deployment, "confirmed")),
         truncated: false,
         block: s.block.toString(),
       });
@@ -346,10 +381,19 @@ export class IndexerService {
         return c.json({ books: orderbookLevels(s), block: s.block.toString() });
       const books: Record<string, { orders: ReturnType<typeof orderView>[]; truncated: false }> =
         {};
-      for (const id of s.markets.keys()) books[String(id)] = { orders: [], truncated: false };
-      for (const o of s.orders.values())
-        if (liveOrder(o, s))
-          books[String(o.market)]!.orders.push(orderView(o, s.markets.get(o.market)!, "confirmed"));
+      const listed = new Map(
+        [...publicMarkets(s)].map(([id, m]) => {
+          books[id] = { orders: [], truncated: false };
+          return [m.id, id];
+        }),
+      );
+      for (const o of s.orders.values()) {
+        const id = listed.get(o.market);
+        if (id !== undefined && liveOrder(o, s))
+          books[id]!.orders.push(
+            orderView(s, o, s.markets.get(o.market)!, this.deployment, "confirmed"),
+          );
+      }
       return c.json({ books, block: s.block.toString() });
     });
     app.get("/positions/:owner", async (c) => {
@@ -370,13 +414,13 @@ export class IndexerService {
     app.get("/payouts/:owner", (c) =>
       c.json({
         vault: this.options.exchange,
-        payouts: payoutCredits(this.custody(), getAddress(c.req.param("owner"))),
+        payouts: payoutCredits(this.custody(), getAddress(c.req.param("owner")), this.deployment),
         nextCursor: null,
       }),
     );
     app.get("/resolutions/:id", (c) => {
       const s = this.custody();
-      const m = s.markets.get(Number(c.req.param("id")));
+      const m = this.market(c.req.param("id"), s);
       if (!m?.payouts) return c.json({ error: "not-found" }, 404);
       return c.json({
         admin: m.resolver,
@@ -393,11 +437,23 @@ export class IndexerService {
       const limit = Number(c.req.query("limit") ?? 100);
       if (!Number.isInteger(limit) || limit < 1 || limit > 1000)
         return c.json({ error: "Invalid limit" }, 400);
-      const market = c.req.query("marketId");
+      const ref = c.req.query("marketId");
       const raw = c.req.query("owner");
       const owner = raw ? getAddress(raw) : undefined;
-      if (market && !s.markets.has(Number(market))) return c.json({ trades: [] });
-      const markets = market ? [Number(market)] : undefined;
+      // A public id covers every venue of that market on this deployment.
+      const parsed = ref ? parseMarketRef(ref) : null;
+      const markets = !ref
+        ? undefined
+        : !parsed
+          ? []
+          : "venueId" in parsed
+            ? s.markets.has(parsed.venueId)
+              ? [parsed.venueId]
+              : []
+            : [...s.markets.values()]
+                .filter((m) => marketIdentity(s, m).id === parsed.publicId)
+                .map((m) => m.id);
+      if (markets && !markets.length) return c.json({ trades: [] });
       const rows = await db.trades(this.domain, {
         ...(markets ? { markets } : {}),
         ...(owner ? { owner } : {}),

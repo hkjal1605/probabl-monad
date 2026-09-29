@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { type Address, encodeFunctionData, keccak256, stringToBytes, zeroAddress } from "viem";
 import { conditionalStocksAbi } from "../src/abi.ts";
+import { underlyingId } from "../src/identity.ts";
 import {
   accountOf,
   applyTransaction,
@@ -99,7 +100,7 @@ beforeAll(async () => {
   node = await startAnvil();
   protocol = await deployProtocol(node);
   const { exchange, usdc, stock } = protocol;
-  await send(0, tx.listPool(exchange, stock));
+  await send(0, tx.listPool(exchange, stock, underlyingId("US:NVDA")));
   const uri = "ipfs://metadata";
   await send(
     0,
@@ -293,6 +294,18 @@ describe("ledger replica", () => {
     await send(2, tx.redeem(exchange, 1, 1, 2n * NVDA, 0n));
     await send(0, tx.claimFees(exchange, 1, 0, 0, bob, 1n));
 
+    // Extension governance is replayed without state changes (and never stops the index).
+    const selector = "0x12345678";
+    for (const [functionName, args] of [
+      ["proposeExtension", [[selector], stock]],
+      ["cancelExtension", [selector]],
+    ] as const)
+      await send(0, {
+        to: exchange,
+        data: encodeFunctionData({ abi: conditionalStocksAbi, functionName, args } as never),
+        value: "0",
+      });
+
     // Replay.
     const logs = await node.client.getLogs({ address: exchange, fromBlock: 0n, toBlock: "latest" });
     const blocks = new Map<bigint, bigint>();
@@ -329,6 +342,13 @@ describe("ledger replica", () => {
         ]);
       }
     }
+    expect(state.pools.get(stock)!.underlying).toBe(underlyingId("US:NVDA"));
+    expect(state.pools.get(usdc)!.underlying).toBe(
+      (await read("underlying", [usdc])) as unknown as `0x${string}`,
+    );
+    expect(state.pools.get(stock)!.underlying).toBe(
+      (await read("underlying", [stock])) as unknown as `0x${string}`,
+    );
     const market = state.markets.get(1)!;
     const book = await read("book", [1]);
     expect([market.openNotional, market.seq[0], market.seq[1]]).toEqual([

@@ -1,10 +1,11 @@
 /** Direct reads of the deployed exchange: roles, market ids, pools and token facts. */
-import { conditionalStocksAbi } from "@conditional-stocks/evm-client";
+import { conditionalStocksAbi, underlyingId } from "@conditional-stocks/evm-client";
 import {
   type AdminDeployment,
   type AdminTransaction,
   preflightAdmin,
 } from "@conditional-stocks/evm-client/admin";
+import { catalogUnderlying } from "@conditional-stocks/shared/token-catalog";
 import {
   type Address,
   createPublicClient,
@@ -53,12 +54,13 @@ export async function readRoles(c: PublicClient = publicClient()) {
   return { admin, marketAdmin, guardian, resolutionAdmin, quote };
 }
 
-/** Everything `evidenceTransactions` needs: roles, the next market id and listed pools. */
+/** Everything `evidenceTransactions` needs: roles, the next market id, listed pools and the
+ * catalogued underlying of each token (from its on-chain symbol). */
 export async function readDeployment(
   tokens: readonly string[] = [],
   c: PublicClient = publicClient(),
 ) {
-  const [roles, count, pools] = await Promise.all([
+  const [roles, count, pools, symbols] = await Promise.all([
     readRoles(c),
     c.readContract({ ...exchange, functionName: "marketCount" }),
     Promise.all(
@@ -66,9 +68,19 @@ export async function readDeployment(
         c.readContract({ ...exchange, functionName: "pool", args: [getAddress(token)] }),
       ),
     ),
+    Promise.all(
+      tokens.map((token) =>
+        c
+          .readContract({ address: getAddress(token), abi: erc20Abi, functionName: "symbol" })
+          .catch(() => null),
+      ),
+    ),
   ]);
   const listed = Object.fromEntries(
     tokens.map((token, i) => [getAddress(token), pools[i]!.listed]),
+  );
+  const underlyings = Object.fromEntries(
+    tokens.map((token, i) => [getAddress(token), catalogUnderlying(symbols[i])]),
   );
   const deployment: AdminDeployment = {
     chainId: adminConfig.chainId,
@@ -77,6 +89,10 @@ export async function readDeployment(
     resolutionAdmin: roles.resolutionAdmin,
     nextMarketId: count + 1,
     basePoolListed: (token) => listed[getAddress(token)] === true,
+    baseUnderlying: (token) => {
+      const symbol = underlyings[getAddress(token)];
+      return symbol ? underlyingId(symbol) : null;
+    },
   };
   return { roles, deployment, listed };
 }

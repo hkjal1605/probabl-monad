@@ -11,7 +11,9 @@ import { ConditionalStocksBase } from "./ConditionalStocksBase.sol";
 ///         withdrawal. A market pairs the deployment quote token with one base (stock) token and
 ///         runs one order book per branch: "stock if YES" against "quote if YES", and the same
 ///         for NO.
-/// @dev Non-upgradeable. Orders rest on chain keyed by (market, branch, sequence). A taker's
+/// @dev Non-upgradeable: no deployed function can change. New functions can only be added as
+///      extensions after a 14-day exit window (`ConditionalStocksAdmin.proposeExtension`), and
+///      withdrawals are never pausable. Orders rest on chain keyed by (market, branch, sequence). A taker's
 ///      transaction carries a plan of resting makers chosen off chain and settles them
 ///      atomically. Prices are raw quote units per raw base unit x 1e18 (a multiple of the market
 ///      tick); quantities are raw base units (a multiple of the market step). Governance,
@@ -72,7 +74,7 @@ contract ConditionalStocks is ConditionalStocksBase {
         if (decimals > 36) revert InvalidTerms();
         _pools[quote_] = Pool(0, uint8(decimals), true);
         emit AdminAccepted(admin_);
-        emit PoolListed(quote_, uint8(decimals));
+        emit PoolListed(quote_, uint8(decimals), bytes32(0));
         emit Configured(marketAdmin_, guardian_, resolutionAdmin_, 0, 0);
     }
 

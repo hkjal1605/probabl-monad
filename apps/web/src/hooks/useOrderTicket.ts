@@ -9,7 +9,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useWallet } from "@/components/providers/WalletProvider";
 import { toast } from "@/components/ui/toast";
-import { protocolConfig } from "@/config/protocol";
+import { venueDeployment } from "@/config/protocol";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { usePositions } from "@/hooks/useProtocolData";
 import {
@@ -58,7 +58,7 @@ export function useOrderTicket({ market }: { market: MarketView }) {
   const branchIndex = branch === "YES" ? 0 : 1;
   const position =
     positions.data?.owner === wallet.account
-      ? positions.data?.positions.find((p) => p.marketId === market.id)
+      ? positions.data?.positions.find((p) => p.venue.marketId === market.venue.marketId)
       : undefined;
   /** Funding balance in raw units: vault credit ("whole") or this branch's claims. */
   const fundingBalance = (orderSide: "buy" | "sell") => {
@@ -155,7 +155,8 @@ export function useOrderTicket({ market }: { market: MarketView }) {
         branch,
         cutoff: market.cutoff,
         funding,
-        marketId: market.id,
+        // Orders name the on-chain market of the venue they trade on.
+        marketId: market.venue.marketId,
         maxFeeBps: Number(maxFeeBps),
         price,
         quantity,
@@ -186,7 +187,7 @@ export function useOrderTicket({ market }: { market: MarketView }) {
     const balance = fundingBalance(candidate.side === 0 ? "buy" : "sell") ?? 0n;
     parseAtomicPlan(result.plan, candidate);
     assertCurrent();
-    if (result.exchange.toLowerCase() !== protocolConfig.exchange.toLowerCase())
+    if (result.exchange.toLowerCase() !== venueDeployment(market.venue).exchange.toLowerCase())
       throw new Error("API order identity differs.");
     if (BigInt(result.plan.deadline) <= BigInt(Math.floor(Date.now() / 1000)))
       throw new Error("The returned quote has already expired. Retry review.");

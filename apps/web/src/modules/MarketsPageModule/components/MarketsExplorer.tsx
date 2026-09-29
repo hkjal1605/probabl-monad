@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/table";
 import { useMarkets } from "@/hooks/useProtocolData";
 import { formatNumber } from "@/lib/format/display";
+import { marketPath } from "@/lib/markets/identity";
 import {
   eventKey,
   groupMarkets,
@@ -223,7 +224,7 @@ export function MarketsExplorer({
                     return (
                       <TableRow key={eventKey(market)} className="border-b-0">
                         <TableCell className="min-w-52 max-w-80 whitespace-normal">
-                          <Link href={`/markets/${market.id}`} className="font-semibold">
+                          <Link href={marketPath(market)} className="font-semibold">
                             {market.question}
                           </Link>
                           <p className="mt-2 text-xs font-medium text-muted-foreground">
@@ -239,7 +240,7 @@ export function MarketsExplorer({
                             <TableCell key={marketAssetKey(token)}>
                               {asset ? (
                                 <Link
-                                  href={`/markets/${asset.id}`}
+                                  href={marketPath(asset)}
                                   className={cn(
                                     buttonVariants({ variant: "ghost" }),
                                     "h-auto min-w-24 flex-col gap-2 border-0 py-3",

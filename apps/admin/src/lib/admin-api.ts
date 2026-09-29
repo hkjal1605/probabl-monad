@@ -28,7 +28,9 @@ export class AdminApiError extends Error {
 
 export async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (
-    !/^\/api\/(?:gateway\/[A-Za-z0-9_/-]+|indexer\/[A-Za-z0-9_/-]+|health)$/.test(path) ||
+    !/^\/api\/(?:gateway\/[A-Za-z0-9_/-]+|indexer\/[A-Za-z0-9_/-]+|health)(?:\?[A-Za-z0-9=&_-]+)?$/.test(
+      path,
+    ) ||
     path.includes("//") ||
     path.includes("..")
   )
@@ -102,4 +104,13 @@ export interface EvidenceView {
   previews: AdminPreview[];
   reviews: Array<{ decision: string; reviewedAt: string; reviewer: string }>;
   status: "approved" | "prepared" | "rejected";
+}
+
+/** Every on-chain market of the deployment for venue-level operations: `id` is the on-chain
+ * market id the contract takes; `publicId` is the chain-independent id users see. */
+export async function readVenues<T extends object>(signal?: AbortSignal) {
+  const { markets } = await requestJson<{
+    markets: (T & { id: string; venue: { marketId: string } })[];
+  }>("/api/indexer/markets?venues=all", signal ? { signal } : {});
+  return { markets: markets.map((m) => ({ ...m, publicId: m.id, id: m.venue.marketId })) };
 }

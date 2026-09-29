@@ -60,6 +60,12 @@ export interface BaseTokenView {
   live: BaseLiveView;
   metadata?: TokenDisplayMetadata;
 }
+/** The on-chain market a view or position lives on: deployment and on-chain market id. */
+export interface VenueView {
+  chainId: number;
+  exchange: string;
+  marketId: string;
+}
 export interface MarketView extends ShareUnits {
   /** Quantity step in raw base units. */
   baseStep: string;
@@ -74,7 +80,14 @@ export interface MarketView extends ShareUnits {
   createdAt?: string | null;
   description: string;
   eventImpact: number | null;
+  /** Chain-independent public market id (16 hex digits). */
   id: string;
+  /** URL segment: ticker prefix plus `id`. */
+  slug: string;
+  /** Underlying asset, e.g. "US:NVDA". */
+  underlying: string | null;
+  /** Where this market trades: transactions use `venue.marketId`, never `id`. */
+  venue: VenueView;
   lifecycle: MarketLifecycle;
   mapping: { conditionId: string; noIndex: string; polymarketUrl: string; yesIndex: string };
   no: BranchBook;
@@ -102,7 +115,9 @@ export interface IndexedOrder {
   maker: string;
   /** Service key that placed the order under the owner's trading approval. */
   delegate?: string;
+  /** Public market id. */
   marketId: string;
+  venue?: VenueView;
   /** Raw base units. */
   quantity: string;
   filled: string;
@@ -141,13 +156,18 @@ export interface PayoutCreditView {
   kind: "stock" | "quote";
   /** 0 quote, 1 base token (market claims only). */
   collateral: number | null;
+  /** Public market id of market claims. */
   marketId: string | null;
+  venue?: VenueView;
   confirmation: string;
 }
 /** Claims of one market, in raw units of the quote and base tokens. */
 export interface PositionView {
+  /** On-chain market id (as `venue.marketId`). */
   conditionId: string;
+  /** Public market id. */
   marketId: string;
+  venue: VenueView;
   shareDecimals: number;
   quoteTokenDecimals: number;
   protocolVersion: number;
@@ -174,7 +194,9 @@ export interface TradeView {
   taker?: string;
   id: string;
   makerOrderHash?: string;
+  /** Public market id. */
   marketId: string;
+  venue?: VenueView;
   takerOrderHash?: string;
   transactionHash: string;
 }

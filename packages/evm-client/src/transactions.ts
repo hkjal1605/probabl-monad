@@ -179,8 +179,12 @@ export interface MarketParams {
   maxMarket: bigint;
 }
 
-export const listPool = (exchange: Address, token: Address) =>
-  exchangeCall(exchange, "listPool", [address(token)]);
+/** `underlying` is the bytes32 asset id (`underlyingId("US:NVDA")`); immutable once listed. */
+export const listPool = (exchange: Address, token: Address, underlying: Hex) => {
+  if (!/^0x[0-9a-fA-F]{64}$/.test(underlying) || BigInt(underlying) === 0n)
+    throw new Error("Invalid underlying");
+  return exchangeCall(exchange, "listPool", [address(token), underlying]);
+};
 export const createMarket = (exchange: Address, params: MarketParams, metadataUri: string) =>
   exchangeCall(exchange, "createMarket", [
     {

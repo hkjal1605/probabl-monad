@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { formatNumber } from "@/lib/format/display";
+import { marketPath } from "@/lib/markets/identity";
 import { midpoint, percent, spotImpactPercent } from "@/lib/markets/presentation";
 import { cn } from "@/lib/utils";
 import type { MarketView } from "@/types/api";
@@ -22,7 +23,7 @@ export function OutcomePrice({ market, branch }: { market: MarketView; branch: "
   const impact = spotImpactPercent(market, branch);
   return (
     <Link
-      href={`/markets/${market.id}`}
+      href={marketPath(market)}
       aria-label={`If ${branch}: ${sideLabel ? `${sideLabel} ` : ""}${formatNumber(price)}, ${impact === null ? "spot impact unavailable" : `${percent(impact)} versus spot`}`}
       className={cn(
         "flex min-h-8 flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-sm px-2 py-1 tabular-nums to-transparent",

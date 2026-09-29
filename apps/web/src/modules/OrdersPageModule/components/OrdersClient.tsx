@@ -28,6 +28,7 @@ import {
   shortAddress,
   tokenAmount,
 } from "@/lib/format/display";
+import { marketPath } from "@/lib/markets/identity";
 import { cn } from "@/lib/utils";
 import type { MarketView } from "@/types/api";
 
@@ -133,7 +134,7 @@ export function OrdersClient({
                   {!embedded && (
                     <TableCell className="max-w-52 whitespace-normal">
                       <Link
-                        href={`/markets/${order.marketId}`}
+                        href={market ? marketPath(market) : `/markets/${order.marketId}`}
                         className="line-clamp-2 font-medium"
                       >
                         {market?.question ?? shortAddress(order.marketId)}

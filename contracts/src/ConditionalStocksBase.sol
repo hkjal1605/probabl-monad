@@ -4,7 +4,9 @@ pragma solidity 0.8.30;
 /// @notice Storage layout, types, events and shared helpers of the conditional-stocks protocol.
 /// @dev `ConditionalStocks` (trading and custody) and `ConditionalStocksAdmin` (governance,
 ///      delegation, lifecycle and views, executed by delegatecall from the former) inherit this
-///      single layout. Neither contract may declare additional state variables.
+///      single layout. Neither contract may declare additional state variables. Extension modules
+///      (see `ConditionalStocksAdmin.proposeExtension`) also inherit it and keep any state of
+///      their own in ERC-7201 namespaced slots.
 abstract contract ConditionalStocksBase {
     // ---------------------------------------------------------------- constants
 
@@ -15,6 +17,8 @@ abstract contract ConditionalStocksBase {
     /// @dev Placements retained per branch for the crossed-book race check.
     uint256 internal constant RECENT = 16;
     uint64 internal constant ADMIN_DELAY = 2 days;
+    /// @dev Exit window before a proposed extension can be activated or removed.
+    uint64 internal constant EXTENSION_DELAY = 14 days;
     uint64 internal constant MAX_GRANT_LIFETIME = 90 days;
     uint256 internal constant MAX_URI = 512;
 
@@ -55,6 +59,7 @@ abstract contract ConditionalStocksBase {
     error TransferFailed();
     error Reentrancy();
     error Overflow();
+    error UnknownSelector();
 
     // ---------------------------------------------------------------- events
 
@@ -68,7 +73,9 @@ abstract contract ConditionalStocksBase {
     event AdminProposed(address indexed successor, uint64 acceptableAfter);
     event AdminAccepted(address indexed admin);
     event PauseSet(bool paused, bytes32 reason);
-    event PoolListed(address indexed token, uint8 decimals);
+    /// @param underlying The economic asset the token represents (e.g. "US:NVDA" as bytes32),
+    ///        shared by every issuer's token of it; zero for the quote token.
+    event PoolListed(address indexed token, uint8 decimals, bytes32 underlying);
     event Deposited(address indexed owner, address indexed token, uint256 amount);
     event Withdrawn(address indexed owner, address indexed token, uint256 amount, address to);
     event MarketCreated(uint32 indexed market, MarketParams params, string metadataUri);
@@ -116,6 +123,10 @@ abstract contract ConditionalStocksBase {
     /// @param fees buyer fee in base claims(128) | seller fee in quote claims(128) << 128.
     event Trade(uint32 indexed market, uint256 fill, uint256 amounts, uint256 fees);
     event OrderCancelled(uint32 indexed market, uint256 key);
+    /// @param module Zero proposes removal of the selector's extension.
+    event ExtensionProposed(bytes4 indexed selector, address module, uint64 activatableAt);
+    event ExtensionActivated(bytes4 indexed selector, address module);
+    event ExtensionCancelled(bytes4 indexed selector);
 
     // ---------------------------------------------------------------- types
 
@@ -226,6 +237,12 @@ abstract contract ConditionalStocksBase {
         uint16 takerBps;
     }
 
+    /// @dev A scheduled extension change; `activatableAt` zero means none is pending.
+    struct PendingExtension {
+        address module;
+        uint64 activatableAt;
+    }
+
     // ---------------------------------------------------------------- storage
 
     address internal immutable QUOTE;
@@ -257,6 +274,13 @@ abstract contract ConditionalStocksBase {
     mapping(address owner => mapping(address delegate => Grant)) internal _grants;
     /// @dev Key: (market << 1 | branch) << 3 | (seq % RECENT) / 2. Two 128-bit entries per slot.
     mapping(uint256 => uint256) internal _recent;
+    /// @dev Delegatecall targets of selectors neither contract implements.
+    mapping(bytes4 selector => address module) internal _extensions;
+    mapping(bytes4 selector => PendingExtension) internal _pendingExtensions;
+    /// @dev keccak256(abi.encode(condition, yesIndex, noIndex)): the same event and YES side on
+    ///      every deployment.
+    mapping(uint32 market => bytes32) internal _eventKeys;
+    mapping(address token => bytes32) internal _underlyings;
 
     constructor(address quote_) {
         if (quote_.code.length == 0) revert InvalidAddress();

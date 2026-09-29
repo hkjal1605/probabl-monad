@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { underlyingId } from "@conditional-stocks/evm-client";
 import type { AdminDeployment } from "@conditional-stocks/evm-client/admin";
 import { hashCanonical, normalizeGammaMarket } from "@conditional-stocks/market-data";
 import { gammaMarket } from "../../../packages/market-data/tests/helpers";
@@ -39,6 +40,7 @@ const deployment: AdminDeployment = {
   resolutionAdmin: marketAdmin,
   nextMarketId: 1,
   basePoolListed: () => false,
+  baseUnderlying: () => underlyingId("US:NVDA"),
 };
 const verified = (checks: VerifiedTokens["checks"]): VerifiedTokens => ({
   quote,
@@ -155,6 +157,15 @@ test("paused, unverified and quote tokens are reported per market before any API
   expect(tokenIdentity(a)).not.toBe(
     tokenIdentity(verified({ [nvda.address]: { ok: true, token: { ...nvda, decimals: 6 } } })),
   );
+});
+
+test("an unlisted token needs a catalogued underlying; an already listed one keeps its own", () => {
+  const unknown = token("0x0000000000000000000000000000000000000abc", "ZZZZ");
+  const rows = [{ token: unknown.address, caps: defaultMarketCaps(18, 6) }];
+  const checks = { [unknown.address]: { ok: true as const, token: unknown } };
+  expect(resolveRows(verified(checks), rows).problems[0]![0]).toContain("asset catalog");
+  const listed = { ...verified(checks), listed: { [unknown.address]: true } };
+  expect(resolveRows(listed, rows).problems[0]).toEqual([]);
 });
 
 test("plans bind one Polymarket condition to each stock token and require the market admin", () => {

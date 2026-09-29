@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Segmented } from "@/components/ui/segmented";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "@/components/ui/toast";
-import { protocolConfig } from "@/config/protocol";
+import { venueDeployment } from "@/config/protocol";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { usePositions } from "@/hooks/useProtocolData";
 import { baseHalt, claimBalance } from "@/lib/markets/base";
@@ -35,17 +35,17 @@ import { refreshStores } from "@/stores/createResourceStore";
 import type { MarketView, PositionView } from "@/types/api";
 
 /** The finalized payout, read from the exchange itself rather than the index. */
-async function canonicalPayout(marketId: number) {
+async function canonicalPayout(exchange: `0x${string}`, marketId: number) {
   const client = publicClient();
   const [terms, book] = await Promise.all([
     client.readContract({
-      address: protocolConfig.exchange,
+      address: exchange,
       abi: conditionalStocksAbi,
       functionName: "terms",
       args: [marketId],
     }),
     client.readContract({
-      address: protocolConfig.exchange,
+      address: exchange,
       abi: conditionalStocksAbi,
       functionName: "book",
       args: [marketId],
@@ -138,7 +138,10 @@ export function PositionActions({
         setReview({ scope });
         return;
       }
-      const payouts = await canonicalPayout(Number(market.id));
+      const payouts = await canonicalPayout(
+        venueDeployment(market.venue).exchange,
+        Number(market.venue.marketId),
+      );
       assertCurrent();
       const { yes: y, no: n } = redeemAmounts();
       setReview({ scope, payouts, plan: planRedemption(y, n, payouts) });
@@ -150,23 +153,19 @@ export function PositionActions({
     run(async (assertCurrent) => {
       if (!wallet.account || !valid || !reviewed)
         throw new Error("Review a valid claim action first.");
-      const id = Number(market.id);
+      // Claims live on the market's venue: its exchange and on-chain market id.
+      const { exchange } = venueDeployment(market.venue);
+      const id = Number(market.venue.marketId);
       let transaction: ReturnType<typeof redeem>;
       if (kind === "Redeem") {
-        const payouts = await canonicalPayout(id);
+        const payouts = await canonicalPayout(exchange, id);
         assertCurrent();
         if (!plan || nothingToBurn || payouts.some((p, i) => p !== reviewed.payouts?.[i]))
           throw new Error("Redemption changed or has no exact payout; review again.");
-        transaction = redeem(
-          protocolConfig.exchange,
-          id,
-          collateral,
-          plan.redeemYes,
-          plan.redeemNo,
-        );
+        transaction = redeem(exchange, id, collateral, plan.redeemYes, plan.redeemNo);
       } else
         transaction = positionTx(
-          protocolConfig.exchange,
+          exchange,
           kind === "Split" ? "split" : "merge",
           id,
           collateral,

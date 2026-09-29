@@ -25,6 +25,27 @@ test("admin requests reject missing sessions and unsafe paths before a network c
     globalThis.fetch = original;
   }
 });
+test("same-origin reads may carry a plain query string, nothing that could carry a URL", async () => {
+  const original = globalThis.fetch;
+  const paths: string[] = [];
+  globalThis.fetch = (async (url: string) => {
+    paths.push(url);
+    return Response.json({ markets: [] });
+  }) as unknown as typeof fetch;
+  try {
+    await requestJson("/api/indexer/markets?venues=all");
+    expect(paths).toEqual(["/api/indexer/markets?venues=all"]);
+    for (const path of [
+      "/api/indexer/markets?next=https://example.test",
+      "/api/indexer/markets?a=b/../c",
+      "/api/indexer/markets?#x",
+    ])
+      await expect(requestJson(path)).rejects.toThrow("Invalid");
+    expect(paths).toHaveLength(1);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
 test("errors and malformed JSON never become fake success or empty data; mutations do not retry", async () => {
   const original = globalThis.fetch;
   let calls = 0;

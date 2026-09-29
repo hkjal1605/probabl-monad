@@ -21,7 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { adminConfig } from "@/config/protocol";
-import { requestJson } from "@/lib/admin-api";
+import { readVenues } from "@/lib/admin-api";
 import { readRoles } from "@/lib/chain";
 import { MarketLifecycleAction } from "./MarketLifecycleAction";
 
@@ -54,7 +54,7 @@ const states = [
 export function MarketControls() {
   const query = useQuery({
     queryKey: ["markets", adminConfig.chainId],
-    queryFn: ({ signal }) => requestJson<{ markets: Market[] }>("/api/indexer/markets", { signal }),
+    queryFn: ({ signal }) => readVenues<Market>(signal),
     refetchInterval: 10_000,
   });
   const roles = useQuery({

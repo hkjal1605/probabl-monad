@@ -54,9 +54,15 @@ mock.module("../../src/hooks/useProtocolData", () => ({
 mock.module("../../src/components/ui/toast", () => ({
   toast: { add: ({ title }: { title: string }) => notifications.push(title) },
 }));
-mock.module("../../src/config/protocol", () => ({
-  protocolConfig: { chainId: 31337, exchange: "0x0000000000000000000000000000000000000000" },
-}));
+mock.module("../../src/config/protocol", () => {
+  const deployment = { chainId: 31337, exchange: "0x0000000000000000000000000000000000000000" };
+  return {
+    protocolConfig: deployment,
+    deployments: [deployment],
+    venueDeployment: () => deployment,
+    explorerFor: () => "",
+  };
+});
 mock.module("../../src/lib/trading/entry", () => ({ marketPriceBound: () => "10" }));
 mock.module("../../src/lib/trading/order", () => ({
   previewOrder: (quantity: string, price: string) => ({

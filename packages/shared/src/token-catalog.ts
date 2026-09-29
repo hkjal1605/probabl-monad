@@ -1,8 +1,9 @@
-/** Display identity of the assets markets list, keyed by the token's on-chain symbol.
+/** Identity of the assets markets list, keyed by the token's on-chain symbol.
  *
- * Each deployment has one issuer, so a base token is identified by its symbol and the exact
- * token address comes from the market itself. Display and reference-price identity only:
- * never custody, listing or valuation authority. */
+ * A token is identified by its symbol and the exact address comes from the market itself.
+ * Display, reference-price and underlying identity only: never custody or valuation authority.
+ * The underlying is recorded on chain when a pool is listed and is part of every market's
+ * chain-independent key, so an existing symbol's underlying must never change. */
 
 export type AssetKind = "stock" | "etf" | "stablecoin" | "crypto";
 
@@ -15,6 +16,9 @@ export interface CatalogAsset {
   logo: string;
   /** Pyth price feed symbol of the reference price (per share for stocks). */
   pyth: string;
+  /** Economic asset of stocks and ETFs, `REGION:TICKER` (e.g. "US:NVDA"): shared by every
+   * issuer's token of it. */
+  underlying?: string;
 }
 
 const stock = (symbol: string, name: string, kind: AssetKind = "stock"): CatalogAsset => ({
@@ -23,6 +27,7 @@ const stock = (symbol: string, name: string, kind: AssetKind = "stock"): Catalog
   kind,
   logo: `/tokens/${symbol.toLowerCase()}.svg`,
   pyth: `Equity.US.${symbol}/USD`,
+  underlying: `US:${symbol}`,
 });
 
 export const ASSET_CATALOG: readonly CatalogAsset[] = Object.freeze([
@@ -89,6 +94,10 @@ const bySymbol = new Map(ASSET_CATALOG.map((asset) => [asset.symbol.toUpperCase(
 /** Catalog identity of a token symbol; a trailing issuer tag (e.g. "NVDAx") is not stripped. */
 export const catalogAsset = (symbol: string | null | undefined): CatalogAsset | undefined =>
   symbol ? bySymbol.get(symbol.toUpperCase()) : undefined;
+
+/** The underlying a token with this on-chain symbol is listed with, when catalogued. */
+export const catalogUnderlying = (symbol: string | null | undefined) =>
+  catalogAsset(symbol)?.underlying ?? null;
 
 /** Display name of an asset symbol, when catalogued. */
 export const assetDisplayName = (symbol: string) => catalogAsset(symbol)?.name;

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { conditionalStocksAbi, resolutionHash } from "@conditional-stocks/evm-client";
+import { conditionalStocksAbi, resolutionHash, underlyingId } from "@conditional-stocks/evm-client";
 import type { AdminDeployment } from "@conditional-stocks/evm-client/admin";
 import {
   buildCreationEvidence,
@@ -26,6 +26,7 @@ const deployment: AdminDeployment = {
   resolutionAdmin,
   nextMarketId: 7,
   basePoolListed: (token) => listed.has(token),
+  baseUnderlying: () => underlyingId("US:NVDA"),
 };
 const source = normalizeGammaMarket(gammaMarket());
 const creation = () =>
@@ -103,7 +104,10 @@ test("creation lists an unlisted stock token first and keeps raw uint64 caps exa
   listed.clear();
   const view = approved(creation());
   const [list, create] = verifyAdminPreview(view, preview(view, "create-market"), deployment);
-  expect(decode(list!.data)).toMatchObject({ functionName: "listPool", args: [base] });
+  expect(decode(list!.data)).toMatchObject({
+    functionName: "listPool",
+    args: [base, underlyingId("US:NVDA")],
+  });
   const decoded = decode(create!.data);
   expect(decoded.functionName).toBe("createMarket");
   expect((decoded.args![0] as { maxWallet: bigint }).maxWallet).toBe(9007199254740993123n);
@@ -148,6 +152,20 @@ for (const payout of [
       Number(payout.no),
     ]);
   });
+
+test("an unlisted base token without a catalogued underlying is never listed", () => {
+  listed.clear();
+  const view = approved(creation());
+  expect(() =>
+    evidenceTransaction(view, "create-market", { ...deployment, baseUnderlying: () => null }),
+  ).toThrow("asset catalog");
+  listed.add(base);
+  expect(
+    evidenceTransaction(view, "create-market", { ...deployment, baseUnderlying: () => null })
+      .transactions,
+  ).toHaveLength(1);
+  listed.clear();
+});
 
 test("unsigned review, packet tampering and cross-deployment execution fail closed", () => {
   const view = approved(creation());

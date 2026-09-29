@@ -29,7 +29,7 @@ contract TradingTest is Base {
         fee.setFee(100);
         fee.setNoReturn(true);
         vm.prank(marketAdmin);
-        view_.listPool(address(fee));
+        view_.listPool(address(fee), bytes32("US:FEE"));
         fee.mint(alice, 1_000e6);
         vm.startPrank(alice);
         fee.approve(address(cs), type(uint256).max);

@@ -18,6 +18,7 @@ import {
 import { useOrders, usePositions } from "@/hooks/useProtocolData";
 import { formatNumber, tokenAmount } from "@/lib/format/display";
 import { stepQuantity } from "@/lib/markets/base";
+import { marketPath } from "@/lib/markets/identity";
 import { midpoint } from "@/lib/markets/presentation";
 import { type ConditionalPositionRow, conditionalPositionRows } from "@/lib/portfolio/positions";
 import type { MarketView } from "@/types/api";
@@ -123,7 +124,7 @@ export function PositionTable({
                   }
                   onClick={() => {
                     setPrefill(closePrefill(row));
-                    router.push(`/markets/${market.id}`);
+                    router.push(marketPath(market));
                   }}
                 >
                   Close
@@ -207,7 +208,7 @@ export function PositionTable({
                         document
                           .getElementById("trade-ticket")
                           ?.scrollIntoView({ behavior: "smooth", block: "center" });
-                      else router.push(`/markets/${market.id}`);
+                      else router.push(marketPath(market));
                     }}
                   >
                     Close

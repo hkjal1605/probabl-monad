@@ -201,6 +201,6 @@ contract LifecycleTest is Base {
         view_.pause(true, keccak256("x"));
         vm.expectRevert(ConditionalStocksBase.Unauthorized.selector);
         vm.prank(guardian);
-        view_.listPool(address(0x1234));
+        view_.listPool(address(0x1234), bytes32("US:TEST"));
     }
 }

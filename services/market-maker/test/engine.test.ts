@@ -41,7 +41,7 @@ beforeAll(async () => {
   node = await startAnvil(Number(NOW));
   protocol = await deployProtocol(node);
   const { exchange, usdc, stock } = protocol;
-  await send(0, tx.listPool(exchange, stock));
+  await send(0, tx.listPool(exchange, stock, tx.underlyingId("US:NVDA")));
   await send(
     0,
     tx.createMarket(

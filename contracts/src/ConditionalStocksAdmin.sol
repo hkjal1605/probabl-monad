@@ -7,7 +7,8 @@ import { ConditionalStocksBase } from "./ConditionalStocksBase.sol";
 /// @notice Governance, market lifecycle, resolution, trading delegation, claim transfers and
 ///         views of `ConditionalStocks`. Deployed by and bound to one `ConditionalStocks`, which
 ///         reaches it by delegatecall: every function here runs on that contract's storage.
-/// @dev Called directly it only reads and writes its own empty storage.
+/// @dev Called directly it only reads and writes its own empty storage. Its fallback routes
+///      selectors that neither contract implements to activated extension modules.
 contract ConditionalStocksAdmin is ConditionalStocksBase {
     constructor(address quote_) ConditionalStocksBase(quote_) { }
 
@@ -61,15 +62,19 @@ contract ConditionalStocksAdmin is ConditionalStocksBase {
     }
 
     /// @notice Whitelists a base token for custody. Listing is a market-admin decision.
-    function listPool(address token) external {
+    ///         `underlying` names the economic asset (e.g. "US:NVDA") so markets on different
+    ///         issuers' tokens of the same stock share a market key; it is immutable.
+    function listPool(address token, bytes32 underlying_) external {
         if (msg.sender != _marketAdmin) revert Unauthorized();
         if (_pools[token].listed || token.code.length == 0) revert InvalidState();
+        if (underlying_ == bytes32(0)) revert InvalidTerms();
         (bool ok, bytes memory data) = token.staticcall(abi.encodeWithSelector(0x313ce567));
         if (!ok || data.length < 32) revert InvalidAddress();
         uint256 decimals = abi.decode(data, (uint256));
         if (decimals > 36) revert InvalidTerms();
         _pools[token] = Pool(0, uint8(decimals), true);
-        emit PoolListed(token, uint8(decimals));
+        _underlyings[token] = underlying_;
+        emit PoolListed(token, uint8(decimals), underlying_);
     }
 
     /// @notice Lists a market in SCHEDULED state. Its terms and Polymarket mapping are immutable.
@@ -102,6 +107,7 @@ contract ConditionalStocksAdmin is ConditionalStocksBase {
             maxWallet: p.maxWallet,
             maxMarket: p.maxMarket
         });
+        _eventKeys[id] = keccak256(abi.encode(p.condition, p.yesIndex, p.noIndex));
         emit MarketCreated(id, p, metadataUri);
     }
 
@@ -304,6 +310,56 @@ contract ConditionalStocksAdmin is ConditionalStocksBase {
         emit OrdersInvalidated(msg.sender, epoch);
     }
 
+    // ---------------------------------------------------------------- extensions
+
+    /// @notice Schedules `module` (zero: removal) for each selector, activatable after
+    ///         EXTENSION_DELAY. Extensions can only add functions: selectors this module or the
+    ///         exchange implement never reach them. Replaces a pending proposal and restarts its
+    ///         delay.
+    function proposeExtension(bytes4[] calldata selectors, address module_) external {
+        if (msg.sender != _admin) revert Unauthorized();
+        if (selectors.length == 0 || (module_ != address(0) && module_.code.length == 0)) {
+            revert InvalidTerms();
+        }
+        uint64 at = uint64(block.timestamp) + EXTENSION_DELAY;
+        for (uint256 i; i < selectors.length; ++i) {
+            bytes4 selector = selectors[i];
+            if (selector == bytes4(0) || _extensions[selector] == module_) revert InvalidTerms();
+            _pendingExtensions[selector] = PendingExtension(module_, at);
+            emit ExtensionProposed(selector, module_, at);
+        }
+    }
+
+    /// @notice Applies a proposal once its delay has passed. Anyone can call it.
+    function activateExtension(bytes4 selector) external {
+        PendingExtension memory p = _pendingExtensions[selector];
+        if (p.activatableAt == 0) revert InvalidState();
+        if (block.timestamp < p.activatableAt) revert AdminDelay();
+        delete _pendingExtensions[selector];
+        _extensions[selector] = p.module;
+        emit ExtensionActivated(selector, p.module);
+    }
+
+    /// @notice Withdraws a pending proposal (admin or guardian).
+    function cancelExtension(bytes4 selector) external {
+        if (msg.sender != _admin && msg.sender != _control.guardian) revert Unauthorized();
+        if (_pendingExtensions[selector].activatableAt == 0) revert InvalidState();
+        delete _pendingExtensions[selector];
+        emit ExtensionCancelled(selector);
+    }
+
+    fallback() external {
+        address target = _extensions[msg.sig];
+        if (target == address(0)) revert UnknownSelector();
+        assembly ("memory-safe") {
+            calldatacopy(0, 0, calldatasize())
+            let ok := delegatecall(gas(), target, 0, calldatasize(), 0, 0)
+            returndatacopy(0, 0, returndatasize())
+            if iszero(ok) { revert(0, returndatasize()) }
+            return(0, returndatasize())
+        }
+    }
+
     // ---------------------------------------------------------------- views
 
     function quote() external view returns (address) {
@@ -368,6 +424,31 @@ contract ConditionalStocksAdmin is ConditionalStocksBase {
 
     function commitment(uint32 id) external view returns (bytes32) {
         return _commitments[id];
+    }
+
+    function extension(bytes4 selector)
+        external
+        view
+        returns (address module_, address pending, uint64 activatableAt)
+    {
+        PendingExtension memory p = _pendingExtensions[selector];
+        return (_extensions[selector], p.module, p.activatableAt);
+    }
+
+    function underlying(address token) external view returns (bytes32) {
+        return _underlyings[token];
+    }
+
+    function eventKey(uint32 id) external view returns (bytes32) {
+        return _eventKeys[id];
+    }
+
+    /// @notice Chain-independent identity of a market: its event and underlying asset. Markets
+    ///         on other deployments or issuers' tokens with the same key are venues of one market.
+    function marketKey(uint32 id) external view returns (bytes32) {
+        bytes32 key = _eventKeys[id];
+        if (key == bytes32(0)) return bytes32(0);
+        return keccak256(abi.encode(key, _underlyings[_terms[id].base]));
     }
 
     function evidence(uint32 id) external view returns (bytes32) {

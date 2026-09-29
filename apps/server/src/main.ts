@@ -129,7 +129,7 @@ app.get("/v1/system/readiness", (c) => {
     let reason = s.config.paused ? "paused" : "ready";
     const id = c.req.query("marketId");
     if (reason === "ready" && id) {
-      const m = s.markets.get(Number(id));
+      const m = indexer.market(id, s);
       if (!m) return c.json({ error: { message: "Unknown market" } }, 404);
       const now = BigInt(Math.floor(checkedAt / 1000));
       reason =

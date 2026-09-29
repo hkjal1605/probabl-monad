@@ -5,7 +5,9 @@
  *   DEPLOYER_PRIVATE_KEY=… RPC_URL=… CHAIN_ID=84532 QUOTE_TOKEN=0x… ADMIN=0x… MARKET_ADMIN=0x…
  *   GUARDIAN=0x… RESOLUTION_ADMIN=0x… bun scripts/evm/deploy.ts [--mainnet]
  *
- * Verify every token and role address against official sources immediately before deploying. */
+ * The quote token is immutable: it is pinned per network to the chain's native dollar (Circle
+ * USDC on Base, Paxos USDG on Robinhood Chain). Verify every role address against official
+ * sources immediately before deploying. */
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { conditionalStocksAbi } from "@conditional-stocks/evm-client";
@@ -20,11 +22,29 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
-const NETWORKS: Record<number, { name: string; mainnet: boolean }> = {
-  8453: { name: "Base", mainnet: true },
-  84532: { name: "Base Sepolia", mainnet: false },
-  4663: { name: "Robinhood Chain", mainnet: true },
-  46630: { name: "Robinhood Chain Testnet", mainnet: false },
+/** `quote.address` is the canonical token (from the issuer's documentation); networks without a
+ * published address check the symbol only. */
+const NETWORKS: Record<
+  number,
+  { name: string; mainnet: boolean; quote: { symbol: string; address?: `0x${string}` } }
+> = {
+  8453: {
+    name: "Base",
+    mainnet: true,
+    quote: { symbol: "USDC", address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" },
+  },
+  84532: {
+    name: "Base Sepolia",
+    mainnet: false,
+    quote: { symbol: "USDC", address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e" },
+  },
+  // https://docs.robinhood.com/chain/contracts/ (no native USDC or CCTP on Robinhood Chain).
+  4663: {
+    name: "Robinhood Chain",
+    mainnet: true,
+    quote: { symbol: "USDG", address: "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168" },
+  },
+  46630: { name: "Robinhood Chain Testnet", mainnet: false, quote: { symbol: "USDG" } },
 };
 const required = (name: string) => {
   const value = process.env[name]?.trim();
@@ -54,6 +74,10 @@ const [quote, admin, marketAdmin, guardian, resolutionAdmin] = [
   `0x${string}`,
   `0x${string}`,
 ];
+if (network.quote.address && quote !== network.quote.address)
+  throw new Error(
+    `QUOTE_TOKEN must be ${network.name}'s ${network.quote.symbol} (${network.quote.address}): it can never change after deployment`,
+  );
 if ([admin, marketAdmin, guardian, resolutionAdmin].includes(account.address))
   throw new Error("Roles must not be the deployer key: use dedicated (multisig) role addresses");
 
@@ -70,6 +94,8 @@ const [symbol, decimals] = await Promise.all([
   client.readContract({ address: quote, abi: erc20Abi, functionName: "symbol" }),
   client.readContract({ address: quote, abi: erc20Abi, functionName: "decimals" }),
 ]);
+if (symbol !== network.quote.symbol)
+  throw new Error(`The quote token's symbol is ${symbol}, expected ${network.quote.symbol}`);
 console.info(
   `Deploying to ${network.name} with quote ${symbol} (${decimals} decimals) at ${quote}`,
 );

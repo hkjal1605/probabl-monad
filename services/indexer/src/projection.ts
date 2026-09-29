@@ -1,6 +1,16 @@
 /** JSON views of the replica served to the API and UI (`protocolVersion: 4`). Quantities are
- * raw base units, prices raw quote units per raw base unit x 1e18, amounts raw token units. */
-import { activeDelegation } from "@conditional-stocks/evm-client";
+ * raw base units, prices raw quote units per raw base unit x 1e18, amounts raw token units.
+ *
+ * Markets are addressed by their chain-independent public id (`marketId`); every on-chain
+ * market is a venue of one, described by `venue` (deployment and on-chain market id). */
+import {
+  activeDelegation,
+  eventKey,
+  marketKey,
+  marketSlug,
+  publicMarketId,
+  underlyingSymbol,
+} from "@conditional-stocks/evm-client";
 import {
   accountKey,
   type ChainState,
@@ -10,7 +20,7 @@ import {
   type OrderState,
   traderOf,
 } from "@conditional-stocks/evm-client/ledger";
-import type { Address } from "viem";
+import { type Address, type Hex, zeroHash } from "viem";
 
 export const PROTOCOL_VERSION = 4;
 export const PRICE_FORMAT = "raw-unit-ratio-x18";
@@ -24,6 +34,69 @@ export interface BaseLive {
 
 export const decimalsOf = (s: ChainState, token: Address) => s.pools.get(token)?.decimals ?? 0;
 
+/** The deployment these views describe. */
+export interface Deployment {
+  chainId: number;
+  exchange: Address;
+}
+export const venueOf = (d: Deployment, market: number) => ({
+  chainId: d.chainId,
+  exchange: d.exchange,
+  marketId: String(market),
+});
+
+export interface MarketIdentity {
+  /** Public market id: 16 hex digits of the market key. */
+  id: string;
+  key: Hex;
+  eventKey: Hex;
+  /** e.g. "US:NVDA"; null when the base token was listed without a readable underlying. */
+  underlying: string | null;
+  /** URL segment: ticker prefix plus the public id. */
+  slug: string;
+}
+const identities = new Map<string, MarketIdentity>();
+/** Chain-independent identity of a market (as the contract's `marketKey`), memoized. */
+export function marketIdentity(s: ChainState, m: MarketState): MarketIdentity {
+  const asset = s.pools.get(m.base)?.underlying ?? zeroHash;
+  const memo = `${m.condition}:${m.yesIndex}:${m.noIndex}:${asset}`;
+  let identity = identities.get(memo);
+  if (!identity) {
+    const event = eventKey(m.condition, m.yesIndex, m.noIndex);
+    const key = marketKey(event, asset);
+    const id = publicMarketId(key);
+    const underlying = underlyingSymbol(asset);
+    identity = { id, key, eventKey: event, underlying, slug: marketSlug(id, underlying) };
+    identities.set(memo, identity);
+  }
+  return identity;
+}
+export const publicIdOf = (s: ChainState, market: number) => {
+  const m = s.markets.get(market);
+  return m ? marketIdentity(s, m).id : String(market);
+};
+
+/** Open beats any other state, archived loses to all; ties go to the newest. */
+const rank = (m: MarketState) => (m.state === 2 ? 2 : m.state === 7 ? 0 : 1) * 2 ** 32 + m.id;
+const representatives = new WeakMap<
+  ChainState,
+  { block: bigint; count: number; byId: Map<string, MarketState> }
+>();
+/** One venue per public market on this deployment: an open one, else the newest not archived,
+ * else the newest. Other venues of the same event and asset stay reachable by on-chain id. */
+export function publicMarkets(s: ChainState): Map<string, MarketState> {
+  const cached = representatives.get(s);
+  if (cached && cached.block === s.block && cached.count === s.markets.size) return cached.byId;
+  const byId = new Map<string, MarketState>();
+  for (const m of s.markets.values()) {
+    const id = marketIdentity(s, m).id;
+    const current = byId.get(id);
+    if (!current || rank(m) > rank(current)) byId.set(id, m);
+  }
+  representatives.set(s, { block: s.block, count: s.markets.size, byId });
+  return byId;
+}
+
 export interface TokenIdentity {
   symbol: string | null;
   name: string | null;
@@ -32,6 +105,7 @@ export interface TokenIdentity {
 export function marketView(
   s: ChainState,
   m: MarketState,
+  deployment: Deployment,
   live?: BaseLive,
   identity: (token: Address) => TokenIdentity | undefined = () => undefined,
 ) {
@@ -39,8 +113,14 @@ export function marketView(
   const base = identity(m.base),
     quote = identity(s.quote);
   const halt = live?.paused ? "issuer-paused" : null;
+  const market = marketIdentity(s, m);
   return {
-    id: String(m.id),
+    id: market.id,
+    marketKey: market.key,
+    eventKey: market.eventKey,
+    underlying: market.underlying,
+    slug: market.slug,
+    venue: venueOf(deployment, m.id),
     createdAt: new Date(Number(m.createdAt) * 1000).toISOString(),
     conditionId: String(m.id),
     polymarketConditionId: m.condition,
@@ -95,11 +175,18 @@ const reservedOf = (o: OrderState, m: MarketState) => {
   return o.side === 0 ? (o.remaining * price + 10n ** 18n - 1n) / 10n ** 18n : o.remaining;
 };
 
-export function orderView(o: OrderState, m: MarketState, confirmation: "confirmed" | "finalized") {
+export function orderView(
+  s: ChainState,
+  o: OrderState,
+  m: MarketState,
+  deployment: Deployment,
+  confirmation: "confirmed" | "finalized",
+) {
   const price = o.ticks * m.tick;
   return {
     id: o.key,
-    marketId: String(o.market),
+    marketId: marketIdentity(s, m).id,
+    venue: venueOf(deployment, o.market),
     maker: o.owner,
     ...(o.delegate ? { delegate: o.delegate } : {}),
     branch: o.branch,
@@ -155,7 +242,7 @@ export function liveOrder(
   return true;
 }
 
-/** Price levels of every market's live orders (public list views). */
+/** Price levels of every public market's live orders, keyed by public id. */
 export function orderbookLevels(s: ChainState, now?: bigint) {
   const books: Record<
     string,
@@ -168,9 +255,10 @@ export function orderbookLevels(s: ChainState, now?: bigint) {
     number,
     Map<string, { branch: number; side: number; limitPriceRawX18: string; remaining: bigint }>
   >();
-  for (const id of s.markets.keys()) levels.set(id, new Map());
+  const listed = publicMarkets(s);
+  for (const m of listed.values()) levels.set(m.id, new Map());
   for (const o of s.orders.values()) {
-    if (!liveOrder(o, s, now)) continue;
+    if (!levels.has(o.market) || !liveOrder(o, s, now)) continue;
     const m = s.markets.get(o.market)!;
     const price = (o.ticks * m.tick).toString();
     const book = levels.get(o.market)!;
@@ -185,15 +273,15 @@ export function orderbookLevels(s: ChainState, now?: bigint) {
     book.set(key, level);
   }
   for (const [id, book] of levels)
-    books[String(id)] = {
+    books[publicIdOf(s, id)] = {
       orders: [...book.values()].map((l) => ({ ...l, remaining: l.remaining.toString() })),
       truncated: false,
     };
   return books;
 }
 
-/** Claims of one owner, per market with any balance (escrowed claims are order reservations). */
-export function positionsOf(s: ChainState, owner: Address) {
+/** Claims of one owner, per venue with any balance (escrowed claims are order reservations). */
+export function positionsOf(s: ChainState, owner: Address, deployment: Deployment) {
   const result = [];
   for (const m of s.markets.values()) {
     const yes = s.accounts.get(accountKey(m.id, 0, owner));
@@ -204,7 +292,8 @@ export function positionsOf(s: ChainState, owner: Address) {
       baseNo = no?.base ?? 0n;
     if (!quoteYes && !quoteNo && !baseYes && !baseNo) continue;
     result.push({
-      marketId: String(m.id),
+      marketId: marketIdentity(s, m).id,
+      venue: venueOf(deployment, m.id),
       conditionId: String(m.id),
       redeemable: m.state === 6 || m.state === 7,
       shareDecimals: decimalsOf(s, m.base),
@@ -233,8 +322,8 @@ export function reservedUnderlying(s: ChainState, owner: Address, token: Address
   return total;
 }
 
-/** Withdrawable balances: vault credit per token and claim balances per market. */
-export function payoutCredits(s: ChainState, owner: Address) {
+/** Withdrawable balances: vault credit per token and claim balances per venue. */
+export function payoutCredits(s: ChainState, owner: Address, deployment: Deployment) {
   const payouts = [];
   for (const [token, pool] of s.pools) {
     const amount = creditOf(s, owner, token);
@@ -277,7 +366,8 @@ export function payoutCredits(s: ChainState, owner: Address) {
           branch: branch === 0 ? ("YES" as const) : ("NO" as const),
           kind: collateral === 0 ? ("quote" as const) : ("stock" as const),
           collateral,
-          marketId: String(m.id),
+          marketId: marketIdentity(s, m).id,
+          venue: venueOf(deployment, m.id),
           confirmation: "confirmed",
         });
       }

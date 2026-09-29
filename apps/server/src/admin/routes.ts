@@ -1,5 +1,5 @@
 import type { Database } from "@conditional-stocks/db";
-import { conditionalStocksAbi } from "@conditional-stocks/evm-client";
+import { conditionalStocksAbi, underlyingId } from "@conditional-stocks/evm-client";
 import {
   type AdminPreview,
   type AdminTransaction,
@@ -21,9 +21,17 @@ import {
   requiredString,
   yesOutcome,
 } from "@conditional-stocks/market-data";
+import { catalogUnderlying } from "@conditional-stocks/shared/token-catalog";
 import type { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { type Address, decodeEventLog, getAddress, type Hex, type PublicClient } from "viem";
+import {
+  type Address,
+  decodeEventLog,
+  erc20Abi,
+  getAddress,
+  type Hex,
+  type PublicClient,
+} from "viem";
 import type { PolymarketIngestorClient } from "../integrations/polymarket.ts";
 
 /** Reviewer confirmations; keys are shared with the admin UI. */
@@ -152,7 +160,7 @@ export function mountAdmin(
     }
   };
   const market = (id: string) => {
-    const m = indexer.trading().markets.get(Number(id));
+    const m = indexer.market(id);
     if (!m) throw invalid("Unknown market", 404);
     return m;
   };
@@ -306,6 +314,14 @@ export function mountAdmin(
           : "resolve-market";
     const s = indexer.trading();
     const r = roles();
+    // An unlisted base token is listed with the catalogued underlying of its on-chain symbol.
+    const base = p.kind === "market-creation" ? getAddress(p.config.baseToken) : null;
+    const symbol =
+      base && !s.pools.has(base)
+        ? await client
+            .readContract({ address: base, abi: erc20Abi, functionName: "symbol" })
+            .catch(() => null)
+        : null;
     const { transactions, expectedMarketId } = evidenceTransactions(view.envelope, action, {
       chainId,
       exchange,
@@ -313,6 +329,10 @@ export function mountAdmin(
       resolutionAdmin: r.resolutionAdmin,
       nextMarketId: s.markets.size + 1,
       basePoolListed: (token: Address) => s.pools.has(token),
+      baseUnderlying: () => {
+        const underlying = catalogUnderlying(symbol);
+        return underlying ? underlyingId(underlying) : null;
+      },
     });
     const main = transactions.at(-1)!;
     const prerequisites = transactions.slice(0, -1);

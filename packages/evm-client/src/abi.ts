@@ -101,6 +101,11 @@ export const conditionalStocksAbi = [
     "inputs": []
   },
   {
+    "type": "error",
+    "name": "UnknownSelector",
+    "inputs": []
+  },
+  {
     "type": "event",
     "name": "AdminAccepted",
     "inputs": [
@@ -332,6 +337,63 @@ export const conditionalStocksAbi = [
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ExtensionActivated",
+    "inputs": [
+      {
+        "name": "selector",
+        "type": "bytes4",
+        "indexed": true,
+        "internalType": "bytes4"
+      },
+      {
+        "name": "module",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ExtensionCancelled",
+    "inputs": [
+      {
+        "name": "selector",
+        "type": "bytes4",
+        "indexed": true,
+        "internalType": "bytes4"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ExtensionProposed",
+    "inputs": [
+      {
+        "name": "selector",
+        "type": "bytes4",
+        "indexed": true,
+        "internalType": "bytes4"
+      },
+      {
+        "name": "module",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "activatableAt",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
       }
     ],
     "anonymous": false
@@ -652,6 +714,12 @@ export const conditionalStocksAbi = [
         "type": "uint8",
         "indexed": false,
         "internalType": "uint8"
+      },
+      {
+        "name": "underlying",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
       }
     ],
     "anonymous": false
@@ -822,6 +890,19 @@ export const conditionalStocksAbi = [
   },
   {
     "type": "function",
+    "name": "activateExtension",
+    "inputs": [
+      {
+        "name": "selector",
+        "type": "bytes4",
+        "internalType": "bytes4"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "admin",
     "inputs": [],
     "outputs": [
@@ -966,6 +1047,19 @@ export const conditionalStocksAbi = [
         "name": "key",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "cancelExtension",
+    "inputs": [
+      {
+        "name": "selector",
+        "type": "bytes4",
+        "internalType": "bytes4"
       }
     ],
     "outputs": [],
@@ -1249,6 +1343,25 @@ export const conditionalStocksAbi = [
   },
   {
     "type": "function",
+    "name": "eventKey",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "evidence",
     "inputs": [
       {
@@ -1262,6 +1375,35 @@ export const conditionalStocksAbi = [
         "name": "",
         "type": "bytes32",
         "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "extension",
+    "inputs": [
+      {
+        "name": "selector",
+        "type": "bytes4",
+        "internalType": "bytes4"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "module_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "pending",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "activatableAt",
+        "type": "uint64",
+        "internalType": "uint64"
       }
     ],
     "stateMutability": "view"
@@ -1411,6 +1553,11 @@ export const conditionalStocksAbi = [
         "name": "token",
         "type": "address",
         "internalType": "address"
+      },
+      {
+        "name": "underlying_",
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ],
     "outputs": [],
@@ -1425,6 +1572,25 @@ export const conditionalStocksAbi = [
         "name": "",
         "type": "uint32",
         "internalType": "uint32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "marketKey",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ],
     "stateMutability": "view"
@@ -1677,6 +1843,24 @@ export const conditionalStocksAbi = [
     "inputs": [
       {
         "name": "successor",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "proposeExtension",
+    "inputs": [
+      {
+        "name": "selectors",
+        "type": "bytes4[]",
+        "internalType": "bytes4[]"
+      },
+      {
+        "name": "module_",
         "type": "address",
         "internalType": "address"
       }
@@ -2036,6 +2220,25 @@ export const conditionalStocksAbi = [
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "underlying",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",

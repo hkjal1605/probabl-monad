@@ -1,6 +1,7 @@
 import { afterEach, expect, test } from "bun:test";
 import {
   parseIndexUpdate,
+  parsePosition,
   parseStreamWallet,
   setIndexStreamHealthy,
 } from "../src/services/index-stream";
@@ -28,14 +29,17 @@ test("healthy SSE disables only covered queries; failure restores polling", () =
   expect(readPollInterval(query("markets"))).toBe(10_000);
 });
 test("stream validation rejects stale state, malformed topics and forged readiness", () => {
-  const valid = { block: "1", observedAt: Date.now(), markets: ["1"], owners: [owner] };
+  const market = "00000000000000a1";
+  const valid = { block: "1", observedAt: Date.now(), markets: [market], owners: [owner] };
   expect(parseIndexUpdate(JSON.stringify(valid)).block).toBe("1");
   for (const change of [
     { block: "-1" },
     { observedAt: Date.now() - 16_000 },
     { markets: ["bad"] },
+    // Markets are addressed by public id, never by an on-chain id.
+    { markets: ["1"] },
     { owners: ["bad"] },
-    { readiness: { "1": { reason: "closed", healthy: true, checkedAt: Date.now() } } },
+    { readiness: { [market]: { reason: "closed", healthy: true, checkedAt: Date.now() } } },
   ])
     expect(() => parseIndexUpdate(JSON.stringify({ ...valid, ...change }))).toThrow();
 });
@@ -61,6 +65,36 @@ test("wallet stream cannot substitute identity, malformed amounts or expired dat
     { positions: [{ marketId: "1", conditionId: "1", protocolVersion: 3 }] },
   ])
     expect(() => parseStreamWallet({ ...valid, ...change }, owner)).toThrow();
+});
+
+test("streamed positions name their public market and the venue holding their claims", () => {
+  const position = {
+    marketId: "00000000000000a1",
+    venue: {
+      chainId: 31337,
+      exchange: "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
+      marketId: "7",
+    },
+    conditionId: "7",
+    redeemable: false,
+    protocolVersion: 4,
+    baseToken: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+    shareDecimals: 18,
+    baseTokenDecimals: 18,
+    quoteTokenDecimals: 6,
+    quoteYes: "1",
+    quoteNo: "0",
+    baseYes: "0",
+    baseNo: "0",
+  };
+  expect(parsePosition(position)).toEqual(position);
+  for (const change of [
+    { marketId: "7" },
+    { venue: undefined },
+    { venue: { ...position.venue, exchange: "bad" } },
+    { conditionId: "8" },
+  ])
+    expect(() => parsePosition({ ...position, ...change })).toThrow();
 });
 
 test("wallet stream keeps exact custody balances and fails closed without them", () => {

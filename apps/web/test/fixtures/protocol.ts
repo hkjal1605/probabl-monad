@@ -12,6 +12,13 @@ export const FIXTURE_TOKENS = {
   quote: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
   base: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
 } as const;
+/** Public market id and on-chain venue of the fixture market. */
+export const FIXTURE_MARKET_ID = "00000000000000a1";
+export const fixtureVenue = {
+  chainId: 31337,
+  exchange: "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
+  marketId: "1",
+};
 const level = (price: string, quantity: number): BookLevel => ({
   priceExact: price,
   price: Number(price),
@@ -42,7 +49,10 @@ export const fixtureMarkets: MarketView[] = [
     cutoff: "2027-01-15T08:20:00.000Z",
     description: "Test fixture only.",
     eventImpact: 37.400000000000034,
-    id: "1",
+    id: FIXTURE_MARKET_ID,
+    slug: `nvda-${FIXTURE_MARKET_ID}`,
+    underlying: "US:NVDA",
+    venue: fixtureVenue,
     lifecycle: "open",
     mapping: {
       conditionId: "0x0000000000000000000000000000000000000000000000000000000000beef01",
@@ -94,7 +104,7 @@ export const fixtureState: {
   orders: [
     {
       maker: fixtureAccount,
-      marketId: "1",
+      marketId: FIXTURE_MARKET_ID,
       branch: 0,
       side: 0,
       fundingKind: 0,
@@ -115,7 +125,7 @@ export const fixtureState: {
   trades: [
     {
       id: "0xabababababababababababababababababababababababababababababababab:3",
-      marketId: "1",
+      marketId: FIXTURE_MARKET_ID,
       branch: 0,
       fillQuantity: "1000000000000000000",
       executionPriceRawX18: "255250000",
@@ -126,7 +136,8 @@ export const fixtureState: {
   ],
   positions: [
     {
-      marketId: "1",
+      marketId: FIXTURE_MARKET_ID,
+      venue: fixtureVenue,
       conditionId: "1",
       shareDecimals: 18,
       quoteTokenDecimals: 6,

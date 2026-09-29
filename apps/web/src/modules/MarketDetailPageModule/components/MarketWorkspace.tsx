@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { LifecycleBadge } from "@/components/data/StatusBadge";
 import { PriceChart } from "@/components/market/PriceChart";
 import { ProbabilityGauge } from "@/components/market/ProbabilityGauge";
@@ -30,6 +31,7 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { useProbabilityStream } from "@/hooks/useProbabilityStream";
 import { useMarkets, useTrades } from "@/hooks/useProtocolData";
 import { formatNumber, formatTime } from "@/lib/format/display";
+import { marketPath, publicIdOf } from "@/lib/markets/identity";
 import { midpoint, percent, spotImpactPercent } from "@/lib/markets/presentation";
 import { type DepthLevel, depthLevels, visibleDepthPerSide } from "@/lib/markets/visible-depth";
 import { cn } from "@/lib/utils";
@@ -87,12 +89,24 @@ export function MarketWorkspace({
   initialMarkets?: MarketView[];
   initialTrades?: TradeView[];
 }) {
+  // The segment is a slug or public id; an older numeric link is resolved by the API, which
+  // answers with that one market.
+  const publicId = publicIdOf(marketId);
   const query = useMarkets(
-      initialMarkets.filter((m) => m.id === marketId),
+      initialMarkets.filter((m) => m.id === publicId),
       marketId,
     ),
     tradeQuery = useTrades(marketId);
-  const indexedMarket = query.markets.find((m) => m.id === marketId);
+  const indexedMarket = publicId
+    ? query.markets.find((m) => m.id === publicId)
+    : query.markets.length === 1
+      ? query.markets[0]
+      : undefined;
+  const router = useRouter();
+  const canonical = indexedMarket ? marketPath(indexedMarket) : null;
+  useEffect(() => {
+    if (canonical && canonical !== `/markets/${marketId}`) router.replace(canonical);
+  }, [canonical, marketId, router]);
   const stream = useProbabilityStream(
     indexedMarket?.mapping.conditionId ?? "",
     indexedMarket?.probability ?? EMPTY_PROBABILITY,

@@ -1,4 +1,4 @@
-import type { IndexerService } from "@conditional-stocks/indexer";
+import { type IndexerService, marketIdentity, venueOf } from "@conditional-stocks/indexer";
 import { type Hex, isHex32, noOutcome, yesOutcome } from "@conditional-stocks/market-data";
 import type { RedisCache } from "@conditional-stocks/shared/redis-cache";
 import {
@@ -92,7 +92,7 @@ export function mountMarketData(
   app.get("/v1/markets/:id/spot-prices", async (c) => {
     c.header("Cache-Control", "no-store");
     const s = indexer.trading();
-    const m = s.markets.get(Number(c.req.param("id")));
+    const m = indexer.market(c.req.param("id"), s);
     if (!m) throw new HTTPException(404, { message: "Unknown market" });
     const response = await prices.getPrices(identify([s.quote, m.base]));
     const live = indexer.tokens.live.get(m.base);
@@ -100,7 +100,8 @@ export function mountMarketData(
     const base = response.prices[1]!;
     return c.json({
       ...response,
-      marketId: String(m.id),
+      marketId: marketIdentity(s, m).id,
+      venue: venueOf(indexer.deployment, m.id),
       quote: response.prices[0],
       base: {
         ...base,
@@ -112,7 +113,7 @@ export function mountMarketData(
   });
 
   const marketCondition = (id: string) => {
-    const m = indexer.trading().markets.get(Number(id));
+    const m = indexer.market(id);
     if (!m) throw new HTTPException(404, { message: "Unknown market" });
     return m;
   };

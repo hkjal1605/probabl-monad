@@ -35,6 +35,15 @@ ledger balances, so orders never transfer tokens. Each `(market, branch, owner)`
 and base claims. A buy funded with *whole* tokens receives the opposite branch's claim of what it paid,
 so every claim stays backed 1:1.
 
+**Markets** are addressed by a chain-independent id: the first 8 bytes of the contract's
+`marketKey` (the Polymarket condition with its YES side, and the stock's underlying, e.g.
+"US:NVDA", recorded when its pool is listed). Every on-chain market is a venue of one; the API
+accepts the id, a slug (`nvda-<id>`) or a numeric on-chain id, and web URLs use the slug.
+
+**Extensions.** No deployed function can change. New functions can only be added as extensions,
+activatable 14 days after the admin proposes them (the guardian can cancel), while withdrawals stay
+instant and unpausable, so anyone can leave during the window.
+
 **Orders** rest on chain keyed `market << 40 | branch << 32 | seq`. A placement carries a plan built by
 the API from the replica (next sequence, deadline, minimum fill and up to eight makers), is filled
 greedily, and rejects a plan that is stale or would leave a crossed book. `replace` cancels and places
@@ -82,8 +91,10 @@ unavailable and the market maker does not quote.
 
 1. `bun run build:contracts`, then `bun run deploy:exchange` with `CHAIN_ID` (8453, 84532, 4663 or 46630),
    `RPC_URL`, `DEPLOYER_PRIVATE_KEY`, `QUOTE_TOKEN` and dedicated `ADMIN`, `MARKET_ADMIN`, `GUARDIAN`,
-   `RESOLUTION_ADMIN` addresses (`--mainnet` for Base or Robinhood Chain). The record is written to
-   `deployments/<chainId>.json`.
+   `RESOLUTION_ADMIN` addresses (`--mainnet` for Base or Robinhood Chain). The quote token is
+   immutable and pinned per chain: USDC on Base, USDG on Robinhood Chain. The record is written to
+   `deployments/<chainId>.json`. Stock tokens are listed with their catalogued underlying
+   (`packages/shared/src/token-catalog.ts`), so add a token's symbol there before listing it.
 2. API (`apps/server`): `CHAIN_ID`, `RPC_URL` (comma-separated endpoints fail over),
    `EXCHANGE_ADDRESS`, `DEPLOYMENT_BLOCK`, `DATABASE_URL` (run `bun run db:migrate` first),
    `API_AUTH_ORIGINS`, optional `POLL_MS` and `FINALITY_DEPTH` (RPCs without the `finalized` tag),

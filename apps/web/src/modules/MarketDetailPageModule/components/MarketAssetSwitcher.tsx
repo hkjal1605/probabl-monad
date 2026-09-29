@@ -3,6 +3,7 @@ import Link from "next/link";
 import { TokenIdentity } from "@/components/market/TokenIdentity";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useMarketCatalogue } from "@/hooks/useMarketCatalogue";
+import { marketPath } from "@/lib/markets/identity";
 import type { MarketView } from "@/types/api";
 import { relatedMarkets } from "../utils/relatedMarkets";
 
@@ -17,7 +18,7 @@ export function MarketAssetSwitcher({ market }: { market: MarketView }) {
       {assets.map((asset) => (
         <Link
           key={asset.id}
-          href={`/markets/${asset.id}`}
+          href={marketPath(asset)}
           aria-current={asset.id === market.id ? "page" : undefined}
           className={buttonVariants({ variant: asset.id === market.id ? "secondary" : "ghost" })}
         >

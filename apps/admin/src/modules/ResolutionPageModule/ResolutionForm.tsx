@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { adminConfig } from "@/config/protocol";
-import { adminRequest, type EvidenceView, fetchMarketMetadata, requestJson } from "@/lib/admin-api";
+import { adminRequest, type EvidenceView, fetchMarketMetadata, readVenues } from "@/lib/admin-api";
 import { short } from "@/lib/format";
 
 interface Market {
@@ -46,7 +46,7 @@ export function ResolutionForm() {
   const admin = useAdmin();
   const marketsQuery = useQuery({
     queryKey: ["markets", adminConfig.chainId],
-    queryFn: ({ signal }) => requestJson<{ markets: Market[] }>("/api/indexer/markets", { signal }),
+    queryFn: ({ signal }) => readVenues<Market>(signal),
     refetchInterval: 10000,
   });
   const markets = (marketsQuery.data?.markets ?? []).filter(

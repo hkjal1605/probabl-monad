@@ -70,7 +70,7 @@ beforeAll(async () => {
   await db.initialize();
   protocol = await deployProtocol(node);
   const { exchange, usdc, stock } = protocol;
-  await send(0, tx.listPool(exchange, stock));
+  await send(0, tx.listPool(exchange, stock, tx.underlyingId("US:NVDA")));
   await send(
     0,
     tx.createMarket(
@@ -166,10 +166,12 @@ describe("indexer", () => {
         value: "0",
       });
     await place(2, order(bob, 1, 1, 0, 3n * NVDA), 0n);
+    // Lists are keyed by the chain-independent public market id.
+    const publicId = ((await get("/markets")).markets as { id: string }[])[0]!.id;
     await settle(
       async () =>
         ((await get("/orderbooks?view=levels")).books as Record<string, { orders: unknown[] }>)[
-          "1"
+          publicId
         ]!.orders.length === 1,
     );
     await place(1, order(alice, 0, 0, 1, NVDA), 1n, [0n]);
@@ -226,6 +228,72 @@ describe("indexer", () => {
     expect(strip(restarted.follower.base)).toBe(strip(service.follower.base));
     await restarted.stop();
   }, 60_000);
+
+  test("addresses markets by a chain-independent id that matches the contract", async () => {
+    const { exchange, stock } = protocol;
+    const event = tx.eventKey(keccak256(stringToBytes("condition")), 1, 2);
+    const key = tx.marketKey(event, tx.underlyingId("US:NVDA"));
+    expect(
+      await node.publicClient.readContract({
+        address: exchange,
+        abi: conditionalStocksAbi,
+        functionName: "marketKey",
+        args: [1],
+      }),
+    ).toBe(key);
+    const id = tx.publicMarketId(key);
+    const view = await get(`/markets/nvda-${id}`);
+    expect(view).toMatchObject({
+      id,
+      marketKey: key,
+      eventKey: event,
+      underlying: "US:NVDA",
+      slug: `nvda-${id}`,
+      venue: { chainId: 31337, exchange, marketId: "1" },
+    });
+    for (const ref of [id, key, "1"]) expect((await get(`/markets/${ref}`)).id).toBe(id);
+    expect((await app.request("/markets/nvda-0000000000000000")).status).toBe(404);
+
+    // A second venue of the same event and asset shares the id; the open one represents it.
+    const { base, ...rest } = await node.publicClient.readContract({
+      address: exchange,
+      abi: conditionalStocksAbi,
+      functionName: "terms",
+      args: [1],
+    });
+    await send(
+      0,
+      tx.createMarket(
+        exchange,
+        {
+          base: stock,
+          condition: keccak256(stringToBytes("condition")),
+          yesIndex: 1,
+          noIndex: 2,
+          rulesHash: keccak256(stringToBytes("rules")),
+          metadataHash: keccak256(stringToBytes("ipfs://m")),
+          open: BigInt(rest.open),
+          cutoff: BigInt(rest.cutoff),
+          tick: rest.tick,
+          step: rest.step,
+          maxSteps: BigInt(rest.maxSteps),
+          minNotional: rest.minNotional,
+          maxOrder: rest.maxOrder,
+          maxWallet: rest.maxWallet,
+          maxMarket: rest.maxMarket,
+        },
+        "ipfs://m",
+      ),
+    );
+    expect(base).toBe(stock);
+    await settle(
+      async () => ((await get("/markets?venues=all")).markets as unknown[]).length === 2,
+    );
+    const listed = (await get("/markets")).markets as { id: string; venue: { marketId: string } }[];
+    expect(listed.map((m) => [m.id, m.venue.marketId])).toEqual([[id, "1"]]);
+    expect(((await get(`/markets/${id}`)).venue as { marketId: string }).marketId).toBe("1");
+    expect((await get("/markets/2")).id).toBe(id);
+  }, 30_000);
 
   test("polls with one header request and reads logs only for blocks that can contain them", async () => {
     const { exchange, usdc } = protocol;
@@ -318,6 +386,8 @@ describe("indexer", () => {
       pollMs: 60_000,
       finalityMs: 1,
     });
+    // Everything before this test is final, so the dropping endpoint only affects what follows.
+    await node.client.mine({ blocks: 70 });
     await follower.start();
     follower.stop();
     const before = creditOf(follower.confirmed, alice, usdc);
