@@ -58,6 +58,7 @@
     "typescript": "7.0.2"
   },
   "overrides": {
-    "sharp": "^0.35.4"
+    "sharp": "^0.35.4",
+    "undici": "^7.29.1"
   }
 }
