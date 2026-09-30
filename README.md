@@ -139,5 +139,8 @@ unavailable and the market maker does not quote.
 `ops/ec2` runs the ingestor, the API and (when `.env.market-maker` or `.env.vault-keeper` exists) the
 market maker and the vault keeper under PM2 behind nginx. A testnet host (x86_64 or Graviton) runs the
 same bootstrap with a local PostgreSQL instead of Aurora, the mock-feed mirror when
-`.env.feed-mirror` (`FEED_MIRROR_PRIVATE_KEY`, `FEED_SOURCE_RPC_URL`) exists, and plain-HTTP ingress:
-`PROBABL_NGINX=http bash ops/ec2/setup-supervision.sh`.
+`.env.feed-mirror` (`FEED_MIRROR_PRIVATE_KEY`, `FEED_SOURCE_RPC_URL`) exists, and either plain-HTTP
+ingress (`PROBABL_NGINX=http bash ops/ec2/setup-supervision.sh`) or HTTPS on its own domain: point a
+DNS-only record at it, issue the certificate with `sudo certbot certonly --standalone -d <domain>
+--pre-hook "systemctl stop nginx" --post-hook "systemctl start nginx"` (no Cloudflare token on the
+host), then run `PROBABL_DOMAIN=<domain> bash ops/ec2/setup-supervision.sh`.

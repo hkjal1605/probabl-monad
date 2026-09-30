@@ -4,15 +4,22 @@ set -euo pipefail
 umask 077
 cd /home/ubuntu/probabl
 
-# Production ingress (nginx.conf) requires the domain's existing Certbot certificate: refuse
-# before changing supervision if HTTPS has not been provisioned yet. Testnet hosts without a
-# domain pass PROBABL_NGINX=http to serve the API over plain HTTP (nginx-http.conf).
-probabl_nginx_conf=ops/ec2/nginx.conf
+# HTTPS ingress (nginx.conf) requires the domain's existing Certbot certificate: refuse before
+# changing supervision if it has not been provisioned yet. PROBABL_DOMAIN names another host's
+# domain (default api.probabl.trade); hosts without a domain pass PROBABL_NGINX=http to serve
+# the API over plain HTTP (nginx-http.conf).
+probabl_domain=${PROBABL_DOMAIN:-api.probabl.trade}
+if [[ ! "$probabl_domain" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$ ]]; then
+  echo "PROBABL_DOMAIN must be a lowercase host name." >&2
+  exit 1
+fi
+probabl_nginx_conf=$(mktemp)
 if [[ "${PROBABL_NGINX:-https}" == http ]]; then
-  probabl_nginx_conf=ops/ec2/nginx-http.conf
+  cp ops/ec2/nginx-http.conf "$probabl_nginx_conf"
 else
-  sudo -n test -s /etc/letsencrypt/live/api.probabl.trade/fullchain.pem
-  sudo -n test -s /etc/letsencrypt/live/api.probabl.trade/privkey.pem
+  sudo -n test -s "/etc/letsencrypt/live/$probabl_domain/fullchain.pem"
+  sudo -n test -s "/etc/letsencrypt/live/$probabl_domain/privkey.pem"
+  sed "s/api\.probabl\.trade/$probabl_domain/g" ops/ec2/nginx.conf > "$probabl_nginx_conf"
 fi
 
 pm2 install pm2-logrotate@3.0.0
@@ -64,6 +71,7 @@ sudo -n systemctl start pm2-ubuntu
 sudo -n systemctl enable pm2-ubuntu nginx logrotate.timer
 
 sudo -n install -m 0644 "$probabl_nginx_conf" /etc/nginx/sites-available/probabl
+rm -f "$probabl_nginx_conf"
 if [[ -L /etc/nginx/sites-enabled/default ]]; then
   sudo -n mv /etc/nginx/sites-enabled/default /etc/probabl-backups/nginx-default-site-link
 fi
