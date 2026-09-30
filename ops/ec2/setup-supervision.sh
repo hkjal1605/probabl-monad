@@ -20,6 +20,13 @@ else
   sudo -n test -s "/etc/letsencrypt/live/$probabl_domain/fullchain.pem"
   sudo -n test -s "/etc/letsencrypt/live/$probabl_domain/privkey.pem"
   sed "s/api\.probabl\.trade/$probabl_domain/g" ops/ec2/nginx.conf > "$probabl_nginx_conf"
+  # nginx before 1.25.1 (Ubuntu 24.04 ships 1.24) enables HTTP/2 on the listen line instead.
+  probabl_nginx_version=$(nginx -v 2>&1 | sed 's#.*/##; s# .*##')
+  if ! printf '%s\n' 1.25.1 "$probabl_nginx_version" | sort -V -C; then
+    sed -i -e '/^ *http2 on;$/d' \
+      -e 's/listen \(.*\)443 ssl default_server;/listen \1443 ssl http2 default_server;/' \
+      "$probabl_nginx_conf"
+  fi
 fi
 
 pm2 install pm2-logrotate@3.0.0
