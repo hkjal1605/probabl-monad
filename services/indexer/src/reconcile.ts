@@ -70,16 +70,26 @@ export function ledgerIssues(s: ChainState): string[] {
   return issues;
 }
 
+/** Compares the replica with on-chain storage at its block: every pool, and `only` the given
+ * markets (all when omitted). `marketIssues` lists the markets that differ. */
 export async function reconcile(
   client: PublicClient,
   exchange: Address,
   s: ChainState,
-): Promise<Reconciliation> {
+  only?: Iterable<number>,
+): Promise<Reconciliation & { marketIssues: Map<number, string> }> {
   // Capture the replica synchronously: the live view keeps advancing while reads are in flight.
   const blockNumber = s.block;
   const issues = ledgerIssues(s);
+  const marketIssues = new Map<number, string>();
   const pools = [...s.pools].map(([token, pool]) => ({ token, liability: pool.liability }));
-  const markets = [...s.markets.values()].map((m) => ({
+  const selected = only
+    ? [...new Set(only)].flatMap((id) => {
+        const m = s.markets.get(id);
+        return m ? [m] : [];
+      })
+    : [...s.markets.values()];
+  const markets = selected.map((m) => ({
     id: m.id,
     expected: [
       m.openNotional,
@@ -136,9 +146,10 @@ export async function reconcile(
         no.base,
       ].map((v) => BigInt(v!));
       if (actual.some((value, i) => value !== expected[i]))
-        issues.push(`replica market ${id} differs from chain`);
+        marketIssues.set(id, `replica market ${id} differs from chain`);
     }),
   ]);
+  issues.push(...marketIssues.values());
   return {
     healthy: issues.length === 0,
     block: blockNumber.toString(),
@@ -146,5 +157,6 @@ export async function reconcile(
     pools: pools.length,
     markets: markets.length,
     issues,
+    marketIssues,
   };
 }

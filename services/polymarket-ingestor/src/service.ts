@@ -5,6 +5,7 @@ import type {
 } from "@conditional-stocks/db/polymarket";
 import type { Hex } from "@conditional-stocks/market-data";
 import {
+  canonicalStringify,
   isHex32,
   MarketDataError,
   normalizeGammaMarket,
@@ -23,6 +24,15 @@ const RECONNECT_MIN_MS = 1_000;
 const RECONNECT_MAX_MS = 30_000;
 const MAX_PENDING_SOURCE_EVENTS = 1_000;
 const NON_RESOLUTION_STATUSES = new Set(["active", "open", "unresolved"]);
+/** An unknown condition's missing metadata is remembered this long before storage is asked again. */
+const MISSING_METADATA_MS = 30_000;
+/** Failures that repeat while a source stays down are stored once per condition per window. */
+const REPEATED_ALERTS = new Set([
+  "REST_RECONCILIATION_FAILED",
+  "METADATA_RECONCILIATION_FAILED",
+  "WEBSOCKET_DISCONNECTED",
+]);
+const REPEAT_WINDOW_MS = 600_000;
 
 const condition = (value: unknown): Hex => {
   if (!isHex32(value)) {
@@ -31,8 +41,17 @@ const condition = (value: unknown): Hex => {
   return value.toLowerCase() as Hex;
 };
 
+/** Live Polymarket books and metadata. Probabilities are served from the books in memory;
+ * PostgreSQL keeps subscriptions, alerts and metadata snapshots, and is read once per condition
+ * rather than per source event or per request. */
 export class PolymarketIngestor {
   readonly #books = new Map<Hex, PolymarketYesBook>();
+  /** Subscriptions are only added through `track`, so memory mirrors storage. */
+  readonly #subscriptions = new Map<Hex, SubscriptionRecord>();
+  /** Newest stored metadata per Gamma market and per condition. */
+  readonly #latestByGamma = new Map<string, MetadataSnapshot>();
+  readonly #latestByCondition = new Map<Hex, { at: number; snapshot: MetadataSnapshot | null }>();
+  readonly #alerted = new Map<string, number>();
   readonly #listeners = new Map<Hex, Set<TickListener>>();
   readonly #quality = new Map<Hex, ProbabilityTick["quality"]>();
   #metadataTimer: ReturnType<typeof setInterval> | null = null;
@@ -55,7 +74,14 @@ export class PolymarketIngestor {
     readonly source: PolymarketSource,
   ) {}
 
-  async fetchMetadata(gammaMarketIdInput: unknown): Promise<MetadataSnapshot> {
+  /** Fetches a market's metadata from Gamma. `store: "always"` (explicit operator fetches, whose
+   * snapshot ids evidence refers to) persists the raw snapshot; `"changes"` (periodic polls)
+   * persists it only when the normalized market changed, so the volatile fields of an unchanged
+   * market (volume, prices) never add a snapshot row every poll. */
+  async fetchMetadata(
+    gammaMarketIdInput: unknown,
+    store: "always" | "changes" = "always",
+  ): Promise<MetadataSnapshot> {
     const gammaMarketId = requiredString(gammaMarketIdInput, "gammaMarketId", 256);
     const raw = await this.source.getMarket(gammaMarketId);
     const normalized = normalizeGammaMarket(raw);
@@ -65,8 +91,19 @@ export class PolymarketIngestor {
         "Gamma response market ID does not match request",
       );
     }
-    const previous = await this.store.latestMetadataByGammaId(gammaMarketId);
+    const previous =
+      this.#latestByGamma.get(gammaMarketId) ??
+      (await this.store.latestMetadataByGammaId(gammaMarketId));
+    const changed =
+      !previous || canonicalStringify(previous.normalized) !== canonicalStringify(normalized);
+    // Every alert below requires a change.
+    if (store === "changes" && !changed && previous) return previous;
     const snapshot = await this.store.appendMetadata(raw, normalized);
+    this.#latestByGamma.set(gammaMarketId, snapshot);
+    this.#latestByCondition.set(normalized.conditionId.toLowerCase() as Hex, {
+      at: Date.now(),
+      snapshot,
+    });
     logger.debug("polymarket.metadata.fetched", {
       gammaMarketId,
       conditionId: normalized.conditionId,
@@ -78,7 +115,7 @@ export class PolymarketIngestor {
         previous: previous.normalized.mappingHash,
         snapshotId: snapshot.snapshotId,
       });
-    } else if (previous && JSON.stringify(previous.normalized) !== JSON.stringify(normalized)) {
+    } else if (previous && changed) {
       await this.#alert("METADATA_CHANGED", normalized.conditionId, {
         currentSnapshotId: snapshot.snapshotId,
         previousSnapshotId: previous.snapshotId,
@@ -113,6 +150,7 @@ export class PolymarketIngestor {
       yesTokenId: yes.tokenId,
     });
     this.#ensureBook(record);
+    this.#subscriptions.set(record.conditionId.toLowerCase() as Hex, record);
     await this.reconcile(record.conditionId);
     await this.#restartSocket();
     logger.info("polymarket.subscription.tracked", {
@@ -128,7 +166,7 @@ export class PolymarketIngestor {
   }
 
   async #reconcile(conditionId: Hex, isCurrent = () => true): Promise<ProbabilityTick> {
-    const subscription = await this.store.subscription(conditionId);
+    const subscription = this.#subscriptions.get(conditionId);
     const book = this.#books.get(conditionId);
     if (!subscription || !book)
       throw new MarketDataError("NOT_FOUND", "subscription not found", 404);
@@ -148,7 +186,10 @@ export class PolymarketIngestor {
 
   async #applySourceEvent(input: unknown, isCurrent = () => true): Promise<void> {
     const raw = object(input, "source event");
-    this.#reconnectDelayMs = RECONNECT_MIN_MS;
+    if (this.#reconnectDelayMs !== RECONNECT_MIN_MS) {
+      this.#reconnectDelayMs = RECONNECT_MIN_MS;
+      this.#recovered("WEBSOCKET_DISCONNECTED");
+    }
     const eventType = requiredString(raw.event_type, "event_type", 64);
     if (eventType === "market_resolved") {
       const conditionId = condition(raw.market);
@@ -156,10 +197,9 @@ export class PolymarketIngestor {
       return;
     }
     const conditionId = condition(raw.market);
+    // Memory only: no storage round trip per source event.
     const book = this.#books.get(conditionId);
-    const subscription = await this.store.subscription(conditionId);
-    if (!isCurrent()) return;
-    if (!book || !subscription) return;
+    if (!isCurrent() || !book || !this.#subscriptions.has(conditionId)) return;
     const result = book.applyWebSocket(raw);
     if (result.requiresSnapshot) {
       await this.#alert("WEBSOCKET_GAP", conditionId, { eventType });
@@ -196,17 +236,22 @@ export class PolymarketIngestor {
     return await this.store.metadata(snapshotId);
   }
 
+  /** Newest stored metadata of a condition: read from storage once, then kept current by
+   * `fetchMetadata` (an unknown condition is asked again after a short while). */
   async latestMetadata(conditionIdInput: unknown): Promise<MetadataSnapshot | null> {
-    return await this.store.latestMetadataByCondition(condition(conditionIdInput));
+    const conditionId = condition(conditionIdInput);
+    const cached = this.#latestByCondition.get(conditionId);
+    if (cached && (cached.snapshot || Date.now() - cached.at < MISSING_METADATA_MS))
+      return cached.snapshot;
+    const snapshot = await this.store.latestMetadataByCondition(conditionId);
+    if (this.#latestByCondition.size >= 10_000) this.#latestByCondition.clear();
+    this.#latestByCondition.set(conditionId, { at: Date.now(), snapshot });
+    return snapshot;
   }
 
   async probability(conditionIdInput: unknown): Promise<ProbabilityTick> {
     const conditionId = condition(conditionIdInput);
-    const book = this.#books.get(conditionId);
-    const stored = book ? null : await this.store.latestTick(conditionId);
-    const tick =
-      book?.tick() ??
-      (stored ? { ...stored, isStale: true, quality: "disconnected" as const } : null);
+    const tick = this.#books.get(conditionId)?.tick();
     if (!tick) throw new MarketDataError("NOT_FOUND", "probability is unavailable", 404);
     this.#observeQuality(tick);
     return tick;
@@ -226,9 +271,12 @@ export class PolymarketIngestor {
   async start(): Promise<void> {
     if (!this.#stopped) return;
     this.#stopped = false;
-    for (const record of await this.store.subscriptions()) this.#ensureBook(record);
+    for (const record of await this.store.subscriptions()) {
+      this.#subscriptions.set(record.conditionId.toLowerCase() as Hex, record);
+      this.#ensureBook(record);
+    }
     await Promise.allSettled(
-      (await this.store.subscriptions()).map((record) =>
+      [...this.#subscriptions.values()].map((record) =>
         this.reconcile(record.conditionId).catch((error) => {
           logger.warn("polymarket.bootstrap.failed", { conditionId: record.conditionId, error });
         }),
@@ -272,9 +320,10 @@ export class PolymarketIngestor {
 
   async reconcileAll(): Promise<void> {
     await Promise.all(
-      (await this.store.subscriptions()).map(async (record) => {
+      [...this.#subscriptions.values()].map(async (record) => {
         try {
           await this.reconcile(record.conditionId);
+          this.#recovered("REST_RECONCILIATION_FAILED", record.conditionId);
         } catch (error) {
           const book = this.#books.get(record.conditionId);
           if (book) await this.#publish(book.disconnect());
@@ -288,9 +337,10 @@ export class PolymarketIngestor {
 
   async reconcileMetadata(): Promise<void> {
     await Promise.all(
-      (await this.store.subscriptions()).map(async (record) => {
+      [...this.#subscriptions.values()].map(async (record) => {
         try {
-          await this.fetchMetadata(record.gammaMarketId);
+          await this.fetchMetadata(record.gammaMarketId, "changes");
+          this.#recovered("METADATA_RECONCILIATION_FAILED", record.conditionId);
         } catch (error) {
           await this.#alert("METADATA_RECONCILIATION_FAILED", record.conditionId, {
             error: error instanceof Error ? error.message : String(error),
@@ -311,8 +361,8 @@ export class PolymarketIngestor {
     );
   }
 
+  /** Ticks go to listeners and readers of the live book; none is written to storage. */
   async #publish(tick: ProbabilityTick): Promise<void> {
-    await this.store.saveLatestTick(tick);
     this.#observeQuality(tick);
     logger.debug("polymarket.tick", {
       conditionId: tick.conditionId,
@@ -341,7 +391,7 @@ export class PolymarketIngestor {
     this.#socket?.close();
     this.#socket = null;
     if (this.#stopped) return;
-    const tokenIds = (await this.store.subscriptions()).map((record) => record.yesTokenId);
+    const tokenIds = [...this.#subscriptions.values()].map((record) => record.yesTokenId);
     if (this.#stopped || tokenIds.length === 0) return;
     logger.info("polymarket.socket.connecting", { subscriptions: tokenIds.length });
     this.#socket = this.source.connect(
@@ -397,14 +447,32 @@ export class PolymarketIngestor {
     }
   }
 
+  /** Stores an alert. A failure that repeats while its source stays down is stored once per
+   * condition per window (and logged every time); recovery re-arms it. */
   async #alert(...args: Parameters<PolymarketQueries["appendAlert"]>) {
+    const [code, conditionId] = args;
+    if (REPEATED_ALERTS.has(code)) {
+      const key = `${code}:${conditionId}`;
+      const last = this.#alerted.get(key);
+      if (last !== undefined && Date.now() - last < REPEAT_WINDOW_MS) {
+        logger.warn("polymarket.alert.repeated", { code, conditionId });
+        return;
+      }
+      this.#alerted.set(key, Date.now());
+    }
     const alert = await this.store.appendAlert(...args);
     logger.warn("polymarket.alert", {
       alertId: alert.id,
       code: alert.code,
       conditionId: alert.conditionId,
     });
-    return alert;
+  }
+
+  #recovered(code: string, conditionId?: Hex) {
+    if (conditionId) this.#alerted.delete(`${code}:${conditionId}`);
+    else
+      for (const key of this.#alerted.keys())
+        if (key.startsWith(`${code}:`)) this.#alerted.delete(key);
   }
 
   #serialBook<T>(conditionId: Hex, work: () => Promise<T>): Promise<T> {

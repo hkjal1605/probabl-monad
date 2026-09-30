@@ -18,34 +18,43 @@ const setup = async () => {
 };
 
 describe("Polymarket ingestor", () => {
-  test("messages waiting on PostgreSQL cannot revive a disconnected socket's book", async () => {
-    const { service, source, store } = await setup();
+  /** Holds a book's serialized queue with a REST snapshot in flight until released. */
+  const holdBook = (source: FakeSource) => {
+    const entered = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const getBook = source.getBook.bind(source);
+    source.getBook = async (tokenId) => {
+      entered.resolve();
+      await release.promise;
+      return getBook(tokenId);
+    };
+    return { entered: entered.promise, release: () => release.resolve() };
+  };
+
+  test("events queued behind a book's pending work cannot revive a disconnected socket's book", async () => {
+    const { service, source } = await setup();
     const metadata = await service.fetchMetadata("42");
     await service.track(metadata.snapshotId);
     await service.start();
-    const entered = Promise.withResolvers<void>();
-    const release = Promise.withResolvers<void>();
-    const subscription = store.subscription;
-    store.subscription = async (...args) => {
-      entered.resolve();
-      await release.promise;
-      return subscription(...args);
-    };
     const oldEvent = source.onEvent;
     const oldDisconnect = source.onDisconnect;
     if (!oldEvent || !oldDisconnect) throw new Error("socket fixture missing");
+    const hold = holdBook(source);
+    const reconciling = service.reconcile(conditionId);
+    await hold.entered;
     oldEvent({
       event_type: "price_change",
       market: conditionId,
       price_changes: [{ asset_id: "111", price: "0.49", side: "BUY", size: "500" }],
       timestamp: Date.now().toString(),
     });
-    await entered.promise;
     oldDisconnect("injected connection loss");
     expect((await service.probability(conditionId)).quality).toBe("disconnected");
-    release.resolve();
+    hold.release();
+    await reconciling;
     await service.stop();
-    expect(await store.latestTick(conditionId)).toMatchObject({
+    // The REST snapshot applied; the old socket's queued event did not.
+    expect(await service.probability(conditionId)).toMatchObject({
       quality: "disconnected",
       bestBidX6: "480000",
     });
@@ -58,21 +67,16 @@ describe("Polymarket ingestor", () => {
       timestamp: Date.now().toString(),
     });
     await service.stop();
-    expect((await store.latestTick(conditionId))?.bestBidX6).toBe("480000");
+    expect((await service.probability(conditionId)).bestBidX6).toBe("480000");
   });
 
   test("per-book serialization bounds source backlog instead of buffering indefinitely", async () => {
-    const { service, store } = await setup();
+    const { service, source } = await setup();
     const metadata = await service.fetchMetadata("42");
     await service.track(metadata.snapshotId);
-    const entered = Promise.withResolvers<void>();
-    const release = Promise.withResolvers<void>();
-    const subscription = store.subscription;
-    store.subscription = async (...args) => {
-      entered.resolve();
-      await release.promise;
-      return subscription(...args);
-    };
+    const hold = holdBook(source);
+    const reconciling = service.reconcile(conditionId);
+    await hold.entered;
     const event = {
       event_type: "last_trade_price",
       market: conditionId,
@@ -81,18 +85,17 @@ describe("Polymarket ingestor", () => {
       timestamp: Date.now().toString(),
     };
     const pending = Array.from({ length: 1_000 }, () => service.ingestSourceEvent(event));
-    await entered.promise;
     try {
       await expect(service.ingestSourceEvent(event)).rejects.toMatchObject({
         code: "SOURCE_BACKPRESSURE",
         status: 503,
       });
     } finally {
-      release.resolve();
-      await Promise.all(pending);
+      hold.release();
+      await Promise.all([reconciling, ...pending]);
     }
     await service.ingestSourceEvent(event);
-    expect((await store.latestTick(conditionId))?.quality).toBe("valid");
+    expect((await service.probability(conditionId)).quality).toBe("valid");
   });
 
   test("listeners cannot break persistence and failed REST polling records stale quality", async () => {
@@ -111,7 +114,7 @@ describe("Polymarket ingestor", () => {
       throw new Error("REST unavailable");
     };
     await service.reconcileAll();
-    expect((await store.latestTick(conditionId))?.quality).toBe("disconnected");
+    expect((await service.probability(conditionId)).quality).toBe("disconnected");
     expect(
       (await store.alerts()).some((alert) => alert.code === "REST_RECONCILIATION_FAILED"),
     ).toBe(true);
@@ -123,16 +126,82 @@ describe("Polymarket ingestor", () => {
       (await store.alerts()).some((alert) => alert.code === "METADATA_RECONCILIATION_FAILED"),
     ).toBe(true);
   });
-  test("a persisted tick is explicitly disconnected until a live book has been bootstrapped", async () => {
+  test("probabilities come only from live books, never from storage", async () => {
     const { service, store, source } = await setup();
     const metadata = await service.fetchMetadata("42");
     await service.track(metadata.snapshotId);
-    expect((await store.latestTick(conditionId))?.quality).toBe("valid");
+    expect((await service.probability(conditionId)).quality).toBe("valid");
     const restarted = new PolymarketIngestor(environment, store, source);
-    expect(await restarted.probability(conditionId)).toMatchObject({
-      isStale: true,
-      quality: "disconnected",
+    await expect(restarted.probability(conditionId)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await restarted.start();
+    expect((await restarted.probability(conditionId)).quality).toBe("valid");
+    await restarted.stop();
+  });
+  test("reads storage once per condition, and background polls write only material changes", async () => {
+    const { service, store, source } = await setup();
+    const metadata = await service.fetchMetadata("42");
+    await service.track(metadata.snapshotId);
+    await service.start();
+    const calls: Record<string, number> = {};
+    for (const name of [
+      "subscription",
+      "subscriptions",
+      "latestMetadataByCondition",
+      "latestMetadataByGammaId",
+      "appendMetadata",
+      "appendAlert",
+    ] as const) {
+      const original = store[name] as (...args: unknown[]) => Promise<unknown>;
+      calls[name] = 0;
+      (store as Record<string, unknown>)[name] = (...args: unknown[]) => {
+        calls[name]!++;
+        return original(...args);
+      };
+    }
+    for (let i = 0; i < 50; i++)
+      await service.applySourceEvent({
+        event_type: "price_change",
+        market: conditionId,
+        price_changes: [{ asset_id: "111", price: "0.49", side: "BUY", size: String(500 + i) }],
+        timestamp: Date.now().toString(),
+      });
+    for (let i = 0; i < 10; i++) await service.latestMetadata(conditionId);
+    await service.reconcileAll();
+    // Volatile fields changed, the market did not.
+    source.currentMarket = gammaMarket({ volume: "12345", outcomePrices: '["0.6","0.4"]' });
+    await service.reconcileMetadata();
+    expect(calls).toEqual({
+      subscription: 0,
+      subscriptions: 0,
+      latestMetadataByCondition: 0,
+      latestMetadataByGammaId: 0,
+      appendMetadata: 0,
+      appendAlert: 0,
     });
+    source.currentMarket = gammaMarket({ question: "Will it happen soon?" });
+    await service.reconcileMetadata();
+    expect(calls.appendMetadata).toBe(1);
+    expect((await service.latestMetadata(conditionId))?.normalized.question).toBe(
+      "Will it happen soon?",
+    );
+    // A failure that repeats while its source stays down is stored once; recovery re-arms it.
+    const getBook = source.getBook.bind(source);
+    source.getBook = async () => {
+      throw new Error("REST unavailable");
+    };
+    await service.reconcileAll();
+    await service.reconcileAll();
+    const failures = async () =>
+      (await store.alerts()).filter((a) => a.code === "REST_RECONCILIATION_FAILED").length;
+    expect(await failures()).toBe(1);
+    source.getBook = getBook;
+    await service.reconcileAll();
+    source.getBook = async () => {
+      throw new Error("REST unavailable again");
+    };
+    await service.reconcileAll();
+    expect(await failures()).toBe(2);
+    await service.stop();
   });
   test("persists metadata, bootstraps REST, applies updates, and recovers a gap", async () => {
     const { service, source, store } = await setup();

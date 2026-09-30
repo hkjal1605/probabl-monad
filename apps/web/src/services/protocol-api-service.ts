@@ -11,6 +11,12 @@ export const api = {
         : "/trades?limit=1000",
       signal ? { signal } : {},
     ),
+  /** A wallet's own trades (maker or taker), newest first. */
+  walletTrades: (owner: string, signal?: AbortSignal) =>
+    requestJson<{ trades: TradeView[] }>(
+      `/trades?owner=${encodeURIComponent(owner)}&limit=1000`,
+      signal ? { signal } : {},
+    ),
   prepare: <T>(path: string, body: unknown, token?: string) =>
     requestJson<T>(`/v1/${path}`, { body, ...(token ? { token } : {}) }),
   resolution: async (marketId: string, signal?: AbortSignal) => {

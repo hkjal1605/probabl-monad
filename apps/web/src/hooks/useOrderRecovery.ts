@@ -69,7 +69,7 @@ export function useOrderRecovery() {
           });
           throw error;
         }
-        await refreshStores(["wallet-orders", "positions", "payout-credits"]);
+        await refreshStores(["wallet-orders", "wallet-trades", "positions", "payout-credits"]);
       } finally {
         setCanceling(null);
       }

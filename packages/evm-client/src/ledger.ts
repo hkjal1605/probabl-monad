@@ -688,3 +688,143 @@ export function deserializeState(text: string) {
   for (const pool of s.pools.values()) pool.underlying ??= zeroHash;
   return s;
 }
+
+// Compact checkpoints: the large collections (credits, accounts, orders, traders) are positional
+// rows with bigints as decimal strings, parsed without a reviver; the few markets, pools and
+// grants keep the tagged form. About half the size of `serializeState` and several times faster
+// to write and read.
+type Kind = "b" | "v";
+const ACCOUNT_FIELDS = { quote: "b", base: "b", notional: "b" } satisfies Record<
+  keyof Account,
+  Kind
+>;
+const TRADER_FIELDS = { epoch: "b", delegationEpoch: "b" } satisfies Record<
+  keyof TraderState,
+  Kind
+>;
+const ORDER_FIELDS = {
+  key: "v",
+  market: "v",
+  branch: "v",
+  seq: "b",
+  owner: "v",
+  delegate: "v",
+  generation: "v",
+  epoch: "b",
+  side: "v",
+  fundingKind: "v",
+  tif: "v",
+  quantity: "b",
+  ticks: "b",
+  expiry: "b",
+  maxFeeBps: "v",
+  remaining: "b",
+  filled: "b",
+  feesPaid: "b",
+  status: "v",
+  placedBlock: "b",
+  placedAt: "b",
+  placedTx: "v",
+  updatedBlock: "b",
+} satisfies Record<keyof OrderState, Kind>;
+
+const columns = (fields: Record<string, Kind>) => {
+  const names = Object.keys(fields);
+  return { names, bigint: names.map((name) => fields[name] === "b") };
+};
+const ACCOUNT = columns(ACCOUNT_FIELDS),
+  TRADER = columns(TRADER_FIELDS),
+  ORDER = columns(ORDER_FIELDS);
+const pack = (c: ReturnType<typeof columns>, value: object, lead: unknown[] = []) => {
+  const row = lead;
+  for (let i = 0; i < c.names.length; i++) {
+    const field = (value as Record<string, unknown>)[c.names[i]!];
+    row.push(c.bigint[i] ? (field as bigint).toString() : field);
+  }
+  return row;
+};
+const unpack = <T>(c: ReturnType<typeof columns>, row: unknown[], offset = 0): T => {
+  const value: Record<string, unknown> = {};
+  for (let i = 0; i < c.names.length; i++)
+    value[c.names[i]!] = c.bigint[i] ? BigInt(row[offset + i] as string) : row[offset + i];
+  return value as T;
+};
+const tag = (value: unknown): unknown =>
+  typeof value === "bigint"
+    ? { $n: value.toString() }
+    : Array.isArray(value)
+      ? value.map(tag)
+      : value !== null && typeof value === "object"
+        ? Object.fromEntries(Object.entries(value).map(([k, v]) => [k, tag(v)]))
+        : value;
+const untag = (value: unknown): unknown =>
+  Array.isArray(value)
+    ? value.map(untag)
+    : value !== null && typeof value === "object"
+      ? "$n" in value
+        ? BigInt((value as { $n: string }).$n)
+        : Object.fromEntries(Object.entries(value).map(([k, v]) => [k, untag(v)]))
+      : value;
+
+const CHECKPOINT_VERSION = 2;
+
+/** Compact JSON form of a replica (see `restoreState`). */
+export function encodeCheckpoint(s: ChainState): string {
+  return JSON.stringify({
+    v: CHECKPOINT_VERSION,
+    block: s.block.toString(),
+    hash: s.hash,
+    timestamp: s.timestamp.toString(),
+    quote: s.quote,
+    config: tag(s.config),
+    pools: tag([...s.pools]),
+    markets: tag([...s.markets.values()]),
+    grants: tag([...s.grants.values()]),
+    credits: [...s.credits].map(([key, amount]) => [key, amount.toString()]),
+    accounts: [...s.accounts].map(([key, a]) => pack(ACCOUNT, a, [key])),
+    orders: [...s.orders.values()].map((o) => pack(ORDER, o)),
+    traders: [...s.traders].map(([owner, t]) => pack(TRADER, t, [owner])),
+  });
+}
+
+/** Replica from a checkpoint in either form (`encodeCheckpoint` or legacy `serializeState`). */
+export function restoreState(text: string): ChainState {
+  if (!text.startsWith('{"v":')) return deserializeState(text);
+  const c = JSON.parse(text);
+  if (c.v !== CHECKPOINT_VERSION) throw new Error(`Unsupported checkpoint version ${c.v}`);
+  const markets = untag(c.markets) as MarketState[];
+  const grants = untag(c.grants) as GrantState[];
+  return {
+    block: BigInt(c.block),
+    hash: c.hash,
+    timestamp: BigInt(c.timestamp),
+    quote: c.quote,
+    config: untag(c.config) as Config,
+    pools: new Map(
+      untag(c.pools) as [Address, { liability: bigint; decimals: number; underlying: Hex }][],
+    ),
+    credits: new Map(
+      (c.credits as [string, string][]).map(([key, amount]) => [key, BigInt(amount)]),
+    ),
+    markets: new Map(markets.map((m) => [m.id, m])),
+    accounts: new Map(
+      (c.accounts as unknown[][]).map((row) => [
+        row[0] as string,
+        unpack<Account>(ACCOUNT, row, 1),
+      ]),
+    ),
+    orders: new Map(
+      (c.orders as unknown[][]).map((row) => {
+        const o = unpack<OrderState>(ORDER, row);
+        return [o.key, o];
+      }),
+    ),
+    traders: new Map(
+      (c.traders as unknown[][]).map((row) => [
+        row[0] as Address,
+        unpack<TraderState>(TRADER, row, 1),
+      ]),
+    ),
+    grants: new Map(grants.map((g) => [grantKey(g.owner, g.delegate), g])),
+  };
+}

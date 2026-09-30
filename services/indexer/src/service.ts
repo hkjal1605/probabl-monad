@@ -1,27 +1,30 @@
 /** Chain index service: live replica, finalized persistence, reconciliation and read routes.
  *
  * Trading reads (markets, books, orders, stream) and wallet views are served from the confirmed
- * replica in memory with no database round trip. PostgreSQL receives one batched transaction
- * per finalized advance (events and closed orders) plus a checkpoint at a bounded cadence, and
- * serves only history (trades, closed orders). */
-import type { Database, FinalizedBatch, StoredEvent } from "@conditional-stocks/db";
+ * replica in memory with no database round trip; responses are memoized per replica revision,
+ * so a burst of identical reads after a block costs one computation. PostgreSQL receives the
+ * finalized trades and closed orders in coalesced transactions, plus a compressed checkpoint
+ * when the replica changed (at a bounded cadence), and serves only history: trades and closed
+ * orders, cached until a write adds rows to what a read covers. */
+import type {
+  ClosedOrderRecord,
+  Database,
+  FinalizedBatch,
+  TradeRecord,
+} from "@conditional-stocks/db";
 import { parseMarketRef } from "@conditional-stocks/evm-client";
 import {
   type ChainState,
   creditOf,
-  type DecodedEvent,
-  serializeState,
-  type TradeDetails,
+  encodeCheckpoint,
+  type OrderState,
 } from "@conditional-stocks/evm-client/ledger";
-import type { Hono } from "hono";
+import type { Context, Hono } from "hono";
 import { type Address, getAddress, type PublicClient } from "viem";
+import { ChainFollower, type CommitNotice, type FinalizedNotice } from "./follower.ts";
 import {
-  ChainFollower,
-  type CommitNotice,
-  type FinalizedNotice,
-  storedFromDecoded,
-} from "./follower.ts";
-import {
+  closedOrderRecord,
+  closedOrderView,
   type Deployment,
   liveOrder,
   marketIdentity,
@@ -32,8 +35,9 @@ import {
   positionsOf,
   publicIdOf,
   publicMarkets,
-  reservedUnderlying,
-  venueOf,
+  reservedByToken,
+  tradeRecord,
+  tradeView,
 } from "./projection.ts";
 import { type Reconciliation, reconcile } from "./reconcile.ts";
 import { createIndexStream, updateOf } from "./stream.ts";
@@ -41,6 +45,8 @@ import { TokenReader } from "./tokens.ts";
 
 export interface IndexerOptions {
   client: PublicClient;
+  /** Per-endpoint clients for the follower's failover (`FollowerOptions.endpoints`). */
+  endpoints?: PublicClient[];
   exchange: Address;
   quote: Address;
   deploymentBlock: bigint;
@@ -50,14 +56,56 @@ export interface IndexerOptions {
   finalityMs?: number;
   logRange?: bigint;
   finalityDepth?: bigint;
-  /** Minimum interval between checkpoints of the finalized replica. */
+  /** Minimum interval between checkpoints of the finalized replica (default 5 minutes). */
   checkpointMs?: number;
   onError?(error: unknown): void;
 }
 
-interface TailTrade {
-  event: DecodedEvent;
-  trade: TradeDetails;
+/** Wallet images are rebuilt when the owner's replica state changes, else at this age: ERC-20
+ * balances outside the exchange can change without an exchange event. */
+const WALLET_REFRESH_MS = 15_000;
+/** Every market is compared with chain storage at this interval; changed markets in between. */
+const FULL_RECONCILE_MS = 600_000;
+/** Queued finalized batches are coalesced into one transaction of at most this many rows. */
+const MAX_WRITE_ROWS = 20_000;
+
+interface Queued {
+  block: bigint;
+  trades: TradeRecord[];
+  orders: ClosedOrderRecord[];
+  /** Closed orders served from memory until written. */
+  closed: OrderState[];
+  checkpoint?: { block: string; hash: string; text?: string | undefined; state?: Uint8Array };
+}
+interface WalletImage {
+  owner: Address;
+  observedAt: number;
+  blockNumber: string;
+  positions: ReturnType<typeof positionsOf>;
+  balances: Record<string, unknown>;
+}
+
+/** Finalized history reads. Concurrent identical reads share one query, and a result is kept
+ * until a write adds rows to a scope it covers. */
+class History {
+  private entries = new Map<string, { scopes: string[]; value: Promise<unknown> }>();
+
+  read<T>(key: string, scopes: string[], load: () => Promise<T>): Promise<T> {
+    const cached = this.entries.get(key);
+    if (cached) return cached.value as Promise<T>;
+    if (this.entries.size >= 512) this.entries.delete(this.entries.keys().next().value!);
+    const value = load();
+    const entry = { scopes, value };
+    this.entries.set(key, entry);
+    value.catch(() => this.entries.get(key) === entry && this.entries.delete(key));
+    return value;
+  }
+
+  invalidate(scopes: Set<string>) {
+    if (!scopes.size) return;
+    for (const [key, entry] of this.entries)
+      if (entry.scopes.some((scope) => scopes.has(scope))) this.entries.delete(key);
+  }
 }
 
 export class IndexerService {
@@ -68,13 +116,35 @@ export class IndexerService {
   readonly stream = createIndexStream();
   reconciliation: Reconciliation | undefined;
   persistError: string | null = null;
-  private tail: TailTrade[] = [];
+  /** Confirmed trades not yet persisted, oldest first. */
+  private tail: TradeRecord[] = [];
   private lastCheckpoint = 0;
+  /** The finalized replica changed since the last checkpoint. */
+  private changed = false;
   /** Finalized batches not yet written, in order (retried idempotently until they succeed). */
-  private queue: (FinalizedBatch & { block: bigint })[] = [];
+  private queue: Queued[] = [];
+  private unpersisted = new Map<string, OrderState>();
   private writing: Promise<void> | undefined;
   private stopped = false;
   private timers: ReturnType<typeof setInterval>[] = [];
+  private history = new History();
+  private images = new Map<Address, { at: number; image: WalletImage }>();
+  private index:
+    | {
+        revision: number;
+        state: ChainState;
+        byOwner: Map<Address, OrderState[]>;
+        byMarket: Map<number, OrderState[]>;
+      }
+    | undefined;
+  private responses = { epoch: "", bodies: new Map<string, string>() };
+  private audits = {
+    block: -1n,
+    fullAt: 0,
+    dirty: new Set<number>(),
+    issues: new Map<number, string>(),
+  };
+  private liveBlock = -1n;
 
   constructor(readonly options: IndexerOptions) {
     this.domain = `${options.chainId}:${getAddress(options.exchange)}`;
@@ -82,6 +152,7 @@ export class IndexerService {
     this.tokens = new TokenReader(options.client);
     this.follower = new ChainFollower({
       client: options.client,
+      ...(options.endpoints ? { endpoints: options.endpoints } : {}),
       exchange: getAddress(options.exchange),
       quote: getAddress(options.quote),
       deploymentBlock: options.deploymentBlock,
@@ -98,6 +169,7 @@ export class IndexerService {
   }
 
   async start() {
+    await this.options.db.registerDeployment(this.domain);
     await this.follower.start();
     await this.refreshLive();
     await this.audit();
@@ -112,6 +184,7 @@ export class IndexerService {
 
   async stop() {
     for (const timer of this.timers) clearInterval(timer);
+    this.stream.stop();
     this.follower.stop();
     await this.follower.drain();
     this.stopped = true;
@@ -145,50 +218,68 @@ export class IndexerService {
   }
 
   private onCommit(notice: CommitNotice) {
-    if (notice.rebuilt)
-      this.tail = this.tail.filter((t) => t.event.block <= this.follower.base.block);
+    if (notice.rebuilt) {
+      this.tail = this.tail.filter((t) => t.block <= this.follower.base.block);
+      this.images.clear();
+      this.audits.fullAt = 0;
+    }
     for (const event of notice.events)
-      if (event.name === "Trade")
-        this.tail.push({ event, trade: notice.trades.get(`${event.block}:${event.logIndex}`)! });
+      switch (event.name) {
+        case "Trade":
+          this.tail.push(
+            tradeRecord(event, notice.trades.get(`${event.block}:${event.logIndex}`)!),
+          );
+          break;
+        // Tokens moved between a wallet and the exchange: its ERC-20 balances changed.
+        case "Deposited":
+        case "Withdrawn":
+          for (const field of ["owner", "to"])
+            if (typeof event.args[field] === "string") {
+              const wallet = getAddress(event.args[field] as string);
+              this.tokens.forget(wallet);
+              this.images.delete(wallet);
+            }
+          break;
+        // A market's lifecycle decides whether its positions are redeemable, for every holder.
+        case "MarketState":
+        case "MarketResolved":
+          this.images.clear();
+      }
     if (this.tail.length > 2_000) this.tail = this.tail.slice(-2_000);
+    for (const owner of notice.changes.owners) this.images.delete(owner);
+    for (const market of notice.changes.markets) this.audits.dirty.add(market);
     this.stream.publish(
       updateOf(notice.block, notice.changes, (id) => publicIdOf(notice.state, id)),
     );
   }
 
   /** Queues a finalized batch without waiting for the database: a slow or unavailable database
-   * never holds up the live index. The checkpoint is serialized now, matching `notice.block`. */
+   * never holds up the live index. Only trades and closed orders are history the product reads;
+   * every other event is folded into the replica, checkpointed when it changed. */
   private persist(notice: FinalizedNotice) {
-    const due = Date.now() - this.lastCheckpoint >= (this.options.checkpointMs ?? 300_000);
-    if (due) this.lastCheckpoint = Date.now();
-    this.queue.push({
-      block: notice.block,
-      events: notice.events.map((e) =>
-        storedFromDecoded(e, notice.trades.get(`${e.block}:${e.logIndex}`)),
-      ),
-      orders: notice.closed.map((o) => ({
-        key: o.key,
-        owner: o.owner,
-        market: o.market,
-        updated_block: o.updatedBlock.toString(),
-        data: orderView(
-          notice.base,
-          o,
-          notice.base.markets.get(o.market)!,
-          this.deployment,
-          "finalized",
-        ),
-      })),
-      ...(due
-        ? {
-            checkpoint: {
-              block: notice.block.toString(),
-              hash: notice.hash,
-              state: serializeState(notice.base),
-            },
-          }
-        : {}),
-    });
+    if (notice.events.length) this.changed = true;
+    const trades = notice.events
+      .filter((e) => e.name === "Trade")
+      .map((e) => tradeRecord(e, notice.trades.get(`${e.block}:${e.logIndex}`)!));
+    const orders = notice.closed.map((o) =>
+      closedOrderRecord(o, notice.base.markets.get(o.market)!),
+    );
+    for (const o of notice.closed) this.unpersisted.set(o.key, o);
+    const due =
+      this.changed && Date.now() - this.lastCheckpoint >= (this.options.checkpointMs ?? 300_000);
+    if (!trades.length && !orders.length && !due) return;
+    const queued: Queued = { block: notice.block, trades, orders, closed: notice.closed };
+    if (due) {
+      // Serialized now, matching `notice.block`; compressed off the event loop when written.
+      this.lastCheckpoint = Date.now();
+      this.changed = false;
+      queued.checkpoint = {
+        block: notice.block.toString(),
+        hash: notice.hash,
+        text: encodeCheckpoint(notice.base),
+      };
+    }
+    this.queue.push(queued);
     this.writing ??= this.write().finally(() => {
       this.writing = undefined;
     });
@@ -197,11 +288,48 @@ export class IndexerService {
   private async write() {
     let delay = 500;
     while (this.queue.length) {
-      const { block, ...batch } = this.queue[0]!;
+      let count = 0,
+        rows = 0;
+      const batch: FinalizedBatch = { trades: [], orders: [] };
+      let checkpoint: Queued["checkpoint"];
+      for (const queued of this.queue) {
+        const size = queued.trades.length + queued.orders.length;
+        if (count && rows + size > MAX_WRITE_ROWS) break;
+        batch.trades.push(...queued.trades);
+        batch.orders.push(...queued.orders);
+        checkpoint = queued.checkpoint ?? checkpoint;
+        rows += size;
+        count++;
+      }
+      const taken = this.queue.slice(0, count);
       try {
+        if (checkpoint) {
+          checkpoint.state ??= await Bun.zstdCompress(Buffer.from(checkpoint.text!));
+          checkpoint.text = undefined;
+          batch.checkpoint = {
+            block: checkpoint.block,
+            hash: checkpoint.hash,
+            state: checkpoint.state,
+          };
+        }
         await this.options.db.persistFinalized(this.domain, batch);
-        this.queue.shift();
-        this.tail = this.tail.filter((t) => t.event.block > block);
+        this.queue.splice(0, count);
+        const block = taken.at(-1)!.block;
+        this.tail = this.tail.filter((t) => t.block > block);
+        for (const queued of taken)
+          for (const o of queued.closed)
+            if (this.unpersisted.get(o.key) === o) this.unpersisted.delete(o.key);
+        const scopes = new Set<string>();
+        if (batch.trades.length) scopes.add("trades");
+        for (const t of batch.trades)
+          for (const scope of [
+            `trades:m:${t.market}`,
+            `trades:o:${t.maker.toLowerCase()}`,
+            `trades:o:${t.taker.toLowerCase()}`,
+          ])
+            scopes.add(scope);
+        for (const o of batch.orders) scopes.add(`orders:o:${o.owner.toLowerCase()}`);
+        this.history.invalidate(scopes);
         this.persistError = null;
         delay = 500;
       } catch (error) {
@@ -221,11 +349,14 @@ export class IndexerService {
     );
   }
 
+  /** Issuer state can only change in a new block: nothing is read while the head stands still. */
   private async refreshLive() {
     const s = this.follower.confirmed;
+    if (s.block === this.liveBlock) return;
     await this.tokens.refreshIdentity([...s.pools.keys()]);
     const bases = [...new Set([...s.markets.values()].map((m) => m.base))];
     const changed = new Set(await this.tokens.refreshLive(bases));
+    this.liveBlock = s.block;
     if (!changed.size) return;
     const markets = [
       ...new Set(
@@ -237,67 +368,113 @@ export class IndexerService {
     this.stream.publish({ block: s.block.toString(), observedAt: Date.now(), markets, owners: [] });
   }
 
+  /** Pools and ledger identities on every pass; markets that changed since the last pass (and
+   * any that differed), and every market at a slower cadence. A block already checked is not
+   * read again. */
   private async audit() {
-    this.reconciliation = await reconcile(
-      this.options.client,
-      this.options.exchange,
-      this.follower.confirmed,
-    );
+    const s = this.follower.confirmed;
+    const a = this.audits;
+    if (this.reconciliation && s.block === a.block) return;
+    const full = Date.now() - a.fullAt >= FULL_RECONCILE_MS;
+    const dirty = a.dirty;
+    a.dirty = new Set();
+    const only = full ? undefined : new Set([...dirty, ...a.issues.keys()]);
+    try {
+      const result = await reconcile(this.options.client, this.options.exchange, s, only);
+      if (full) {
+        a.issues = result.marketIssues;
+        a.fullAt = Date.now();
+      } else
+        for (const id of only!) {
+          const issue = result.marketIssues.get(id);
+          if (issue) a.issues.set(id, issue);
+          else a.issues.delete(id);
+        }
+      a.block = BigInt(result.block);
+      const checked = new Set(result.marketIssues.values());
+      const issues = [
+        ...result.issues.filter((issue) => !checked.has(issue)),
+        ...a.issues.values(),
+      ];
+      this.reconciliation = {
+        healthy: issues.length === 0,
+        block: result.block,
+        checkedAt: result.checkedAt,
+        pools: result.pools,
+        markets: s.markets.size,
+        issues,
+      };
+    } catch (error) {
+      for (const id of dirty) a.dirty.add(id);
+      throw error;
+    }
+  }
+
+  /** Open orders by owner and by market, rebuilt at most once per replica revision. */
+  private orders(s: ChainState) {
+    const revision = this.follower.revision;
+    if (this.index?.state !== s || this.index.revision !== revision) {
+      const byOwner = new Map<Address, OrderState[]>();
+      const byMarket = new Map<number, OrderState[]>();
+      for (const o of s.orders.values()) {
+        (byOwner.get(o.owner) ?? byOwner.set(o.owner, []).get(o.owner)!).push(o);
+        (byMarket.get(o.market) ?? byMarket.set(o.market, []).get(o.market)!).push(o);
+      }
+      this.index = { revision, state: s, byOwner, byMarket };
+    }
+    return this.index;
+  }
+
+  /** A JSON body memoized per replica revision and token state (and per second when it depends
+   * on the time), shared by every identical request in between. */
+  private memo(c: Context, key: string, timed: boolean, build: () => unknown) {
+    const epoch = `${this.follower.revision}:${this.tokens.version}`;
+    if (this.responses.epoch !== epoch) this.responses = { epoch, bodies: new Map() };
+    const name = timed ? `${key}@${Math.floor(Date.now() / 1000)}` : key;
+    let body = this.responses.bodies.get(name);
+    if (body === undefined) {
+      if (this.responses.bodies.size >= 256) this.responses.bodies.clear();
+      body = JSON.stringify(build());
+      this.responses.bodies.set(name, body);
+    }
+    return c.body(body, 200, { "content-type": "application/json" });
   }
 
   /** Positions and balances of one wallet: claims and vault credit from the replica, external
-   * token balances from one batched RPC read. */
-  async wallet(owner: Address) {
-    const s = this.trading();
-    const tokens = [...s.pools.keys()];
+   * token balances from one batched RPC read. Rebuilt when the owner's state changes, else
+   * served for up to `WALLET_REFRESH_MS`. */
+  async wallet(owner: Address): Promise<WalletImage> {
+    this.trading();
+    const cached = this.images.get(owner);
+    if (cached && Date.now() - cached.at < WALLET_REFRESH_MS) return cached.image;
+    const tokens = [...this.follower.confirmed.pools.keys()];
     const external = await this.tokens.walletBalances(owner, tokens);
+    const s = this.trading();
+    const reserved = reservedByToken(s, this.orders(s).byOwner.get(owner) ?? []);
     const balances: Record<string, unknown> = {};
-    for (const token of tokens)
+    for (const token of tokens) {
+      const pool = s.pools.get(token);
+      if (!pool) continue;
       balances[token] = {
         account: owner,
         token,
-        decimals: s.pools.get(token)!.decimals,
+        decimals: pool.decimals,
         canonicalBalance: (external.get(token) ?? 0n).toString(),
         vaultAvailable: creditOf(s, owner, token).toString(),
-        reserved: reservedUnderlying(s, owner, token).toString(),
+        reserved: (reserved.get(token) ?? 0n).toString(),
         blockNumber: s.block.toString(),
       };
-    return {
+    }
+    const image: WalletImage = {
       owner,
       observedAt: Date.now(),
       blockNumber: s.block.toString(),
       positions: positionsOf(s, owner, this.deployment),
       balances,
     };
-  }
-
-  private tradeView(event: DecodedEvent | StoredEvent, trade: TradeDetails, confirmation: string) {
-    const stored = "data" in event;
-    const args = (stored ? event.data : event.args) as Record<string, unknown>;
-    const fill = BigInt(args.fill as string | bigint),
-      amounts = BigInt(args.amounts as string | bigint),
-      fees = BigInt(args.fees as string | bigint);
-    const mask = (1n << 128n) - 1n;
-    const market = Number(args.market);
-    return {
-      id: `${stored ? event.tx : event.transactionHash}:${stored ? event.log_index : event.logIndex}`,
-      marketId: publicIdOf(this.follower.confirmed, market),
-      venue: venueOf(this.deployment, market),
-      branch: Number((fill >> 160n) & 0xffn),
-      blockTimestamp: String(stored ? event.block_time : event.timestamp),
-      executionPriceRawX18: trade.price,
-      fillQuantity: (fill & ((1n << 96n) - 1n)).toString(),
-      executionQuote: (amounts & mask).toString(),
-      buyerFee: (fees & mask).toString(),
-      sellerFee: (fees >> 128n).toString(),
-      takerSide: trade.takerSide,
-      makerOrderHash: trade.makerKey,
-      takerOrderHash: trade.takerKey,
-      maker: trade.maker,
-      taker: trade.taker,
-      transactionHash: stored ? event.tx : event.transactionHash,
-      confirmation,
-    };
+    if (this.images.size >= 10_000) this.images.clear();
+    this.images.set(owner, { at: image.observedAt, image });
+    return image;
   }
 
   mount(app: Hono) {
@@ -332,32 +509,46 @@ export class IndexerService {
     // market, for venue-level tools such as the admin console.
     app.get("/markets", (c) => {
       const s = this.trading();
-      const markets =
-        c.req.query("venues") === "all" ? [...s.markets.values()] : [...publicMarkets(s).values()];
-      return c.json({
-        markets: markets.map((m) => this.view(s, m)),
+      const all = c.req.query("venues") === "all";
+      return this.memo(c, all ? "markets:all" : "markets", false, () => ({
+        markets: (all ? [...s.markets.values()] : [...publicMarkets(s).values()]).map((m) =>
+          this.view(s, m),
+        ),
         block: s.block.toString(),
         confirmation: "confirmed",
-      });
+      }));
     });
     app.get("/markets/:id", (c) => {
       const s = this.trading();
       const m = this.market(c.req.param("id"), s);
-      return m ? c.json(this.view(s, m)) : c.json({ error: "not-found" }, 404);
+      return m
+        ? this.memo(c, `market:${m.id}`, false, () => this.view(s, m))
+        : c.json({ error: "not-found" }, 404);
     });
     app.get("/orders", async (c) => {
       const s = this.trading();
       const raw = c.req.query("maker");
       const maker = raw ? getAddress(raw) : undefined;
       const open = c.req.query("status") === "open";
-      const rows = [...s.orders.values()]
-        .filter((o) => (!maker || o.owner === maker) && (!open || o.status === "open"))
+      const live = (maker ? (this.orders(s).byOwner.get(maker) ?? []) : [...s.orders.values()])
+        .filter((o) => !open || o.status === "open")
         .map((o) => orderView(s, o, s.markets.get(o.market)!, this.deployment, "confirmed"));
+      const rows: (ReturnType<typeof orderView> | ReturnType<typeof closedOrderView>)[] = live;
       if (maker && !open) {
+        // Closed orders: those awaiting their write (captured before reading history), then
+        // persisted ones.
         const seen = new Set(rows.map((o) => o.id));
-        for (const row of await db.closedOrders(this.domain, maker)) {
-          const order = row as { id: string };
-          if (!seen.has(order.id)) rows.push(row as (typeof rows)[number]);
+        for (const o of this.unpersisted.values())
+          if (o.owner === maker && !seen.has(o.key)) {
+            seen.add(o.key);
+            rows.push(orderView(s, o, s.markets.get(o.market)!, this.deployment, "finalized"));
+          }
+        const key = maker.toLowerCase();
+        for (const record of await this.history.read(`orders:${key}`, [`orders:o:${key}`], () =>
+          db.closedOrders(this.domain, maker),
+        )) {
+          const row = closedOrderView(record, s, this.deployment);
+          if (!seen.has(row.id)) rows.push(row);
         }
       }
       rows.sort((a, b) => (BigInt(b.updatedBlock) > BigInt(a.updatedBlock) ? 1 : -1));
@@ -367,34 +558,34 @@ export class IndexerService {
       const s = this.trading();
       const m = this.market(c.req.param("id"), s);
       if (!m) return c.json({ error: "not-found" }, 404);
-      return c.json({
-        orders: [...s.orders.values()]
-          .filter((o) => o.market === m.id && liveOrder(o, s))
+      return this.memo(c, `book:${m.id}`, true, () => ({
+        orders: (this.orders(s).byMarket.get(m.id) ?? [])
+          .filter((o) => liveOrder(o, s))
           .map((o) => orderView(s, o, m, this.deployment, "confirmed")),
         truncated: false,
         block: s.block.toString(),
-      });
+      }));
     });
     app.get("/orderbooks", (c) => {
       const s = this.trading();
       if (c.req.query("view") === "levels")
-        return c.json({ books: orderbookLevels(s), block: s.block.toString() });
-      const books: Record<string, { orders: ReturnType<typeof orderView>[]; truncated: false }> =
-        {};
-      const listed = new Map(
-        [...publicMarkets(s)].map(([id, m]) => {
-          books[id] = { orders: [], truncated: false };
-          return [m.id, id];
-        }),
-      );
-      for (const o of s.orders.values()) {
-        const id = listed.get(o.market);
-        if (id !== undefined && liveOrder(o, s))
-          books[id]!.orders.push(
-            orderView(s, o, s.markets.get(o.market)!, this.deployment, "confirmed"),
-          );
-      }
-      return c.json({ books, block: s.block.toString() });
+        return this.memo(c, "levels", true, () => ({
+          books: orderbookLevels(s),
+          block: s.block.toString(),
+        }));
+      return this.memo(c, "books", true, () => {
+        const books: Record<string, { orders: ReturnType<typeof orderView>[]; truncated: false }> =
+          {};
+        const byMarket = this.orders(s).byMarket;
+        for (const [id, m] of publicMarkets(s))
+          books[id] = {
+            orders: (byMarket.get(m.id) ?? [])
+              .filter((o) => liveOrder(o, s))
+              .map((o) => orderView(s, o, m, this.deployment, "confirmed")),
+            truncated: false,
+          };
+        return { books, block: s.block.toString() };
+      });
     });
     app.get("/positions/:owner", async (c) => {
       this.custody();
@@ -454,27 +645,38 @@ export class IndexerService {
                 .filter((m) => marketIdentity(s, m).id === parsed.publicId)
                 .map((m) => m.id);
       if (markets && !markets.length) return c.json({ trades: [] });
-      const rows = await db.trades(this.domain, {
-        ...(markets ? { markets } : {}),
-        ...(owner ? { owner } : {}),
-        limit,
-      });
+      // The unpersisted tail is captured before history is read: a write completing in between
+      // then shows its trades in either part (deduplicated), never in neither.
       const tail = this.tail
         .filter(
           (t) =>
-            (!markets || markets.includes(Number(t.event.args.market))) &&
-            (!owner || t.trade.maker === owner || t.trade.taker === owner),
+            (!markets || markets.includes(t.market)) &&
+            (!owner || t.maker === owner || t.taker === owner),
         )
         .reverse();
-      const seen = new Set(rows.map((r) => `${r.tx}:${r.log_index}`));
+      const key = owner?.toLowerCase();
+      const scopes = key
+        ? [`trades:o:${key}`]
+        : markets
+          ? markets.map((m) => `trades:m:${m}`)
+          : ["trades"];
+      const rows = await this.history.read(
+        `trades:${key ?? ""}:${markets?.join(",") ?? ""}:${limit}`,
+        scopes,
+        () =>
+          db.trades(this.domain, {
+            ...(markets ? { markets } : {}),
+            ...(owner ? { owner } : {}),
+            limit,
+          }),
+      );
+      const seen = new Set(rows.map((r) => `${r.tx}:${r.logIndex}`));
       return c.json({
         trades: [
           ...tail
-            .filter((t) => !seen.has(`${t.event.transactionHash}:${t.event.logIndex}`))
-            .map((t) => this.tradeView(t.event, t.trade, "confirmed")),
-          ...rows.map((r) =>
-            this.tradeView(r, (r.data as { trade: TradeDetails }).trade, "finalized"),
-          ),
+            .filter((t) => !seen.has(`${t.tx}:${t.logIndex}`))
+            .map((t) => tradeView(t, s, this.deployment, "confirmed")),
+          ...rows.map((r) => tradeView(r, s, this.deployment, "finalized")),
         ].slice(0, limit),
       });
     });

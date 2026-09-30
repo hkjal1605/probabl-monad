@@ -4,28 +4,110 @@ type Connection = Pick<Pool | PoolClient, "query">;
 
 export class SignInCapacityError extends Error {}
 
-export interface StoredEvent {
-  block: string;
-  log_index: number;
+/** A finalized trade. Hashes and addresses are lowercase 0x hex. */
+export interface TradeRecord {
+  block: bigint;
+  logIndex: number;
+  blockTime: bigint;
   tx: string;
-  block_time: string;
-  name: string;
-  market: number | null;
-  owner: string | null;
-  counterparty: string | null;
-  data: Record<string, unknown>;
+  market: number;
+  branch: number;
+  takerSide: number;
+  makerSeq: bigint;
+  takerSeq: bigint;
+  quantity: bigint;
+  /** The maker's limit price, raw quote per raw base x 1e18. */
+  price: bigint;
+  quote: bigint;
+  buyerFee: bigint;
+  sellerFee: bigint;
+  maker: string;
+  taker: string;
+}
+/** An order closed (filled or cancelled) at or before a finalized block. Its remaining quantity
+ * is zero; it is filled when `filled` equals `quantity`. */
+export interface ClosedOrderRecord {
+  market: number;
+  branch: number;
+  seq: bigint;
+  owner: string;
+  delegate: string | null;
+  side: number;
+  fundingKind: number;
+  tif: number;
+  quantity: bigint;
+  /** Limit price, raw quote per raw base x 1e18. */
+  price: bigint;
+  expiry: bigint;
+  maxFeeBps: number;
+  filled: bigint;
+  feesPaid: bigint;
+  placedAt: bigint;
+  placedTx: string;
+  updatedBlock: bigint;
 }
 export interface FinalizedBatch {
-  events: StoredEvent[];
-  /** Orders that closed at or before the finalized block (their final image). */
-  orders: { key: string; owner: string; market: number; updated_block: string; data: unknown }[];
-  checkpoint?: { block: string; hash: string; state: string };
+  trades: TradeRecord[];
+  /** Orders that closed at or before the finalized block. */
+  orders: ClosedOrderRecord[];
+  /** The finalized replica as opaque bytes. */
+  checkpoint?: { block: string; hash: string; state: Uint8Array };
 }
 export interface Checkpoint {
   block: string;
   hash: string;
-  state: string;
+  state: Buffer;
 }
+
+const bounded = (limit: number, max = 1000) => Math.min(Math.max(Math.trunc(limit), 1), max);
+/** 0x hex to the bytea parameter form. */
+const hex = (value: string) => value.slice(2).toLowerCase();
+/** Resolved once per statement (an InitPlan), so every index below is probed directly. */
+const DEPLOYMENT = "(SELECT id FROM probabl.deployments WHERE domain = $1)";
+const TRADE = `t.block::text, t.log_index, t.block_time::text, t.market, t.branch, t.taker_side,
+  t.maker_seq::text, t.taker_seq::text, t.quantity::text, t.price::text, t.quote::text,
+  t.buyer_fee::text, t.seller_fee::text, encode(t.tx, 'hex') AS tx,
+  encode(t.maker, 'hex') AS maker, encode(t.taker, 'hex') AS taker`;
+const NEWEST = "ORDER BY block DESC, log_index DESC LIMIT";
+// biome-ignore lint/suspicious/noExplicitAny: pg rows are untyped.
+const tradeRecord = (r: any): TradeRecord => ({
+  block: BigInt(r.block),
+  logIndex: r.log_index,
+  blockTime: BigInt(r.block_time),
+  tx: `0x${r.tx}`,
+  market: r.market,
+  branch: r.branch,
+  takerSide: r.taker_side,
+  makerSeq: BigInt(r.maker_seq),
+  takerSeq: BigInt(r.taker_seq),
+  quantity: BigInt(r.quantity),
+  price: BigInt(r.price),
+  quote: BigInt(r.quote),
+  buyerFee: BigInt(r.buyer_fee),
+  sellerFee: BigInt(r.seller_fee),
+  maker: `0x${r.maker}`,
+  taker: `0x${r.taker}`,
+});
+// biome-ignore lint/suspicious/noExplicitAny: pg rows are untyped.
+const closedOrderRecord = (r: any): ClosedOrderRecord => ({
+  market: r.market,
+  branch: r.branch,
+  seq: BigInt(r.seq),
+  owner: `0x${r.owner}`,
+  delegate: r.delegate === null ? null : `0x${r.delegate}`,
+  side: r.side,
+  fundingKind: r.funding_kind,
+  tif: r.tif,
+  quantity: BigInt(r.quantity),
+  price: BigInt(r.price),
+  expiry: BigInt(r.expiry),
+  maxFeeBps: r.max_fee_bps,
+  filled: BigInt(r.filled),
+  feesPaid: BigInt(r.fees_paid),
+  placedAt: BigInt(r.placed_at),
+  placedTx: `0x${r.placed_tx}`,
+  updatedBlock: BigInt(r.updated_block),
+});
 
 /** The only SQL surface of the services. Every statement is keyed by an index. */
 export function queries(db: Connection) {
@@ -36,6 +118,15 @@ export function queries(db: Connection) {
 
     // ---------------------------------------------------------------- chain index
 
+    /** Idempotent; checks first so that restarts never consume identity values. */
+    async registerDeployment(domain: string) {
+      await db.query(
+        `INSERT INTO probabl.deployments (domain) SELECT $1
+        WHERE NOT EXISTS (SELECT 1 FROM probabl.deployments WHERE domain = $1)
+        ON CONFLICT (domain) DO NOTHING`,
+        [domain],
+      );
+    },
     async checkpoint(domain: string): Promise<Checkpoint | undefined> {
       return (
         await db.query<Checkpoint>(
@@ -44,68 +135,59 @@ export function queries(db: Connection) {
         )
       ).rows[0];
     },
-    /** Events after `block` (exclusive) up to `through`, in chain order, for replay. */
-    async eventsAfter(domain: string, block: bigint, through: bigint) {
-      return (
-        await db.query<StoredEvent>(
-          `SELECT block::text, log_index, tx, block_time::text, name, market, owner, counterparty, data
-          FROM probabl.events WHERE domain=$1 AND block>$2 AND block<=$3 ORDER BY block, log_index`,
-          [domain, block.toString(), through.toString()],
-        )
-      ).rows;
-    },
-    async lastEventBlock(domain: string): Promise<bigint | null> {
-      const row = (
-        await db.query<{ block: string | null }>(
-          "SELECT max(block)::text AS block FROM probabl.events WHERE domain=$1",
-          [domain],
-        )
-      ).rows[0];
-      return row?.block ? BigInt(row.block) : null;
-    },
-    /** Finalized trades, newest first, of some markets and/or one owner (taker or maker). */
-    async trades(domain: string, options: { markets?: number[]; owner?: string; limit: number }) {
-      const limit = Math.min(Math.max(Math.trunc(options.limit), 1), 1000);
-      if (options.owner)
+    /** Finalized trades, newest first, of some markets and/or one owner (taker or maker). Each
+     * branch is a top-N read of one index. */
+    async trades(
+      domain: string,
+      options: { markets?: number[]; owner?: string; limit: number },
+    ): Promise<TradeRecord[]> {
+      const limit = bounded(options.limit);
+      const { markets, owner } = options;
+      if (owner) {
+        const scope = markets ? " AND market = ANY($4::integer[])" : "";
         return (
-          await db.query<StoredEvent>(
-            `(SELECT block::text, log_index, tx, block_time::text, name, market, owner, counterparty, data
-              FROM probabl.events WHERE domain=$1 AND name='Trade' AND owner=$2
-              ORDER BY block DESC, log_index DESC LIMIT $3)
-            UNION ALL
-            (SELECT block::text, log_index, tx, block_time::text, name, market, owner, counterparty, data
-              FROM probabl.events WHERE domain=$1 AND name='Trade' AND counterparty=$2 AND owner<>$2
-              ORDER BY block DESC, log_index DESC LIMIT $3)
-            ORDER BY block DESC, log_index DESC LIMIT $3`,
-            [domain, options.owner, limit],
+          await db.query(
+            `SELECT ${TRADE} FROM (
+              (SELECT * FROM probabl.trades WHERE deployment = ${DEPLOYMENT}
+                AND taker = decode($2, 'hex')${scope} ${NEWEST} $3)
+              UNION ALL
+              (SELECT * FROM probabl.trades WHERE deployment = ${DEPLOYMENT}
+                AND maker = decode($2, 'hex') AND taker <> decode($2, 'hex')${scope} ${NEWEST} $3)
+            ) t ORDER BY t.block DESC, t.log_index DESC LIMIT $3`,
+            [domain, hex(owner), limit, ...(markets ? [markets] : [])],
           )
-        ).rows;
-      if (options.markets?.length === 1)
+        ).rows.map(tradeRecord);
+      }
+      if (markets)
         return (
-          await db.query<StoredEvent>(
-            `SELECT block::text, log_index, tx, block_time::text, name, market, owner, counterparty, data
-            FROM probabl.events WHERE domain=$1 AND name='Trade' AND market=$2
-            ORDER BY block DESC, log_index DESC LIMIT $3`,
-            [domain, options.markets[0], limit],
+          await db.query(
+            `SELECT ${TRADE} FROM unnest($2::integer[]) AS m(id) CROSS JOIN LATERAL (
+              SELECT * FROM probabl.trades WHERE deployment = ${DEPLOYMENT} AND market = m.id
+              ${NEWEST} $3) t
+            ORDER BY t.block DESC, t.log_index DESC LIMIT $3`,
+            [domain, markets, limit],
           )
-        ).rows;
+        ).rows.map(tradeRecord);
       return (
-        await db.query<StoredEvent>(
-          `SELECT block::text, log_index, tx, block_time::text, name, market, owner, counterparty, data
-          FROM probabl.events WHERE domain=$1 AND name='Trade' AND ($2::integer[] IS NULL OR market=ANY($2))
-          ORDER BY block DESC, log_index DESC LIMIT $3`,
-          [domain, options.markets ?? null, limit],
+        await db.query(
+          `SELECT ${TRADE} FROM probabl.trades t WHERE deployment = ${DEPLOYMENT} ${NEWEST} $2`,
+          [domain, limit],
         )
-      ).rows;
+      ).rows.map(tradeRecord);
     },
     /** Closed orders of one owner, newest first. */
-    async closedOrders(domain: string, owner: string, limit = 200) {
+    async closedOrders(domain: string, owner: string, limit = 200): Promise<ClosedOrderRecord[]> {
       return (
-        await db.query<{ data: Record<string, unknown> }>(
-          "SELECT data FROM probabl.orders WHERE domain=$1 AND owner=$2 ORDER BY updated_block DESC LIMIT $3",
-          [domain, owner, Math.min(Math.max(Math.trunc(limit), 1), 1000)],
+        await db.query(
+          `SELECT seq::text, expiry::text, placed_at::text, updated_block::text, market,
+            max_fee_bps, branch, side, funding_kind, tif, quantity::text, price::text,
+            filled::text, fees_paid::text, encode(owner, 'hex') AS owner,
+            encode(delegate, 'hex') AS delegate, encode(placed_tx, 'hex') AS placed_tx
+          FROM probabl.closed_orders WHERE deployment = ${DEPLOYMENT} AND owner = decode($2, 'hex')
+          ORDER BY updated_block DESC LIMIT $3`,
+          [domain, hex(owner), bounded(limit)],
         )
-      ).rows.map((row) => row.data);
+      ).rows.map(closedOrderRecord);
     },
 
     // ---------------------------------------------------------------- sign-in
@@ -352,30 +434,89 @@ export function queries(db: Connection) {
 }
 export type Queries = ReturnType<typeof queries>;
 
-/** One transaction per finalized batch: multi-row inserts, never a statement per row. */
+const text = (values: bigint[]) => values.map(String);
+
+/** One transaction per batch: one statement per table (typed arrays through `unnest`), never a
+ * statement per row. Finalized rows never change, so a replayed batch writes nothing. */
 export async function writeFinalized(tx: PoolClient, domain: string, batch: FinalizedBatch) {
-  if (batch.events.length)
+  const t = batch.trades;
+  if (t.length)
     await tx.query(
-      `INSERT INTO probabl.events
-      SELECT $1, x.block, x.log_index, x.tx, x.block_time, x.name, x.market, x.owner, x.counterparty, x.data
-      FROM jsonb_to_recordset($2::jsonb) AS x(block bigint, log_index integer, tx text, block_time bigint,
-        name text, market integer, owner text, counterparty text, data jsonb)
+      `INSERT INTO probabl.trades (deployment, block, log_index, block_time, market, branch,
+        taker_side, maker_seq, taker_seq, quantity, price, quote, buyer_fee, seller_fee, tx,
+        maker, taker)
+      SELECT ${DEPLOYMENT}, x.block, x.log_index, x.block_time, x.market, x.branch, x.taker_side,
+        x.maker_seq, x.taker_seq, x.quantity, x.price, x.quote, x.buyer_fee, x.seller_fee,
+        decode(x.tx, 'hex'), decode(x.maker, 'hex'), decode(x.taker, 'hex')
+      FROM unnest($2::bigint[], $3::integer[], $4::bigint[], $5::integer[], $6::smallint[],
+        $7::smallint[], $8::bigint[], $9::bigint[], $10::numeric[], $11::numeric[],
+        $12::numeric[], $13::numeric[], $14::numeric[], $15::text[], $16::text[], $17::text[])
+        AS x(block, log_index, block_time, market, branch, taker_side, maker_seq, taker_seq,
+          quantity, price, quote, buyer_fee, seller_fee, tx, maker, taker)
       ON CONFLICT DO NOTHING`,
-      [domain, JSON.stringify(batch.events)],
+      [
+        domain,
+        text(t.map((r) => r.block)),
+        t.map((r) => r.logIndex),
+        text(t.map((r) => r.blockTime)),
+        t.map((r) => r.market),
+        t.map((r) => r.branch),
+        t.map((r) => r.takerSide),
+        text(t.map((r) => r.makerSeq)),
+        text(t.map((r) => r.takerSeq)),
+        text(t.map((r) => r.quantity)),
+        text(t.map((r) => r.price)),
+        text(t.map((r) => r.quote)),
+        text(t.map((r) => r.buyerFee)),
+        text(t.map((r) => r.sellerFee)),
+        t.map((r) => hex(r.tx)),
+        t.map((r) => hex(r.maker)),
+        t.map((r) => hex(r.taker)),
+      ],
     );
-  if (batch.orders.length)
+  const o = batch.orders;
+  if (o.length)
     await tx.query(
-      `INSERT INTO probabl.orders
-      SELECT $1, x.key, x.owner, x.market, x.updated_block, x.data
-      FROM jsonb_to_recordset($2::jsonb) AS x(key text, owner text, market integer, updated_block bigint, data jsonb)
-      ON CONFLICT (domain, key) DO UPDATE SET updated_block=EXCLUDED.updated_block, data=EXCLUDED.data`,
-      [domain, JSON.stringify(batch.orders)],
+      `INSERT INTO probabl.closed_orders (deployment, market, branch, seq, owner, delegate, side,
+        funding_kind, tif, quantity, price, expiry, max_fee_bps, filled, fees_paid, placed_at,
+        placed_tx, updated_block)
+      SELECT ${DEPLOYMENT}, x.market, x.branch, x.seq, decode(x.owner, 'hex'),
+        decode(x.delegate, 'hex'), x.side, x.funding_kind, x.tif, x.quantity, x.price, x.expiry,
+        x.max_fee_bps, x.filled, x.fees_paid, x.placed_at, decode(x.placed_tx, 'hex'),
+        x.updated_block
+      FROM unnest($2::integer[], $3::smallint[], $4::bigint[], $5::text[], $6::text[],
+        $7::smallint[], $8::smallint[], $9::smallint[], $10::numeric[], $11::numeric[],
+        $12::bigint[], $13::integer[], $14::numeric[], $15::numeric[], $16::bigint[], $17::text[],
+        $18::bigint[])
+        AS x(market, branch, seq, owner, delegate, side, funding_kind, tif, quantity, price,
+          expiry, max_fee_bps, filled, fees_paid, placed_at, placed_tx, updated_block)
+      ON CONFLICT DO NOTHING`,
+      [
+        domain,
+        o.map((r) => r.market),
+        o.map((r) => r.branch),
+        text(o.map((r) => r.seq)),
+        o.map((r) => hex(r.owner)),
+        o.map((r) => (r.delegate ? hex(r.delegate) : null)),
+        o.map((r) => r.side),
+        o.map((r) => r.fundingKind),
+        o.map((r) => r.tif),
+        text(o.map((r) => r.quantity)),
+        text(o.map((r) => r.price)),
+        text(o.map((r) => r.expiry)),
+        o.map((r) => r.maxFeeBps),
+        text(o.map((r) => r.filled)),
+        text(o.map((r) => r.feesPaid)),
+        text(o.map((r) => r.placedAt)),
+        o.map((r) => hex(r.placedTx)),
+        text(o.map((r) => r.updatedBlock)),
+      ],
     );
   if (batch.checkpoint)
     await tx.query(
       `INSERT INTO probabl.checkpoints(domain, block, hash, state, updated_at) VALUES($1,$2,$3,$4,now())
       ON CONFLICT (domain) DO UPDATE SET block=EXCLUDED.block, hash=EXCLUDED.hash, state=EXCLUDED.state,
-        updated_at=EXCLUDED.updated_at WHERE probabl.checkpoints.block <= EXCLUDED.block`,
+        updated_at=EXCLUDED.updated_at WHERE probabl.checkpoints.block < EXCLUDED.block`,
       [domain, batch.checkpoint.block, batch.checkpoint.hash, batch.checkpoint.state],
     );
 }

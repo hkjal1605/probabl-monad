@@ -3,7 +3,13 @@ import { databaseUrl } from "./postgres-url.ts";
 import { type FinalizedBatch, type Queries, queries, writeFinalized } from "./queries.ts";
 import { initializeStorage, SCHEMA_VERSION } from "./schema.ts";
 
-export type { Checkpoint, FinalizedBatch, Queries, StoredEvent } from "./queries.ts";
+export type {
+  Checkpoint,
+  ClosedOrderRecord,
+  FinalizedBatch,
+  Queries,
+  TradeRecord,
+} from "./queries.ts";
 export { SignInCapacityError } from "./queries.ts";
 export { SCHEMA_VERSION } from "./schema.ts";
 

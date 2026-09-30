@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DataError, EmptyState, Page } from "@/components/ui/page";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useWalletLogin } from "@/components/wallet/WalletLoginProvider";
-import { useMarkets, useOrders, usePositions, useTrades } from "@/hooks/useProtocolData";
+import { useMarkets, useOrders, usePositions, useWalletTrades } from "@/hooks/useProtocolData";
 import { useWalletAssets } from "@/hooks/useWalletAssets";
 import { formatCompactNumber, formatNumber, tokenAmount } from "@/lib/format/display";
 import { groupMarkets, sortEventGroups } from "@/lib/markets/presentation";
@@ -30,7 +30,7 @@ export function PortfolioClient({ markets: initial }: { markets: MarketView[] })
   const { markets } = marketQuery;
   const ordersQuery = useOrders();
   const positionsQuery = usePositions();
-  const tradesQuery = useTrades();
+  const tradesQuery = useWalletTrades();
   const assetQuery = useWalletAssets(markets);
   const activeOrders = ordersQuery.orders.filter((order) => order.status === "open");
   const balances = assetQuery.balances

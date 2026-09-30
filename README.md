@@ -57,12 +57,15 @@ quote limits, fee cap, expiry); the API then submits orders for it without a wal
 with the same client id never place a second order.
 
 **Index.** The API process follows the exchange's logs into an in-memory replica (no database read on
-the trading path), persists finalized events and closed orders in batched transactions, checkpoints,
-reconciles against chain state, and pushes invalidations and wallet images over SSE. Each poll is one
-header request: `logsBloom` skips blocks without exchange logs, logs are read by block hash, and
-parent-hash links detect reorgs. Backfills use parallel ranged `eth_getLogs` sized to the provider's
-limits, and finalized ranges are re-read so persisted history is exact. Contract reads share one
-Multicall3 call, and the database never holds up the live index.
+the trading path), persists finalized trades and closed orders in coalesced transactions plus a
+compressed checkpoint when the replica changed (every other event lives in the checkpoint and on
+chain), reconciles against chain state, and pushes invalidations and wallet images over SSE. Polls
+follow the chain's block interval and each is one header request: `logsBloom` skips blocks without
+exchange logs, logs are read by block hash, and parent-hash links detect reorgs; with several RPC
+endpoints, one whose head stalls is left for one that is ahead. Backfills use parallel ranged
+`eth_getLogs` sized to the provider's limits, finalized ranges are re-read so persisted history is
+exact, and finality reads back off while it stands still. Contract reads share one Multicall3 call,
+history reads are cached until a write changes them, and the database never holds up the live index.
 
 **Δ-vaults** (`docs/delta-vault.md`) pool liquidity per stock and quote both branches of every
 event at `Y = s(1 + (1−p)δ̂)`, `N = s(1 − pδ̂)`, learning the conditional gap `δ̂` from their own
@@ -113,7 +116,8 @@ unavailable and the market maker does not quote.
    (`packages/shared/src/token-catalog.ts`), so add a token's symbol there before listing it.
 2. API (`apps/server`): `CHAIN_ID`, `RPC_URL` (comma-separated endpoints fail over),
    `EXCHANGE_ADDRESS`, `DEPLOYMENT_BLOCK`, `DATABASE_URL` (run `bun run db:migrate` first),
-   `API_AUTH_ORIGINS`, optional `POLL_MS` and `FINALITY_DEPTH` (RPCs without the `finalized` tag),
+   `API_AUTH_ORIGINS`, optional `POLL_MS` (fixes polling; by default it follows the block time) and
+   `FINALITY_DEPTH` (RPCs without the `finalized` tag),
    `TRADING_DELEGATE_ADDRESS`/`TRADING_DELEGATE_PRIVATE_KEY`, `POLYMARKET_INGESTOR_URL`/
    `POLYMARKET_INTERNAL_TOKEN`, `EVIDENCE_PUBLIC_BASE_URL`, `PYTH_HERMES_API_KEY`, `REDIS_URL`, and
    `FAUCET_PRIVATE_KEY` (testnets only).

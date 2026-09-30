@@ -36,6 +36,7 @@ export function readPollInterval(query: {
     [
       "markets",
       "wallet-orders",
+      "wallet-trades",
       "trades",
       "positions",
       "whole-balances",

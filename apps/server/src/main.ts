@@ -53,6 +53,17 @@ const client = createPublicClient({
   batch: { multicall: { deployless: true, batchSize: 16_384, wait: 5 } },
   transport: transports.length > 1 ? fallback(transports) : transports[0]!,
 });
+// The chain follower reads through one endpoint at a time (each failing over to the rest) and
+// moves to another when its head stalls: a node that answers but stopped syncing is not fatal.
+const endpoints =
+  transports.length > 1
+    ? transports.map((_, i) =>
+        createPublicClient({
+          chain,
+          transport: fallback([...transports.slice(i), ...transports.slice(0, i)]),
+        }),
+      )
+    : undefined;
 for (const transport of transports) {
   const id = await createPublicClient({ transport }).getChainId();
   if (id !== chainId) throw new Error("An RPC_URL endpoint serves a different chain than CHAIN_ID");
@@ -75,6 +86,7 @@ const origins = required("API_AUTH_ORIGINS")
 
 const indexer = new IndexerService({
   client,
+  ...(endpoints ? { endpoints } : {}),
   exchange,
   quote,
   deploymentBlock: BigInt(required("DEPLOYMENT_BLOCK")),

@@ -2,7 +2,6 @@ import {
   canonicalStringify,
   hashCanonical,
   type NormalizedPolymarketMarket,
-  type ProbabilityTick,
 } from "@conditional-stocks/market-data";
 import { Pool, type PoolClient } from "pg";
 import { databaseUrl } from "../postgres-url.ts";
@@ -48,8 +47,9 @@ export async function initializePolymarketStorage(
       observed_at_ms numeric(78,0) NOT NULL)`);
     await tx.query(`CREATE INDEX IF NOT EXISTS polymarket_head_condition_idx
       ON operations.polymarket_heads(condition_id,observed_at_ms,gamma_market_id)`);
-    await tx.query(`CREATE TABLE IF NOT EXISTS operations.polymarket_ticks (
-      condition_id text PRIMARY KEY, observed_at_ms numeric(78,0) NOT NULL, payload text NOT NULL)`);
+    // Probability ticks are served from the live books only: the per-update tick table was
+    // written on every book change and never read. The migration (schema owner) removes it.
+    if (options.createSchema) await tx.query("DROP TABLE IF EXISTS operations.polymarket_ticks");
     await tx.query(`CREATE TABLE IF NOT EXISTS operations.polymarket_subscriptions (
       condition_id text PRIMARY KEY, sequence bigserial NOT NULL UNIQUE, payload text NOT NULL)`);
     await tx.query(`CREATE TABLE IF NOT EXISTS operations.polymarket_alerts (
@@ -101,7 +101,7 @@ export function createPolymarketQueries(pool: Pool) {
       snapshotId: rawHash,
     };
     return locked(pool, `polymarket:metadata:${normalized.gammaMarketId}`, async (tx) => {
-      await tx.query(
+      const inserted = await tx.query(
         `INSERT INTO operations.polymarket_snapshots
         (snapshot_id,gamma_market_id,condition_id,observed_at_ms,payload) VALUES($1,$2,$3,$4,$5)
         ON CONFLICT DO NOTHING`,
@@ -127,19 +127,9 @@ export function createPolymarketQueries(pool: Pool) {
           snapshot.fetchedAtMs,
         ],
       );
-      return (await metadata(rawHash, tx)) ?? snapshot;
+      // A new row is exactly `snapshot`; an existing one keeps its first observation.
+      return inserted.rowCount ? snapshot : ((await metadata(rawHash, tx)) ?? snapshot);
     });
-  }
-  async function saveLatestTick(tick: ProbabilityTick) {
-    const payload = canonicalStringify(tick);
-    await pool.query(
-      `INSERT INTO operations.polymarket_ticks(condition_id,observed_at_ms,payload)
-      VALUES($1,$2,$3) ON CONFLICT(condition_id) DO UPDATE
-      SET observed_at_ms=EXCLUDED.observed_at_ms,payload=EXCLUDED.payload
-      WHERE operations.polymarket_ticks.observed_at_ms <= EXCLUDED.observed_at_ms
-        AND operations.polymarket_ticks.payload <> EXCLUDED.payload`,
-      [tick.conditionId.toLowerCase(), tick.observedAtMs, payload],
-    );
   }
   async function appendAlert(
     code: string,
@@ -217,13 +207,6 @@ export function createPolymarketQueries(pool: Pool) {
     );
     return row.rows[0] ? JSON.parse(row.rows[0].payload) : null;
   }
-  async function latestTick(conditionId: Hex): Promise<ProbabilityTick | null> {
-    const row = await pool.query(
-      "SELECT payload FROM operations.polymarket_ticks WHERE condition_id=$1",
-      [conditionId.toLowerCase()],
-    );
-    return row.rows[0] ? JSON.parse(row.rows[0].payload) : null;
-  }
   async function subscriptions(): Promise<SubscriptionRecord[]> {
     const rows = await pool.query(
       "SELECT payload FROM operations.polymarket_subscriptions ORDER BY sequence ASC",
@@ -240,13 +223,11 @@ export function createPolymarketQueries(pool: Pool) {
   }
   return {
     appendMetadata,
-    saveLatestTick,
     appendAlert,
     addSubscription,
     metadata,
     latestMetadataByCondition,
     latestMetadataByGammaId,
-    latestTick,
     subscription,
     subscriptions,
     alerts,

@@ -3,8 +3,8 @@
  * Two in-memory replicas of the exchange ledger (`@conditional-stocks/evm-client/ledger`):
  * - confirmed: the chain tip. Trading reads (markets, books, orders, streams, order planning) and
  *   wallet views use it.
- * - base: the finalized block. Its events and closed orders are persisted, and a periodic
- *   checkpoint of it makes restarts replay only recent events.
+ * - base: the finalized block. Its trades and closed orders are persisted, and a checkpoint of it
+ *   makes restarts replay only the blocks after it.
  *
  * Tip: each poll is one header request. A head linked to the tip by parentHash needs no reorg
  * check, its logsBloom decides whether eth_getLogs is needed at all, and logs are read by block
@@ -12,20 +12,26 @@
  * checked for linkage; larger gaps (downtime) use ranged eth_getLogs. A head behind the tip (a
  * lagging endpoint) is ignored; a broken link rebuilds the tip from the base.
  *
+ * Polling follows the chain's own block interval (learned from header timestamps) unless
+ * `pollMs` fixes it: the next poll is due just before the next block, then every quarter
+ * interval until it appears, so few polls find nothing new. With several endpoints, a head that
+ * stops advancing is compared with the others and the follower moves to one that is ahead: a
+ * node that answers but has stalled cannot freeze the index.
+ *
  * Finality: finalized ranges are read again with ranged eth_getLogs, in parallel chunks sized to
  * what the provider accepts, so persisted history never depends on what the tip saw. When the
- * two differ, the tip is rebuilt. */
-import type { Database, StoredEvent } from "@conditional-stocks/db";
+ * two differ, the tip is rebuilt. The finalized head is read every `finalityMs` while it advances
+ * and backs off while it stands still. */
+import type { Database } from "@conditional-stocks/db";
 import {
   applyTransaction,
   type ChainState,
   cloneState,
   type DecodedEvent,
   decodeLog,
-  deserializeState,
   emptyState,
   type OrderState,
-  serializeState,
+  restoreState,
   type Touched,
   type TradeDetails,
   touched,
@@ -56,14 +62,17 @@ export interface FinalizedNotice {
 }
 export interface FollowerOptions {
   client: PublicClient;
+  /** One client per RPC endpoint, each failing over to the others. The follower reads through
+   * one of them and moves on when a poll fails or its head stalls behind another endpoint. */
+  endpoints?: PublicClient[];
   exchange: Address;
   quote: Address;
   deploymentBlock: bigint;
   domain: string;
-  db?: Pick<Database, "checkpoint" | "eventsAfter" | "lastEventBlock">;
-  /** Head polling interval (default 1 s). */
+  db?: Pick<Database, "checkpoint">;
+  /** Fixed head polling interval; by default polls follow the chain's block interval. */
   pollMs?: number;
-  /** Interval between reads of the finalized block (default 15 s). */
+  /** Interval between reads of the finalized block while it advances (default 15 s). */
   finalityMs?: number;
   /** Initial eth_getLogs block span; it adapts to what the provider accepts. */
   logRange?: bigint;
@@ -99,6 +108,12 @@ const MAX_GAP = 50n;
 const LOG_CONCURRENCY = 4;
 const HEADER_CONCURRENCY = 32;
 const MAX_LOG_RANGE = 100_000n;
+/** Bounds of the learned block interval, which paces adaptive polling. */
+const MIN_POLL_MS = 250;
+const MAX_POLL_MS = 12_000;
+/** Finalized-head reads back off to at most this multiple of `finalityMs`. */
+const FINALITY_BACKOFF = 8;
+const ZSTD = [0x28, 0xb5, 0x2f, 0xfd];
 
 const tradeKey = (e: DecodedEvent) => `${e.block}:${e.logIndex}`;
 const json = (value: unknown) =>
@@ -109,6 +124,7 @@ const merge = (into: Touched, from: Touched) => {
   for (const key of ["markets", "owners", "orders"] as const)
     for (const value of from[key]) (into[key] as Set<unknown>).add(value);
 };
+const zeroBloom = (bloom: Hex | null) => !bloom || /^0x0*$/.test(bloom);
 const header = (block: {
   number: bigint | null;
   hash: Hex | null;
@@ -128,10 +144,20 @@ const header = (block: {
   };
 };
 
+/** A stored checkpoint: zstd-compressed compact JSON, or a legacy uncompressed one. */
+export function readCheckpoint(bytes: Uint8Array): ChainState {
+  const compressed = ZSTD.every((byte, i) => bytes[i] === byte);
+  return restoreState(
+    (compressed ? Bun.zstdDecompressSync(bytes) : Buffer.from(bytes)).toString("utf8"),
+  );
+}
+
 export class ChainFollower {
   base: ChainState;
   confirmed: ChainState;
   ready = false;
+  /** Increments whenever the confirmed replica changes, so reads can be memoized per revision. */
+  revision = 0;
   /** Unfinalized blocks with protocol events, applied to the confirmed replica. */
   private pending: PendingBlock[] = [];
   private head: Tip;
@@ -143,6 +169,17 @@ export class ChainFollower {
   private running: Promise<void> = Promise.resolve();
   private lastSuccess = 0;
   private finalityDue = 0;
+  private finalityDelay: number;
+  /** Learned block interval (a guess until the first sample) and the head it was updated from. */
+  private blockMs = 1_000;
+  private learned = false;
+  private sample: { number: bigint; timestamp: bigint } | undefined;
+  private endpoint = 0;
+  private advancedAt = 0;
+  private probedAt = 0;
+  /** An empty logsBloom proves a block without logs once the endpoint is seen to compute blooms
+   * (chains may zero them); a finalized re-read that differs from the tip revokes the trust. */
+  private emptyBloom: "unknown" | "trusted" | "revoked" = "unknown";
 
   constructor(readonly options: FollowerOptions) {
     this.base = emptyState(options.quote);
@@ -150,12 +187,22 @@ export class ChainFollower {
     this.confirmed = this.base;
     this.head = this.baseTip();
     this.range = options.logRange ?? 2_000n;
+    this.finalityDelay = options.finalityMs ?? 15_000;
+  }
+
+  private get client() {
+    return this.options.endpoints?.[this.endpoint] ?? this.options.client;
+  }
+
+  /** Current polling interval: fixed, or the learned block interval. */
+  interval() {
+    return this.options.pollMs ?? this.blockMs;
   }
 
   health() {
     const age = this.lastSuccess ? Date.now() - this.lastSuccess : Number.POSITIVE_INFINITY;
     return {
-      healthy: this.ready && age < Math.max(15_000, (this.options.pollMs ?? 1_000) * 10),
+      healthy: this.ready && age < Math.max(15_000, this.interval() * 10),
       confirmedBlock: this.confirmed.block,
       finalizedBlock: this.base.block,
       lagMs: age,
@@ -166,27 +213,18 @@ export class ChainFollower {
     const { db, domain } = this.options;
     const checkpoint = await db?.checkpoint(domain);
     if (checkpoint) {
-      const restored = deserializeState(checkpoint.state);
+      const restored = readCheckpoint(checkpoint.state);
       if (getAddress(restored.quote) !== getAddress(this.options.quote))
         throw new Error("Checkpoint belongs to another deployment");
       this.base = restored;
     }
-    // Finalized events persisted after the checkpoint replay from the database, not the RPC.
-    if (db) {
-      const last = await db.lastEventBlock(domain);
-      if (last !== null && last > this.base.block) {
-        for (const batch of transactions(
-          (await db.eventsAfter(domain, this.base.block, last)).map(storedEvent),
-        ))
-          applyTransaction(this.base, batch);
-        this.base.block = last;
-      }
-    }
+    // Blocks after the checkpoint are read from the chain by the first finality pass.
     this.confirmed = cloneState(this.base);
     this.head = this.baseTip();
-    await this.tick();
+    this.advancedAt = Date.now();
+    const advanced = await this.tick();
     this.ready = true;
-    this.schedule();
+    this.schedule(this.delay(advanced));
   }
 
   stop() {
@@ -199,26 +237,46 @@ export class ChainFollower {
     return this.running;
   }
 
-  private schedule() {
+  private schedule(delay: number) {
     if (this.stopped) return;
     this.timer = setTimeout(() => {
+      let next = this.interval();
       this.running = this.tick()
-        .catch((error) => this.options.onError?.(error))
-        .finally(() => this.schedule());
-    }, this.options.pollMs ?? 1_000);
+        .then((advanced) => {
+          next = this.delay(advanced);
+        })
+        .catch((error) => {
+          this.rotate();
+          this.options.onError?.(error);
+        })
+        .finally(() => this.schedule(next));
+    }, delay);
+  }
+
+  /** Just before the next block is due after one arrived (drifting the poll phase towards block
+   * production, so detection latency converges low), then a quarter interval while waiting. */
+  private delay(advanced: boolean) {
+    if (this.options.pollMs !== undefined) return this.options.pollMs;
+    return Math.max(MIN_POLL_MS, Math.round(advanced ? this.blockMs * 0.95 : this.blockMs / 4));
   }
 
   private baseTip(): Tip {
     return { number: this.base.block, hash: this.base.hash, timestamp: this.base.timestamp };
   }
 
+  /** Returns whether the tip advanced. */
   async tick() {
-    const latest = header(await this.options.client.getBlock());
+    const latest = header(await this.client.getBlock());
+    this.learn(latest);
     if (Date.now() >= this.finalityDue || latest.number - this.head.number > MAX_GAP) {
-      this.finalityDue = Date.now() + (this.options.finalityMs ?? 15_000);
       const before = this.base.block;
+      const every = this.options.finalityMs ?? 15_000;
       try {
-        await this.advanceFinality(latest);
+        const advanced = await this.advanceFinality(latest);
+        this.finalityDelay = advanced
+          ? every
+          : Math.min(this.finalityDelay * 2, every * FINALITY_BACKOFF);
+        this.finalityDue = Date.now() + this.finalityDelay;
       } catch (error) {
         // Finality never holds up the tip: retry on the next poll, and rebuild the tip on any
         // partial catch-up so it reflects the base.
@@ -231,12 +289,66 @@ export class ChainFollower {
           );
       }
     }
+    const from = this.head.number;
     await this.advanceTip(latest);
     this.lastSuccess = Date.now();
+    if (this.head.number > from) this.advancedAt = this.lastSuccess;
+    else await this.probe();
+    return this.head.number > from;
+  }
+
+  /** Updates the block interval from header timestamps, weighting by the blocks spanned. */
+  private learn(latest: Header) {
+    const sample = this.sample;
+    this.sample = { number: latest.number, timestamp: latest.timestamp };
+    if (!sample || latest.number <= sample.number || latest.timestamp < sample.timestamp) return;
+    const blocks = Number(latest.number - sample.number);
+    const ms = Math.min(
+      MAX_POLL_MS,
+      Math.max(MIN_POLL_MS, (Number(latest.timestamp - sample.timestamp) * 1000) / blocks),
+    );
+    const weight = this.learned ? Math.min(1, blocks / 8) : 1;
+    this.blockMs = this.blockMs * (1 - weight) + ms * weight;
+    this.learned = true;
+  }
+
+  private rotate() {
+    const count = this.options.endpoints?.length ?? 0;
+    if (count > 1) this.endpoint = (this.endpoint + 1) % count;
+  }
+
+  /** A head that has not moved for a while is compared with the other endpoints' heads; the
+   * follower moves to the furthest one if it is ahead (at most one probe per stall window). */
+  private async probe() {
+    const endpoints = this.options.endpoints;
+    const stall = Math.max(30_000, this.interval() * 15);
+    const now = Date.now();
+    if (!endpoints || endpoints.length < 2 || now - this.advancedAt < stall) return;
+    if (now - this.probedAt < stall) return;
+    this.probedAt = now;
+    const heads = await Promise.all(
+      endpoints.map((client) => client.getBlockNumber({ cacheTime: 0 }).catch(() => -1n)),
+    );
+    let best = this.endpoint;
+    for (let i = 0; i < heads.length; i++) if (heads[i]! > heads[best]!) best = i;
+    if (best !== this.endpoint && heads[best]! > this.head.number) {
+      this.options.onError?.(
+        new Error(`RPC endpoint ${this.endpoint} stalled at ${this.head.number}; using ${best}`),
+      );
+      this.endpoint = best;
+    }
+  }
+
+  /** Whether a block can hold exchange logs, judged from its header alone. */
+  private mayHaveLogs(h: Header) {
+    if (!h.transactions.length) return false;
+    if (zeroBloom(h.logsBloom)) return this.emptyBloom !== "trusted";
+    if (this.emptyBloom === "unknown") this.emptyBloom = "trusted";
+    return mayContain(h.logsBloom, this.options.exchange);
   }
 
   private async advanceTip(latest: Header): Promise<void> {
-    const { client, exchange } = this.options;
+    const client = this.client;
     // A lagging endpoint, or no new block: nothing to do.
     if (latest.number < this.head.number || latest.hash === this.head.hash) return;
     const anchored = this.head.number === this.base.block;
@@ -278,15 +390,14 @@ export class ChainFollower {
     }
     const blocks = await mapLimit(headers, HEADER_CONCURRENCY, async (h) => ({
       block: h,
-      events:
-        h.transactions.length && mayContain(h.logsBloom, exchange) ? await this.blockEvents(h) : [],
+      events: this.mayHaveLogs(h) ? await this.blockEvents(h) : [],
     }));
     this.commit(blocks, latest);
   }
 
   /** Protocol events of one block, read by its hash. */
   private async blockEvents(block: Header) {
-    const logs = await this.options.client.getLogs({
+    const logs = await this.client.getLogs({
       address: this.options.exchange,
       blockHash: block.hash,
     });
@@ -316,6 +427,7 @@ export class ChainFollower {
     this.confirmed.block = head.number;
     this.confirmed.hash = head.hash;
     this.confirmed.timestamp = head.timestamp;
+    this.revision++;
     this.options.onCommit?.({
       block: head.number,
       state: this.confirmed,
@@ -339,16 +451,17 @@ export class ChainFollower {
   }
 
   private async finalizedHead(latest: Header): Promise<Tip> {
-    const { client, finalityDepth } = this.options;
+    const { finalityDepth } = this.options;
     if (finalityDepth === undefined)
-      return header(await client.getBlock({ blockTag: "finalized" }));
+      return header(await this.client.getBlock({ blockTag: "finalized" }));
     const number = latest.number - finalityDepth;
-    return header(await client.getBlock({ blockNumber: number > 0n ? number : 0n }));
+    return header(await this.client.getBlock({ blockNumber: number > 0n ? number : 0n }));
   }
 
+  /** Returns whether the finalized head advanced. */
   private async advanceFinality(latest: Header) {
     const finalized = await this.finalizedHead(latest);
-    if (finalized.number <= this.base.block) return;
+    if (finalized.number <= this.base.block) return false;
     // Past the finalized block, the tip has already applied the range: compare what it saw.
     const covered = this.head.number > finalized.number;
     const seen: DecodedEvent[] = [];
@@ -371,30 +484,39 @@ export class ChainFollower {
     const keep = this.pending.filter((p) => p.number > finalized.number);
     if (covered && fingerprint(seen) === fingerprint(final.flatMap((p) => p.events))) {
       this.pending = keep;
-      return;
+      return true;
     }
+    // The tip missed or misread events: stop trusting empty blooms from here on.
+    if (covered) this.emptyBloom = "revoked";
     this.rebuildTip(keep, covered ? this.head : finalized, changes);
+    return true;
   }
 
   private finalize(events: DecodedEvent[], tip: Tip, changes: Touched) {
     const trades = new Map<string, TradeDetails>();
+    const own = touched();
     for (const batch of transactions(events)) {
-      applyTransaction(this.base, batch, changes);
+      applyTransaction(this.base, batch, own);
       // Orders stay in the replica until evicted below, so both parties resolve.
       for (const e of batch)
         if (e.name === "Trade") trades.set(tradeKey(e), tradeDetails(this.base, e));
     }
+    merge(changes, own);
     this.base.block = tip.number;
     this.base.hash = tip.hash;
     this.base.timestamp = tip.timestamp;
-    // Closed orders are final: they move to persisted history and leave both replicas.
+    // Closed orders are final: they move to persisted history and leave both replicas. Only an
+    // order these events touched can have closed.
     const closed: OrderState[] = [];
-    for (const [key, order] of this.base.orders)
-      if (order.status !== "open" && order.updatedBlock <= tip.number) {
+    for (const key of own.orders) {
+      const order = this.base.orders.get(key);
+      if (order && order.status !== "open" && order.updatedBlock <= tip.number) {
         closed.push(order);
         this.base.orders.delete(key);
         this.confirmed.orders.delete(key);
       }
+    }
+    if (closed.length) this.revision++;
     this.options.onFinalized?.({
       block: tip.number,
       hash: tip.hash,
@@ -427,7 +549,7 @@ export class ChainFollower {
   private async logs(from: bigint, to: bigint): Promise<Log[]> {
     const span = to - from + 1n;
     try {
-      const logs = await this.options.client.getLogs({
+      const logs = await this.client.getLogs({
         address: this.options.exchange,
         fromBlock: from,
         toBlock: to,
@@ -463,7 +585,7 @@ export class ChainFollower {
       ),
     ];
     for (const block of await mapLimit(missing, HEADER_CONCURRENCY, (blockHash) =>
-      this.options.client.getBlock({ blockHash }),
+      this.client.getBlock({ blockHash }),
     ))
       stamps.set(block.hash, block.timestamp);
     live.sort((a, b) =>
@@ -493,42 +615,3 @@ export class ChainFollower {
     return blocks;
   }
 }
-
-/** Persisted form of an event. Integer fields are decimal strings; addresses stay checksummed. */
-export function storedFromDecoded(e: DecodedEvent, trade?: TradeDetails): StoredEvent {
-  const args = e.args;
-  const owner = trade
-    ? trade.taker
-    : typeof args.owner === "string"
-      ? args.owner
-      : typeof args.from === "string"
-        ? args.from
-        : null;
-  return {
-    block: e.block.toString(),
-    log_index: e.logIndex,
-    tx: e.transactionHash,
-    block_time: e.timestamp.toString(),
-    name: e.name,
-    market: args.market === undefined ? null : Number(args.market),
-    owner: owner || null,
-    counterparty: trade?.maker ?? null,
-    data: trade
-      ? { ...(JSON.parse(json(args)) as Record<string, unknown>), trade }
-      : JSON.parse(json(args)),
-  };
-}
-
-/** Rebuilds a decoded event from its stored JSON (the replica parses decimal strings). */
-export function storedEvent(row: StoredEvent): DecodedEvent {
-  return {
-    name: row.name,
-    args: row.data,
-    block: BigInt(row.block),
-    timestamp: BigInt(row.block_time),
-    logIndex: row.log_index,
-    transactionHash: row.tx as Hex,
-  };
-}
-
-export { serializeState };

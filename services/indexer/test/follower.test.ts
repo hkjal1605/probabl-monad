@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, setSystemTime, test } from "bun:test";
 import { type Address, type Hex, type PublicClient, zeroHash } from "viem";
 import { ChainFollower } from "../src/follower.ts";
 import { logRangeLimit, mapLimit } from "../src/rpc.ts";
@@ -85,4 +85,139 @@ test("maps with bounded concurrency in order", async () => {
   });
   expect(result).toEqual([50, 10, 40, 20, 30]);
   expect(peak).toBe(2);
+});
+
+/** A simulated chain behind one endpoint: blocks `seconds` apart, a fixed finalized block, and
+ * headers with one transaction and the given logsBloom. Calls are recorded by kind. */
+function endpoint(options: { seconds?: bigint; finalized?: bigint; bloom?: (n: bigint) => Hex }) {
+  const calls: string[] = [];
+  const state = { head: 100n, finalized: options.finalized ?? 100n };
+  const block = (n: bigint) => ({
+    ...header(n),
+    timestamp: 1_000_000n + n * (options.seconds ?? 2n),
+    logsBloom: options.bloom?.(n) ?? (`0x${"0".repeat(512)}` as Hex),
+    transactions: ["0x01"],
+  });
+  const client = {
+    getBlock: async (args?: { blockNumber?: bigint; blockTag?: string; blockHash?: Hex }) => {
+      calls.push(args?.blockTag ?? (args?.blockNumber !== undefined ? "number" : "latest"));
+      return block(
+        args?.blockTag === "finalized" ? state.finalized : (args?.blockNumber ?? state.head),
+      );
+    },
+    getLogs: async () => {
+      calls.push("logs");
+      return [];
+    },
+    getBlockNumber: async () => {
+      calls.push("blockNumber");
+      return state.head;
+    },
+  } as unknown as PublicClient;
+  return { client, calls, state };
+}
+const follow = (
+  client: PublicClient,
+  extra: Partial<ConstructorParameters<typeof ChainFollower>[0]> = {},
+) =>
+  new ChainFollower({ client, exchange, quote, deploymentBlock: 100n, domain: "stub", ...extra });
+const pacing = (f: ChainFollower) => f as unknown as { delay(advanced: boolean): number };
+
+test("paces head polls by the chain's own block interval", async () => {
+  const chain = endpoint({ seconds: 2n });
+  const f = follow(chain.client);
+  await f.start();
+  f.stop();
+  chain.state.head++;
+  expect(await f.tick()).toBe(true);
+  expect(f.interval()).toBe(2_000); // Learned from the first new block.
+  for (let i = 0; i < 4; i++) {
+    chain.state.head += 3n;
+    expect(await f.tick()).toBe(true);
+  }
+  expect(await f.tick()).toBe(false); // No new block.
+  expect(f.interval()).toBe(2_000);
+  // Due just before the next block after one arrived, then a quarter interval while waiting.
+  expect(pacing(f).delay(true)).toBe(Math.round(f.interval() * 0.95));
+  expect(pacing(f).delay(false)).toBe(Math.round(f.interval() / 4));
+  expect(pacing(follow(chain.client, { pollMs: 700 })).delay(true)).toBe(700);
+});
+
+test("backs off finalized-head reads while finality stands still", async () => {
+  const chain = endpoint({});
+  const f = follow(chain.client, { finalityMs: 1_000, pollMs: 60_000 });
+  const t0 = Date.now();
+  try {
+    setSystemTime(t0);
+    await f.start();
+    f.stop();
+    chain.calls.length = 0;
+    const reads = () => chain.calls.filter((c) => c === "finalized").length;
+    for (let s = 1; s <= 20; s++) {
+      setSystemTime(t0 + s * 1_000);
+      chain.state.head++;
+      await f.tick();
+    }
+    // 1 s, then 2, 4, 8 and 8 s apart: 4 reads in 20 s instead of 20.
+    expect(reads()).toBe(4);
+    // Once it advances, reads return to the base interval.
+    chain.state.finalized = chain.state.head - 2n;
+    setSystemTime(t0 + 23_000);
+    await f.tick();
+    expect(reads()).toBe(5);
+    expect(f.base.block).toBe(chain.state.finalized);
+    setSystemTime(t0 + 24_000);
+    await f.tick();
+    expect(reads()).toBe(6);
+  } finally {
+    setSystemTime();
+  }
+});
+
+test("moves to an endpoint that is ahead when its head stalls", async () => {
+  const stuck = endpoint({}),
+    fresh = endpoint({});
+  const f = follow(stuck.client, { endpoints: [stuck.client, fresh.client] });
+  const t0 = Date.now();
+  try {
+    setSystemTime(t0);
+    await f.start();
+    f.stop();
+    fresh.state.head = 105n;
+    for (const s of [10, 20]) {
+      setSystemTime(t0 + s * 1_000);
+      expect(await f.tick()).toBe(false);
+    }
+    // Other endpoints are only consulted once the head has stood still for the stall window.
+    expect(fresh.calls).not.toContain("blockNumber");
+    setSystemTime(t0 + 31_000);
+    expect(await f.tick()).toBe(false);
+    expect(fresh.calls).toContain("blockNumber");
+    expect(await f.tick()).toBe(true);
+    expect(f.confirmed.block).toBe(105n);
+  } finally {
+    setSystemTime();
+  }
+});
+
+test("skips blocks with an empty bloom once the endpoint is seen to compute blooms", async () => {
+  // Bit 0 only: a non-empty bloom that rules the exchange out.
+  const other = `0x${"0".repeat(510)}01` as Hex;
+  let bloom: Hex = `0x${"0".repeat(512)}`;
+  const chain = endpoint({ bloom: () => bloom });
+  const f = follow(chain.client, { pollMs: 60_000 });
+  await f.start();
+  f.stop();
+  const logsPerBlock = async () => {
+    chain.calls.length = 0;
+    chain.state.head++;
+    await f.tick();
+    return chain.calls.filter((c) => c === "logs").length;
+  };
+  // Blooms may be zeroed by the chain: untrusted until one is seen computed.
+  expect(await logsPerBlock()).toBe(1);
+  bloom = other;
+  expect(await logsPerBlock()).toBe(0);
+  bloom = `0x${"0".repeat(512)}`;
+  expect(await logsPerBlock()).toBe(0);
 });

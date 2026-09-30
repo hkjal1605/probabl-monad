@@ -53,7 +53,8 @@ const IndexStreamProvider = ({ children }: { children: ReactNode }) => {
               (name === "markets" && update.markets.some((m) => key === "all" || key === m)) ||
               (["trades", "resolution"].includes(name) &&
                 (key === "all" ? update.markets.length > 0 : update.markets.includes(key))) ||
-              (["wallet-orders", "payout-credits"].includes(name) && update.owners.includes(key));
+              (["wallet-orders", "wallet-trades", "payout-credits"].includes(name) &&
+                update.owners.includes(key));
             if (changed) void active.refresh();
             else if (!["positions", "trading-readiness"].includes(name)) {
               const entry = resource.get(key);

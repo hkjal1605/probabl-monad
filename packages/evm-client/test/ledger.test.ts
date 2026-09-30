@@ -9,6 +9,8 @@ import {
   decodeLog,
   deserializeState,
   emptyState,
+  encodeCheckpoint,
+  restoreState,
   serializeState,
   transactions,
 } from "../src/ledger.ts";
@@ -319,6 +321,10 @@ describe("ledger replica", () => {
     const events = logs.map((log) => decodeLog(log, blocks.get(log.blockNumber!)!));
     for (const batch of transactions(events)) applyTransaction(state, batch);
     state = deserializeState(serializeState(state)); // Checkpoints round-trip exactly.
+    // Compact checkpoints too, and legacy ones remain readable.
+    expect(serializeState(restoreState(encodeCheckpoint(state)))).toBe(serializeState(state));
+    expect(serializeState(restoreState(serializeState(state)))).toBe(serializeState(state));
+    expect(encodeCheckpoint(state).length).toBeLessThan(serializeState(state).length);
 
     const read = (functionName: string, args: unknown[]) =>
       node.client.readContract({

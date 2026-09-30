@@ -3,24 +3,29 @@
  *
  * Markets are addressed by their chain-independent public id (`marketId`); every on-chain
  * market is a venue of one, described by `venue` (deployment and on-chain market id). */
+import type { ClosedOrderRecord, TradeRecord } from "@conditional-stocks/db";
 import {
   activeDelegation,
   eventKey,
   marketKey,
   marketSlug,
   publicMarketId,
+  U32_MAX,
   underlyingSymbol,
 } from "@conditional-stocks/evm-client";
 import {
   accountKey,
   type ChainState,
   creditOf,
+  type DecodedEvent,
   grantKey,
   type MarketState,
   type OrderState,
+  orderKeyString,
+  type TradeDetails,
   traderOf,
 } from "@conditional-stocks/evm-client/ledger";
-import { type Address, type Hex, zeroHash } from "viem";
+import { type Address, getAddress, type Hex, zeroHash } from "viem";
 
 export const PROTOCOL_VERSION = 4;
 export const PRICE_FORMAT = "raw-unit-ratio-x18";
@@ -310,16 +315,148 @@ export function positionsOf(s: ChainState, owner: Address, deployment: Deploymen
   return result;
 }
 
-/** Reservations of an owner's open underlying-funded orders, per token (never released by
- * expiry or revocation until cancelled on chain). */
-export function reservedUnderlying(s: ChainState, owner: Address, token: Address) {
-  let total = 0n;
-  for (const o of s.orders.values()) {
-    if (o.status !== "open" || o.fundingKind !== 0 || o.owner !== owner) continue;
+/** Reservations of open underlying-funded orders (one owner's), per token, in one pass. They
+ * are never released by expiry or revocation until cancelled on chain. */
+export function reservedByToken(s: ChainState, orders: Iterable<OrderState>) {
+  const totals = new Map<Address, bigint>();
+  for (const o of orders) {
+    if (o.status !== "open" || o.fundingKind !== 0) continue;
     const m = s.markets.get(o.market)!;
-    if ((o.side === 0 ? s.quote : m.base) === token) total += reservedOf(o, m);
+    const token = o.side === 0 ? s.quote : m.base;
+    totals.set(token, (totals.get(token) ?? 0n) + reservedOf(o, m));
   }
-  return total;
+  return totals;
+}
+
+/** Checksummed form of a lowercase address read back from storage, memoized: a few wallets
+ * make most trades. */
+const checksums = new Map<string, Address>();
+export function checksum(address: string): Address {
+  let value = checksums.get(address);
+  if (!value) {
+    if (checksums.size >= 50_000) checksums.clear();
+    value = getAddress(address);
+    checksums.set(address, value);
+  }
+  return value;
+}
+
+const LOW96 = (1n << 96n) - 1n;
+const LOW128 = (1n << 128n) - 1n;
+
+/** A Trade event and its execution details as one typed record (the persisted form). */
+export function tradeRecord(e: DecodedEvent, trade: TradeDetails): TradeRecord {
+  const fill = BigInt(e.args.fill as bigint),
+    amounts = BigInt(e.args.amounts as bigint),
+    fees = BigInt(e.args.fees as bigint);
+  // The replay rejects a Trade of unknown orders before details are resolved.
+  if (
+    trade.maker === null ||
+    trade.taker === null ||
+    trade.price === null ||
+    trade.takerSide === null
+  )
+    throw new Error(`Trade ${e.transactionHash}:${e.logIndex} references unknown orders`);
+  return {
+    block: e.block,
+    logIndex: e.logIndex,
+    blockTime: e.timestamp,
+    tx: e.transactionHash,
+    market: Number(e.args.market),
+    branch: Number((fill >> 160n) & 0xffn),
+    takerSide: trade.takerSide,
+    makerSeq: (fill >> 96n) & U32_MAX,
+    takerSeq: (fill >> 128n) & U32_MAX,
+    quantity: fill & LOW96,
+    price: BigInt(trade.price),
+    quote: amounts & LOW128,
+    buyerFee: fees & LOW128,
+    sellerFee: fees >> 128n,
+    maker: trade.maker,
+    taker: trade.taker,
+  };
+}
+
+export function tradeView(
+  r: TradeRecord,
+  s: ChainState,
+  deployment: Deployment,
+  confirmation: "confirmed" | "finalized",
+) {
+  return {
+    id: `${r.tx}:${r.logIndex}`,
+    marketId: publicIdOf(s, r.market),
+    venue: venueOf(deployment, r.market),
+    branch: r.branch,
+    blockTimestamp: r.blockTime.toString(),
+    executionPriceRawX18: r.price.toString(),
+    fillQuantity: r.quantity.toString(),
+    executionQuote: r.quote.toString(),
+    buyerFee: r.buyerFee.toString(),
+    sellerFee: r.sellerFee.toString(),
+    takerSide: r.takerSide,
+    makerOrderHash: orderKeyString(r.market, r.branch, r.makerSeq),
+    takerOrderHash: orderKeyString(r.market, r.branch, r.takerSeq),
+    maker: checksum(r.maker),
+    taker: checksum(r.taker),
+    transactionHash: r.tx,
+    confirmation,
+  };
+}
+export type TradeView = ReturnType<typeof tradeView>;
+
+/** A closed order as persisted: everything its view needs besides the market's identity. */
+export function closedOrderRecord(o: OrderState, m: MarketState): ClosedOrderRecord {
+  return {
+    market: o.market,
+    branch: o.branch,
+    seq: o.seq,
+    owner: o.owner,
+    delegate: o.delegate,
+    side: o.side,
+    fundingKind: o.fundingKind,
+    tif: o.tif,
+    quantity: o.quantity,
+    price: o.ticks * m.tick,
+    expiry: o.expiry,
+    maxFeeBps: o.maxFeeBps,
+    filled: o.filled,
+    feesPaid: o.feesPaid,
+    placedAt: o.placedAt,
+    placedTx: o.placedTx,
+    updatedBlock: o.updatedBlock,
+  };
+}
+
+/** `orderView` of a closed order: nothing remains or is reserved, and it is filled exactly when
+ * its whole quantity traded. */
+export function closedOrderView(r: ClosedOrderRecord, s: ChainState, deployment: Deployment) {
+  return {
+    id: orderKeyString(r.market, r.branch, r.seq),
+    marketId: publicIdOf(s, r.market),
+    venue: venueOf(deployment, r.market),
+    maker: checksum(r.owner),
+    ...(r.delegate ? { delegate: checksum(r.delegate) } : {}),
+    branch: r.branch,
+    side: r.side,
+    fundingKind: r.fundingKind,
+    tif: r.tif,
+    sequence: r.seq.toString(),
+    quantity: r.quantity.toString(),
+    limitPriceRawX18: r.price.toString(),
+    expiry: r.expiry.toString(),
+    maxFeeBps: r.maxFeeBps,
+    remaining: "0",
+    filled: r.filled.toString(),
+    reserved: "0",
+    openNotional: "0",
+    feesPaid: r.feesPaid.toString(),
+    status: (r.filled === r.quantity ? "filled" : "cancelled") as OrderState["status"],
+    createdAt: new Date(Number(r.placedAt) * 1000).toISOString(),
+    transactionHash: r.placedTx as Hex,
+    updatedBlock: r.updatedBlock.toString(),
+    confirmation: "finalized" as const,
+  };
 }
 
 /** Withdrawable balances: vault credit per token and claim balances per venue. */

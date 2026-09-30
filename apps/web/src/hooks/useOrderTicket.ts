@@ -322,7 +322,7 @@ export function useOrderTicket({ market }: { market: MarketView }) {
       setPrice("");
     }
     setSubmissionCount((value) => value + 1);
-    void refreshStores(["positions", "wallet-orders", "payout-credits"]);
+    void refreshStores(["positions", "wallet-orders", "wallet-trades", "payout-credits"]);
     void refreshPermission();
   };
   const submit = () =>

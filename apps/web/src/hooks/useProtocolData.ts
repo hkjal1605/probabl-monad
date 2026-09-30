@@ -4,11 +4,13 @@ import { fetchTrades } from "@/modules/MarketDetailPageModule/utils/fetchTrades"
 import { fetchMarkets } from "@/modules/MarketsPageModule/utils/fetchMarkets";
 import { fetchOrders } from "@/modules/OrdersPageModule/utils/fetchOrders";
 import { fetchPositions } from "@/modules/PortfolioPageModule/utils/fetchPositions";
+import { fetchWalletTrades } from "@/modules/PortfolioPageModule/utils/fetchWalletTrades";
 import { withMarketSpotPrices } from "@/services/spot-prices";
 import { marketsStore } from "@/stores/useMarketsStore";
 import { ordersStore } from "@/stores/useOrdersStore";
 import { positionsStore } from "@/stores/usePositionsStore";
 import { tradesStore } from "@/stores/useTradesStore";
+import { walletTradesStore } from "@/stores/useWalletTradesStore";
 import type { MarketView } from "@/types/api";
 import { useReadFreshness } from "./useReadFreshness";
 import { useResource } from "./useResource";
@@ -40,6 +42,18 @@ export function usePositions() {
     key = account ?? "";
   const query = useResource(positionsStore, key, (force) => fetchPositions(key, force), !!account);
   return { ...query, ...useReadFreshness(query), positions: query.data?.positions ?? [] };
+}
+/** The connected wallet's trades: read by owner, refreshed only when the wallet changes. */
+export function useWalletTrades() {
+  const { account } = useWallet(),
+    key = account ?? "";
+  const query = useResource(
+    walletTradesStore,
+    key,
+    (force) => fetchWalletTrades(key, force),
+    !!account,
+  );
+  return { ...query, ...useReadFreshness(query), trades: query.data?.trades ?? [] };
 }
 export function useTrades(marketId?: string) {
   const key = marketId ?? "all";

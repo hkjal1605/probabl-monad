@@ -29,6 +29,7 @@ export function useResource<T>(
       const covered = [
         "markets",
         "wallet-orders",
+        "wallet-trades",
         "trades",
         "positions",
         "whole-balances",

@@ -37,18 +37,14 @@ test("Polymarket source data survives an ingestor restart independently of an ex
     price_changes: [{ asset_id: "111", price: "0.50", side: "BUY", size: "500" }],
     timestamp: Date.now().toString(),
   });
-  expect((await store.latestTick(conditionId))?.bestBidX6).toBe("500000");
+  expect((await service.probability(conditionId)).bestBidX6).toBe("500000");
   await service.stop();
   await store.close();
 
   const restartedStore = createPolymarketQueries(fixture.connect());
   try {
     const restarted = new PolymarketIngestor(environment, restartedStore, source);
-    expect(await restarted.probability(conditionId)).toMatchObject({
-      quality: "disconnected",
-      isStale: true,
-      bestBidX6: "500000",
-    });
+    // Subscriptions and metadata survive; probabilities come from the live book once bootstrapped.
     expect((await restarted.metadata(metadata.snapshotId))?.normalized.conditionId).toBe(
       conditionId,
     );

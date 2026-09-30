@@ -426,13 +426,19 @@ export function mountAdmin(
     if (!m.evidence) throw invalid("Final evidence is not available", 404);
     return c.json(await read(m.evidence));
   });
+  // Content-addressed and published only by an (immutable) approval: caches may keep it forever,
+  // and a revalidation is answered without reading the content from the database.
+  const immutable = "public, max-age=31536000, immutable";
   app.get("/v1/attachments/:hash", async (c) => {
     const hash = `0x${c.req.param("hash").replace(/^0x/, "")}`;
     if (!isHex32(hash)) throw invalid("Invalid attachment hash");
+    const etag = `"${hash.slice(2)}"`;
     let published = false;
     for (const packet of await db.attachmentPackets(domain, hash))
       if ((await read(packet)).status === "approved") published = true;
     if (!published) throw invalid("Published attachment not found", 404);
+    if (c.req.header("if-none-match") === etag)
+      return new Response(null, { status: 304, headers: { etag, "cache-control": immutable } });
     const content = await db.attachment(domain, hash);
     if (!content || attachmentContentHash(content) !== hash)
       throw invalid("Attachment integrity failure", 409);
@@ -441,6 +447,8 @@ export function mountAdmin(
         "content-type": "application/octet-stream",
         "content-disposition": "attachment",
         "x-content-type-options": "nosniff",
+        "cache-control": immutable,
+        etag,
       },
     });
   });

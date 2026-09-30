@@ -199,6 +199,13 @@ describe("indexer", () => {
     expect(((await get("/markets")).markets as { state: number }[])[0]!.state).toBe(2);
     const book = (await get("/orderbook/1")).orders as { remaining: string }[];
     expect(book[0]!.remaining).toBe((2n * NVDA).toString());
+    // Alice's immediate-or-cancel buy filled completely: closed, not yet final.
+    const confirmedOrders = (await get(`/orders?maker=${alice}`)).orders as {
+      status: string;
+      confirmation: string;
+    }[];
+    expect(confirmedOrders).toHaveLength(1);
+    expect(confirmedOrders[0]).toMatchObject({ status: "filled", confirmation: "confirmed" });
 
     // Finality: persisted history replaces the confirmed tail; reconciliation holds.
     await node.client.mine({ blocks: 70 });
@@ -207,10 +214,35 @@ describe("indexer", () => {
     );
     const finalized = (await get("/trades?marketId=1")).trades as { confirmation: string }[];
     expect(finalized.map((t) => t.confirmation)).toEqual(["finalized"]);
+    // The stored forms serve exactly what the replica served.
+    expect(finalized[0]).toEqual({ ...trades[0]!, confirmation: "finalized" });
+    await settle(async () => (await db.closedOrders(service.domain, alice)).length === 1);
+    expect((await get(`/orders?maker=${alice}`)).orders).toEqual([
+      { ...confirmedOrders[0]!, confirmation: "finalized" },
+    ]);
     expect((await db.trades(service.domain, { owner: bob, limit: 10 })).length).toBe(1);
+    // History reads are served from memory until a write adds rows to what they cover.
+    const reads = db.trades;
+    let queries = 0;
+    db.trades = (...args) => {
+      queries++;
+      return reads(...args);
+    };
+    try {
+      for (let i = 0; i < 3; i++) await get("/trades?marketId=1");
+      expect(queries).toBe(0);
+      await get(`/trades?owner=${bob}`);
+      await get(`/trades?owner=${bob}`);
+      expect(queries).toBe(1);
+    } finally {
+      db.trades = reads;
+    }
+    // The checkpoint is compressed (zstd frame).
+    const checkpoint = (await db.checkpoint(service.domain))!;
+    expect([...checkpoint.state.subarray(0, 4)]).toEqual([0x28, 0xb5, 0x2f, 0xfd]);
     await settle(async () => (await app.request("/reconciliation")).status === 200);
 
-    // A restart resumes from the checkpoint and persisted events, identical to the live replica.
+    // A restart resumes from the checkpoint and the chain, identical to the live replica.
     const restarted = new IndexerService({
       client: node.publicClient,
       exchange,

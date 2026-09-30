@@ -1,5 +1,6 @@
 import { type IndexerService, marketIdentity, venueOf } from "@conditional-stocks/indexer";
 import { type Hex, isHex32, noOutcome, yesOutcome } from "@conditional-stocks/market-data";
+import { ReadCache } from "@conditional-stocks/shared/read-cache";
 import type { RedisCache } from "@conditional-stocks/shared/redis-cache";
 import {
   isEvmAddress,
@@ -117,9 +118,14 @@ export function mountMarketData(
     if (!m) throw new HTTPException(404, { message: "Unknown market" });
     return m;
   };
+  // Metadata changes at most once per ingestor poll (minutes); every market list refresh reads
+  // it for every condition, so one read per condition serves all of them for a while.
+  const metadataReads = new ReadCache(30_000, 1_024);
   app.get("/v1/markets/:id/polymarket", async (c) => {
     const m = marketCondition(c.req.param("id"));
-    const metadata = await options.polymarket().metadata(m.condition);
+    const metadata = await metadataReads.get(m.condition.toLowerCase(), () =>
+      options.polymarket().metadata(m.condition),
+    );
     if (
       metadata.normalized.conditionId.toLowerCase() !== m.condition.toLowerCase() ||
       yesOutcome(metadata.normalized).indexSet !== String(m.yesIndex) ||

@@ -1,4 +1,8 @@
 import { Pool } from "pg";
+
+/** For tests that set up or inspect storage directly (legacy schemas, query plans). */
+export { Pool };
+
 /** Owns only a newly generated localhost database. No supplied name can be dropped. */
 export async function disposableDatabase(connectionString: string) {
   const url = new URL(connectionString);
