@@ -111,7 +111,8 @@ unavailable and the market maker does not quote.
 1. `bun run build:contracts`, then `bun run deploy:exchange` with `CHAIN_ID` (8453, 84532, 4663 or 46630),
    `RPC_URL`, `DEPLOYER_PRIVATE_KEY`, `QUOTE_TOKEN` and dedicated `ADMIN`, `MARKET_ADMIN`, `GUARDIAN`,
    `RESOLUTION_ADMIN` addresses (`--mainnet` for Base or Robinhood Chain). The quote token is
-   immutable and pinned per chain: USDC on Base, USDG on Robinhood Chain. The record is written to
+   immutable and pinned per chain: USDC on Base, USDG on Robinhood Chain (on a testnet without
+   usable USDG, `bun run deploy:mock-usdg` deploys an open-mint stand-in). The record is written to
    `deployments/<chainId>.json`. Stock tokens are listed with their catalogued underlying
    (`packages/shared/src/token-catalog.ts`), so add a token's symbol there before listing it.
 2. API (`apps/server`): `CHAIN_ID`, `RPC_URL` (comma-separated endpoints fail over),
@@ -127,9 +128,11 @@ unavailable and the market maker does not quote.
    once, then `MM_MODE=live … --execute`.
 5. Δ-vaults: `bun run deploy:vault` with `CHAIN_ID`, `RPC_URL`, `DEPLOYER_PRIVATE_KEY`, `BASE_TOKEN`,
    `PRICE_FEED` (the token's own Chainlink feed) and dedicated `VAULT_ADMIN`, `CURATOR`, `KEEPER`,
-   `GUARDIAN` (Base pins its sequencer-uptime feed). The vault admin signs the printed role and cap
-   calls; the curator sets limits and adds markets (admin console → Vault controls); the admin makes
-   the first deposit. Then set `DELTA_VAULT_ADDRESSES` (API) and `NEXT_PUBLIC_DELTA_VAULTS` (UIs), and
+   `GUARDIAN` (Base pins its sequencer-uptime feed). Testnets have no Chainlink stock feeds:
+   `bun run deploy:mock-feeds` (`FEEDS`, `FEED_SOURCE_RPC_URL`) deploys mocks seeded from the
+   stocks' Robinhood Chain mainnet feeds, and `bun run start:feed-mirror` keeps them current. The
+   vault admin signs the printed role and cap calls; the curator sets limits and adds markets
+   (admin console → Vault controls); the admin makes the first deposit. Then set `DELTA_VAULT_ADDRESSES` (API) and `NEXT_PUBLIC_DELTA_VAULTS` (UIs), and
    run the keeper with `VK_*` settings (see `services/vault-keeper/src/main.ts` and
    `scripts/evm/bootstrap.ts`) from a wallet holding only `KEEPER_ROLE`.
 

@@ -1,0 +1,10 @@
+{
+  "chainId": 46630,
+  "network": "Robinhood Chain Testnet",
+  "token": "0x509E319A1bA0C429596A05294594D884F5610D73",
+  "deploymentBlock": "126784172",
+  "transactionHash": "0xe479e69a970c02b43dad1a79f2fed5a696970993d06d11977c449275548ea3dd",
+  "mintedTo": "0x7c2e81c16dF690F0fEF9d472682f88f0b4Ad5f6D",
+  "minted": "1000000000000",
+  "deployedAt": "2026-09-30T17:02:11.440Z"
+}
