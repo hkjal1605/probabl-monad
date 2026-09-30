@@ -13,6 +13,7 @@ import {
   createPublicClient,
   createWalletClient,
   defineChain,
+  fallback,
   type Hex,
   http,
   parseAbi,
@@ -38,7 +39,11 @@ const required = (name: string) => {
 const chainId = Number(required("CHAIN_ID"));
 const name = TESTNETS[chainId];
 if (!name) throw new Error("The feed mirror runs on testnets only (46630, 84532)");
-const rpc = required("RPC_URL");
+// Comma-separated endpoints fail over, as in the API that shares this environment.
+const rpcs = required("RPC_URL")
+  .split(",")
+  .map((url) => url.trim())
+  .filter(Boolean);
 const account = privateKeyToAccount(
   (process.env.FEED_MIRROR_PRIVATE_KEY?.trim() || required("DEPLOYER_PRIVATE_KEY")) as Hex,
 );
@@ -50,9 +55,10 @@ const chain = defineChain({
   id: chainId,
   name,
   nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-  rpcUrls: { default: { http: [rpc] } },
+  rpcUrls: { default: { http: rpcs } },
 });
-const client = createPublicClient({ chain, transport: http(rpc) });
+const transport = fallback(rpcs.map((url) => http(url)));
+const client = createPublicClient({ chain, transport });
 const source = createPublicClient({ transport: http(required("FEED_SOURCE_RPC_URL")) });
 if ((await client.getChainId()) !== chainId)
   throw new Error("RPC_URL serves a different chain than CHAIN_ID");
@@ -70,7 +76,7 @@ for (const f of feeds) {
   if (owner !== account.address)
     throw new Error(`${f.symbol}'s mock feed belongs to ${owner}, not to this key`);
 }
-const wallet = createWalletClient({ account, chain, transport: http(rpc) });
+const wallet = createWalletClient({ account, chain, transport });
 
 /** Writes every mainnet round the mocks lack; returns how many feeds failed. */
 async function mirror() {
