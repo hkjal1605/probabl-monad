@@ -25,6 +25,14 @@ export const deployments: readonly Deployment[] = [
 /** The wallet's deployment: funding, trading permissions, the faucet and sign-in use it. */
 export const protocolConfig = deployments[0]!;
 
+/** Δ-vaults of the wallet's deployment this build lets users deposit into. Pinned at build
+ * time like the exchange: the API describes vaults but never chooses where funds go. */
+export const deltaVaults: readonly `0x${string}`[] = (process.env.NEXT_PUBLIC_DELTA_VAULTS ?? "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean)
+  .map((value) => getAddress(value));
+
 /** The deployment a venue's transactions go to. */
 export function venueDeployment(venue: { chainId: number; exchange: string }): Deployment {
   const deployment = deployments.find(

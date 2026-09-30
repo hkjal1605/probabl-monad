@@ -1,6 +1,9 @@
 import { quote, U96_MAX, U128_MAX, WAD } from "@conditional-stocks/evm-client";
 import type { MarketState } from "@conditional-stocks/evm-client/ledger";
+import type { Reference } from "@conditional-stocks/operator";
 import { abs, BPS, ceil, max, min, PROB, type Settings } from "./config.ts";
+
+export type { Reference };
 
 export interface Quote {
   branch: 0 | 1;
@@ -10,13 +13,6 @@ export interface Quote {
   price: bigint;
   /** Raw base units. */
   quantity: bigint;
-}
-export interface Reference {
-  /** Quote raw per base raw x 1e18. */
-  spot: bigint;
-  probability: bigint;
-  observedAt: number;
-  spread: bigint;
 }
 /** Claims per branch (YES, NO), including the maker's own order reservations. */
 export interface Inventory {

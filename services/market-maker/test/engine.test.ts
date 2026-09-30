@@ -122,6 +122,8 @@ beforeAll(async () => {
       probability: 600_000n,
       spread: 10_000n,
       observedAt: Date.now(),
+      spotAt: Date.now(),
+      probabilityAt: Date.now(),
     }),
   );
 }, 60_000);

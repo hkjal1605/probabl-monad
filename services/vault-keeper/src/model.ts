@@ -1,0 +1,233 @@
+/** The Δ-model (docs/delta-vault.md): the stock price s and the event probability p come from
+ * outside; the vault learns only the conditional gap δ̂ from its own fills. Branch fair prices
+ * satisfy s = p·Y + (1−p)·N:
+ *
+ *   Y = s·(1 + (1−p)·δ̂)   N = s·(1 − p·δ̂)
+ *
+ * δ̂ is stateless: the anchor moved against the vault's YES-minus-NO stock imbalance, measured as
+ * a share of its stock inventory, so deposits and withdrawals (which scale both) never move it.
+ * Every function here is pure; prices are raw quote per raw base x 1e18. */
+import { quote, U128_MAX, WAD } from "@conditional-stocks/evm-client";
+import { abs, BPS, ceil, max, min, PROB } from "@conditional-stocks/operator";
+
+export const PPM = 1_000_000n;
+
+export interface Quote {
+  branch: 0 | 1;
+  /** 0 bid, 1 ask. */
+  side: 0 | 1;
+  level: number;
+  price: bigint;
+  /** Raw base units. */
+  quantity: bigint;
+  /** 0 plain credit, 1 the branch's claims. */
+  funding: 0 | 1;
+}
+/** Best foreign bid and ask per branch. */
+export type Book = [{ bid?: bigint; ask?: bigint }, { bid?: bigint; ask?: bigint }];
+/** What quotes may reserve: plain credit and each branch's claims (YES, NO). */
+export interface Funds {
+  quote: bigint;
+  base: bigint;
+  quoteClaims: [bigint, bigint];
+  baseClaims: [bigint, bigint];
+}
+export interface Terms {
+  tick: bigint;
+  step: bigint;
+  maxSteps: bigint;
+  minNotional: bigint;
+  maxOrder: bigint;
+}
+
+/** δ̂ in ppm of spot: `anchorBps` moved by `impactBps` per 1% of inventory the vault is long YES
+ * (negative) or long NO (positive), scaled by `widen` (x1e4) and bounded by `maxGapBps`. */
+export function conditionalGap(input: {
+  anchorBps: number;
+  impactBps: number;
+  maxGapBps: number;
+  imbalance: bigint;
+  inventory: bigint;
+  widen: bigint;
+}): bigint {
+  const bound = BigInt(input.maxGapBps) * 100n;
+  let gap = BigInt(input.anchorBps) * 100n;
+  if (input.inventory > 0n)
+    gap -= (BigInt(input.impactBps) * input.imbalance * input.widen) / input.inventory;
+  return max(-bound, min(bound, gap));
+}
+
+/** Fair YES and NO branch prices around `spot` for probability `p` (x1e6) and gap (ppm). */
+export function fairPrices(spot: bigint, p: bigint, gapPpm: bigint): [bigint, bigint] {
+  if (spot <= 0n || spot > U128_MAX || p <= 0n || p >= PROB || abs(gapPpm) >= PPM)
+    throw new Error("Invalid fair-price input");
+  const yes = spot + (spot * gapPpm * (PROB - p)) / (PPM * PROB),
+    no = spot - (spot * gapPpm * p) / (PPM * PROB);
+  if (yes <= 0n || no <= 0n || yes > U128_MAX || no > U128_MAX)
+    throw new Error("Fair price out of bounds");
+  return [yes, no];
+}
+
+/** The YES probability (x1e6) other traders' books imply, from s = p·Y + (1−p)·N with Y and N
+ * the foreign mid-prices of each branch, or null when either branch lacks a two-sided book or the
+ * branches are too close together (`minGapBps` of spot) to tell p apart. */
+export function impliedProbability(book: Book, spot: bigint, minGapBps = 50): bigint | null {
+  const mid = (side: { bid?: bigint; ask?: bigint }) =>
+    side.bid !== undefined && side.ask !== undefined && side.bid < side.ask
+      ? (side.bid + side.ask) / 2n
+      : null;
+  const yes = mid(book[0]),
+    no = mid(book[1]);
+  if (yes === null || no === null || abs(yes - no) * BPS < spot * BigInt(minGapBps)) return null;
+  const p = ((spot - no) * PROB) / (yes - no);
+  return max(0n, min(PROB, p));
+}
+
+/** Spread multiplier (x1e4) ramping from 1x to `factor`x over the last `window` seconds before
+ * quoting stops: informed flow concentrates near resolution. */
+export function widening(secondsLeft: bigint, window: number, factor: number): bigint {
+  if (window <= 0 || secondsLeft >= BigInt(window)) return BPS;
+  const left = secondsLeft < 0n ? 0n : secondsLeft;
+  return (
+    BPS + ((BigInt(Math.round(factor * 10_000)) - BPS) * (BigInt(window) - left)) / BigInt(window)
+  );
+}
+
+/** Half-spread in bps of the branch price. A probability error dp moves both branch prices by
+ * s·δ̂·dp, so the Polymarket spread widens quotes in proportion to |δ̂|. */
+export function halfSpread(input: {
+  minBps: number;
+  makerBps: number;
+  adverseSelectionBps: number;
+  movementBps: bigint;
+  probabilitySpread: bigint;
+  gapPpm: bigint;
+  widen: bigint;
+}): bigint {
+  // Sellers receive quote net of fees: 1+f is insufficient at large fee rates.
+  const feeEdge = ceil(BigInt(input.makerBps) * BPS, BPS - BigInt(input.makerBps));
+  const uncertainty = ceil(input.probabilitySpread * abs(input.gapPpm), PROB * 100n);
+  const base = max(
+    BigInt(input.minBps),
+    feeEdge + BigInt(input.adverseSelectionBps) + input.movementBps * 2n + uncertainty,
+  );
+  return ceil(base * input.widen, BPS);
+}
+
+/** Probability-weighted quote value of the vault's holdings at fair branch prices. `marks` gives
+ * each market's probability and gap; plain stock is worth spot in every world. */
+export function markedValue(
+  holdings: {
+    quote: bigint;
+    base: bigint;
+    markets: {
+      market: number;
+      claims: { yesQuote: bigint; noQuote: bigint; yesBase: bigint; noBase: bigint };
+    }[];
+  },
+  spot: bigint,
+  marks: (market: number) => { probability: bigint; gapPpm: bigint },
+): bigint {
+  let value = holdings.quote + quote(holdings.base, spot);
+  for (const m of holdings.markets) {
+    const { probability: p, gapPpm } = marks(m.market);
+    const [yes, no] = fairPrices(spot, p, gapPpm);
+    const c = m.claims;
+    value +=
+      ((c.yesQuote + quote(c.yesBase, yes)) * p + (c.noQuote + quote(c.noBase, no)) * (PROB - p)) /
+      PROB;
+  }
+  return value;
+}
+
+/** The four quote ladders of one market. Every quote rests passively inside the vault's oracle
+ * band (less a margin for oracle updates in flight), never crosses a foreign order, fits the
+ * exchange and vault size limits, and is funded: bids by quote, asks by stock, each from the
+ * branch's claims first (which also nets the vault's unpaired claims) and plain credit after.
+ * The imbalance room and the resting-notional budget bound the ladders together, so the vault's
+ * worst-case YES-minus-NO stock stays within its cap if every quote filled. */
+export function ladders(input: {
+  terms: Terms;
+  fair: [bigint, bigint];
+  /** Bps of the branch price. */
+  halfSpread: bigint;
+  levels: number;
+  levelSpacingBps: number;
+  maxHalfSpreadBps: number;
+  oracle: bigint;
+  bandBps: number;
+  bandMarginBps: number;
+  /** Quote notional per ladder. */
+  budget: bigint;
+  maxOrder: bigint;
+  maxResting: bigint;
+  imbalance: bigint;
+  maxImbalance: bigint;
+  funds: Funds;
+  best: Book;
+}): Quote[] {
+  const t = input.terms;
+  if (t.tick <= 0n || t.step <= 0n || input.oracle <= 0n || input.levels < 1)
+    throw new Error("Invalid ladder input");
+  const band = (input.oracle * BigInt(Math.max(0, input.bandBps - input.bandMarginBps))) / BPS;
+  const orderCap = min(input.maxOrder, t.maxOrder);
+  const budget = min(input.budget, input.maxResting / 4n);
+  // Room for YES bids and NO asks (they raise YES-minus-NO stock) and for YES asks and NO bids.
+  const raise = max(0n, input.maxImbalance - input.imbalance) / 2n,
+    lower = max(0n, input.maxImbalance + input.imbalance) / 2n;
+  const out: Quote[] = [];
+  for (const branch of [0, 1] as const)
+    for (const side of [0, 1] as const) {
+      const raises = (side === 0) === (branch === 0);
+      let room = raises ? raise : lower,
+        remainingBudget = budget,
+        // Claims belong to one branch; plain credit is shared, half per branch.
+        claims = side === 0 ? input.funds.quoteClaims[branch] : input.funds.baseClaims[branch],
+        credit = (side === 0 ? input.funds.quote : input.funds.base) / 2n,
+        previous: bigint | undefined;
+      const top = input.best[branch];
+      for (let level = 0; level < input.levels && room > 0n && remainingBudget > 0n; level++) {
+        const edge = input.halfSpread + BigInt(input.levelSpacingBps * level);
+        if (edge > BigInt(input.maxHalfSpreadBps) || edge >= BPS) break;
+        const center = input.fair[branch];
+        const price =
+          side === 0
+            ? ((center * (BPS - edge)) / BPS / t.tick) * t.tick
+            : ceil(ceil(center * (BPS + edge), BPS), t.tick) * t.tick;
+        const crosses =
+          side === 0
+            ? top.ask !== undefined && price >= top.ask
+            : top.bid !== undefined && price <= top.bid;
+        if (
+          price <= 0n ||
+          price > U128_MAX ||
+          price === previous ||
+          abs(price - input.oracle) > band ||
+          crosses
+        )
+          continue;
+        const levelBudget = remainingBudget / BigInt(input.levels - level);
+        const fundable = (reserve: bigint) => (side === 0 ? (reserve * WAD) / price : reserve);
+        let quantity = min(
+          (levelBudget * WAD) / price,
+          (orderCap * WAD) / price,
+          t.step * t.maxSteps,
+          room,
+        );
+        const fromClaims = fundable(claims),
+          fromCredit = fundable(credit);
+        const funding: 0 | 1 = fromClaims >= quantity || fromClaims > fromCredit ? 1 : 0;
+        quantity = (min(quantity, funding === 1 ? fromClaims : fromCredit) / t.step) * t.step;
+        const cost = quote(quantity, price, true);
+        if (quantity <= 0n || quote(quantity, price) < t.minNotional || cost > orderCap) continue;
+        const reserved = side === 0 ? cost : quantity;
+        if (funding === 1) claims -= reserved;
+        else credit -= reserved;
+        room -= quantity;
+        remainingBudget -= min(remainingBudget, cost);
+        previous = price;
+        out.push({ branch, side, level, price, quantity, funding });
+      }
+    }
+  return out;
+}

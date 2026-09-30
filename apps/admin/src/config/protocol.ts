@@ -10,4 +10,10 @@ export const adminConfig = {
   rpcUrl: process.env.NEXT_PUBLIC_RPC_URL ?? "http://127.0.0.1:8545",
   explorerUrl: process.env.NEXT_PUBLIC_EXPLORER_URL ?? "",
   polygonConditionalTokens: process.env.NEXT_PUBLIC_POLYGON_CONDITIONAL_TOKENS_ADDRESS ?? "",
+  /** Δ-vaults this console manages; each vault's own roles authorize every action. */
+  deltaVaults: (process.env.NEXT_PUBLIC_DELTA_VAULTS ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map((value) => getAddress(value)),
 } as const;

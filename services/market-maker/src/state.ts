@@ -1,17 +1,9 @@
 import {
-  chmodSync,
-  closeSync,
-  existsSync,
-  fsyncSync,
-  lstatSync,
-  mkdirSync,
-  openSync,
-  readFileSync,
-  renameSync,
-  unlinkSync,
-  writeFileSync,
-} from "node:fs";
-import { dirname, resolve } from "node:path";
+  integerString,
+  type Journal,
+  StateFile as OperatorStateFile,
+  validateJournal,
+} from "@conditional-stocks/operator";
 
 export interface MarketState {
   peak?: string;
@@ -25,16 +17,9 @@ export interface MarketState {
   movementAt?: number;
   cooldownUntil?: number;
 }
-export interface State {
+export interface State extends Journal {
   version: 1;
   scope: string;
-  day: string;
-  /** Gas spent today, in wei. */
-  spent: string;
-  /** Block of the last included transaction; views must not be older. */
-  lastBlock: string;
-  /** Signed transaction journaled before broadcast; `charged` is its reserved maximum cost. */
-  pending?: { hash: string; nonce: number; raw: string; charged: string };
   markets: Record<string, MarketState>;
 }
 export function initialState(scope: string): State {
@@ -49,28 +34,16 @@ export function initialState(scope: string): State {
 }
 export function validateState(value: unknown, scope: string): State {
   const s = value as State;
-  const integer = (v: unknown) => typeof v === "string" && /^[0-9]{1,80}$/.test(v);
+  const integer = integerString;
+  validateJournal(s);
   if (
-    !s ||
     s.version !== 1 ||
     s.scope !== scope ||
-    !/^\d{4}-\d{2}-\d{2}$/.test(s.day) ||
-    !integer(s.spent) ||
-    !integer(s.lastBlock) ||
     !s.markets ||
     typeof s.markets !== "object" ||
     Array.isArray(s.markets)
   )
     throw new Error("Invalid bot state; do not silently reset risk limits");
-  if (
-    s.pending &&
-    (!/^0x[0-9a-f]{64}$/.test(s.pending.hash) ||
-      !Number.isSafeInteger(s.pending.nonce) ||
-      s.pending.nonce < 0 ||
-      !/^0x[0-9a-f]+$/.test(s.pending.raw) ||
-      !integer(s.pending.charged))
-  )
-    throw new Error("Invalid pending transaction journal");
   for (const m of Object.values(s.markets)) {
     if (!m || typeof m !== "object") throw new Error("Invalid market state");
     for (const v of [m.peak, m.spot, m.probability, m.movement])
@@ -83,72 +56,13 @@ export function validateState(value: unknown, scope: string): State {
   }
   return s;
 }
-/** One host/one dedicated wallet. Atomic, fsynced state is saved BEFORE a signed transaction
- * is broadcast. */
-export class StateFile {
-  readonly path: string;
-  readonly lock: string;
-  state: State;
+/** One host/one dedicated wallet (see the operator package's StateFile). */
+export class StateFile extends OperatorStateFile<State> {
   constructor(path: string, scope: string) {
-    this.path = resolve(path);
-    this.lock = `${this.path}.lock`;
-    mkdirSync(dirname(this.path), { recursive: true, mode: 0o700 });
-    const directory = lstatSync(dirname(this.path));
-    if (directory.isSymbolicLink() || !directory.isDirectory() || (directory.mode & 0o077) !== 0)
-      throw new Error("State directory must be private");
-    if (existsSync(this.lock)) {
-      const info = lstatSync(this.lock);
-      if (!info.isFile() || info.isSymbolicLink()) throw new Error("Invalid bot lock");
-      const pid = Number(readFileSync(this.lock, "utf8"));
-      if (!Number.isSafeInteger(pid) || pid <= 0) throw new Error("Invalid bot lock PID");
-      try {
-        process.kill(pid, 0);
-        throw new Error("Another bot process holds this state");
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
-      }
-      unlinkSync(this.lock);
-    }
-    const fd = openSync(this.lock, "wx", 0o600);
-    writeFileSync(fd, String(process.pid));
-    closeSync(fd);
-    try {
-      if (existsSync(this.path)) {
-        const info = lstatSync(this.path);
-        if (!info.isFile() || info.isSymbolicLink() || (info.mode & 0o077) !== 0)
-          throw new Error("State file must be private");
-        this.state = validateState(JSON.parse(readFileSync(this.path, "utf8")), scope);
-      } else {
-        this.state = initialState(scope);
-      }
-      // An interrupted pre-broadcast checkpoint is never silently adopted or overwritten.
-      if (existsSync(`${this.path}.next`))
-        renameSync(`${this.path}.next`, `${this.path}.abandoned-${Date.now()}`);
-      this.save();
-    } catch (error) {
-      this.close();
-      throw error;
-    }
-  }
-  save() {
-    const next = `${this.path}.next`;
-    const fd = openSync(next, "wx", 0o600);
-    try {
-      writeFileSync(fd, JSON.stringify(this.state));
-      fsyncSync(fd);
-    } finally {
-      closeSync(fd);
-    }
-    renameSync(next, this.path);
-    chmodSync(this.path, 0o600);
-    const directory = openSync(dirname(this.path), "r");
-    try {
-      fsyncSync(directory);
-    } finally {
-      closeSync(directory);
-    }
-  }
-  close() {
-    if (existsSync(this.lock)) unlinkSync(this.lock);
+    super(
+      path,
+      (value) => validateState(value, scope),
+      () => initialState(scope),
+    );
   }
 }

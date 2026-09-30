@@ -16,6 +16,7 @@ import { mountAuthentication } from "./auth/routes.ts";
 import { browserCors } from "./common/browser-cors.ts";
 import { logger } from "./common/logger.ts";
 import { mountCustody } from "./custody/routes.ts";
+import { mountDeltaVaults } from "./delta-vaults/routes.ts";
 import { mountFaucet } from "./faucet.ts";
 import { PolymarketIngestorClient } from "./integrations/polymarket.ts";
 import { PythSpotPrices } from "./market-data/pyth.ts";
@@ -169,6 +170,9 @@ const probabilityCache = new RedisCache(
     logger.warn("probability.cache.unavailable");
   },
 );
+const probabilities = new CachedProbability(probabilityCache, (condition) =>
+  polymarket().probability(condition),
+);
 mountMarketData(app, {
   indexer,
   prices: new PythSpotPrices(
@@ -177,10 +181,22 @@ mountMarketData(app, {
     fetch,
     process.env.PYTH_HERMES_API_KEY || undefined,
   ),
-  probabilities: new CachedProbability(probabilityCache, (condition) =>
-    polymarket().probability(condition),
-  ),
+  probabilities,
   polymarket,
+});
+mountDeltaVaults(app, {
+  client,
+  indexer,
+  // Comma-separated Δ-vault addresses served by this API.
+  vaults: (process.env.DELTA_VAULT_ADDRESSES ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map((value) => getAddress(value)),
+  probability: async (condition) => {
+    const midpoint = ((await probabilities.get(condition)) as { midpointX6?: unknown }).midpointX6;
+    return typeof midpoint === "string" && /^[0-9]{1,7}$/.test(midpoint) ? BigInt(midpoint) : null;
+  },
 });
 const authenticate = mountAuthentication(app, db, client, { chainId, exchange }, domain, origins);
 const signer = tradingSigner(

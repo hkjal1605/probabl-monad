@@ -1,11 +1,20 @@
 /** Local-only fixture on a running anvil node: mock quote and stock tokens, the exchange, listed
- * pools, and funded demo wallets. Writes .local/anvil.env for every service. Markets are created
+ * pools, funded demo wallets, and a seeded NVDA Δ-vault over a mock price feed. Writes .local/anvil.env for every service. Markets are created
  * afterwards through the admin evidence flow (scripts/evm/seed-markets.ts).
  *
  * Wallets are anvil's public development mnemonic: never use them outside a local node. */
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
-import { conditionalStocksAbi, listPool, underlyingId } from "@conditional-stocks/evm-client";
+import {
+  approve,
+  conditionalStocksAbi,
+  deltaVaultDeposit,
+  deltaVaultGrantRole,
+  deltaVaultSetCaps,
+  deltaVaultSetLimits,
+  listPool,
+  underlyingId,
+} from "@conditional-stocks/evm-client";
 import {
   createPublicClient,
   createWalletClient,
@@ -32,8 +41,8 @@ if (await Bun.file(resolve(destination, "anvil.env")).exists())
   );
 
 const MNEMONIC = "test test test test test test test test test test test junk";
-const [admin, alice, bob, maker, faucet, delegate] = [0, 1, 2, 3, 4, 5].map((addressIndex) =>
-  mnemonicToAccount(MNEMONIC, { addressIndex }),
+const [admin, alice, bob, maker, faucet, delegate, keeper] = [0, 1, 2, 3, 4, 5, 6].map(
+  (addressIndex) => mnemonicToAccount(MNEMONIC, { addressIndex }),
 );
 const chain = { ...foundry, rpcUrls: { default: { http: [rpc] } } };
 const client = createPublicClient({ chain, transport: http(rpc), pollingInterval: 250 });
@@ -106,6 +115,67 @@ for (const [account, quote, stock] of [
       }),
     );
 }
+// A Δ-vault for NVDA over a mock Chainlink feed that scripts/evm/feed-relay.ts keeps at the
+// reference price. The admin also curates and guards; the keeper wallet holds only its role.
+const feedAbi = parseAbi(["function set(int256 answer, uint256 startedAt, uint256 updatedAt)"]);
+const feed = (await deploy("VaultBase.t.sol", "MockFeed", [8])).address;
+const now = (await client.getBlock()).timestamp;
+await send(
+  wallet.writeContract({
+    address: feed,
+    abi: feedAbi,
+    functionName: "set",
+    args: [100n * 10n ** 8n, now, now],
+  }),
+);
+const vault = await deploy("DeltaVault.sol", "DeltaVault", [
+  {
+    exchange: exchange.address,
+    base: stocks.NVDA,
+    priceFeed: feed,
+    sequencerFeed: "0x0000000000000000000000000000000000000000",
+    admin: admin!.address,
+    adminDelay: 0,
+    name: "Probabl Δ-Vault NVDA",
+    symbol: "dvNVDA",
+  },
+]);
+for (const call of [
+  deltaVaultGrantRole(vault.address, "curator", admin!.address),
+  deltaVaultGrantRole(vault.address, "guardian", admin!.address),
+  deltaVaultGrantRole(vault.address, "keeper", keeper!.address),
+  deltaVaultSetCaps(vault.address, 10_000_000n * 10n ** 6n, 100_000n * 10n ** 18n),
+  // Local references go stale outside US market hours: accept a three-day-old oracle.
+  deltaVaultSetLimits(vault.address, { maxTtl: 600, maxOracleAge: 3 * 86_400, maxFeeBps: 100 }),
+])
+  await send(wallet.sendTransaction({ to: call.to, data: call.data }));
+// The admin seeds the vault: 200,000 USDC and 2,000 NVDA.
+for (const [token, amount] of [
+  [usdc, 200_000n * 10n ** 6n],
+  [stocks.NVDA!, 2_000n * 10n ** 18n],
+] as const) {
+  await send(
+    wallet.sendTransaction({
+      to: token,
+      data: encodeFunctionData({
+        abi: tokenAbi,
+        functionName: "mint",
+        args: [admin!.address, amount],
+      }),
+    }),
+  );
+  const approval = approve(token, vault.address, amount);
+  await send(wallet.sendTransaction({ to: approval.to, data: approval.data }));
+}
+const seed = deltaVaultDeposit(
+  vault.address,
+  200_000n * 10n ** 6n,
+  2_000n * 10n ** 18n,
+  0n,
+  admin!.address,
+);
+await send(wallet.sendTransaction({ to: seed.to, data: seed.data }));
+
 const configured = await client.readContract({
   address: exchange.address,
   abi: conditionalStocksAbi,
@@ -146,6 +216,18 @@ const env = {
   MM_STATE_PATH: resolve(destination, "market-maker/state.json"),
   MM_CONFIG_PATH: resolve(destination, "market-maker.json"),
   SEED_ADMIN_PRIVATE_KEY: key(admin),
+  DELTA_VAULT_ADDRESSES: vault.address,
+  NEXT_PUBLIC_DELTA_VAULTS: vault.address,
+  DELTA_VAULT_FEED: feed,
+  VK_MODE: "live",
+  VK_RPC_URL: rpc,
+  VK_CHAIN_ID: "31337",
+  VK_DEPLOYMENT_BLOCK: String(exchange.block),
+  VK_API_ORIGIN: "http://127.0.0.1:3000",
+  VK_WALLET_ADDRESS: keeper!.address,
+  VK_PRIVATE_KEY: key(keeper),
+  VK_STATE_PATH: resolve(destination, "vault-keeper/state.json"),
+  VK_CONFIG_PATH: resolve(destination, "vault-keeper.json"),
 };
 await Bun.write(
   resolve(destination, "anvil.env"),
@@ -169,6 +251,9 @@ await Bun.write(
       marketMaker: maker!.address,
       faucet: faucet!.address,
       tradingDelegate: delegate!.address,
+      deltaVault: vault.address,
+      deltaVaultFeed: feed,
+      vaultKeeper: keeper!.address,
     },
     null,
     2,

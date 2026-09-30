@@ -142,7 +142,15 @@ describe("pricing", () => {
       quote: [bigint, bigint];
       base: [bigint, bigint];
     };
-    const r = { spot: SPOT, probability: 600_000n, spread: 10_000n, observedAt: Date.now() };
+    const now = Date.now();
+    const r = {
+      spot: SPOT,
+      probability: 600_000n,
+      spread: 10_000n,
+      observedAt: now,
+      spotAt: now,
+      probabilityAt: now,
+    };
     const out = quotes({
       market,
       reference: r,

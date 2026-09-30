@@ -7,7 +7,8 @@
  *   bun --env-file=.local/anvil.env scripts/evm/dev.ts
  *
  * The Polymarket ingestor runs when POLYMARKET_INTERNAL_TOKEN is set (16+ characters); the
- * market maker runs when MM_CONFIG_PATH exists (written by scripts/evm/seed-markets.ts). */
+ * market maker and the Δ-vault keeper run when MM_CONFIG_PATH and VK_CONFIG_PATH exist (written
+ * by scripts/evm/seed-markets.ts), next to the vault's mock-feed relay. */
 import { type ChildProcess, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { localDatabase } from "../../packages/database/src/local.ts";
@@ -94,6 +95,9 @@ run("web", ["run", "--filter", "@conditional-stocks/web", "dev"]);
 run("admin", ["run", "--filter", "@conditional-stocks/admin-ui", "dev"]);
 if (process.env.MM_CONFIG_PATH && existsSync(process.env.MM_CONFIG_PATH))
   run("market-maker", ["services/market-maker/src/main.ts", "--execute"], false);
+if (process.env.DELTA_VAULT_FEED) run("feed-relay", ["scripts/evm/feed-relay.ts"], false);
+if (process.env.VK_CONFIG_PATH && existsSync(process.env.VK_CONFIG_PATH))
+  run("vault-keeper", ["services/vault-keeper/src/main.ts", "--execute"], false);
 console.info(
   `Trading UI: http://localhost:3001 · Admin: http://localhost:3002 · API: http://127.0.0.1:${environment.API_PORT ?? 3000}` +
     (ingestor

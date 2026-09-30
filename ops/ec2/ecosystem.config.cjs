@@ -30,7 +30,9 @@ function service(name, entry, memory, extra = []) {
     max_memory_restart: memory,
     args: [
       `--env-file=${resolve(root, ".env")}`,
-      ...(name === "market-maker" ? [`--env-file=${resolve(root, ".env.market-maker")}`] : []),
+      ...(name === "market-maker" || name === "vault-keeper"
+        ? [`--env-file=${resolve(root, `.env.${name}`)}`]
+        : []),
       resolve(root, entry),
       ...extra,
     ],
@@ -38,14 +40,17 @@ function service(name, entry, memory, extra = []) {
 }
 
 // One API process runs the chain index (live replica, finalized persistence, reconciliation)
-// and the /v1 API. The market maker uses its own dedicated wallet and runs only when
-// .env.market-maker exists.
+// and the /v1 API. The market maker and the Δ-vault keeper each use their own dedicated wallet
+// and run only when .env.market-maker or .env.vault-keeper exists.
 module.exports = {
   apps: [
     service("polymarket", "services/polymarket-ingestor/src/main.ts", "384M"),
     service("api", "apps/server/src/main.ts", "1024M"),
     ...(existsSync(resolve(root, ".env.market-maker"))
       ? [service("market-maker", "services/market-maker/src/main.ts", "512M", ["--execute"])]
+      : []),
+    ...(existsSync(resolve(root, ".env.vault-keeper"))
+      ? [service("vault-keeper", "services/vault-keeper/src/main.ts", "512M", ["--execute"])]
       : []),
   ],
 };

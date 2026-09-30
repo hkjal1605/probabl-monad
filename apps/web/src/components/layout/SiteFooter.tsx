@@ -11,6 +11,7 @@ export function SiteFooter() {
           <Link href="/orders">Orders</Link>
           <Link href="/learn">Risks & mechanics</Link>
           <Link href="/funds">Funds</Link>
+          <Link href="/vaults">Vaults</Link>
         </nav>
       </div>
     </footer>

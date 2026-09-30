@@ -6,9 +6,13 @@ export function operatorRole(account: string | null, operators: readonly string[
   return operators.includes(account) ? ("operator" as const) : ("blocked" as const);
 }
 
-/** Every governance role holder, read from the exchange on the configured chain. Public
- * settings never grant access; the contract enforces each role on every transaction. */
-export async function loadOperators(read: typeof readRoles = readRoles) {
-  const roles = await read();
-  return [roles.admin, roles.marketAdmin, roles.resolutionAdmin, roles.guardian];
+/** Every governance role holder, read from the exchange on the configured chain, plus the
+ * Δ-vault operators `vaults` reads. Public settings never grant access; the contracts enforce
+ * each role on every transaction. */
+export async function loadOperators(
+  read: typeof readRoles = readRoles,
+  vaults: () => Promise<readonly string[]> = async () => [],
+) {
+  const [roles, vaultOperators] = await Promise.all([read(), vaults()]);
+  return [roles.admin, roles.marketAdmin, roles.resolutionAdmin, roles.guardian, ...vaultOperators];
 }

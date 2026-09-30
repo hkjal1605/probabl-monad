@@ -31,7 +31,8 @@ import {
   type WalletHandle,
   walletSources,
 } from "@/lib/admin-wallet";
-import { preflightTransaction, waitForAdminReceipt } from "@/lib/chain";
+import { preflightTransaction, readRoles, waitForAdminReceipt } from "@/lib/chain";
+import { vaultOperators } from "@/lib/delta-vaults";
 import { loadOperators, operatorRole } from "@/lib/operator-access";
 
 export type { AdminTransaction };
@@ -174,7 +175,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     setNetworkError(null);
     setCheckingNetwork(true);
     try {
-      const addresses = await loadOperators();
+      const addresses = await loadOperators(readRoles, () => vaultOperators(owner));
       const provider = currentWallet();
       let chain = Number(await provider.request({ method: "eth_chainId" }));
       if (chain !== adminConfig.chainId && interactive) {

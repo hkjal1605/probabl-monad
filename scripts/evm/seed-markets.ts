@@ -1,11 +1,16 @@
 /** Creates the demo catalogue on a local deployment through the real admin evidence flow:
  * Polymarket metadata → creation evidence → review → API transaction preview, verified against
- * a locally built transaction → signed by the market admin → reconciled → opened. Then funds
- * the market maker. Resumable: progress is kept in .local/market-seed.json.
+ * a locally built transaction → signed by the market admin → reconciled → opened. Then registers
+ * the NVDA markets with the Δ-vault and funds the market maker. Resumable: progress is kept in .local/market-seed.json.
  *
  * Requires the dev stack (scripts/evm/dev.ts) with the Polymarket ingestor enabled. */
 import { resolve } from "node:path";
-import { conditionalStocksAbi, underlyingId } from "@conditional-stocks/evm-client";
+import {
+  conditionalStocksAbi,
+  deltaVaultAbi,
+  deltaVaultAddMarket,
+  underlyingId,
+} from "@conditional-stocks/evm-client";
 import {
   type AdminPreview,
   type AdminTransaction,
@@ -240,6 +245,57 @@ for (const event of DEMO_MARKET_SEED) {
       console.warn(`Skipped ${id}: ${error instanceof Error ? error.message : error}`);
     }
   }
+}
+// The NVDA Δ-vault quotes the demo's NVDA markets (the admin is also its curator locally).
+const vault = process.env.DELTA_VAULT_ADDRESSES?.split(",")[0];
+if (vault && process.env.VK_CONFIG_PATH) {
+  const base = await client.readContract({
+    address: vault as `0x${string}`,
+    abi: deltaVaultAbi,
+    functionName: "BASE",
+  });
+  const quoted = markets.filter((m) => m.base === base).slice(0, 8);
+  for (const { market } of quoted) {
+    const registered = await client.readContract({
+      address: vault as `0x${string}`,
+      abi: deltaVaultAbi,
+      functionName: "market",
+      args: [market],
+    });
+    if (!registered.listed)
+      await send(
+        deltaVaultAddMarket(vault as `0x${string}`, market, {
+          bandBps: 1500,
+          cutoffBuffer: 3600,
+          maxOrder: 5_000n * 10n ** 6n,
+          maxResting: 40_000n * 10n ** 6n,
+          maxImbalance: 200n * 10n ** 18n,
+        }),
+      );
+  }
+  await Bun.write(
+    process.env.VK_CONFIG_PATH,
+    JSON.stringify(
+      {
+        vault,
+        markets: quoted.map(({ market }) => ({
+          market,
+          anchorBps: 0,
+          impactBps: 25,
+          maxGapBps: 1000,
+          orderQuote: "2000",
+        })),
+        // US equity references do not update outside market hours; a local node still quotes.
+        allowStaleSpot: true,
+        maxFeedAgeMs: 900000,
+        maxOracleDeviationBps: 300,
+        bandMarginBps: 100,
+      },
+      null,
+      2,
+    ),
+  );
+  console.info(`Δ-vault ${vault} quotes ${quoted.length} NVDA markets.`);
 }
 if (process.env.MM_CONFIG_PATH && markets.length) {
   await Bun.write(

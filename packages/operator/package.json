@@ -1,0 +1,18 @@
+{
+  "name": "@conditional-stocks/operator",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "bun test test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@conditional-stocks/evm-client": "workspace:*",
+    "@conditional-stocks/shared": "workspace:*",
+    "viem": "2.56.3"
+  }
+}

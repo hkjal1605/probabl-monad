@@ -56,6 +56,19 @@ export function SiteHeader() {
               >
                 Orders
               </SheetClose>
+              <SheetClose
+                nativeButton={false}
+                render={
+                  <Button
+                    variant="ghost"
+                    className="justify-start"
+                    render={<Link href="/vaults" />}
+                    nativeButton={false}
+                  />
+                }
+              >
+                Vaults
+              </SheetClose>
             </nav>
           </SheetContent>
         </Sheet>

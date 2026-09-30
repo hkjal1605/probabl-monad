@@ -72,6 +72,7 @@ export async function refreshStores(names?: string[]) {
   await Promise.all(tasks);
 }
 export function clearWalletStores() {
-  for (const name of ["wallet-orders", "positions", "payout-credits"]) resources.get(name)?.reset();
+  for (const name of ["wallet-orders", "positions", "payout-credits", "delta-vault-account"])
+    resources.get(name)?.reset();
   clearTradingPermissions();
 }

@@ -12,6 +12,7 @@ import {
   PlusCircle,
   Settings2,
   Sun,
+  Vault,
   Wallet,
 } from "lucide-react";
 import Link from "next/link";
@@ -43,6 +44,7 @@ const nav = [
   { href: "/review", icon: ClipboardCheck, label: "Review queue" },
   { href: "/markets", icon: Settings2, label: "Market controls" },
   { href: "/resolutions", icon: Gavel, label: "Resolution" },
+  { href: "/vaults", icon: Vault, label: "Vault controls" },
   { href: "/system", icon: Activity, label: "System health" },
   { href: "/history", icon: History, label: "Audit history" },
 ];

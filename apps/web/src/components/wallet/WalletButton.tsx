@@ -9,6 +9,7 @@ import {
   Network,
   Settings2,
   Sun,
+  Vault,
   WalletCards,
 } from "lucide-react";
 import Link from "next/link";
@@ -155,6 +156,12 @@ export function WalletButton({ compact = false }: { compact?: boolean }) {
                 className="gap-3 px-3 py-2.5 font-medium"
               >
                 <Landmark /> Funds
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                render={<Link href="/vaults" />}
+                className="gap-3 px-3 py-2.5 font-medium"
+              >
+                <Vault /> Vaults
               </DropdownMenuItem>
               <DropdownMenuCheckboxItem
                 checked={resolvedTheme === "dark"}

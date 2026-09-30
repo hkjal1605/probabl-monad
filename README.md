@@ -13,7 +13,8 @@ an inventory-managing market maker.
 
 ```text
 contracts/                 Solidity exchange: ConditionalStocks (trading hot path) + ConditionalStocksAdmin
-                           (governance module behind a delegatecall fallback), one address and ABI
+                           (governance module behind a delegatecall fallback), one address and ABI;
+                           contracts/src/vault: the Δ-vault (DeltaVault + DeltaVaultAdmin, same pattern)
 packages/evm-client        ABI, order packing, atomic planner, transaction builders, delegation,
                            admin/evidence transactions, and an event-sourced ledger replica
 packages/database          PostgreSQL schema and queries (@conditional-stocks/db)
@@ -22,7 +23,9 @@ packages/shared            Logging, HTTP middleware, read caches, token catalog,
 packages/domain            Exact decimal/raw-unit conversions shared by the UIs
 services/indexer           Chain follower (confirmed + finalized replicas, reorgs), projections, SSE
 services/polymarket-ingestor  Display-only Polymarket metadata and probability ingestion
+packages/operator          Signing runtime of the bots: journaled executor, locked state file, references
 services/market-maker      Two-branch quoting from Pyth + Polymarket with risk and gas limits
+services/vault-keeper      Δ-vault quoting: the Δ-model's branch prices within the vault's on-chain limits
 apps/server                API process: embeds the chain index and serves /v1 (auth, trading,
                            custody, admin evidence, faucet, reference prices)
 apps/web                   Next.js trading UI (EIP-6963 wallets)
@@ -61,6 +64,15 @@ parent-hash links detect reorgs. Backfills use parallel ranged `eth_getLogs` siz
 limits, and finalized ranges are re-read so persisted history is exact. Contract reads share one
 Multicall3 call, and the database never holds up the live index.
 
+**Δ-vaults** (`docs/delta-vault.md`) pool liquidity per stock and quote both branches of every
+event at `Y = s(1 + (1−p)δ̂)`, `N = s(1 − pδ̂)`, learning the conditional gap `δ̂` from their own
+fills. A share is an exact pro-rata claim on everything the vault holds (credit, order escrow and
+YES/NO claims): deposits and withdrawals are in kind, so no price, probability or keeper input ever
+moves value between depositors. The keeper posts only passive quotes, each inside a band around a
+Chainlink price with a short lifetime, a cutoff buffer and size caps, never leaving crossed quotes or
+a worst-case YES-minus-NO stock position above the market cap. The guardian pauses deposits and
+quoting; withdrawals are never paused (the admin may rate-limit them to no less than 10% a day).
+
 Gas (Foundry, including test harness): resting bid 124k, resting claim-funded ask 119k, market buy
 filling one maker 85k (partial 93k), four makers 139k, eight makers 203k, cancel 34k.
 
@@ -82,6 +94,10 @@ bun run anvil:bootstrap                      # mock tokens, exchange, funded dem
 POLYMARKET_INTERNAL_TOKEN=<16+ chars> bun run dev   # PostgreSQL, API :3000, UI :3001, admin :3002, ingestor
 bun run seed:markets                         # demo catalogue through the admin evidence flow; funds the maker
 ```
+
+The bootstrap also deploys a seeded NVDA Δ-vault over a mock Chainlink feed (kept at the reference
+price by `scripts/evm/feed-relay.ts`); seeding registers its NVDA markets, and `dev` then runs its
+keeper. Vaults: http://localhost:3001/vaults; controls: http://localhost:3002/vaults.
 
 Reference prices come from Pyth Hermes, whose price endpoints require an entitled key: set
 `PYTH_HERMES_API_KEY` (and optionally `PYTH_HERMES_URL`) for the API. Without it prices show as
@@ -105,6 +121,13 @@ unavailable and the market maker does not quote.
    `NEXT_PUBLIC_EXCHANGE_ADDRESS` (and `API_URL` for the admin's server routes).
 4. Market maker: `MM_*` settings (see `scripts/evm/bootstrap.ts`) with a dedicated wallet; run `--fund`
    once, then `MM_MODE=live … --execute`.
+5. Δ-vaults: `bun run deploy:vault` with `CHAIN_ID`, `RPC_URL`, `DEPLOYER_PRIVATE_KEY`, `BASE_TOKEN`,
+   `PRICE_FEED` (the token's own Chainlink feed) and dedicated `VAULT_ADMIN`, `CURATOR`, `KEEPER`,
+   `GUARDIAN` (Base pins its sequencer-uptime feed). The vault admin signs the printed role and cap
+   calls; the curator sets limits and adds markets (admin console → Vault controls); the admin makes
+   the first deposit. Then set `DELTA_VAULT_ADDRESSES` (API) and `NEXT_PUBLIC_DELTA_VAULTS` (UIs), and
+   run the keeper with `VK_*` settings (see `services/vault-keeper/src/main.ts` and
+   `scripts/evm/bootstrap.ts`) from a wallet holding only `KEEPER_ROLE`.
 
-`ops/ec2` runs the ingestor, the API and (when `.env.market-maker` exists) the market maker under PM2
-behind nginx.
+`ops/ec2` runs the ingestor, the API and (when `.env.market-maker` or `.env.vault-keeper` exists) the
+market maker and the vault keeper under PM2 behind nginx.

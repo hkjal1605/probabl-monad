@@ -8,5 +8,8 @@
     "test": "forge test",
     "gas": "forge test --match-contract GasTest --isolate -vvvv",
     "fmt": "forge fmt"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "5.6.1"
   }
 }

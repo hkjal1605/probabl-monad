@@ -5,12 +5,12 @@ import { parseEnv } from "node:util";
 
 const root = resolve(import.meta.dir, "../..");
 const secrets = new Set<string>();
-for (const file of [".env", ".env.market-maker"]) {
+for (const file of [".env", ".env.market-maker", ".env.vault-keeper"]) {
   if (!existsSync(resolve(root, file))) continue;
   const values = parseEnv(readFileSync(resolve(root, file), "utf8"));
   for (const [name, value] of Object.entries(values))
     if (value && /PRIVATE_KEY|TOKEN|API_KEY/.test(name)) secrets.add(value);
-  for (const name of ["RPC_URL", "MM_RPC_URL"])
+  for (const name of ["RPC_URL", "MM_RPC_URL", "VK_RPC_URL"])
     for (const endpoint of (values[name] ?? "").split(",").filter(Boolean)) {
       secrets.add(endpoint);
       // Also protect provider keys if a third-party logger separates URL components.
@@ -30,7 +30,7 @@ const redact = (input: string) => {
     output = output.split(secret).join("[REDACTED]");
   return output.replace(/postgres(?:ql)?:\/\/[^\s"']+/gi, "[REDACTED_DATABASE_URL]");
 };
-for (const service of ["polymarket", "api", "market-maker"])
+for (const service of ["polymarket", "api", "market-maker", "vault-keeper"])
   for (const stream of ["out", "error"]) {
     if (process.argv[2] && process.argv[2] !== service) continue;
     const path = `/home/ubuntu/.pm2/logs/probabl-${service}-${stream}.log`;
