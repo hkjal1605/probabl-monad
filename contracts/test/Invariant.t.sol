@@ -145,7 +145,8 @@ contract InvariantTest is Base {
             uint256 quoteEscrow,
             uint256 baseEscrow,
             uint256[2][2] memory claimEscrow,
-            uint256 notional
+            uint256 notional,
+            uint256 bidNotional
         )
     {
         for (uint256 i; i < handler.keyCount(); ++i) {
@@ -155,6 +156,7 @@ contract InvariantTest is Base {
             uint256 n = (uint256(o.remaining) * o.ticks * TICK + WAD - 1) / WAD;
             notional += n;
             bool sell = o.flags & 2 != 0;
+            if (!sell) bidNotional += n;
             uint256 branch = k >> 32 & 1;
             if (o.flags & 4 == 0) {
                 if (sell) baseEscrow += o.remaining;
@@ -166,7 +168,7 @@ contract InvariantTest is Base {
     }
 
     function invariant_tokensAreFullyBacked() public view {
-        (uint256 quoteEscrow, uint256 baseEscrow,,) = _orders();
+        (uint256 quoteEscrow, uint256 baseEscrow,,,) = _orders();
         uint256 quoteCredit;
         uint256 baseCredit;
         for (uint256 i; i < actors.length; ++i) {
@@ -189,7 +191,7 @@ contract InvariantTest is Base {
     }
 
     function invariant_claimsEqualBackingOnBothBranches() public view {
-        (,, uint256[2][2] memory claimEscrow,) = _orders();
+        (,, uint256[2][2] memory claimEscrow,,) = _orders();
         ConditionalStocksBase.Backing memory bk = view_.backing(market);
         for (uint8 branch; branch < 2; ++branch) {
             uint256 quoteClaims = claimEscrow[branch][0];
@@ -205,14 +207,15 @@ contract InvariantTest is Base {
         }
     }
 
+    /// @dev Wallets carry the notional of all their resting orders; the market cap counts bids.
     function invariant_openNotionalMatchesRestingOrders() public view {
-        (,,, uint256 notional) = _orders();
+        (,,, uint256 notional, uint256 bidNotional) = _orders();
         uint256 accounts;
         for (uint256 i; i < actors.length; ++i) {
             accounts += view_.account(market, 0, actors[i]).notional;
             accounts += view_.account(market, 1, actors[i]).notional;
         }
-        eq(view_.book(market).openNotional, notional, "market notional");
+        eq(view_.book(market).openNotional, bidNotional, "market notional");
         eq(accounts, notional, "wallet notional");
     }
 }

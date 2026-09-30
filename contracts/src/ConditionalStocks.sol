@@ -245,22 +245,14 @@ contract ConditionalStocks is ConditionalStocksBase {
         Book memory b = _books[t.market];
         t.seq = t.branch == 0 ? b.seqYes : b.seqNo;
         if (nextSeq > t.seq) revert StalePlan();
+        // The last sequence is never assigned, so every `seq + 1` fits 32 bits.
+        if (t.seq == type(uint32).max) revert Overflow();
         if (t.branch == 0) b.seqYes = uint32(t.seq + 1);
         else b.seqNo = uint32(t.seq + 1);
 
         uint32 generation;
         if (delegate != address(0)) {
-            Grant storage g = _grants[owner][delegate];
-            Grant memory gm = g;
-            if (!_authorized(gm, _traders[owner].delegationEpoch, t.market, TRADE)) {
-                revert DelegationInactive();
-            }
-            if (expiry > gm.expiresAt || t.maxFee > gm.maxFeeBps) revert InvalidDelegation();
-            if (notional > gm.maxOrderQuote || notional > gm.remainingQuote) {
-                revert DelegateBudget();
-            }
-            g.remainingQuote = gm.remainingQuote - uint128(notional);
-            generation = gm.generation;
+            generation = _charge(owner, delegate, t, expiry, t.sell ? quantity : notional);
         }
         emit OrderPlaced(t.market, owner, o, t.seq, delegate);
 
@@ -271,33 +263,73 @@ contract ConditionalStocks is ConditionalStocksBase {
             uint256 entry = uint32(m >> (32 * i));
             if (entry == 0) break;
             if (entry > nextSeq) revert StalePlan();
-            _fill(t, c, tm.tick, prefix | (entry - 1), b);
+            _fill(t, c, tm.tick, tm.step, prefix | (entry - 1), b);
         }
         if (t.filled < uint96(p >> 72)) revert StalePlan();
 
         uint256 restNotional;
         if (flags & F_IOC == 0 && t.remaining != 0) {
-            if (!_raceFree(t, nextSeq)) revert StalePlan();
-            _record(t);
+            if (!_raceFree(t, nextSeq, prefix, t.branch == 0 ? b.restYes : b.restNo)) {
+                revert StalePlan();
+            }
+            if (t.branch == 0) b.restYes = uint32(t.seq + 1);
+            else b.restNo = uint32(t.seq + 1);
             restNotional = _quoteUp(t.remaining, t.price);
-            _orders[key] = Order({
-                remaining: uint96(t.remaining),
-                ticks: t.ticks,
-                expiry: expiry,
-                carry: t.carry,
-                maxFeeBps: t.maxFee,
-                flags: uint8(flags & (F_SELL | F_CLAIM))
-                    | (delegate == address(0) ? 0 : S_DELEGATED),
-                owner: owner,
-                epoch: _traders[owner].epoch,
-                generation: generation
-            });
+            Trader memory tr = _traders[owner];
+            _storeOrder(
+                _orders[key],
+                StoredOrder({
+                    owner: tr.id == 0 ? _enroll(owner, tr.epoch) : tr.id,
+                    steps: uint32(t.remaining / tm.step),
+                    ticks: t.ticks,
+                    expiry: expiry,
+                    carry: t.carry,
+                    maxFeeBps: t.maxFee,
+                    flags: uint8(flags & (F_SELL | F_CLAIM))
+                        | (delegate == address(0) ? 0 : S_DELEGATED),
+                    epoch: uint24(tr.epoch),
+                    generation: uint24(generation)
+                })
+            );
             if (delegate != address(0)) _delegates[key] = delegate;
-            b.openNotional = _u64(b.openNotional + restNotional);
-            if (b.openNotional > tm.maxMarket) revert CapExceeded();
+            if (!t.sell) {
+                b.openNotional = _u64(b.openNotional + restNotional);
+                if (b.openNotional > tm.maxMarket) revert CapExceeded();
+            }
         }
         _settleTaker(t, restNotional, tm);
-        _books[t.market] = b;
+        _storeBook(_books[t.market], b);
+    }
+
+    /// @dev Checks a delegated placement against the owner's grant and spends its budget: a buy
+    ///      its quote notional, a sell its base quantity. Returns the grant's generation.
+    function _charge(address owner, address delegate, Taker memory t, uint40 expiry, uint256 cost)
+        private
+        returns (uint32)
+    {
+        Delegation memory g = _grants[owner][delegate];
+        if (!_authorized(g, _traders[owner].delegationEpoch, t.market, TRADE)) {
+            revert DelegationInactive();
+        }
+        if (expiry > g.expiresAt || t.maxFee > g.maxFeeBps) revert InvalidDelegation();
+        Budget storage budget = _budgets[owner][delegate];
+        if (t.sell) {
+            uint256 remaining = budget.remainingBase;
+            if (cost > budget.maxOrderBase || cost > remaining) revert DelegateBudget();
+            budget.remainingBase = uint128(remaining - cost);
+        } else {
+            uint256 remaining = budget.remainingQuote;
+            if (cost > budget.maxOrderQuote || cost > remaining) revert DelegateBudget();
+            budget.remainingQuote = uint128(remaining - cost);
+        }
+        return g.generation;
+    }
+
+    /// @dev Gives `owner` the compact id its resting orders are stored under.
+    function _enroll(address owner, uint64 epoch) private returns (uint32 id) {
+        id = ++_traderCount;
+        _traders[owner].id = id;
+        _members[id] = Member(owner, epoch);
     }
 
     /// @dev Applies the taker's aggregated ledger changes once, after every maker fill (which
@@ -336,7 +368,7 @@ contract ConditionalStocks is ConditionalStocksBase {
                 revert CapExceeded();
             }
         }
-        accounts[t.owner] = a;
+        _storeAccount(accounts[t.owner], a);
         if (t.quoteBacking != 0 || t.baseBacking != 0) {
             Backing memory bk = _backing[t.market];
             _backing[t.market] =
@@ -350,29 +382,38 @@ contract ConditionalStocks is ConditionalStocksBase {
 
     /// @dev Fills one planned maker. The maker's changes are written here; the taker's are
     ///      aggregated in `t` and applied by `_settleTaker`.
-    function _fill(Taker memory t, Control memory c, uint256 tick, uint256 key, Book memory b)
-        private
-    {
-        Order memory mo = _orders[key];
-        if (mo.remaining == 0) return; // Filled or cancelled since planning.
+    function _fill(
+        Taker memory t,
+        Control memory c,
+        uint256 tick,
+        uint256 step,
+        uint256 key,
+        Book memory b
+    ) private {
+        StoredOrder memory mo = _orders[key];
+        if (mo.steps == 0) return; // Filled or cancelled since planning.
         if (
             (mo.flags & S_SELL != 0) == t.sell || (t.sell ? mo.ticks < t.ticks : mo.ticks > t.ticks)
         ) revert StalePlan();
-        Trader memory mt = _traders[mo.owner];
+        if (mo.expiry <= block.timestamp || c.makerBps > mo.maxFeeBps) return;
+        Member memory mm = _members[mo.owner];
+        address owner = mm.owner;
         if (
-            mo.expiry <= block.timestamp || mo.epoch != mt.epoch || c.makerBps > mo.maxFeeBps
-                || (mo.flags & S_DELEGATED != 0 && !_delegateLive(key, mo, mt))
+            mo.epoch != uint24(mm.epoch)
+                || (mo.flags & S_DELEGATED != 0
+                    && !_delegateLive(key, owner, mo.generation, _traders[owner].delegationEpoch))
         ) return;
         if (c.takerBps > t.maxFee) revert FeeCap();
 
-        uint256 q = t.remaining < mo.remaining ? t.remaining : mo.remaining;
+        uint256 remaining = uint256(mo.steps) * step;
+        uint256 q = t.remaining < remaining ? t.remaining : remaining;
         uint256 makerPrice = uint256(mo.ticks) * tick;
         uint256 quoteAmount = q * makerPrice / WAD;
         if (quoteAmount == 0) revert StalePlan();
         uint256 makerReduction =
-            _quoteUp(mo.remaining, makerPrice) - _quoteUp(mo.remaining - q, makerPrice);
+            _quoteUp(remaining, makerPrice) - _quoteUp(remaining - q, makerPrice);
         uint256 mb = uint256(t.market) << 1 | t.branch;
-        Account memory a = _accounts[mb][mo.owner];
+        Account memory a = _accounts[mb][owner];
         a.notional -= uint64(makerReduction);
         bool makerClaim = mo.flags & S_CLAIM != 0;
         uint256 buyerFee;
@@ -385,10 +426,10 @@ contract ConditionalStocks is ConditionalStocksBase {
             improvement =
                 _quoteUp(t.remaining, t.price) - _quoteUp(t.remaining - q, t.price) - quoteAmount;
             a.quote = _u96(a.quote + quoteAmount - sellerFee);
-            _accounts[mb][mo.owner] = a;
+            _storeAccount(_accounts[mb][owner], a);
             if (!makerClaim) {
                 t.baseBacking += q;
-                _claim(t.market, 1 - t.branch, 1, mo.owner, q, true);
+                _claim(t.market, 1 - t.branch, 1, owner, q, true);
             }
             t.received += q - buyerFee;
             t.paid += quoteAmount;
@@ -403,11 +444,11 @@ contract ConditionalStocks is ConditionalStocksBase {
             improvement = makerReduction - quoteAmount;
             a.base = _u96(a.base + q - buyerFee);
             if (makerClaim) a.quote = _u96(a.quote + improvement);
-            _accounts[mb][mo.owner] = a;
+            _storeAccount(_accounts[mb][owner], a);
             if (!makerClaim) {
                 t.quoteBacking += quoteAmount;
-                _claim(t.market, 1 - t.branch, 0, mo.owner, quoteAmount, true);
-                if (improvement != 0) _credit[mo.owner][QUOTE] += improvement;
+                _claim(t.market, 1 - t.branch, 0, owner, quoteAmount, true);
+                if (improvement != 0) _credit[owner][QUOTE] += improvement;
             }
             t.received += quoteAmount - sellerFee;
             t.paid += q;
@@ -415,18 +456,18 @@ contract ConditionalStocks is ConditionalStocksBase {
                 t.baseBacking += q;
                 t.inactive += q;
             }
+            b.openNotional = uint64(b.openNotional - makerReduction);
         }
         t.baseFee += buyerFee;
         t.quoteFee += sellerFee;
-        b.openNotional = uint64(b.openNotional - makerReduction);
         t.remaining -= q;
         t.filled += q;
-        if (mo.remaining == q) {
+        if (remaining == q) {
             delete _orders[key];
             if (mo.flags & S_DELEGATED != 0) delete _delegates[key];
         } else {
-            mo.remaining = uint96(mo.remaining - q);
-            _orders[key] = mo;
+            mo.steps -= uint32(q / step);
+            _storeOrder(_orders[key], mo);
         }
         emit Trade(
             t.market,
@@ -436,37 +477,39 @@ contract ConditionalStocks is ConditionalStocksBase {
         );
     }
 
-    function _delegateLive(uint256 key, Order memory mo, Trader memory mt)
+    /// @dev Whether the grant a delegated order was placed under still lets it trade.
+    function _delegateLive(uint256 key, address owner, uint24 generation, uint64 delegationEpoch)
         private
         view
         returns (bool)
     {
-        Grant memory g = _grants[mo.owner][_delegates[key]];
-        return g.generation == mo.generation
-            && _authorized(g, mt.delegationEpoch, uint32(key >> 40), TRADE);
+        Delegation memory g = _grants[owner][_delegates[key]];
+        return uint24(g.generation) == generation
+            && _authorized(g, delegationEpoch, uint32(key >> 40), TRADE);
     }
 
     /// @dev A resting order must not cross an opposite order placed since its plan (which the
-    ///      plan could not match): that race would leave the book crossed. Only resting
-    ///      placements are recorded, tagged with their sequence; older ranges fail closed.
-    function _raceFree(Taker memory t, uint256 nextSeq) private view returns (bool) {
-        if (t.seq - nextSeq > RECENT) return false;
-        uint256 mb = uint256(t.market) << 1 | t.branch;
-        for (uint256 s = nextSeq; s < t.seq; ++s) {
-            uint256 entry = _recent[mb << 3 | (s % RECENT) >> 1] >> ((s & 1) * 128);
-            if (uint32(entry) != s + 1) continue; // Did not rest.
-            bool sell = uint8(entry >> 96) != 0;
-            uint64 ticks = uint64(entry >> 32);
-            if (sell != t.sell && (t.sell ? t.ticks <= ticks : t.ticks >= ticks)) return false;
+    ///      plan could not match): that race would leave the book crossed. `last` is one past
+    ///      the branch's latest resting placement, so immediate-or-cancel placements after it
+    ///      are never read. The RECENT placements up to it are read back from the book, which
+    ///      holds only orders still resting. Placements older than that are not read: a plan
+    ///      staler than RECENT placements is checked against the newest ones only, so spam can
+    ///      delay a plan but never make it fail.
+    function _raceFree(Taker memory t, uint256 nextSeq, uint256 prefix, uint256 last)
+        private
+        view
+        returns (bool)
+    {
+        if (last <= nextSeq) return true;
+        for (uint256 s = last - nextSeq > RECENT ? last - RECENT : nextSeq; s < last; ++s) {
+            StoredOrder memory o = _orders[prefix | s];
+            if (o.steps == 0) continue; // Never rested, or closed since.
+            if (
+                (o.flags & S_SELL != 0) != t.sell
+                    && (t.sell ? t.ticks <= o.ticks : t.ticks >= o.ticks)
+            ) return false;
         }
         return true;
-    }
-
-    function _record(Taker memory t) private {
-        uint256 slot = (uint256(t.market) << 1 | t.branch) << 3 | (t.seq % RECENT) >> 1;
-        uint256 shift = (t.seq & 1) * 128;
-        uint256 entry = (t.seq + 1) | uint256(t.ticks) << 32 | (t.sell ? uint256(1) : 0) << 96;
-        _recent[slot] = _recent[slot] & ~(uint256(type(uint128).max) << shift) | entry << shift;
     }
 
     /// @notice Cancels a resting order. Its owner, or the delegate that placed it holding CANCEL
@@ -491,37 +534,42 @@ contract ConditionalStocks is ConditionalStocksBase {
     }
 
     function _cancel(uint256 key) private returns (bool) {
-        Order memory mo = _orders[key];
-        if (mo.remaining == 0) return false;
+        StoredOrder memory mo = _orders[key];
+        if (mo.steps == 0) return false;
         uint32 id = uint32(key >> 40);
         Terms memory tm = _terms[id];
-        if (msg.sender != mo.owner) {
-            Trader memory mt = _traders[mo.owner];
+        Member memory mm = _members[mo.owner];
+        address owner = mm.owner;
+        if (msg.sender != owner) {
             bool delegated = mo.flags & S_DELEGATED != 0;
+            uint64 delegationEpoch = delegated ? _traders[owner].delegationEpoch : 0;
             bool releasable = tm.state != OPEN || block.timestamp >= mo.expiry
-                || mo.epoch != mt.epoch || (delegated && !_delegateLive(key, mo, mt));
+                || mo.epoch != uint24(mm.epoch)
+                || (delegated && !_delegateLive(key, owner, mo.generation, delegationEpoch));
             if (!releasable) {
                 if (!delegated || msg.sender != _delegates[key]) revert Unauthorized();
-                Grant memory g = _grants[mo.owner][msg.sender];
+                Delegation memory g = _grants[owner][msg.sender];
                 if (
-                    g.generation != mo.generation || !_authorized(g, mt.delegationEpoch, id, CANCEL)
+                    uint24(g.generation) != mo.generation
+                        || !_authorized(g, delegationEpoch, id, CANCEL)
                 ) revert Unauthorized();
             }
         }
+        uint256 remaining = uint256(mo.steps) * tm.step;
         uint256 mb = uint256(id) << 1 | (key >> 32 & 1);
-        uint256 notional = _quoteUp(mo.remaining, uint256(mo.ticks) * tm.tick);
+        uint256 notional = _quoteUp(remaining, uint256(mo.ticks) * tm.tick);
         bool sell = mo.flags & S_SELL != 0;
-        Account memory a = _accounts[mb][mo.owner];
+        Account memory a = _accounts[mb][owner];
         a.notional -= uint64(notional);
         if (mo.flags & S_CLAIM == 0) {
-            _credit[mo.owner][sell ? tm.base : QUOTE] += sell ? mo.remaining : notional;
+            _credit[owner][sell ? tm.base : QUOTE] += sell ? remaining : notional;
         } else if (sell) {
-            a.base = _u96(a.base + mo.remaining);
+            a.base = _u96(a.base + remaining);
         } else {
             a.quote = _u96(a.quote + notional);
         }
-        _accounts[mb][mo.owner] = a;
-        _books[id].openNotional -= uint64(notional);
+        _storeAccount(_accounts[mb][owner], a);
+        if (!sell) _books[id].openNotional -= uint64(notional);
         delete _orders[key];
         if (mo.flags & S_DELEGATED != 0) delete _delegates[key];
         emit OrderCancelled(id, key);

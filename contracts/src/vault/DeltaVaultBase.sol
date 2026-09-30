@@ -149,6 +149,15 @@ abstract contract DeltaVaultBase is
         uint256 plan;
     }
 
+    /// @dev Running totals of a market's exposure over its live orders.
+    struct Tally {
+        int256 imbalance;
+        uint256 raise;
+        uint256 lower;
+        uint256[2] bid;
+        uint256[2] ask;
+    }
+
     /// @dev Share flows of the current withdrawal window. Full-width fields: no supply, however
     ///      large, can make recording a flow (and so a withdrawal) revert.
     struct Window {
@@ -206,6 +215,11 @@ abstract contract DeltaVaultBase is
     event LimitsSet(Limits limits);
     event CapsSet(uint128 quoteCap, uint128 baseCap);
     event WithdrawLimitSet(uint16 bps);
+    /// @notice A withdrawal paid `amount` of collateral as YES and NO claims of `market` because
+    ///         the token refused the transfer; merging them returns exchange credit.
+    event PaidInClaims(
+        address indexed receiver, uint32 indexed market, uint8 collateral, uint256 amount
+    );
 
     error InvalidConfig();
     error InvalidReceiver();
@@ -266,6 +280,16 @@ abstract contract DeltaVaultBase is
     // ---------------------------------------------------------------- accounting
 
     function _holdings() internal view returns (Holdings memory h) {
+        (h,) = _survey();
+    }
+
+    /// @dev Everything the vault owns on the exchange, plus its tracked orders of each market as
+    ///      the exchange reports them (in `_orders` order; zero `remaining` once closed).
+    function _survey()
+        internal
+        view
+        returns (Holdings memory h, IConditionalStocks.Resting[][] memory rest)
+    {
         h.freeQuote = EXCHANGE.credit(address(this), address(QUOTE));
         h.freeBase = EXCHANGE.credit(address(this), address(BASE));
         h.quote = h.freeQuote;
@@ -274,30 +298,35 @@ abstract contract DeltaVaultBase is
         uint256 count = h.markets.length;
         h.claims = new Claims[](count);
         h.free = new Claims[](count);
+        rest = new IConditionalStocks.Resting[][](count);
         for (uint256 i; i < count; ++i) {
             uint32 id = h.markets[i];
             IConditionalStocks.Account memory yes = EXCHANGE.account(id, 0, address(this));
             IConditionalStocks.Account memory no = EXCHANGE.account(id, 1, address(this));
             h.free[i] = Claims(yes.quote, no.quote, yes.base, no.base);
             Claims memory total = Claims(yes.quote, no.quote, yes.base, no.base);
-            uint256 tick = _markets[id].tick;
-            uint256[] storage keys = _orders[id];
-            for (uint256 j; j < keys.length; ++j) {
-                (IConditionalStocks.Order memory o,) = EXCHANGE.order(keys[j]);
-                if (o.remaining == 0) continue;
-                bool yesBranch = ((keys[j] >> 32) & 1) == 0;
-                bool claimFunded = o.flags & CLAIM != 0;
-                if (o.flags & SELL == 0) {
-                    uint256 reserved = _quoteUp(o.remaining, uint256(o.ticks) * tick);
-                    if (!claimFunded) h.quote += reserved;
-                    else if (yesBranch) total.yesQuote += reserved;
-                    else total.noQuote += reserved;
-                } else if (!claimFunded) {
-                    h.base += o.remaining;
-                } else if (yesBranch) {
-                    total.yesBase += o.remaining;
-                } else {
-                    total.noBase += o.remaining;
+            uint256[] memory keys = _orders[id];
+            if (keys.length != 0) {
+                uint256 tick = _markets[id].tick;
+                IConditionalStocks.Resting[] memory r = EXCHANGE.restingOrders(keys);
+                rest[i] = r;
+                for (uint256 j; j < keys.length; ++j) {
+                    IConditionalStocks.Resting memory o = r[j];
+                    if (o.remaining == 0) continue;
+                    bool yesBranch = ((keys[j] >> 32) & 1) == 0;
+                    bool claimFunded = o.flags & CLAIM != 0;
+                    if (o.flags & SELL == 0) {
+                        uint256 reserved = _quoteUp(o.remaining, uint256(o.ticks) * tick);
+                        if (!claimFunded) h.quote += reserved;
+                        else if (yesBranch) total.yesQuote += reserved;
+                        else total.noQuote += reserved;
+                    } else if (!claimFunded) {
+                        h.base += o.remaining;
+                    } else if (yesBranch) {
+                        total.yesBase += o.remaining;
+                    } else {
+                        total.noBase += o.remaining;
+                    }
                 }
             }
             h.claims[i] = total;
@@ -342,6 +371,38 @@ abstract contract DeltaVaultBase is
         for (uint256 i; i < _marketIds.length; ++i) {
             count += _orders[_marketIds[i]].length;
         }
+    }
+
+    /// @dev Adds one live order (branch, stored or order-word flags, remaining, ticks) to `t`.
+    function _tally(Tally memory t, uint256 branch, uint256 flags, uint256 remaining, uint256 ticks)
+        internal
+        pure
+    {
+        bool sell = flags & SELL != 0;
+        // Claim-funded asks escrow the branch's stock claims, still the vault's.
+        if (sell && flags & CLAIM != 0) {
+            t.imbalance += branch == 0 ? int256(remaining) : -int256(remaining);
+        }
+        // YES bids and NO asks raise YES-minus-NO stock when filled; the others lower it.
+        if (sell == (branch == 1)) t.raise += remaining;
+        else t.lower += remaining;
+        if (sell) t.ask[branch] = Math.min(t.ask[branch], ticks);
+        else t.bid[branch] = Math.max(t.bid[branch], ticks);
+    }
+
+    /// @dev The exposure of market `id` from its account balances and the tallied orders.
+    function _expose(uint32 id, Tally memory t) internal view returns (Exposure memory e) {
+        IConditionalStocks.Account memory yes = EXCHANGE.account(id, 0, address(this));
+        IConditionalStocks.Account memory no = EXCHANGE.account(id, 1, address(this));
+        e.resting = uint256(yes.notional) + no.notional;
+        e.imbalance = int256(uint256(yes.base)) - int256(uint256(no.base)) + t.imbalance;
+        e.high = e.imbalance + int256(t.raise);
+        e.low = e.imbalance - int256(t.lower);
+        e.crossed = t.bid[0] >= t.ask[0] || t.bid[1] >= t.ask[1];
+    }
+
+    function _newTally() internal pure returns (Tally memory t) {
+        t.ask = [type(uint256).max, type(uint256).max];
     }
 
     function _quoteUp(uint256 quantity, uint256 price) internal pure returns (uint256) {

@@ -25,20 +25,31 @@ import {
   useTradingPermission,
 } from "@/hooks/useTradingPermission";
 import { shortAddress } from "@/lib/format/display";
-import { tradingPermissionApproval } from "@/lib/trading/permission";
+import {
+  DEFAULT_MAX_ORDER_QUOTE,
+  DEFAULT_MAX_ORDER_SHARES,
+  DEFAULT_TOTAL_QUOTE,
+  DEFAULT_TOTAL_SHARES,
+  tradingPermissionApproval,
+} from "@/lib/trading/permission";
 
 export function TradingPermissionCard() {
   const wallet = useWallet();
   const { permission, loaded, error, refresh } = useTradingPermission();
   const [open, setOpen] = useState(false),
-    [perOrder, setPerOrder] = useState("1000"),
-    [total, setTotal] = useState("10000");
+    [perOrder, setPerOrder] = useState(DEFAULT_MAX_ORDER_QUOTE),
+    [total, setTotal] = useState(DEFAULT_TOTAL_QUOTE),
+    [perOrderShares, setPerOrderShares] = useState(DEFAULT_MAX_ORDER_SHARES),
+    [totalShares, setTotalShares] = useState(DEFAULT_TOTAL_SHARES);
   const { busy, run } = useAsyncAction(
-    [wallet.account, permission?.delegate, perOrder, total].join(":"),
+    [wallet.account, permission?.delegate, perOrder, total, perOrderShares, totalShares].join(":"),
   );
   const grant = permission?.grant;
   const unavailable =
-    !permission?.available || !permission.delegate || permission.quoteDecimals === null;
+    !permission?.available ||
+    !permission.delegate ||
+    permission.quoteDecimals === null ||
+    permission.baseDecimals === null;
   const exhausted = Boolean(grant && !permission?.active);
   const update = async () => {
     for (let attempt = 0; attempt < 12; attempt++) {
@@ -65,6 +76,8 @@ export function TradingPermissionCard() {
         permission,
         perOrder,
         total,
+        perOrderShares,
+        totalShares,
       });
       assertCurrent();
       const hash = await wallet.sendTransaction(transaction);
@@ -134,6 +147,24 @@ export function TradingPermissionCard() {
                       USDC
                     </dd>
                   </div>
+                  {permission.baseDecimals !== null && (
+                    <>
+                      <div>
+                        <dt className="font-medium text-muted-foreground">Remaining share limit</dt>
+                        <dd className="tabular-nums">
+                          {formatTokenAmount(BigInt(grant.remainingBase), permission.baseDecimals)}{" "}
+                          shares
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="font-medium text-muted-foreground">Shares per sell</dt>
+                        <dd className="tabular-nums">
+                          {formatTokenAmount(BigInt(grant.maxOrderBase), permission.baseDecimals)}{" "}
+                          shares
+                        </dd>
+                      </div>
+                    </>
+                  )}
                   <div>
                     <dt className="font-medium text-muted-foreground">Expires</dt>
                     <dd>{new Date(Number(grant.expiresAt) * 1000).toLocaleDateString()}</dd>
@@ -173,7 +204,9 @@ export function TradingPermissionCard() {
             <DialogDescription>
               Let the protocol trading key place orders across your markets for up to 90 days. It
               pays network fees and cannot withdraw your vault funds. Its trading-fee cap is 1%.
-              Limits are charged when orders are placed and are not restored by cancelling them.
+              Buys count against the USDC limits and sells against the share limits, whatever their
+              price. Limits are charged when orders are placed and are not restored by cancelling
+              them.
             </DialogDescription>
           </DialogHeader>
           <FieldSet disabled={busy}>
@@ -197,6 +230,26 @@ export function TradingPermissionCard() {
                   inputMode="decimal"
                   onChange={(event) => setTotal(event.target.value)}
                 />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="trading-share-order-limit">Maximum shares per sell</FieldLabel>
+                <Input
+                  id="trading-share-order-limit"
+                  value={perOrderShares}
+                  inputMode="decimal"
+                  onChange={(event) => setPerOrderShares(event.target.value)}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="trading-share-total-limit">
+                  Total lifetime share limit
+                </FieldLabel>
+                <Input
+                  id="trading-share-total-limit"
+                  value={totalShares}
+                  inputMode="decimal"
+                  onChange={(event) => setTotalShares(event.target.value)}
+                />
                 <FieldDescription>
                   You can revoke this permission at any time. Existing orders remain until
                   cancelled.
@@ -204,7 +257,10 @@ export function TradingPermissionCard() {
               </Field>
             </FieldGroup>
           </FieldSet>
-          <Button disabled={busy || !perOrder || !total} onClick={approve}>
+          <Button
+            disabled={busy || !perOrder || !total || !perOrderShares || !totalShares}
+            onClick={approve}
+          >
             {busy ? <Spinner /> : "Approve in wallet"}
           </Button>
         </DialogContent>

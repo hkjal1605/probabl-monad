@@ -26,6 +26,8 @@ interface IConditionalStocks {
         uint8 payoutYes;
         uint8 payoutNo;
         uint40 resolvedAt;
+        uint32 restYes;
+        uint32 restNo;
     }
 
     struct Account {
@@ -44,6 +46,12 @@ interface IConditionalStocks {
         address owner;
         uint64 epoch;
         uint32 generation;
+    }
+
+    struct Resting {
+        uint96 remaining;
+        uint64 ticks;
+        uint8 flags;
     }
 
     struct Pool {
@@ -74,4 +82,5 @@ interface IConditionalStocks {
     function book(uint32 id) external view returns (Book memory);
     function account(uint32 id, uint8 branch, address owner) external view returns (Account memory);
     function order(uint256 key) external view returns (Order memory, address delegate);
+    function restingOrders(uint256[] calldata keys) external view returns (Resting[] memory);
 }

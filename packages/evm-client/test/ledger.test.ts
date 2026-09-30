@@ -236,6 +236,8 @@ describe("ledger replica", () => {
           expiresAt: T0 + 7n * 86_400n,
           maxOrderQuote: 10_000n * 10n ** 6n,
           totalQuote: 20_000n * 10n ** 6n,
+          maxOrderBase: 100n * 10n ** 18n,
+          totalBase: 1_000n * 10n ** 18n,
           maxFeeBps: 100,
           permissions: 3,
         },
@@ -396,8 +398,12 @@ describe("ledger replica", () => {
       expect(o.status === "open" ? o.remaining : 0n).toBe(BigInt(onchain.remaining));
       expect(parseOrderKey(key).seq).toBe(o.seq);
     }
-    const grant = (await read("grant", [alice, dave])) as unknown as { remainingQuote: bigint };
+    const grant = (await read("grant", [alice, dave])) as unknown as {
+      remainingQuote: bigint;
+      remainingBase: bigint;
+    };
     expect(state.grants.get(`${alice}:${dave}`)!.remainingQuote).toBe(BigInt(grant.remainingQuote));
+    expect(state.grants.get(`${alice}:${dave}`)!.remainingBase).toBe(BigInt(grant.remainingBase));
     expect(state.orders.size).toBeGreaterThan(5);
     expect(zeroAddress).not.toBe(exchange);
   }, 60_000);

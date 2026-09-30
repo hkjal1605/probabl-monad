@@ -3,7 +3,9 @@ import { conditionalStocksAbi } from "@conditional-stocks/evm-client";
 import { decodeFunctionData } from "viem";
 import {
   DEFAULT_MAX_ORDER_QUOTE,
+  DEFAULT_MAX_ORDER_SHARES,
   DEFAULT_TOTAL_QUOTE,
+  DEFAULT_TOTAL_SHARES,
   tradingPermissionApproval,
 } from "../src/lib/trading/permission";
 import type { TradingPermission } from "../src/services/trading-permissions";
@@ -18,6 +20,7 @@ const permission = (overrides: Partial<TradingPermission> = {}): TradingPermissi
   block: "1",
   quoteToken: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
   quoteDecimals: 6,
+  baseDecimals: 18,
   grant: null,
   ...overrides,
 });
@@ -40,11 +43,15 @@ test("trade ticket defaults build one deployment-wide, bounded 90-day approval",
     Number(now + 90n * 86_400n),
     1_000_000_000n,
     10_000_000_000n,
+    10n * 10n ** 18n,
+    100n * 10n ** 18n,
     100,
     1,
   ]);
   expect(DEFAULT_MAX_ORDER_QUOTE).toBe("1000");
   expect(DEFAULT_TOTAL_QUOTE).toBe("10000");
+  expect(DEFAULT_MAX_ORDER_SHARES).toBe("10");
+  expect(DEFAULT_TOTAL_SHARES).toBe("100");
 });
 
 test("approval rejects foreign, unavailable and already-active permissions; an exhausted one is replaced", () => {
@@ -52,6 +59,7 @@ test("approval rejects foreign, unavailable and already-active permissions; an e
     permission({ owner: delegate }),
     permission({ available: false }),
     permission({ active: true }),
+    permission({ baseDecimals: null }),
   ])
     expect(() => tradingPermissionApproval({ owner, permission: value })).toThrow();
   const exhausted = permission({
@@ -60,6 +68,8 @@ test("approval rejects foreign, unavailable and already-active permissions; an e
       expiresAt: "1",
       maxOrderQuote: "1",
       remainingQuote: "0",
+      maxOrderBase: "1",
+      remainingBase: "0",
       maxFeeBps: 0,
       permissions: 1,
       revoked: true,

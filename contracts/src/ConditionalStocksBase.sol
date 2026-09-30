@@ -14,7 +14,8 @@ abstract contract ConditionalStocksBase {
     uint256 internal constant BPS = 10_000;
     uint16 internal constant MAX_FEE_BPS = 1_000;
     uint256 internal constant MAX_MAKERS = 8;
-    /// @dev Placements retained per branch for the crossed-book race check.
+    /// @dev Placements up to a branch's latest resting one that the crossed-book race check
+    ///      reads back.
     uint256 internal constant RECENT = 16;
     uint64 internal constant ADMIN_DELAY = 2 days;
     /// @dev Exit window before a proposed extension can be activated or removed.
@@ -108,6 +109,8 @@ abstract contract ConditionalStocksBase {
         uint40 expiresAt,
         uint128 maxOrderQuote,
         uint128 totalQuote,
+        uint128 maxOrderBase,
+        uint128 totalBase,
         uint16 maxFeeBps,
         uint8 permissions
     );
@@ -163,7 +166,9 @@ abstract contract ConditionalStocksBase {
         uint64 maxMarket;
     }
 
-    /// @dev Written by every placement (one slot).
+    /// @dev Written by every placement (one slot). `openNotional` sums the resting bids only:
+    ///      an ask escrows base, whose value a quote cap cannot measure. `restYes`/`restNo` are
+    ///      one past the sequence of the branch's latest resting placement (zero: none yet).
     struct Book {
         uint64 openNotional;
         uint32 seqYes;
@@ -171,6 +176,8 @@ abstract contract ConditionalStocksBase {
         uint8 payoutYes;
         uint8 payoutNo;
         uint40 resolvedAt;
+        uint32 restYes;
+        uint32 restNo;
     }
 
     /// @dev Underlying locked behind the outstanding claims of one market.
@@ -193,25 +200,52 @@ abstract contract ConditionalStocksBase {
         uint64 notional;
     }
 
+    /// @dev A resting order as the `order` view returns it.
     struct Order {
-        // slot 0: mutable and hot
         uint96 remaining;
         uint64 ticks;
         uint40 expiry;
         uint16 carry;
         uint16 maxFeeBps;
         uint8 flags;
-        // slot 1: immutable
         address owner;
         uint64 epoch;
         uint32 generation;
     }
 
+    /// @dev A resting order as stored: one slot, read and written by every fill. `owner` is
+    ///      the owner's trader id and `steps` the remaining quantity in market steps. `epoch` and
+    ///      `generation` keep the low 24 bits of the owner's order epoch and of the placing
+    ///      grant's generation: only the owner advances either, and an order would revive only
+    ///      after 2^24 advances.
+    struct StoredOrder {
+        uint32 owner;
+        uint32 steps;
+        uint64 ticks;
+        uint40 expiry;
+        uint16 carry;
+        uint16 maxFeeBps;
+        uint8 flags;
+        uint24 epoch;
+        uint24 generation;
+    }
+
+    /// @dev `id` is assigned at the owner's first resting order (zero: none yet).
     struct Trader {
         uint64 epoch;
         uint64 delegationEpoch;
+        uint32 id;
     }
 
+    /// @dev What a fill needs about a maker, in one slot keyed by its trader id. `epoch` mirrors
+    ///      `Trader.epoch`: both change only in `invalidateOrders`.
+    struct Member {
+        address owner;
+        uint64 epoch;
+    }
+
+    /// @dev A trading delegation as the `grant` view returns it. Buys spend the quote budget
+    ///      (notional at the limit price); sells spend the base budget (quantity).
     struct Grant {
         uint32 market;
         uint40 expiresAt;
@@ -222,6 +256,34 @@ abstract contract ConditionalStocksBase {
         bool revoked;
         uint128 maxOrderQuote;
         uint128 remainingQuote;
+        uint128 maxOrderBase;
+        uint128 remainingBase;
+    }
+
+    /// @dev The authorization of a grant (one slot), read by every delegated fill.
+    struct Delegation {
+        uint32 market;
+        uint40 expiresAt;
+        uint64 epoch;
+        uint32 generation;
+        uint16 maxFeeBps;
+        uint8 permissions;
+        bool revoked;
+    }
+
+    /// @dev The budgets of a grant: the quote pair (one slot) and the base pair (one slot).
+    struct Budget {
+        uint128 maxOrderQuote;
+        uint128 remainingQuote;
+        uint128 maxOrderBase;
+        uint128 remainingBase;
+    }
+
+    /// @dev One order of the `restingOrders` view: zero `remaining` once closed.
+    struct Resting {
+        uint96 remaining;
+        uint64 ticks;
+        uint8 flags;
     }
 
     struct Pool {
@@ -254,6 +316,8 @@ abstract contract ConditionalStocksBase {
     address internal _resolutionAdmin;
     Control internal _control;
     uint32 internal _marketCount;
+    /// @dev Trader ids handed out so far (the last one assigned).
+    uint32 internal _traderCount;
     bool transient _locked;
 
     mapping(address token => Pool) internal _pools;
@@ -268,12 +332,12 @@ abstract contract ConditionalStocksBase {
     mapping(uint32 market => bytes32) internal _commitments;
     mapping(uint32 market => bytes32) internal _evidence;
     /// @dev Key: market << 40 | branch << 32 | seq. Only resting orders are stored.
-    mapping(uint256 key => Order) internal _orders;
+    mapping(uint256 key => StoredOrder) internal _orders;
     mapping(uint256 key => address) internal _delegates;
     mapping(address owner => Trader) internal _traders;
-    mapping(address owner => mapping(address delegate => Grant)) internal _grants;
-    /// @dev Key: (market << 1 | branch) << 3 | (seq % RECENT) / 2. Two 128-bit entries per slot.
-    mapping(uint256 => uint256) internal _recent;
+    mapping(uint32 id => Member) internal _members;
+    mapping(address owner => mapping(address delegate => Delegation)) internal _grants;
+    mapping(address owner => mapping(address delegate => Budget)) internal _budgets;
     /// @dev Delegatecall targets of selectors neither contract implements.
     mapping(bytes4 selector => address module) internal _extensions;
     mapping(bytes4 selector => PendingExtension) internal _pendingExtensions;
@@ -315,11 +379,12 @@ abstract contract ConditionalStocksBase {
         }
     }
 
-    function _authorized(Grant memory g, uint64 delegationEpoch, uint32 market, uint8 permission)
-        internal
-        view
-        returns (bool)
-    {
+    function _authorized(
+        Delegation memory g,
+        uint64 delegationEpoch,
+        uint32 market,
+        uint8 permission
+    ) internal view returns (bool) {
         return g.permissions & permission == permission && !g.revoked && g.epoch == delegationEpoch
             && block.timestamp < g.expiresAt && (g.market == 0 || g.market == market);
     }
@@ -336,6 +401,36 @@ abstract contract ConditionalStocksBase {
 
     function _quoteUp(uint256 quantity, uint256 price) internal pure returns (uint256) {
         return (quantity * price + WAD - 1) / WAD;
+    }
+
+    // ---------------------------------------------------------------- single-write storage
+    // Copying a memory struct to storage under via-IR re-reads and re-writes the slot once per
+    // member; these write each slot once. Offsets follow Solidity's packing of the declarations
+    // above (first member in the lowest bits), and every member is typed to its width.
+
+    function _storeBook(Book storage s, Book memory b) internal {
+        uint256 word = uint256(b.openNotional) | uint256(b.seqYes) << 64 | uint256(b.seqNo) << 96
+            | uint256(b.payoutYes) << 128 | uint256(b.payoutNo) << 136 | uint256(b.resolvedAt)
+            << 144 | uint256(b.restYes) << 184 | uint256(b.restNo) << 216;
+        assembly ("memory-safe") {
+            sstore(s.slot, word)
+        }
+    }
+
+    function _storeAccount(Account storage s, Account memory a) internal {
+        uint256 word = uint256(a.quote) | uint256(a.base) << 96 | uint256(a.notional) << 192;
+        assembly ("memory-safe") {
+            sstore(s.slot, word)
+        }
+    }
+
+    function _storeOrder(StoredOrder storage s, StoredOrder memory o) internal {
+        uint256 word = uint256(o.owner) | uint256(o.steps) << 32 | uint256(o.ticks) << 64
+            | uint256(o.expiry) << 128 | uint256(o.carry) << 168 | uint256(o.maxFeeBps) << 184
+            | uint256(o.flags) << 200 | uint256(o.epoch) << 208 | uint256(o.generation) << 232;
+        assembly ("memory-safe") {
+            sstore(s.slot, word)
+        }
     }
 
     function _u64(uint256 value) internal pure returns (uint64) {

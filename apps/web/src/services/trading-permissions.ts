@@ -8,11 +8,16 @@ export interface TradingPermission {
   block: string;
   quoteToken: string;
   quoteDecimals: number | null;
+  /** Decimals that share limits are expressed in (the listed stocks'); null before any listing. */
+  baseDecimals: number | null;
   grant: null | {
     market: string;
     expiresAt: string;
     maxOrderQuote: string;
     remainingQuote: string;
+    /** Sell limits, in raw base units. */
+    maxOrderBase: string;
+    remainingBase: string;
     maxFeeBps: number;
     permissions: number;
     revoked: boolean;

@@ -9,7 +9,9 @@ contract DelegationTest is Base {
 
     function _approve(address owner, uint8 permissions) internal {
         vm.prank(owner);
-        view_.approveDelegate(bot, 0, uint40(T0 + 7 days), 1_000e6, 2_000e6, 100, permissions);
+        view_.approveDelegate(
+            bot, 0, uint40(T0 + 7 days), 1_000e6, 2_000e6, 5e18, 10e18, 100, permissions
+        );
     }
 
     function _delegated(
@@ -120,15 +122,22 @@ contract DelegationTest is Base {
     function testApprovalValidation() public {
         vm.startPrank(alice);
         vm.expectRevert(ConditionalStocksBase.InvalidDelegation.selector);
-        view_.approveDelegate(alice, 0, uint40(T0 + 1 days), 1, 1, 0, 1);
+        view_.approveDelegate(alice, 0, uint40(T0 + 1 days), 1, 1, 0, 0, 0, 1);
         vm.expectRevert(ConditionalStocksBase.InvalidDelegation.selector);
-        view_.approveDelegate(bot, 0, uint40(T0 + 91 days), 1, 1, 0, 1);
+        view_.approveDelegate(bot, 0, uint40(T0 + 91 days), 1, 1, 0, 0, 0, 1);
         vm.expectRevert(ConditionalStocksBase.InvalidDelegation.selector);
-        view_.approveDelegate(bot, 0, uint40(T0 + 1 days), 2, 1, 0, 1);
+        view_.approveDelegate(bot, 0, uint40(T0 + 1 days), 2, 1, 0, 0, 0, 1);
         vm.expectRevert(ConditionalStocksBase.InvalidDelegation.selector);
-        view_.approveDelegate(bot, 0, uint40(T0 + 1 days), 1, 1, 0, 2);
+        view_.approveDelegate(bot, 0, uint40(T0 + 1 days), 1, 1, 0, 0, 0, 2);
         vm.expectRevert(ConditionalStocksBase.InvalidDelegation.selector);
-        view_.approveDelegate(bot, 99, uint40(T0 + 1 days), 1, 1, 0, 1);
+        view_.approveDelegate(bot, 99, uint40(T0 + 1 days), 1, 1, 0, 0, 0, 1);
+        // Both sides disabled, or a base per-order limit above its total.
+        vm.expectRevert(ConditionalStocksBase.InvalidDelegation.selector);
+        view_.approveDelegate(bot, 0, uint40(T0 + 1 days), 0, 0, 0, 0, 0, 1);
+        vm.expectRevert(ConditionalStocksBase.InvalidDelegation.selector);
+        view_.approveDelegate(bot, 0, uint40(T0 + 1 days), 0, 0, 2, 1, 0, 1);
+        // A sell-only grant is valid.
+        view_.approveDelegate(bot, 0, uint40(T0 + 1 days), 0, 0, 1, 1, 0, 1);
         vm.stopPrank();
         vm.expectRevert(ConditionalStocksBase.InvalidDelegation.selector);
         vm.prank(bot);

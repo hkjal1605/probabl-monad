@@ -217,12 +217,14 @@ describe("quoting", () => {
 
 describe("safety", () => {
   test("oracle disagreement pulls the market's quotes", async () => {
+    // Answers are dated a few seconds back: anvil's block time can trail the wall clock, and the
+    // vault rejects an answer from the future.
     await send(node, 0, {
       to: feed,
       data: encodeFunctionData({
         abi: feedAbi,
         functionName: "set",
-        args: [120n * 10n ** 8n, NOW, BigInt(Math.floor(Date.now() / 1000))],
+        args: [120n * 10n ** 8n, NOW, BigInt(Math.floor(Date.now() / 1000)) - 5n],
       }),
     });
     setReference(100n * USDC, 400_000n);
@@ -233,7 +235,7 @@ describe("safety", () => {
       data: encodeFunctionData({
         abi: feedAbi,
         functionName: "set",
-        args: [100n * 10n ** 8n, NOW, BigInt(Math.floor(Date.now() / 1000))],
+        args: [100n * 10n ** 8n, NOW, BigInt(Math.floor(Date.now() / 1000)) - 5n],
       }),
     });
     await keeper.cycle();

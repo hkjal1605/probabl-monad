@@ -28,11 +28,13 @@ export function ledgerIssues(s: ChainState): string[] {
   const claims = new Map<number, bigint[]>(); // [quoteYes, quoteNo, baseYes, baseNo]
   const notional = new Map<number, bigint>();
   const walletNotional = new Map<number, bigint>();
+  const orderNotional = new Map<number, bigint>();
   for (const m of s.markets.values()) {
     add(s.quote, m.backing.quote);
     add(m.base, m.backing.base);
     claims.set(m.id, [m.fees[0].quote, m.fees[1].quote, m.fees[0].base, m.fees[1].base]);
     notional.set(m.id, 0n);
+    orderNotional.set(m.id, 0n);
     walletNotional.set(m.id, 0n);
   }
   for (const [key, a] of s.accounts) {
@@ -53,7 +55,9 @@ export function ledgerIssues(s: ChainState): string[] {
     const reserved = o.side === 0 ? up(o.remaining, price) : o.remaining;
     if (o.fundingKind === 0) add(o.side === 0 ? s.quote : m.base, reserved);
     else claims.get(o.market)![(o.side === 0 ? 0 : 2) + o.branch]! += reserved;
-    notional.set(o.market, notional.get(o.market)! + up(o.remaining, price));
+    orderNotional.set(o.market, orderNotional.get(o.market)! + up(o.remaining, price));
+    // The market's open notional (its cap) counts resting bids only.
+    if (o.side === 0) notional.set(o.market, notional.get(o.market)! + up(o.remaining, price));
   }
   for (const [token, pool] of s.pools)
     if ((liability.get(token) ?? 0n) !== pool.liability)
@@ -64,7 +68,10 @@ export function ledgerIssues(s: ChainState): string[] {
       issues.push(`quote claims differ from backing in market ${m.id}`);
     if (!m.payouts && (baseYes !== m.backing.base || baseNo !== m.backing.base))
       issues.push(`base claims differ from backing in market ${m.id}`);
-    if (notional.get(m.id) !== m.openNotional || walletNotional.get(m.id) !== m.openNotional)
+    if (
+      notional.get(m.id) !== m.openNotional ||
+      walletNotional.get(m.id) !== orderNotional.get(m.id)
+    )
       issues.push(`open notional mismatch in market ${m.id}`);
   }
   return issues;

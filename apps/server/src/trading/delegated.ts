@@ -53,9 +53,15 @@ export function tradingPermission(
   const active = Boolean(
     grant &&
       grant.market === 0 &&
-      grant.remainingQuote > 0n &&
+      (grant.remainingQuote > 0n || grant.remainingBase > 0n) &&
       activeDelegation(grant, traderOf(s, owner).delegationEpoch, 0, now, DELEGATE_TRADE),
   );
+  // Sell limits are raw base units of any market's stock: size them for the stock with the
+  // most decimals (tokenized stocks share 18), so no share limit is looser than it reads.
+  let baseDecimals: number | null = null;
+  for (const [token, pool] of s.pools)
+    if (token !== s.quote && (baseDecimals === null || pool.decimals > baseDecimals))
+      baseDecimals = pool.decimals;
   return {
     available: Boolean(signer),
     delegate,
@@ -64,12 +70,15 @@ export function tradingPermission(
     block: s.block.toString(),
     quoteToken: s.quote,
     quoteDecimals: s.pools.get(s.quote)?.decimals ?? null,
+    baseDecimals,
     grant: grant
       ? {
           market: String(grant.market),
           expiresAt: grant.expiresAt.toString(),
           maxOrderQuote: grant.maxOrderQuote.toString(),
           remainingQuote: grant.remainingQuote.toString(),
+          maxOrderBase: grant.maxOrderBase.toString(),
+          remainingBase: grant.remainingBase.toString(),
           maxFeeBps: grant.maxFeeBps,
           permissions: grant.permissions,
           revoked: grant.revoked,

@@ -148,6 +148,8 @@ export function approveDelegate(
     Number(limits.expiresAt),
     limits.maxOrderQuote,
     limits.totalQuote,
+    limits.maxOrderBase,
+    limits.totalBase,
     limits.maxFeeBps,
     limits.permissions,
   ]);

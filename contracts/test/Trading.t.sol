@@ -68,7 +68,7 @@ contract TradingTest is Base {
         eq(view_.backing(market).quote, 400e6, "quote backing");
         (ConditionalStocksBase.Order memory o,) = view_.order(ask);
         eq(o.remaining, 3 * NVDA, "maker remaining");
-        eq(view_.book(market).openNotional, 600e6, "market notional");
+        eq(view_.book(market).openNotional, 0, "asks do not use the market cap");
     }
 
     function testWholeFundedBidFilledByWholeFundedSellerWithFees() public {

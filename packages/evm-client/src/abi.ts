@@ -264,6 +264,18 @@ export const conditionalStocksAbi = [
         "internalType": "uint128"
       },
       {
+        "name": "maxOrderBase",
+        "type": "uint128",
+        "indexed": false,
+        "internalType": "uint128"
+      },
+      {
+        "name": "totalBase",
+        "type": "uint128",
+        "indexed": false,
+        "internalType": "uint128"
+      },
+      {
         "name": "maxFeeBps",
         "type": "uint16",
         "indexed": false,
@@ -944,6 +956,16 @@ export const conditionalStocksAbi = [
         "internalType": "uint128"
       },
       {
+        "name": "maxOrderBase",
+        "type": "uint128",
+        "internalType": "uint128"
+      },
+      {
+        "name": "totalBase",
+        "type": "uint128",
+        "internalType": "uint128"
+      },
+      {
         "name": "maxFeeBps",
         "type": "uint16",
         "internalType": "uint16"
@@ -1033,6 +1055,16 @@ export const conditionalStocksAbi = [
             "name": "resolvedAt",
             "type": "uint40",
             "internalType": "uint40"
+          },
+          {
+            "name": "restYes",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "restNo",
+            "type": "uint32",
+            "internalType": "uint32"
           }
         ]
       }
@@ -1461,7 +1493,7 @@ export const conditionalStocksAbi = [
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "g",
         "type": "tuple",
         "internalType": "struct ConditionalStocksBase.Grant",
         "components": [
@@ -1507,6 +1539,16 @@ export const conditionalStocksAbi = [
           },
           {
             "name": "remainingQuote",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "maxOrderBase",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "remainingBase",
             "type": "uint128",
             "internalType": "uint128"
           }
@@ -1643,7 +1685,7 @@ export const conditionalStocksAbi = [
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "v",
         "type": "tuple",
         "internalType": "struct ConditionalStocksBase.Order",
         "components": [
@@ -2017,6 +2059,42 @@ export const conditionalStocksAbi = [
   },
   {
     "type": "function",
+    "name": "restingOrders",
+    "inputs": [
+      {
+        "name": "keys",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "out",
+        "type": "tuple[]",
+        "internalType": "struct ConditionalStocksBase.Resting[]",
+        "components": [
+          {
+            "name": "remaining",
+            "type": "uint96",
+            "internalType": "uint96"
+          },
+          {
+            "name": "ticks",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "flags",
+            "type": "uint8",
+            "internalType": "uint8"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "revokeAllDelegates",
     "inputs": [],
     "outputs": [],
@@ -2182,6 +2260,11 @@ export const conditionalStocksAbi = [
             "name": "delegationEpoch",
             "type": "uint64",
             "internalType": "uint64"
+          },
+          {
+            "name": "id",
+            "type": "uint32",
+            "internalType": "uint32"
           }
         ]
       }
@@ -2783,6 +2866,37 @@ export const deltaVaultAbi = [
         "type": "uint32",
         "indexed": true,
         "internalType": "uint32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "PaidInClaims",
+    "inputs": [
+      {
+        "name": "receiver",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "market",
+        "type": "uint32",
+        "indexed": true,
+        "internalType": "uint32"
+      },
+      {
+        "name": "collateral",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
       }
     ],
     "anonymous": false

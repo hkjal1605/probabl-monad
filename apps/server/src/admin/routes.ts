@@ -1,5 +1,5 @@
 import type { Database } from "@conditional-stocks/db";
-import { conditionalStocksAbi, underlyingId } from "@conditional-stocks/evm-client";
+import { conditionalStocksAbi, resolutionHash, underlyingId } from "@conditional-stocks/evm-client";
 import {
   type AdminPreview,
   type AdminTransaction,
@@ -306,10 +306,24 @@ export function mountAdmin(
     const m = p.kind === "market-resolution" ? market(p.localMarket.marketId) : null;
     if (m && ![3, 4].includes(m.state))
       throw invalid("Market is no longer frozen or awaiting resolution", 409);
+    // A market awaiting a different commitment (mistyped or contested) is re-committed to this
+    // packet: the exchange lets the market admin replace a pending commitment.
+    const matches =
+      p.kind === "market-resolution" &&
+      m!.commitment ===
+        resolutionHash(
+          chainId,
+          exchange,
+          m!.id,
+          Number(p.payout.yes),
+          Number(p.payout.no),
+          view.envelope.packetHash as Hex,
+          p.sourceReference,
+        );
     const action =
       p.kind === "market-creation"
         ? "create-market"
-        : m!.state === 3
+        : m!.state === 3 || !matches
           ? "begin-resolution"
           : "resolve-market";
     const s = indexer.trading();

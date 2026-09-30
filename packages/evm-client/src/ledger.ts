@@ -244,7 +244,7 @@ class Replica {
     if (o.fundingKind === 0) this.credit(o.owner, this.token(m, o.side), refund);
     else this.claim(o.market, o.branch, o.side, o.owner, refund);
     this.account(o.market, o.branch, o.owner, { notional: -notional });
-    m.openNotional -= notional;
+    if (o.side === 0) m.openNotional -= notional;
     o.remaining = 0n;
     o.status = o.filled === o.quantity ? "filled" : "cancelled";
     o.updatedBlock = block;
@@ -446,6 +446,9 @@ export function applyTransaction(
           maxOrderQuote: bi(a.maxOrderQuote),
           totalQuote: bi(a.totalQuote),
           remainingQuote: bi(a.totalQuote),
+          maxOrderBase: bi(a.maxOrderBase),
+          totalBase: bi(a.totalBase),
+          remainingBase: bi(a.totalBase),
           maxFeeBps: num(a.maxFeeBps),
           permissions: num(a.permissions),
           revoked: false,
@@ -479,7 +482,9 @@ export function applyTransaction(
         if (delegate) {
           const grant = s.grants.get(grantKey(owner, delegate));
           if (!grant) throw new Error("Delegated order without a grant");
-          grant.remainingQuote -= notional;
+          // A sell spends the base budget by quantity, a buy the quote budget by notional.
+          if (u.side === 1) grant.remainingBase -= u.quantity;
+          else grant.remainingQuote -= notional;
           generation = grant.generation;
         }
         m.seq[u.branch] = seq + 1n;
@@ -488,7 +493,8 @@ export function applyTransaction(
         if (u.fundingKind === 0) r.credit(owner, r.token(m, u.side), -reserved);
         else r.claim(m.id, u.branch, u.side, owner, -reserved);
         r.account(m.id, u.branch, owner, { notional });
-        m.openNotional += notional;
+        // The market cap counts resting bids only (an ask escrows base, not quote).
+        if (u.side === 0) m.openNotional += notional;
         s.orders.set(key, {
           key,
           market: m.id,
@@ -569,7 +575,7 @@ export function applyTransaction(
         }
         r.account(m.id, branch, buyer.owner, { notional: -buyReduction });
         r.account(m.id, branch, seller.owner, { notional: -sellReduction });
-        m.openNotional -= buyReduction + sellReduction;
+        m.openNotional -= buyReduction;
         for (const [o, paid] of [
           [buyer, buyerFee],
           [seller, sellerFee],

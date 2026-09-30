@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import { DeltaVaultAdmin } from "./DeltaVaultAdmin.sol";
 import { DeltaVaultBase } from "./DeltaVaultBase.sol";
+import { IConditionalStocks } from "./interfaces/IConditionalStocks.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -100,8 +101,9 @@ contract DeltaVault is DeltaVaultBase {
 
     /// @notice Burns `shares` of `owner` for the same fraction of every holding: quote and base
     ///         tokens sent to `receiver`, plus each market's unpaired YES/NO claims transferred
-    ///         to `receiver` on the exchange. Cancels the vault's orders when their escrow is
-    ///         needed. Never paused.
+    ///         to `receiver` on the exchange. Cancels only the vault orders whose escrow is
+    ///         needed. A token that refuses the transfer (an issuer pause) is paid as YES and NO
+    ///         claims instead, which merge back into credit. Never paused.
     function withdraw(
         uint256 shares,
         uint256 minQuote,
@@ -113,10 +115,10 @@ contract DeltaVault is DeltaVaultBase {
         if (shares == 0) revert InvalidAmount();
         if (msg.sender != owner) _spendAllowance(owner, msg.sender, shares);
         uint256 supply = totalSupply();
-        Holdings memory h = _holdings();
+        (Holdings memory h, IConditionalStocks.Resting[][] memory rest) = _survey();
         Claims[] memory parts;
-        bool locked;
-        (quoteOut, baseOut, parts, locked) = _withdrawTerms(h, supply, shares);
+        uint256 short;
+        (quoteOut, baseOut, parts, short) = _withdrawTerms(h, supply, shares);
         for (uint256 i; i < parts.length; ++i) {
             quoteOut += Math.min(parts[i].yesQuote, parts[i].noQuote);
             baseOut += Math.min(parts[i].yesBase, parts[i].noBase);
@@ -125,12 +127,12 @@ contract DeltaVault is DeltaVaultBase {
         _recordFlow(supply, shares, true);
         _burn(owner, shares);
 
-        if (locked) _cancelAll();
+        if (short != 0) _release(h.markets, rest, short);
         for (uint256 i; i < parts.length; ++i) {
             _removeClaims(h.markets[i], parts[i], receiver);
         }
-        if (quoteOut != 0) EXCHANGE.withdraw(address(QUOTE), quoteOut, receiver);
-        if (baseOut != 0) EXCHANGE.withdraw(address(BASE), baseOut, receiver);
+        if (quoteOut != 0) _payout(h.markets, QUOTE, 0, quoteOut, receiver);
+        if (baseOut != 0) _payout(h.markets, BASE, 1, baseOut, receiver);
         emit Withdrawn(msg.sender, receiver, owner, shares, quoteOut, baseOut);
     }
 
@@ -228,15 +230,18 @@ contract DeltaVault is DeltaVaultBase {
     }
 
     /// @dev Plain payout and claim parts of a withdrawal: every holding shrinks by at most its
-    ///      current amount x shares / supply (rounded down). `locked` when escrow is needed.
+    ///      current amount x shares / supply (rounded down). `short` marks each holding whose
+    ///      part exceeds its free amount, so part of its escrow is needed: bit 0 plain quote,
+    ///      bit 1 plain base, bit 2 + 4i + c claim `c` (Claims order) of market i.
     function _withdrawTerms(Holdings memory h, uint256 supply, uint256 shares)
         internal
         pure
-        returns (uint256 plainQuote, uint256 plainBase, Claims[] memory parts, bool locked)
+        returns (uint256 plainQuote, uint256 plainBase, Claims[] memory parts, uint256 short)
     {
         plainQuote = Math.mulDiv(h.quote, shares, supply);
         plainBase = Math.mulDiv(h.base, shares, supply);
-        locked = plainQuote > h.freeQuote || plainBase > h.freeBase;
+        if (plainQuote > h.freeQuote) short |= 1;
+        if (plainBase > h.freeBase) short |= 2;
         parts = new Claims[](h.claims.length);
         for (uint256 i; i < h.claims.length; ++i) {
             Claims memory c = h.claims[i];
@@ -248,8 +253,9 @@ contract DeltaVault is DeltaVaultBase {
                 Math.mulDiv(c.noBase, shares, supply)
             );
             parts[i] = p;
-            locked = locked || p.yesQuote > f.yesQuote || p.noQuote > f.noQuote
-                || p.yesBase > f.yesBase || p.noBase > f.noBase;
+            uint256 nibble = (p.yesQuote > f.yesQuote ? 1 : 0) | (p.noQuote > f.noQuote ? 2 : 0)
+                | (p.yesBase > f.yesBase ? 4 : 0) | (p.noBase > f.noBase ? 8 : 0);
+            short |= nibble << (2 + 4 * i);
         }
     }
 
@@ -284,6 +290,73 @@ contract DeltaVault is DeltaVaultBase {
     }
 
     // ---------------------------------------------------------------- exchange custody
+
+    /// @dev Cancels the tracked orders whose escrow funds a holding marked in `short` (see
+    ///      `_withdrawTerms`): whole-funded bids fund plain quote, whole-funded asks plain base,
+    ///      claim-funded bids and asks their branch's quote and base claims. After it every
+    ///      marked holding is free in full. Closed orders are forgotten on the way; `rest` is
+    ///      `_survey`'s snapshot of the tracked lists, which nothing changed since.
+    function _release(
+        uint32[] memory markets,
+        IConditionalStocks.Resting[][] memory rest,
+        uint256 short
+    ) internal {
+        uint256[] memory cancels = new uint256[](_orderCount());
+        uint256 n;
+        for (uint256 i; i < markets.length; ++i) {
+            IConditionalStocks.Resting[] memory r = rest[i];
+            if (r.length == 0) continue;
+            uint256[] storage list = _orders[markets[i]];
+            uint256 w;
+            for (uint256 j; j < r.length; ++j) {
+                uint256 key = list[j];
+                uint8 flags = r[j].flags;
+                if (r[j].remaining == 0) continue;
+                uint256 funding = flags & CLAIM == 0
+                    ? (flags & SELL == 0 ? 0 : 1)
+                    : 2 + 4 * i + (flags & SELL == 0 ? 0 : 2) + ((key >> 32) & 1);
+                if ((short >> funding) & 1 != 0) {
+                    cancels[n++] = key;
+                    continue;
+                }
+                if (w != j) list[w] = key;
+                ++w;
+            }
+            for (uint256 k = r.length; k > w; --k) {
+                list.pop();
+            }
+        }
+        if (n == 0) return;
+        assembly ("memory-safe") {
+            mstore(cancels, n)
+        }
+        EXCHANGE.cancelMany(cancels);
+    }
+
+    /// @dev Pays `amount` of exchange credit to `receiver` as tokens or, when the token refuses
+    ///      the transfer, as the same amount of YES and NO claims of a registered market.
+    function _payout(
+        uint32[] memory markets,
+        IERC20 token,
+        uint8 collateral,
+        uint256 amount,
+        address receiver
+    ) internal {
+        try EXCHANGE.withdraw(address(token), amount, receiver) {
+            return;
+        } catch (bytes memory reason) {
+            if (markets.length == 0) {
+                assembly ("memory-safe") {
+                    revert(add(reason, 32), mload(reason))
+                }
+            }
+        }
+        uint32 id = markets[0];
+        EXCHANGE.split(id, collateral, amount);
+        EXCHANGE.transferClaim(id, 0, collateral, receiver, amount);
+        EXCHANGE.transferClaim(id, 1, collateral, receiver, amount);
+        emit PaidInClaims(receiver, id, collateral, amount);
+    }
 
     /// @dev Takes `amount` of `token` from the caller into the vault's exchange credit.
     function _pull(IERC20 token, uint256 amount) internal {

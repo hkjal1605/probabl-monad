@@ -218,6 +218,8 @@ test("custody, owner-signed and delegated trading", async () => {
       expiresAt: NOW + 7n * 86_400n,
       maxOrderQuote: 10n ** 9n,
       totalQuote: 10n ** 10n,
+      maxOrderBase: 10n ** 20n,
+      totalBase: 10n ** 21n,
       maxFeeBps: 1000,
       permissions: tx.DELEGATE_TRADE | tx.DELEGATE_CANCEL,
     }),

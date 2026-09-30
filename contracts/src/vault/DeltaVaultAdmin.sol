@@ -39,23 +39,21 @@ contract DeltaVaultAdmin is DeltaVaultBase {
             _requireNotPaused();
             Limits memory l = _limits;
             uint256 spot = _oraclePrice(l.maxOracleAge);
-            uint256[] storage tracked = _orders[id];
             for (uint256 i; i < places.length; ++i) {
                 _validate(id, m, l, spot, places[i].order);
                 keys[i] = EXCHANGE.place(places[i].order, places[i].plan, 0);
-                tracked.push(keys[i]);
             }
         }
-        _prune(id);
+        Tally memory t = _track(id, keys, places);
         if (places.length != 0) {
             if (_orderCount() > MAX_ORDERS) {
                 // Orders filled or released in markets not updated lately still count: forget them.
                 for (uint256 i; i < _marketIds.length; ++i) {
-                    _prune(_marketIds[i]);
+                    if (_marketIds[i] != id) _prune(_marketIds[i]);
                 }
                 if (_orderCount() > MAX_ORDERS) revert OrderLimit();
             }
-            Exposure memory e = _exposure(id);
+            Exposure memory e = _expose(id, t);
             if (e.crossed) revert CrossedQuotes();
             if (e.resting > m.risk.maxResting) revert RestingCap();
             // An imbalance already beyond the cap (after a cap cut or a claim donation) may
@@ -125,15 +123,19 @@ contract DeltaVaultAdmin is DeltaVaultBase {
         emit RiskSet(id, risk);
     }
 
-    /// @notice Drops a market in which the vault holds no claims, cancelling its orders.
+    /// @notice Drops a market in which the vault holds no tradable claims, cancelling its
+    ///         orders. Claims below one order's minimum (less base than one step, less quote
+    ///         than the minimum notional), such as a dust donation, stay with the vault untracked.
     function removeMarket(uint32 id) external nonReentrant onlyRole(CURATOR_ROLE) {
         if (!_markets[id].listed) revert UnknownMarket();
         _releaseOrders(id);
+        IConditionalStocks.Terms memory t = EXCHANGE.terms(id);
         IConditionalStocks.Account memory yes = EXCHANGE.account(id, 0, address(this));
         IConditionalStocks.Account memory no = EXCHANGE.account(id, 1, address(this));
-        if (yes.quote != 0 || yes.base != 0 || no.quote != 0 || no.base != 0) {
-            revert OpenPosition();
-        }
+        if (
+            yes.quote >= t.minNotional || no.quote >= t.minNotional || yes.base >= t.step
+                || no.base >= t.step
+        ) revert OpenPosition();
         _dropMarket(id);
     }
 
@@ -215,7 +217,17 @@ contract DeltaVaultAdmin is DeltaVaultBase {
 
     function exposure(uint32 id) external view nonReentrantView returns (Exposure memory) {
         if (!_markets[id].listed) revert UnknownMarket();
-        return _exposure(id);
+        uint256[] memory keys = _orders[id];
+        Tally memory t = _newTally();
+        if (keys.length != 0) {
+            IConditionalStocks.Resting[] memory r = EXCHANGE.restingOrders(keys);
+            for (uint256 j; j < keys.length; ++j) {
+                if (r[j].remaining != 0) {
+                    _tally(t, (keys[j] >> 32) & 1, r[j].flags, r[j].remaining, r[j].ticks);
+                }
+            }
+        }
+        return _expose(id, t);
     }
 
     /// @notice Shares that may still leave in the current withdrawal window.
@@ -255,35 +267,6 @@ contract DeltaVaultAdmin is DeltaVaultBase {
         if (_quoteUp(o >> 160, price) > m.risk.maxOrder) revert OrderSize();
     }
 
-    function _exposure(uint32 id) internal view returns (Exposure memory e) {
-        IConditionalStocks.Account memory yes = EXCHANGE.account(id, 0, address(this));
-        IConditionalStocks.Account memory no = EXCHANGE.account(id, 1, address(this));
-        e.resting = uint256(yes.notional) + no.notional;
-        e.imbalance = int256(uint256(yes.base)) - int256(uint256(no.base));
-        uint256 raise;
-        uint256 lower;
-        uint256[2] memory bid;
-        uint256[2] memory ask = [type(uint256).max, type(uint256).max];
-        uint256[] storage keys = _orders[id];
-        for (uint256 j; j < keys.length; ++j) {
-            (IConditionalStocks.Order memory o,) = EXCHANGE.order(keys[j]);
-            if (o.remaining == 0) continue;
-            uint256 branch = (keys[j] >> 32) & 1;
-            bool sell = o.flags & SELL != 0;
-            int256 remaining = int256(uint256(o.remaining));
-            // Claim-funded asks escrow the branch's stock claims, still the vault's.
-            if (sell && o.flags & CLAIM != 0) e.imbalance += branch == 0 ? remaining : -remaining;
-            // YES bids and NO asks raise YES-minus-NO stock when filled; the others lower it.
-            if (sell == (branch == 1)) raise += o.remaining;
-            else lower += o.remaining;
-            if (sell) ask[branch] = Math.min(ask[branch], o.ticks);
-            else bid[branch] = Math.max(bid[branch], o.ticks);
-        }
-        e.high = e.imbalance + int256(raise);
-        e.low = e.imbalance - int256(lower);
-        e.crossed = bid[0] >= ask[0] || bid[1] >= ask[1];
-    }
-
     /// @dev The oracle price in exchange units; reverts unless the feed (and the L2 sequencer,
     ///      where tracked) can be trusted.
     function _oraclePrice(uint256 maxAge) internal view returns (uint256 price) {
@@ -303,16 +286,53 @@ contract DeltaVaultAdmin is DeltaVaultBase {
         if (price == 0) revert StaleOracle();
     }
 
+    /// @dev Rewrites the tracked orders of market `id`: closed ones are forgotten and `added`
+    ///      (just placed from `places`, so resting whole) take their slots first. Returns the
+    ///      tally of the live orders.
+    function _track(uint32 id, uint256[] memory added, Placement[] calldata places)
+        internal
+        returns (Tally memory t)
+    {
+        t = _newTally();
+        uint256[] storage list = _orders[id];
+        uint256[] memory old = list;
+        uint256 w;
+        if (old.length != 0) {
+            IConditionalStocks.Resting[] memory r = EXCHANGE.restingOrders(old);
+            for (uint256 j; j < old.length; ++j) {
+                IConditionalStocks.Resting memory o = r[j];
+                if (o.remaining == 0) continue;
+                if (w != j) list[w] = old[j];
+                ++w;
+                _tally(t, (old[j] >> 32) & 1, o.flags, o.remaining, o.ticks);
+            }
+        }
+        for (uint256 i; i < added.length; ++i) {
+            if (w < old.length) list[w] = added[i];
+            else list.push(added[i]);
+            ++w;
+            uint256 o = places[i].order;
+            _tally(t, uint8(o >> 32) & 1, uint8(o >> 32), o >> 160, uint64(o >> 96));
+        }
+        for (uint256 n = old.length; n > w; --n) {
+            list.pop();
+        }
+    }
+
     /// @dev Forgets orders the exchange has closed (filled, cancelled or released).
     function _prune(uint32 id) internal {
         uint256[] storage list = _orders[id];
-        for (uint256 i = list.length; i != 0;) {
-            --i;
-            (IConditionalStocks.Order memory o,) = EXCHANGE.order(list[i]);
-            if (o.remaining == 0) {
-                list[i] = list[list.length - 1];
-                list.pop();
-            }
+        uint256[] memory old = list;
+        if (old.length == 0) return;
+        IConditionalStocks.Resting[] memory r = EXCHANGE.restingOrders(old);
+        uint256 w;
+        for (uint256 j; j < old.length; ++j) {
+            if (r[j].remaining == 0) continue;
+            if (w != j) list[w] = old[j];
+            ++w;
+        }
+        for (uint256 n = old.length; n > w; --n) {
+            list.pop();
         }
     }
 

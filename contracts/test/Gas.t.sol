@@ -70,6 +70,30 @@ contract GasTest is Base {
         take(alice, YES, false, true, 21_000, NVDA, one(uint32(asks[0])));
     }
 
+    /// @dev A trader's second resting order (the first one enrolls it).
+    function testGasRestingBidReturningTrader() public {
+        rest(alice, NO, false, false, 15_000, NVDA);
+        rest(alice, NO, false, false, 15_001, NVDA);
+    }
+
+    /// @dev A 1-click (delegated) market buy against one maker, as the server submits it.
+    function testGasDelegatedMarketBuyOneMaker() public {
+        vm.prank(alice);
+        view_.approveDelegate(
+            bot, 0, uint40(T0 + 7 days), 1_000_000e6, 10_000_000e6, 1_000e18, 10_000e18, 100, 1
+        );
+        O memory o = O(market, YES, false, false, true, 100, uint40(T0 + 1 days), 21_000, NVDA);
+        uint256 p = plan(seqOf(market, YES), now_() + 60, 0);
+        vm.prank(bot);
+        cs.placeFor(alice, pack(o), p, one(uint32(asks[0])));
+    }
+
+    function testGasCancelBid() public {
+        uint256 k = rest(carol, NO, false, false, 9_000, NVDA);
+        vm.prank(carol);
+        cs.cancel(k);
+    }
+
     function testGasCancel() public {
         vm.prank(bob);
         cs.cancel(asks[0]);

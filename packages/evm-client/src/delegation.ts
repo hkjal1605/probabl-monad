@@ -14,8 +14,12 @@ export interface DelegateLimits {
   /** 0 grants every market of the deployment. */
   market: number;
   expiresAt: bigint;
+  /** Buys spend their notional at the limit price (raw quote units); zero disables buys. */
   maxOrderQuote: bigint;
   totalQuote: bigint;
+  /** Sells spend their quantity (raw base units of the market's stock); zero disables sells. */
+  maxOrderBase: bigint;
+  totalBase: bigint;
   maxFeeBps: number;
   permissions: number;
 }
@@ -27,6 +31,7 @@ export interface GrantState extends DelegateLimits {
   epoch: bigint;
   generation: number;
   remainingQuote: bigint;
+  remainingBase: bigint;
   revoked: boolean;
 }
 
@@ -40,9 +45,13 @@ export function validateDelegateLimits(
     typeof limits.expiresAt !== "bigint" ||
     limits.expiresAt <= now ||
     limits.expiresAt - now > BigInt(MAX_GRANT_LIFETIME_SECONDS) ||
-    limits.maxOrderQuote <= 0n ||
+    limits.maxOrderQuote < 0n ||
+    limits.maxOrderBase < 0n ||
+    (limits.maxOrderQuote === 0n && limits.maxOrderBase === 0n) ||
     limits.totalQuote < limits.maxOrderQuote ||
     limits.totalQuote > U128_MAX ||
+    limits.totalBase < limits.maxOrderBase ||
+    limits.totalBase > U128_MAX ||
     !Number.isInteger(limits.maxFeeBps) ||
     limits.maxFeeBps < 0 ||
     limits.maxFeeBps > MAX_FEE_BPS ||
@@ -86,7 +95,15 @@ export function assertDelegatedOrder(
     o.maxFeeBps > grant.maxFeeBps
   )
     throw new Error("Trading delegation is missing, inactive or outside its permissions");
-  const notional = quote(BigInt(o.quantity), BigInt(o.limitPriceRawX18), true);
-  if (notional > grant.maxOrderQuote || notional > grant.remainingQuote)
+  // A sell spends the base budget by quantity, a buy the quote budget by notional.
+  const [cost, perOrder, remaining] =
+    o.side === 1
+      ? [BigInt(o.quantity), grant.maxOrderBase, grant.remainingBase]
+      : [
+          quote(BigInt(o.quantity), BigInt(o.limitPriceRawX18), true),
+          grant.maxOrderQuote,
+          grant.remainingQuote,
+        ];
+  if (cost > perOrder || cost > remaining)
     throw new Error("Delegated order exceeds its trading allowance");
 }

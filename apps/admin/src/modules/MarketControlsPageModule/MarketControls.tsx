@@ -149,8 +149,14 @@ function MarketControl({
           <Fact label="Wallet open-order cap" value={market.maxWalletOpenNotional ?? "—"} />
           <Fact label="Market open-order cap" value={market.maxMarketOpenNotional ?? "—"} />
         </div>
-        {market.state === 1 && (
+        {(market.state === 1 ||
+          (market.state === 3 && Number(market.tradingCutoff ?? 0) > now)) && (
           <>
+            {market.state === 3 && (
+              <p className="mt-4 text-xs text-muted-foreground">
+                A frozen market can reopen before its trading cutoff.
+              </p>
+            )}
             {Number(market.tradingOpen ?? 0) > now && (
               <p className="mt-4 text-xs text-muted-foreground">
                 The market can open once its trading window starts.

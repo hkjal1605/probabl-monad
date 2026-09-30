@@ -88,14 +88,14 @@ export function createOrderPlan(indexer: IndexerService) {
       makerFeeBps: s.config.makerBps,
       takerFeeBps: s.config.takerBps,
     });
-    // A resting remainder counts toward the wallet and market open-notional caps.
+    // A resting remainder counts toward the wallet cap, and a resting bid toward the market cap.
     if (order.tif === 0 && BigInt(plan.remainingQuantity) > 0n) {
       const resting = quote(BigInt(plan.remainingQuantity), p, true);
       const wallet =
         accountOf(s, m.id, 0, order.maker).notional +
         accountOf(s, m.id, 1, order.maker).notional +
         resting;
-      if (wallet > m.maxWallet || m.openNotional + resting > m.maxMarket)
+      if (wallet > m.maxWallet || (order.side === 0 && m.openNotional + resting > m.maxMarket))
         throw new Error("The resting order would exceed a wallet or market open-order cap");
     }
     return {

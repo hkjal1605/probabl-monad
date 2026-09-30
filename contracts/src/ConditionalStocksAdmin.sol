@@ -129,18 +129,20 @@ contract ConditionalStocksAdmin is ConditionalStocksBase {
         if (notional > p.maxOrder || notional * 2 > p.maxMarket) revert CapExceeded();
     }
 
-    /// @notice 0 open, 1 freeze (market admin or guardian, with a reason hash), 2 freeze at
-    ///         cutoff (anyone), 3 begin resolution (`reason` is the resolution commitment),
-    ///         4 archive a redeemable market (with a reason hash).
+    /// @notice 0 open a scheduled market, or reopen a frozen one before its cutoff, 1 freeze
+    ///         (market admin or guardian, with a reason hash), 2 freeze at cutoff (anyone),
+    ///         3 begin resolution, or replace the pending commitment (`reason` is the resolution
+    ///         commitment), 4 archive a redeemable market (with a reason hash).
     function lifecycle(uint32 id, uint8 action, bytes32 reason) external {
         Terms storage t = _terms[id];
         uint8 state = t.state;
         if (state == 0) revert InvalidState();
         if (action == 0) {
             if (msg.sender != _marketAdmin) revert Unauthorized();
-            if (state != SCHEDULED || block.timestamp < t.open || block.timestamp >= t.cutoff) {
-                revert InvalidState();
-            }
+            if (
+                (state != SCHEDULED && state != FROZEN) || block.timestamp < t.open
+                    || block.timestamp >= t.cutoff
+            ) revert InvalidState();
             state = OPEN;
         } else if (action == 1) {
             if (msg.sender != _marketAdmin && msg.sender != _control.guardian) {
@@ -155,7 +157,9 @@ contract ConditionalStocksAdmin is ConditionalStocksBase {
             state = FROZEN;
         } else if (action == 3) {
             if (msg.sender != _marketAdmin) revert Unauthorized();
-            if (state != FROZEN || reason == bytes32(0)) revert InvalidState();
+            if ((state != FROZEN && state != AWAITING) || reason == bytes32(0)) {
+                revert InvalidState();
+            }
             _commitments[id] = reason;
             state = AWAITING;
         } else if (action == 4) {
@@ -243,15 +247,19 @@ contract ConditionalStocksAdmin is ConditionalStocksBase {
 
     /// @notice Grants a trading key limited to placing (and optionally cancelling) orders for
     ///         the caller, in one market or all (`market` 0). Proceeds always stay with the
-    ///         owner. Every placement consumes its full notional from `totalQuote`, which never
-    ///         refills. Re-approving a key replaces its grant and leaves every order placed under
-    ///         the previous one unfillable and publicly releasable.
+    ///         owner. A buy spends its full notional at its limit price from `totalQuote`, and a
+    ///         sell its full quantity (raw base units of the market's base token) from
+    ///         `totalBase`; neither budget refills. A zero per-order limit disables that side.
+    ///         Re-approving a key replaces its grant and leaves every order placed under the
+    ///         previous one unfillable and publicly releasable.
     function approveDelegate(
         address delegate,
         uint32 market,
         uint40 expiresAt,
         uint128 maxOrderQuote,
         uint128 totalQuote,
+        uint128 maxOrderBase,
+        uint128 totalBase,
         uint16 maxFeeBps,
         uint8 permissions
     ) external {
@@ -260,23 +268,23 @@ contract ConditionalStocksAdmin is ConditionalStocksBase {
         }
         if (
             expiresAt <= block.timestamp || expiresAt - block.timestamp > MAX_GRANT_LIFETIME
-                || maxOrderQuote == 0 || totalQuote < maxOrderQuote || maxFeeBps > MAX_FEE_BPS
+                || (maxOrderQuote == 0 && maxOrderBase == 0) || totalQuote < maxOrderQuote
+                || totalBase < maxOrderBase || maxFeeBps > MAX_FEE_BPS
                 || (permissions != TRADE && permissions != TRADE | CANCEL)
                 || (market != 0 && _terms[market].state == 0)
         ) revert InvalidDelegation();
         uint64 epoch = _traders[msg.sender].delegationEpoch;
         uint32 generation = _grants[msg.sender][delegate].generation + 1;
-        _grants[msg.sender][delegate] = Grant({
+        _grants[msg.sender][delegate] = Delegation({
             market: market,
             expiresAt: expiresAt,
             epoch: epoch,
             generation: generation,
             maxFeeBps: maxFeeBps,
             permissions: permissions,
-            revoked: false,
-            maxOrderQuote: maxOrderQuote,
-            remainingQuote: totalQuote
+            revoked: false
         });
+        _budgets[msg.sender][delegate] = Budget(maxOrderQuote, totalQuote, maxOrderBase, totalBase);
         emit DelegateApproved(
             msg.sender,
             delegate,
@@ -286,13 +294,15 @@ contract ConditionalStocksAdmin is ConditionalStocksBase {
             expiresAt,
             maxOrderQuote,
             totalQuote,
+            maxOrderBase,
+            totalBase,
             maxFeeBps,
             permissions
         );
     }
 
     function revokeDelegate(address delegate) external {
-        Grant storage g = _grants[msg.sender][delegate];
+        Delegation storage g = _grants[msg.sender][delegate];
         if (g.permissions == 0 || g.revoked) revert InvalidDelegation();
         g.revoked = true;
         emit DelegateRevoked(msg.sender, delegate);
@@ -306,7 +316,10 @@ contract ConditionalStocksAdmin is ConditionalStocksBase {
 
     /// @notice Makes every resting order of the caller unfillable and publicly releasable.
     function invalidateOrders() external {
-        uint64 epoch = ++_traders[msg.sender].epoch;
+        Trader storage t = _traders[msg.sender];
+        uint64 epoch = ++t.epoch;
+        uint32 id = t.id;
+        if (id != 0) _members[id].epoch = epoch;
         emit OrdersInvalidated(msg.sender, epoch);
     }
 
@@ -455,15 +468,64 @@ contract ConditionalStocksAdmin is ConditionalStocksBase {
         return _evidence[id];
     }
 
-    function order(uint256 key) external view returns (Order memory, address delegate) {
-        return (_orders[key], _delegates[key]);
+    /// @notice A resting order (all zero once closed). `epoch` and `generation` are the owner's
+    ///         order epoch and the placing grant's generation at placement.
+    function order(uint256 key) external view returns (Order memory v, address delegate) {
+        StoredOrder memory s = _orders[key];
+        delegate = _delegates[key];
+        if (s.steps == 0) return (v, delegate);
+        address owner = _members[s.owner].owner;
+        v.remaining = uint96(uint256(s.steps) * _terms[uint32(key >> 40)].step);
+        v.ticks = s.ticks;
+        v.expiry = s.expiry;
+        v.carry = s.carry;
+        v.maxFeeBps = s.maxFeeBps;
+        v.flags = s.flags;
+        v.owner = owner;
+        v.epoch = uint64(_widen(_traders[owner].epoch, s.epoch));
+        if (delegate != address(0)) {
+            v.generation = uint32(_widen(_grants[owner][delegate].generation, s.generation));
+        }
+    }
+
+    /// @notice Remaining quantity (zero once closed), price in ticks and stored flags of each
+    ///         order: the part of `order` a holder of many orders polls.
+    function restingOrders(uint256[] calldata keys) external view returns (Resting[] memory out) {
+        out = new Resting[](keys.length);
+        for (uint256 i; i < keys.length; ++i) {
+            StoredOrder memory s = _orders[keys[i]];
+            if (s.steps == 0) continue;
+            out[i] = Resting(
+                uint96(uint256(s.steps) * _terms[uint32(keys[i] >> 40)].step), s.ticks, s.flags
+            );
+        }
+    }
+
+    /// @dev The latest value up to `current` whose low 24 bits are `low`.
+    function _widen(uint256 current, uint24 low) private pure returns (uint256 value) {
+        value = current & ~uint256(0xffffff) | low;
+        if (value > current && value >= 1 << 24) value -= 1 << 24;
     }
 
     function trader(address owner) external view returns (Trader memory) {
         return _traders[owner];
     }
 
-    function grant(address owner, address delegate) external view returns (Grant memory) {
-        return _grants[owner][delegate];
+    function grant(address owner, address delegate) external view returns (Grant memory g) {
+        Delegation memory d = _grants[owner][delegate];
+        Budget memory b = _budgets[owner][delegate];
+        g = Grant({
+            market: d.market,
+            expiresAt: d.expiresAt,
+            epoch: d.epoch,
+            generation: d.generation,
+            maxFeeBps: d.maxFeeBps,
+            permissions: d.permissions,
+            revoked: d.revoked,
+            maxOrderQuote: b.maxOrderQuote,
+            remainingQuote: b.remainingQuote,
+            maxOrderBase: b.maxOrderBase,
+            remainingBase: b.remainingBase
+        });
     }
 }
