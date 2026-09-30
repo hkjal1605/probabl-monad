@@ -4,10 +4,16 @@ set -euo pipefail
 umask 077
 cd /home/ubuntu/probabl
 
-# The ingress template now requires the domain's existing Certbot certificate.
-# Refuse before changing supervision if HTTPS has not been provisioned yet.
-sudo -n test -s /etc/letsencrypt/live/api.probabl.trade/fullchain.pem
-sudo -n test -s /etc/letsencrypt/live/api.probabl.trade/privkey.pem
+# Production ingress (nginx.conf) requires the domain's existing Certbot certificate: refuse
+# before changing supervision if HTTPS has not been provisioned yet. Testnet hosts without a
+# domain pass PROBABL_NGINX=http to serve the API over plain HTTP (nginx-http.conf).
+probabl_nginx_conf=ops/ec2/nginx.conf
+if [[ "${PROBABL_NGINX:-https}" == http ]]; then
+  probabl_nginx_conf=ops/ec2/nginx-http.conf
+else
+  sudo -n test -s /etc/letsencrypt/live/api.probabl.trade/fullchain.pem
+  sudo -n test -s /etc/letsencrypt/live/api.probabl.trade/privkey.pem
+fi
 
 pm2 install pm2-logrotate@3.0.0
 # pmx auto-casts "true" to boolean, but upstream 3.0.0 accepts only strings.
@@ -57,7 +63,7 @@ pm2 kill
 sudo -n systemctl start pm2-ubuntu
 sudo -n systemctl enable pm2-ubuntu nginx logrotate.timer
 
-sudo -n install -m 0644 ops/ec2/nginx.conf /etc/nginx/sites-available/probabl
+sudo -n install -m 0644 "$probabl_nginx_conf" /etc/nginx/sites-available/probabl
 if [[ -L /etc/nginx/sites-enabled/default ]]; then
   sudo -n mv /etc/nginx/sites-enabled/default /etc/probabl-backups/nginx-default-site-link
 fi

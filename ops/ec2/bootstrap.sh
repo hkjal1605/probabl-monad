@@ -7,10 +7,14 @@ if [[ "$(id -u)" == 0 ]]; then
   echo "Run as the deployment user with passwordless sudo, not as root." >&2
   exit 1
 fi
-if [[ "$(uname -m)" != x86_64 ]]; then
-  echo "This bootstrap currently supports Ubuntu x86_64 only." >&2
-  exit 1
-fi
+case "$(uname -m)" in
+  x86_64) probabl_node_arch=x64 ;;
+  aarch64) probabl_node_arch=arm64 ;;
+  *)
+    echo "This bootstrap supports Ubuntu on x86_64 or arm64 (Graviton) only." >&2
+    exit 1
+    ;;
+esac
 
 sudo -n apt-get update
 sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -21,9 +25,10 @@ probabl_install_dir=$(mktemp -d /tmp/probabl-runtime.XXXXXXXX)
 curl --fail --silent --show-error --retry 3 \
   https://nodejs.org/dist/latest-v24.x/SHASUMS256.txt \
   -o "$probabl_install_dir/SHASUMS256.txt"
-probabl_node_archive=$(awk '$2 ~ /^node-v24\.[0-9]+\.[0-9]+-linux-x64\.tar\.xz$/ {print $2}' "$probabl_install_dir/SHASUMS256.txt")
-if [[ ! "$probabl_node_archive" =~ ^node-v24\.[0-9]+\.[0-9]+-linux-x64\.tar\.xz$ ]]; then
-  echo "Could not select one official Node 24 x64 archive." >&2
+probabl_node_pattern="^node-v24\.[0-9]+\.[0-9]+-linux-$probabl_node_arch\.tar\.xz$"
+probabl_node_archive=$(PATTERN="$probabl_node_pattern" awk '$2 ~ ENVIRON["PATTERN"] {print $2}' "$probabl_install_dir/SHASUMS256.txt")
+if [[ ! "$probabl_node_archive" =~ $probabl_node_pattern ]]; then
+  echo "Could not select one official Node 24 $probabl_node_arch archive." >&2
   exit 1
 fi
 curl --fail --silent --show-error --retry 3 \

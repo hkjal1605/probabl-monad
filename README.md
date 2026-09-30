@@ -137,4 +137,7 @@ unavailable and the market maker does not quote.
    `scripts/evm/bootstrap.ts`) from a wallet holding only `KEEPER_ROLE`.
 
 `ops/ec2` runs the ingestor, the API and (when `.env.market-maker` or `.env.vault-keeper` exists) the
-market maker and the vault keeper under PM2 behind nginx.
+market maker and the vault keeper under PM2 behind nginx. A testnet host (x86_64 or Graviton) runs the
+same bootstrap with a local PostgreSQL instead of Aurora, the mock-feed mirror when
+`.env.feed-mirror` (`FEED_MIRROR_PRIVATE_KEY`, `FEED_SOURCE_RPC_URL`) exists, and plain-HTTP ingress:
+`PROBABL_NGINX=http bash ops/ec2/setup-supervision.sh`.

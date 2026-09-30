@@ -22,5 +22,6 @@ lcov.info
 .data/
 global-bundle.pem
 probabl-server-keypair.pem
+probabl-testnet-keypair.pem*
 
 .local/

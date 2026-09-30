@@ -1,10 +1,12 @@
 /** Testnet only: copies each new round of the stocks' Chainlink feeds on Robinhood Chain mainnet
  * into their mock feeds (deployments/<chainId>-mock-feeds.json, from deploy-mock-feeds.ts), so
  * testnet Δ-vaults see mainnet's prices and staleness. Keep it running while testnet vaults
- * quote; --once mirrors a single time. The key must own the mocks: the deployer's.
+ * quote; --once mirrors a single time. The key must own the mocks: FEED_MIRROR_PRIVATE_KEY (a
+ * dedicated relay wallet the mocks were handed to), else the deployer's.
  *
- *   DEPLOYER_PRIVATE_KEY=… RPC_URL=… CHAIN_ID=46630 FEED_SOURCE_RPC_URL=<Robinhood Chain mainnet>
- *   [POLL_SECONDS=60] bun scripts/evm/feed-mirror.ts [--once] */
+ *   FEED_MIRROR_PRIVATE_KEY=… (or DEPLOYER_PRIVATE_KEY=…) RPC_URL=… CHAIN_ID=46630
+ *   FEED_SOURCE_RPC_URL=<Robinhood Chain mainnet> [POLL_SECONDS=60]
+ *   bun scripts/evm/feed-mirror.ts [--once] */
 import { resolve } from "node:path";
 import {
   type Address,
@@ -37,7 +39,9 @@ const chainId = Number(required("CHAIN_ID"));
 const name = TESTNETS[chainId];
 if (!name) throw new Error("The feed mirror runs on testnets only (46630, 84532)");
 const rpc = required("RPC_URL");
-const account = privateKeyToAccount(required("DEPLOYER_PRIVATE_KEY") as Hex);
+const account = privateKeyToAccount(
+  (process.env.FEED_MIRROR_PRIVATE_KEY?.trim() || required("DEPLOYER_PRIVATE_KEY")) as Hex,
+);
 const pollSeconds = Number(process.env.POLL_SECONDS ?? 60);
 if (!Number.isInteger(pollSeconds) || pollSeconds < 5)
   throw new Error("POLL_SECONDS must be a whole number of seconds, at least 5");
@@ -64,7 +68,7 @@ const feeds = (await Bun.file(path)
 for (const f of feeds) {
   const owner = await client.readContract({ address: f.feed, abi: feedAbi, functionName: "owner" });
   if (owner !== account.address)
-    throw new Error(`${f.symbol}'s mock feed belongs to ${owner}, not to DEPLOYER_PRIVATE_KEY`);
+    throw new Error(`${f.symbol}'s mock feed belongs to ${owner}, not to this key`);
 }
 const wallet = createWalletClient({ account, chain, transport: http(rpc) });
 
