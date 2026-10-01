@@ -43,6 +43,7 @@ export const ASSET_CATALOG: readonly CatalogAsset[] = Object.freeze([
   stock("COIN", "Coinbase"),
   stock("HOOD", "Robinhood Markets"),
   stock("PLTR", "Palantir"),
+  stock("NFLX", "Netflix"),
   stock("SPY", "SPDR S&P 500 ETF Trust", "etf"),
   stock("QQQ", "Invesco QQQ Trust", "etf"),
   {

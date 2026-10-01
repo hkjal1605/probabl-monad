@@ -29,6 +29,7 @@
     "build:contracts": "forge build --root contracts --sizes --skip test",
     "build:ui": "bun --filter @conditional-stocks/web build",
     "build:ui:cloudflare": "bun --filter @conditional-stocks/web build:cloudflare",
+    "create:markets": "bun scripts/evm/create-markets.ts",
     "check": "biome ci . && forge fmt --root contracts --check && forge lint --root contracts && forge build --root contracts --no-cache && bun run typecheck && bun run test",
     "db:migrate": "bun --filter @conditional-stocks/db migrate",
     "deploy:exchange": "bun scripts/evm/deploy.ts",
