@@ -247,6 +247,26 @@ export function liveOrder(
   return true;
 }
 
+/** Each market's YES and NO book midpoints (by venue id; raw quote per raw base x 1e18): halfway
+ * between the best live bid and ask, null without both or while they cross. */
+export function bookMidpoints(s: ChainState, now?: bigint) {
+  const best = new Map<number, { bid?: bigint; ask?: bigint }[]>();
+  for (const o of s.orders.values()) {
+    if (!liveOrder(o, s, now)) continue;
+    const price = o.ticks * s.markets.get(o.market)!.tick;
+    let books = best.get(o.market);
+    if (!books) best.set(o.market, (books = [{}, {}]));
+    const book = books[o.branch]!;
+    if (o.side === 0) book.bid = book.bid === undefined || price > book.bid ? price : book.bid;
+    else book.ask = book.ask === undefined || price < book.ask ? price : book.ask;
+  }
+  const mid = ({ bid, ask }: { bid?: bigint; ask?: bigint }) =>
+    bid !== undefined && ask !== undefined && ask >= bid ? (bid + ask) / 2n : null;
+  return new Map(
+    [...best].map(([market, [yes, no]]) => [market, { yes: mid(yes!), no: mid(no!) }]),
+  );
+}
+
 /** Price levels of every public market's live orders, keyed by public id. */
 export function orderbookLevels(s: ChainState, now?: bigint) {
   const books: Record<

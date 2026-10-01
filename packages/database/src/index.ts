@@ -7,6 +7,7 @@ export type {
   Checkpoint,
   ClosedOrderRecord,
   FinalizedBatch,
+  MinutePrices,
   MinuteVolume,
   Queries,
   TradeRecord,

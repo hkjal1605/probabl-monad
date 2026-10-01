@@ -19,6 +19,7 @@ import { mountCustody } from "./custody/routes.ts";
 import { mountDeltaVaults } from "./delta-vaults/routes.ts";
 import { mountFaucet } from "./faucet.ts";
 import { PolymarketIngestorClient } from "./integrations/polymarket.ts";
+import { PriceRecorder } from "./market-data/history.ts";
 import { RobinhoodSpotPrices } from "./market-data/robinhood.ts";
 import { CachedProbability, mountMarketData } from "./market-data/routes.ts";
 import { DelegatedTrading, tradingSigner } from "./trading/delegated.ts";
@@ -185,12 +186,15 @@ const probabilityCache = new RedisCache(
 const probabilities = new CachedProbability(probabilityCache, (condition) =>
   polymarket().probability(condition),
 );
-mountMarketData(app, {
+const prices = new RobinhoodSpotPrices(chainId, process.env.ROBINHOOD_PRICES_URL || undefined);
+mountMarketData(app, { indexer, prices, probabilities, polymarket, db });
+const recorder = new PriceRecorder({
   indexer,
-  prices: new RobinhoodSpotPrices(chainId, process.env.ROBINHOOD_PRICES_URL || undefined),
-  probabilities,
-  polymarket,
+  prices,
+  db,
+  onError: (error) => logger.warn("prices.record.failed", { error }),
 });
+recorder.start();
 mountDeltaVaults(app, {
   client,
   indexer,
@@ -246,6 +250,7 @@ logger.info("api.listening", { url: server.url.toString(), chainId, exchange });
 for (const signal of ["SIGINT", "SIGTERM"] as const)
   process.on(signal, () => {
     clearInterval(prune);
+    recorder.stop();
     void server
       .stop()
       .then(() => indexer.stop())

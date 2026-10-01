@@ -1,3 +1,4 @@
+import type { Database } from "@conditional-stocks/db";
 import { type IndexerService, marketIdentity, venueOf } from "@conditional-stocks/indexer";
 import { type Hex, isHex32, noOutcome, yesOutcome } from "@conditional-stocks/market-data";
 import { ReadCache } from "@conditional-stocks/shared/read-cache";
@@ -12,6 +13,7 @@ import { HTTPException } from "hono/http-exception";
 import { streamSSE } from "hono/streaming";
 import { type Address, getAddress } from "viem";
 import type { PolymarketIngestorClient } from "../integrations/polymarket.ts";
+import { HISTORY_RANGES, type HistoryRange, priceHistory } from "./history.ts";
 import type { SpotPriceSource } from "./robinhood.ts";
 
 export const PROBABILITY_CACHE_TTL_SECONDS = 60;
@@ -52,6 +54,7 @@ export function mountMarketData(
     prices: SpotPriceSource;
     probabilities: CachedProbability;
     polymarket: () => PolymarketIngestorClient;
+    db: Pick<Database, "priceHistory" | "firstPriceMinute">;
   },
 ) {
   const { indexer, prices, probabilities } = options;
@@ -111,6 +114,23 @@ export function mountMarketData(
         tokenPriceUsd: tokenPriceUsd(base, multiplierValue, response.asOf * 1000),
       },
     });
+  });
+
+  // A market's recorded prices change once a minute: one read per market, range and minute
+  // serves every viewer.
+  const histories = new ReadCache(60_000, 512);
+  app.get("/v1/markets/:id/price-history", async (c) => {
+    const range = c.req.query("range") ?? "all";
+    if (!Object.hasOwn(HISTORY_RANGES, range))
+      throw new HTTPException(400, { message: "range is one of 1d, 1w, 1m, all" });
+    const s = indexer.trading();
+    const m = indexer.market(c.req.param("id"), s);
+    if (!m) throw new HTTPException(404, { message: "Unknown market" });
+    const history = await histories.get(`${m.id}:${range}:${Math.floor(Date.now() / 60_000)}`, () =>
+      priceHistory(options.db, indexer.domain, m.id, range as HistoryRange),
+    );
+    c.header("Cache-Control", "public, max-age=30");
+    return c.json({ marketId: marketIdentity(s, m).id, range, ...history });
   });
 
   const marketCondition = (id: string) => {

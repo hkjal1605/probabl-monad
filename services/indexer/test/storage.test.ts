@@ -267,3 +267,50 @@ test("history is idempotent, reads use one index each, and checkpoints advance o
     client.release();
   }
 }, 30_000);
+
+test("market prices: a minute's first record is kept, read back as each interval's last", async () => {
+  const d = "31337:0x00000000000000000000000000000000000000E4";
+  await db.registerDeployment(d);
+  const row = (minute: number, yes: bigint | null, spot: string | null, market = 7) => ({
+    market,
+    minute,
+    yes,
+    no: yes === null ? null : yes + 1n,
+    spot,
+  });
+  await db.recordPrices(d, [row(100, 10n, "1.5"), row(100, 99n, "9", 8)]);
+  // Another process records the same minute: the first record stays.
+  await db.recordPrices(d, [row(100, 11n, "2")]);
+  await db.recordPrices(d, [row(101, 12n, null), row(104, 13n, "3.25"), row(105, null, "4")]);
+  expect(await db.firstPriceMinute(d, 7)).toBe(100);
+  expect(await db.firstPriceMinute(d, 9)).toBeNull();
+  expect(await db.priceHistory(d, 7, 100, 1)).toEqual([
+    { market: 7, minute: 100, yes: 10n, no: 11n, spot: "1.5" },
+    { market: 7, minute: 101, yes: 12n, no: 13n, spot: null },
+    { market: 7, minute: 104, yes: 13n, no: 14n, spot: "3.25" },
+    { market: 7, minute: 105, yes: null, no: null, spot: "4" },
+  ]);
+  // Two-minute intervals (100-101, 104-105) keep each one's last record; `since` bounds it.
+  expect((await db.priceHistory(d, 7, 0, 2)).map((p) => p.minute)).toEqual([101, 105]);
+  expect((await db.priceHistory(d, 7, 102, 2)).map((p) => p.minute)).toEqual([105]);
+  expect(await db.priceHistory(d, 8, 0, 1)).toEqual(
+    [row(100, 99n, "9", 8)].map((r) => ({ ...r, no: 100n })),
+  );
+  // The read is one range scan of the key.
+  const client = await pool.connect();
+  try {
+    await client.query("SET enable_seqscan = off");
+    const plan = (
+      await client.query(
+        `EXPLAIN SELECT DISTINCT ON (minute / 2) minute, yes_price, no_price, spot
+        FROM probabl.market_prices WHERE deployment = 4 AND market = 7 AND minute >= 0
+        ORDER BY minute / 2, minute DESC`,
+      )
+    ).rows
+      .map((r) => r["QUERY PLAN"])
+      .join("\n");
+    expect(plan).toContain("Index Scan using market_prices_pkey");
+  } finally {
+    client.release();
+  }
+});

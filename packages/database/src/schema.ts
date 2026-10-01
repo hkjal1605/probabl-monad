@@ -41,6 +41,14 @@ const DDL = [
   // Recent trades by time, covering what windowed volume reads (an index-only range scan).
   `CREATE INDEX IF NOT EXISTS trades_time ON probabl.trades (deployment, block_time)
     INCLUDE (market, block, quote)`,
+  // Each open market's book midpoints and its stock's reference price, once a minute: the price
+  // charts. Midpoints are raw (quote per base x 1e18), absent without a two-sided book; spot is
+  // USD per whole token (display only), absent when no reference was current. The key serves
+  // the only read, one market's minutes since some time.
+  `CREATE TABLE IF NOT EXISTS probabl.market_prices (
+    minute bigint NOT NULL, market integer NOT NULL, deployment smallint NOT NULL,
+    yes_price numeric(78,0), no_price numeric(78,0), spot numeric,
+    PRIMARY KEY (deployment, market, minute))`,
   // Closed orders (open ones live in the checkpointed replica). The key serves the only read,
   // an owner's newest closed orders, and makes re-persisting a batch idempotent.
   `CREATE TABLE IF NOT EXISTS probabl.closed_orders (

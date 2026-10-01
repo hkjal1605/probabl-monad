@@ -24,6 +24,15 @@ export interface TradeRecord {
   maker: string;
   taker: string;
 }
+/** One market's prices in one minute (unix time / 60): book midpoints, raw quote per raw base
+ * x 1e18, and the stock's USD reference price per whole token (a decimal string). */
+export interface MinutePrices {
+  market: number;
+  minute: number;
+  yes: bigint | null;
+  no: bigint | null;
+  spot: string | null;
+}
 /** Quote traded in one market during one minute (unix time / 60), raw units. */
 export interface MinuteVolume {
   market: number;
@@ -193,6 +202,67 @@ export function queries(db: Connection) {
           [domain, since.toString(), through.toString()],
         )
       ).rows.map((r) => ({ market: r.market, minute: Number(r.minute), quote: BigInt(r.quote) }));
+    },
+    /** Records one minute of market prices in one statement; a minute another API process
+     * already recorded is kept. */
+    async recordPrices(domain: string, rows: readonly MinutePrices[]) {
+      if (!rows.length) return;
+      await db.query(
+        `INSERT INTO probabl.market_prices (deployment, market, minute, yes_price, no_price, spot)
+        SELECT ${DEPLOYMENT}, r.market, r.minute, r.yes, r.no, r.spot
+        FROM unnest($2::integer[], $3::bigint[], $4::numeric[], $5::numeric[], $6::numeric[])
+          AS r(market, minute, yes, no, spot)
+        ON CONFLICT DO NOTHING`,
+        [
+          domain,
+          rows.map((r) => r.market),
+          rows.map((r) => String(r.minute)),
+          rows.map((r) => (r.yes === null ? null : r.yes.toString())),
+          rows.map((r) => (r.no === null ? null : r.no.toString())),
+          rows.map((r) => r.spot),
+        ],
+      );
+    },
+    /** One market's prices from minute `since` on, the last recorded in each `bucket` minutes,
+     * oldest first: one range read of the key. */
+    async priceHistory(
+      domain: string,
+      market: number,
+      since: number,
+      bucket: number,
+    ): Promise<MinutePrices[]> {
+      return (
+        await db.query<{
+          minute: string;
+          yes: string | null;
+          no: string | null;
+          spot: string | null;
+        }>(
+          `SELECT DISTINCT ON (minute / $4) minute::text, yes_price::text AS yes,
+            no_price::text AS no, spot::text
+          FROM probabl.market_prices
+          WHERE deployment = ${DEPLOYMENT} AND market = $2 AND minute >= $3
+          ORDER BY minute / $4, minute DESC`,
+          [domain, market, String(since), String(Math.max(1, Math.floor(bucket)))],
+        )
+      ).rows.map((r) => ({
+        market,
+        minute: Number(r.minute),
+        yes: r.yes === null ? null : BigInt(r.yes),
+        no: r.no === null ? null : BigInt(r.no),
+        spot: r.spot,
+      }));
+    },
+    /** The first minute recorded for a market, if any. */
+    async firstPriceMinute(domain: string, market: number): Promise<number | null> {
+      const row = (
+        await db.query<{ minute: string }>(
+          `SELECT minute::text FROM probabl.market_prices
+          WHERE deployment = ${DEPLOYMENT} AND market = $2 ORDER BY minute LIMIT 1`,
+          [domain, market],
+        )
+      ).rows[0];
+      return row ? Number(row.minute) : null;
     },
     /** Closed orders of one owner, newest first. */
     async closedOrders(domain: string, owner: string, limit = 200): Promise<ClosedOrderRecord[]> {
