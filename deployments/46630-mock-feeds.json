@@ -62,5 +62,21 @@
     "deploymentBlock": "126793885",
     "transactionHash": "0x31ce15fda3adcc02f05787f23a614b3a9bd1b81356c719f325dfe97e03f884d6",
     "deployedAt": "2026-09-30T17:29:31.018Z"
+  },
+  {
+    "symbol": "NFLX",
+    "token": "0x3b8262A63d25f0477c4DDE23F83cfe22Cb768C93",
+    "feed": "0x1Baa50056b13aC863F837eD91adaCB4Ac584CC83",
+    "decimals": 8,
+    "description": "NFLX / USD (testnet mock)",
+    "source": {
+      "chainId": 56,
+      "feed": "0x1fE6c9Bd9B29e5810c2819f37dDa8559739ebeC9",
+      "description": "NFLX / USD"
+    },
+    "owner": "0x7c2e81c16dF690F0fEF9d472682f88f0b4Ad5f6D",
+    "deploymentBlock": "127016123",
+    "transactionHash": "0xb76652bb34385671da8be81ad762be314893b04411fe95591e31275980d23eb0",
+    "deployedAt": "2026-10-01T06:45:58.006Z"
   }
 ]
