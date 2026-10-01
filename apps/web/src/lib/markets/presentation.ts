@@ -139,6 +139,11 @@ export function marketCategory(market: MarketView) {
   if (/revenue|earnings|deliver|quarter|profit/.test(question)) return "Earnings";
   return "Other";
 }
+/** Text in place of an event's image. */
+export function eventMonogram(market: MarketView) {
+  const category = marketCategory(market);
+  return category === "Macro" ? "FED" : category === "Policy" ? "PRC" : market.ticker;
+}
 export const percent = (value: number | null) =>
   value === null || !Number.isFinite(value) ? "—" : `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
 export const compact = (value: number) =>

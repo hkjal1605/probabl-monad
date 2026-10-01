@@ -8,6 +8,7 @@ import { TokenIdentity } from "@/components/market/TokenIdentity";
 import { useUiStore } from "@/components/providers/UiStateProvider";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Masonry } from "@/components/ui/masonry";
 import { DataError, EmptyState, Page } from "@/components/ui/page";
 import { Segmented } from "@/components/ui/segmented";
 import {
@@ -47,6 +48,7 @@ import { cn } from "@/lib/utils";
 import type { MarketView } from "@/types/api";
 import { FEATURED_MARKETS } from "../featured-markets";
 import { FeaturedMarketBanner } from "./FeaturedMarketBanner";
+import { MarketsColumns } from "./MarketsColumns";
 import { MarketsPageSkeleton } from "./MarketsPageSkeleton";
 
 export function MarketsExplorer({
@@ -165,7 +167,7 @@ export function MarketsExplorer({
             label="Market view"
             variant="compact"
             value={filters.view}
-            options={["Feed", "Matrix"]}
+            options={["Feed", "Columns", "Matrix"]}
             onChange={(view) => setFilters({ view })}
           />
         </div>
@@ -191,11 +193,13 @@ export function MarketsExplorer({
           {!visible.length ? (
             <EmptyState>No markets match this view. Try another filter.</EmptyState>
           ) : filters.view === "Feed" ? (
-            <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Masonry className="grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {visible.map((assets) => (
                 <EventCard key={assets[0] ? eventKey(assets[0]) : "empty"} markets={assets} />
               ))}
-            </div>
+            </Masonry>
+          ) : filters.view === "Columns" ? (
+            <MarketsColumns groups={visible} />
           ) : (
             <Card variant="panel">
               <Table>

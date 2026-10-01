@@ -8,10 +8,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { DiscoveryFilters } from "@/stores/ui-store";
+import { COLUMNS_TABLE, ColumnsHeader } from "./MarketsColumns";
 
 const CARD_ROWS = [0, 1, 2] as const;
 const FEED_CARDS = [0, 1, 2, 3, 4, 5] as const;
 const MATRIX_ROWS = [0, 1, 2, 3, 4, 5] as const;
+const COLUMN_EVENTS = [0, 1, 2, 3] as const;
 
 function FeaturedBannerSkeleton() {
   return (
@@ -49,7 +52,7 @@ function EventCardSkeleton() {
       <CardContent className="px-0">
         <Table>
           <TableHeader className="[&_tr]:border-0">
-            <TableRow className="border-0 bg-accent hover:bg-accent">
+            <TableRow className="border-0 hover:bg-transparent">
               {CARD_ROWS.map((column) => (
                 <TableHead key={column} className="px-2">
                   <Skeleton className="h-3 w-10" />
@@ -128,7 +131,53 @@ function MatrixSkeleton() {
   );
 }
 
-export function MarketsPageSkeleton({ view }: { view: "Feed" | "Matrix" }) {
+function ColumnsSkeleton() {
+  return (
+    <Card variant="market" aria-hidden="true">
+      <Table className={COLUMNS_TABLE}>
+        <ColumnsHeader />
+        <TableBody>
+          {COLUMN_EVENTS.map((event) => [
+            <TableRow key={event} className="hover:bg-transparent">
+              <TableCell className="pl-4">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="size-8 rounded-md" />
+                  <Skeleton className="h-4 w-full max-w-64" />
+                </div>
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-28" />
+              </TableCell>
+              <TableCell colSpan={6} />
+            </TableRow>,
+            ...CARD_ROWS.slice(0, 2).map((row) => (
+              <TableRow key={`${event}:${row}`} className="hover:bg-transparent">
+                <TableCell className="pl-[3.75rem]">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="size-6 rounded-full" />
+                    <Skeleton className="h-4 w-12" />
+                  </div>
+                </TableCell>
+                <TableCell />
+                {CARD_ROWS.map((column) => (
+                  <TableCell key={column}>
+                    <Skeleton className="h-4 w-16" />
+                  </TableCell>
+                ))}
+                <TableCell>
+                  <Skeleton className="h-4 w-12" />
+                </TableCell>
+                <TableCell />
+              </TableRow>
+            )),
+          ])}
+        </TableBody>
+      </Table>
+    </Card>
+  );
+}
+
+export function MarketsPageSkeleton({ view }: { view: DiscoveryFilters["view"] }) {
   return (
     <div role="status" aria-label="Loading markets" aria-busy="true">
       <FeaturedBannerSkeleton />
@@ -138,6 +187,8 @@ export function MarketsPageSkeleton({ view }: { view: "Feed" | "Matrix" }) {
             <EventCardSkeleton key={card} />
           ))}
         </div>
+      ) : view === "Columns" ? (
+        <ColumnsSkeleton />
       ) : (
         <MatrixSkeleton />
       )}

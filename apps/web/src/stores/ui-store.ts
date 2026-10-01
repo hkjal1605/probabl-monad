@@ -5,15 +5,26 @@ export type DiscoveryFilters = {
   category: MarketCategory;
   lifecycle: "active" | "resolving" | "all";
   sort: "newest" | "oldest";
-  view: "Feed" | "Matrix";
+  view: "Feed" | "Columns" | "Matrix";
 };
-export type OrderPrefill = {
-  marketId: string;
-  branch: "YES" | "NO";
-  /** Base token quantity. */
-  quantity: string;
-  nonce: number;
-};
+/** A trade another page hands the market's order ticket: data only, never signed or submitted. */
+export type OrderPrefill =
+  | {
+      /** Sell held claims. */
+      intent: "close";
+      marketId: string;
+      branch: "YES" | "NO";
+      /** Base token quantity. */
+      quantity: string;
+      nonce: number;
+    }
+  | {
+      /** Buy the branch's stock, the amount left to the trader. */
+      intent: "buy";
+      marketId: string;
+      branch: "YES" | "NO";
+      nonce: number;
+    };
 export const defaultFilters: DiscoveryFilters = {
   category: "All",
   lifecycle: "active",

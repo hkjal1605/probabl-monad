@@ -238,7 +238,13 @@ describe("wallet action scoping", () => {
     const a = createUiStore(),
       b = createUiStore();
     a.getState().setFilters({ category: "Macro", view: "Matrix" });
-    a.getState().setPrefill({ marketId: market.id, branch: "NO", quantity: "0.5", nonce: 1 });
+    a.getState().setPrefill({
+      intent: "close",
+      marketId: market.id,
+      branch: "NO",
+      quantity: "0.5",
+      nonce: 1,
+    });
     expect(b.getState().filters.category).toBe("All");
     expect(b.getState().prefill).toBeNull();
     expect(a.getState().filters.category).toBe("Macro");

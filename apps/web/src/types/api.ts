@@ -101,6 +101,9 @@ export interface MarketView extends ShareUnits {
   residual: number | null;
   ticker: string;
   tradingOpen: string;
+  /** Quote traded in the last 24 hours, approximate display units (one quote token counts as
+   * $1); null until the indexer has counted it. */
+  volume24h: number | null;
   yes: BranchBook;
 }
 export interface IndexedOrder {

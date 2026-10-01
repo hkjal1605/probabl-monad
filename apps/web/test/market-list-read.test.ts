@@ -57,7 +57,11 @@ test("catalogue reads all books in one indexed batch and keeps one-sided executa
       const url = new URL(input instanceof Request ? input.url : String(input));
       const path = url.pathname;
       paths.push(path);
-      if (path === "/markets") return Response.json({ markets: markets.map((m) => indexed(m)) });
+      if (path === "/markets")
+        return Response.json({
+          // Raw quote units (6 decimals); the second market's volume is not counted yet.
+          markets: markets.map((m, i) => indexed(m, { volume24h: i ? null : "1234500000" })),
+        });
       if (path === "/orderbooks") {
         orderbookView.value = url.searchParams.get("view");
         return Response.json({
@@ -100,6 +104,9 @@ test("catalogue reads all books in one indexed batch and keeps one-sided executa
     expect(paths.filter((path) => path.endsWith("/polymarket"))).toHaveLength(1);
     expect(paths.some((path) => path.startsWith("/orderbook/"))).toBe(false);
     expect(read.every((market) => market.probability.value === 0.42)).toBe(true);
+    // The indexer serves each market's 24-hour volume: no trade history is read for it.
+    expect(read.map((market) => market.volume24h)).toEqual([1234.5, null]);
+    expect(paths.some((path) => path.startsWith("/trades"))).toBe(false);
     const [first] = read;
     expect(first?.base.token).toBe(fixtureMarkets[0]!.base.token);
     expect(first?.yes.asks[0]?.quantity).toBe(1);

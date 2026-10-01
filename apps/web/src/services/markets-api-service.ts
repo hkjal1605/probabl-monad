@@ -2,6 +2,7 @@ import {
   assertShareUnits,
   formatPriceRawX18,
   formatShareAmount,
+  formatTokenAmount,
   type ShareUnits,
   tokenDecimals,
 } from "@conditional-stocks/domain";
@@ -41,6 +42,11 @@ const lifecycle = (state: unknown): MarketLifecycle =>
       "archived",
     ] as const
   )[Math.max(0, Number(state) - 1)] ?? "scheduled";
+/** A raw token amount (decimal string) as an approximate display number, else null. */
+const displayAmount = (value: unknown, decimals: number) =>
+  typeof value === "string" && /^[0-9]{1,78}$/.test(value)
+    ? Number(formatTokenAmount(BigInt(value), decimals))
+    : null;
 const isoSeconds = (value: unknown) => {
   const seconds = number(value);
   return seconds === null ? new Date(0).toISOString() : new Date(seconds * 1_000).toISOString();
@@ -311,6 +317,7 @@ async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<Mar
         ...(display.assetMetadata ? { assetMetadata: display.assetMetadata } : {}),
         ...(display.quoteTokenMetadata ? { quoteTokenMetadata: display.quoteTokenMetadata } : {}),
         tradingOpen: isoSeconds(market.tradingOpen),
+        volume24h: displayAmount(market.volume24h, market.quoteTokenDecimals),
         yes,
       };
     }),

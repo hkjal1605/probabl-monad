@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { marketPath } from "@/lib/markets/identity";
-import { currentSpotUsd, marketCategory } from "@/lib/markets/presentation";
+import { currentSpotUsd, eventMonogram } from "@/lib/markets/presentation";
 import type { MarketView } from "@/types/api";
 import { OutcomePrice } from "./OutcomePrice";
 import { ProbabilityGauge } from "./ProbabilityGauge";
@@ -34,11 +34,7 @@ export function EventCard({ markets }: { markets: MarketView[] }) {
             />
           )}
           <AvatarFallback className="absolute inset-0 rounded-xl">
-            {marketCategory(market) === "Macro"
-              ? "FED"
-              : marketCategory(market) === "Policy"
-                ? "PRC"
-                : market.ticker}
+            {eventMonogram(market)}
           </AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
@@ -54,7 +50,7 @@ export function EventCard({ markets }: { markets: MarketView[] }) {
       <CardContent className="px-0">
         <Table>
           <TableHeader className="[&_tr]:border-0">
-            <TableRow className="border-0 bg-accent">
+            <TableRow className="border-0 hover:bg-transparent">
               <TableHead className="px-2">Asset</TableHead>
               <TableHead className="px-2">If YES</TableHead>
               <TableHead className="px-2 text-center">Spot</TableHead>

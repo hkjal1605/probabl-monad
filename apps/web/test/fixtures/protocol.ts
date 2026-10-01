@@ -83,6 +83,7 @@ export const fixtureMarkets: MarketView[] = [
     residual: null,
     ticker: "NVDA",
     tradingOpen: "2027-01-15T07:59:00.000Z",
+    volume24h: 0,
     yes: {
       bids: [level("254.35", 2), level("253.75", 3), level("253.15", 4)],
       asks: [level("255.25", 1), level("255.85", 3), level("256.45", 4), level("280", 1)],

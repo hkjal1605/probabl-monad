@@ -57,18 +57,20 @@ export function OrderTicket({ market }: { market: MarketView }) {
   const [entry, setEntry] = useState<"Quantity" | "Spend">("Quantity");
   const [spend, setSpend] = useState("");
   const [entryError, setEntryError] = useState<string | null>(null);
-  // A close-position intent is data only: it never signs or submits automatically.
+  // A close-position or buy intent is data only: it never signs or submits automatically.
   useEffect(() => {
     if (!prefill || prefill.marketId !== market.id) return;
     t.setBranch(prefill.branch);
-    t.setSide("sell");
-    t.setFunding("claim");
-    t.setQuantity(prefill.quantity);
-    t.setPrice(bestPriceFor(market, prefill.branch, "sell") ?? "");
-    t.setTif("gtc");
     t.setPreparation(null);
-    setEntry("Quantity");
-    setKind("Limit");
+    if (prefill.intent === "close") {
+      t.setSide("sell");
+      t.setFunding("claim");
+      t.setQuantity(prefill.quantity);
+      t.setPrice(bestPriceFor(market, prefill.branch, "sell") ?? "");
+      t.setTif("gtc");
+      setEntry("Quantity");
+      setKind("Limit");
+    } else t.setSide("buy");
     setPrefill(null);
   }, [
     prefill,

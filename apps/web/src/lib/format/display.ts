@@ -39,6 +39,17 @@ export const formatTime = (value: string | null) =>
         new Date(value),
       )
     : "Not available";
+/** A short local date, "Dec 31", with the year when it is not this year's. */
+export const shortDate = (value: string, now = new Date()) => {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "—"
+    : new Intl.DateTimeFormat("en-US", {
+        day: "numeric",
+        month: "short",
+        ...(date.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }),
+      }).format(date);
+};
 export const timeUntil = (value: string, now = Date.now()) => {
   const milliseconds = new Date(value).getTime() - now;
   if (milliseconds <= 0) return "Cutoff reached";

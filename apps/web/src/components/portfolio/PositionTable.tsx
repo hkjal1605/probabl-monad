@@ -28,6 +28,7 @@ export function closePrefill(row: ConditionalPositionRow) {
   const quantity =
     row.kind === "stock" ? stepQuantity(row.available, BigInt(row.market.baseStep)) : 0n;
   return {
+    intent: "close" as const,
     marketId: row.market.id,
     branch: row.branch === 0 ? ("YES" as const) : ("NO" as const),
     quantity: formatShareAmount(quantity, row.market),
