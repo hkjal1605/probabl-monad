@@ -27,7 +27,7 @@ import {
   tokenAbi,
 } from "../../../packages/evm-client/test/anvil.ts";
 import { type Settings, settings } from "../src/config.ts";
-import { basket, Keeper, orderChanges, vaultOrders } from "../src/engine.ts";
+import { basket, Keeper, keepable, orderChanges, vaultOrders } from "../src/engine.ts";
 import type { Quote } from "../src/model.ts";
 import { initialState } from "../src/state.ts";
 import { Tick } from "../src/tick.ts";
@@ -204,6 +204,23 @@ describe("quoting", () => {
       .map((o) => o.key)
       .sort();
     await keeper.cycle(round());
+    const after = vaultOrders(await synced(), vault, 1)
+      .map((o) => o.key)
+      .sort();
+    expect(after).toEqual(before);
+  }, 60_000);
+
+  test("a move within repriceBps keeps every quote, though it takes steps off the sizes", async () => {
+    const before = vaultOrders(await synced(), vault, 1)
+      .map((o) => o.key)
+      .sort();
+    try {
+      // Spot up 5 bps: each level's budget buys ~12 steps less stock.
+      setReference(100_050_000n, 400_000n);
+      await keeper.cycle(round());
+    } finally {
+      setReference(100n * USDC, 400_000n);
+    }
     const after = vaultOrders(await synced(), vault, 1)
       .map((o) => o.key)
       .sort();
@@ -398,31 +415,26 @@ describe("order changes", () => {
     funding: 0,
     ...over,
   });
-  const live = { epoch: 0n, maxFeeBps: 0, tick: 10_000n };
-  const s = { pollMs: 1000, repriceBps: 15 };
+  const live = { epoch: 0n, maxFeeBps: 0 };
 
-  test("keeps matching quotes and replaces stale, repriced, resized or foreign-fee ones", () => {
-    expect(orderChanges([order({})], [target()], 100n, s, live)).toEqual({
-      cancels: [],
-      places: [],
+  test("keep the quotes the ladders kept, cancel the rest and place the new ones", () => {
+    expect(orderChanges([order({})], [target({ key: 1n })])).toEqual({ cancels: [], places: [] });
+    const fresh = target({ level: 1, price: 98_000_000n });
+    expect(orderChanges([order({}), order({ key: "2" })], [target({ key: 1n }), fresh])).toEqual({
+      cancels: [2n],
+      places: [fresh],
     });
-    const replace = (o: Record<string, unknown>, q = target()) =>
-      orderChanges([order(o)], [q], 100n, s, live);
-    expect(replace({ ticks: 9800n }).cancels).toEqual([1n]);
-    expect(replace({ expiry: 101n }).cancels).toEqual([1n]);
-    expect(replace({ epoch: 1n }).cancels).toEqual([1n]);
-    expect(replace({ fundingKind: 1 }).cancels).toEqual([1n]);
-    expect(replace({ remaining: 2n * NVDA }).cancels).toEqual([1n]);
-    expect(replace({ remaining: NVDA / 2n }).cancels).toEqual([1n]);
-    const extra = orderChanges(
-      [order({}), order({ key: "2", ticks: 9800n })],
-      [target()],
-      100n,
-      s,
-      live,
-    );
-    expect(extra).toEqual({ cancels: [2n], places: [] });
-    expect(orderChanges([], [target()], 100n, s, live).places.length).toBe(1);
+    expect(orderChanges([order({})], [target()])).toEqual({ cancels: [1n], places: [target()] });
+  });
+
+  test("only the vault's current good-till-expiry quotes may stay", () => {
+    const may = (o: Record<string, unknown>) => keepable(order(o), 100n, 1000, live);
+    expect(may({})).toBe(true);
+    expect(may({ expiry: 101n })).toBe(false);
+    expect(may({ epoch: 1n })).toBe(false);
+    expect(may({ maxFeeBps: 5 })).toBe(false);
+    expect(may({ tif: 1 })).toBe(false);
+    expect(may({ delegate: "0x00000000000000000000000000000000000000d1" })).toBe(false);
   });
 });
 

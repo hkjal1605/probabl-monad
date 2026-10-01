@@ -9,6 +9,7 @@ import {
   ladders,
   markedValue,
   type Quote,
+  type Resting,
   widening,
 } from "../src/model.ts";
 
@@ -208,6 +209,61 @@ describe("ladders", () => {
     expect(high <= base.maxImbalance && -low <= base.maxImbalance).toBe(true);
     const resting = quotes.reduce((sum, q) => sum + quote(q.quantity, q.price, true), 0n);
     expect(resting <= base.maxResting).toBe(true);
+  });
+
+  test("keep resting quotes through moves within repriceBps, which cost no transaction", () => {
+    const first = ladders({ ...base, fair, halfSpread: 40n });
+    const resting = first.map((q, i): Resting => ({ ...q, key: BigInt(i + 1) }));
+    const at = (bps: bigint) => fairPrices((SPOT * (BPS + bps)) / BPS, 400_000n, 30_000n);
+    // Prices 10 bps up take steps off every level's size...
+    const fresh = ladders({ ...base, fair: at(10n), halfSpread: 40n });
+    expect(fresh.every((q, i) => q.quantity < first[i]!.quantity)).toBe(true);
+    // ...yet every resting quote stays as it is.
+    const kept = ladders({ ...base, fair: at(10n), halfSpread: 40n, resting, repriceBps: 15 });
+    expect(kept).toEqual(resting.map((r, i) => ({ ...r, level: first[i]!.level })));
+    // 20 bps is beyond repriceBps: every quote is replaced.
+    const moved = ladders({ ...base, fair: at(20n), halfSpread: 40n, resting, repriceBps: 15 });
+    expect(moved).toEqual(ladders({ ...base, fair: at(20n), halfSpread: 40n }));
+  });
+
+  test("keep a resting quote only at 3/4 of its level's size or more and within every limit", () => {
+    const first = ladders({ ...base, fair, halfSpread: 40n });
+    const keys = (quotes: Quote[]) => quotes.map((q) => q.key);
+    const rest = (over: (q: Quote) => Partial<Resting>) =>
+      first.map((q, i): Resting => ({ ...q, key: BigInt(i + 1), ...over(q) }));
+    // Mostly filled quotes are topped up.
+    const filled = rest((q) => ({ quantity: q.quantity / 2n }));
+    expect(
+      keys(ladders({ ...base, fair, halfSpread: 40n, resting: filled, repriceBps: 15 })),
+    ).toEqual(first.map(() => undefined));
+    // With the imbalance near its cap, quotes raising it no longer fit and give way to smaller
+    // ones; the worst case stays within the cap.
+    const imbalance = 195n * NVDA;
+    const tight = ladders({
+      ...base,
+      fair,
+      halfSpread: 40n,
+      imbalance,
+      resting: rest(() => ({})),
+      repriceBps: 15,
+    });
+    for (const q of tight) {
+      const raises = (q.side === 0) === (q.branch === 0);
+      expect(q.key === undefined).toBe(raises);
+    }
+    const { high, low } = extremes(tight, imbalance);
+    expect(high <= base.maxImbalance && -low <= base.maxImbalance).toBe(true);
+    // Resting quotes 1% over their levels' budgets are replaced; the ladders stay in budget.
+    const large = rest((q) => ({ quantity: (q.quantity * 101n) / 100n }));
+    const budgeted = ladders({ ...base, fair, halfSpread: 40n, resting: large, repriceBps: 15 });
+    expect(keys(budgeted)).toEqual(first.map(() => undefined));
+    for (const branch of [0, 1])
+      for (const side of [0, 1]) {
+        const notional = budgeted
+          .filter((q) => q.branch === branch && q.side === side)
+          .reduce((sum, q) => sum + quote(q.quantity, q.price, true), 0n);
+        expect(notional <= base.budget).toBe(true);
+      }
   });
 
   test("never cross foreign orders and skip levels outside the band", () => {

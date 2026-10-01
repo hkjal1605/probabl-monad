@@ -22,6 +22,18 @@ export interface Quote {
   quantity: bigint;
   /** 0 plain credit, 1 the branch's claims. */
   funding: 0 | 1;
+  /** The resting order kept as this quote; absent for a quote to place. */
+  key?: bigint;
+}
+/** A resting order of the vault's that a ladder may keep as one of its quotes. */
+export interface Resting {
+  key: bigint;
+  branch: 0 | 1;
+  side: 0 | 1;
+  price: bigint;
+  /** Remaining raw base units. */
+  quantity: bigint;
+  funding: 0 | 1;
 }
 /** Best foreign bid and ask per branch. */
 export type Book = [{ bid?: bigint; ask?: bigint }, { bid?: bigint; ask?: bigint }];
@@ -145,7 +157,11 @@ export function markedValue(
  * exchange and vault size limits, and is funded: bids by quote, asks by stock, each from the
  * branch's claims first (which also nets the vault's unpaired claims) and plain credit after.
  * The imbalance room and the resting-notional budget bound the ladders together, so the vault's
- * worst-case YES-minus-NO stock stays within its cap if every quote filled. */
+ * worst-case YES-minus-NO stock stays within its cap if every quote filled.
+ * A resting quote stays as its level's quote while priced within `repriceBps` of the level, at
+ * least 3/4 of the level's size and within every limit as it rests (the limits then count what
+ * it holds), so small moves cost no transaction: sizes are budgets over prices, and a price up
+ * a fraction of a bp can take a step off the level's size. */
 export function ladders(input: {
   terms: Terms;
   fair: [bigint, bigint];
@@ -165,6 +181,9 @@ export function ladders(input: {
   maxImbalance: bigint;
   funds: Funds;
   best: Book;
+  /** The vault's resting quotes in the market that may stay (current and not expiring). */
+  resting?: Resting[];
+  repriceBps?: number;
 }): Quote[] {
   const t = input.terms;
   if (t.tick <= 0n || t.step <= 0n || input.oracle <= 0n || input.levels < 1)
@@ -186,6 +205,20 @@ export function ladders(input: {
         credit = (side === 0 ? input.funds.quote : input.funds.base) / 2n,
         previous: bigint | undefined;
       const top = input.best[branch];
+      // Passive, inside the band and not repeating the previous level's price.
+      const passive = (price: bigint) =>
+        price > 0n &&
+        price <= U128_MAX &&
+        price !== previous &&
+        abs(price - input.oracle) <= band &&
+        (side === 0
+          ? top.ask === undefined || price < top.ask
+          : top.bid === undefined || price > top.bid);
+      // The ladder's resting quotes, best price first, each paired with the next quote it takes.
+      const resting = (input.resting ?? [])
+        .filter((r) => r.branch === branch && r.side === side)
+        .sort((a, b) => (a.price === b.price ? 0 : a.price > b.price === (side === 0) ? -1 : 1));
+      let taken = 0;
       for (let level = 0; level < input.levels && room > 0n && remainingBudget > 0n; level++) {
         const edge = input.halfSpread + BigInt(input.levelSpacingBps * level);
         if (edge > BigInt(input.maxHalfSpreadBps) || edge >= BPS) break;
@@ -194,18 +227,7 @@ export function ladders(input: {
           side === 0
             ? ((center * (BPS - edge)) / BPS / t.tick) * t.tick
             : ceil(ceil(center * (BPS + edge), BPS), t.tick) * t.tick;
-        const crosses =
-          side === 0
-            ? top.ask !== undefined && price >= top.ask
-            : top.bid !== undefined && price <= top.bid;
-        if (
-          price <= 0n ||
-          price > U128_MAX ||
-          price === previous ||
-          abs(price - input.oracle) > band ||
-          crosses
-        )
-          continue;
+        if (!passive(price)) continue;
         const levelBudget = remainingBudget / BigInt(input.levels - level);
         const fundable = (reserve: bigint) => (side === 0 ? (reserve * WAD) / price : reserve);
         let quantity = min(
@@ -218,15 +240,35 @@ export function ladders(input: {
           fromCredit = fundable(credit);
         const funding: 0 | 1 = fromClaims >= quantity || fromClaims > fromCredit ? 1 : 0;
         quantity = (min(quantity, funding === 1 ? fromClaims : fromCredit) / t.step) * t.step;
-        const cost = quote(quantity, price, true);
-        if (quantity <= 0n || quote(quantity, price) < t.minNotional || cost > orderCap) continue;
-        const reserved = side === 0 ? cost : quantity;
+        let q: Quote = { branch, side, level, price, quantity, funding };
+        const r = resting[taken];
+        if (
+          r !== undefined &&
+          r.funding === funding &&
+          abs(r.price - price) * BPS < price * BigInt(input.repriceBps ?? 0) &&
+          (quantity - r.quantity) * 4n < quantity &&
+          r.quantity <= min(room, t.step * t.maxSteps) &&
+          quote(r.quantity, r.price) >= t.minNotional &&
+          passive(r.price)
+        ) {
+          const cost = quote(r.quantity, r.price, true);
+          if (
+            cost <= min(orderCap, levelBudget) &&
+            (side === 0 ? cost : r.quantity) <= (funding === 1 ? claims : credit)
+          )
+            q = { ...q, price: r.price, quantity: r.quantity, key: r.key };
+        }
+        const cost = quote(q.quantity, q.price, true);
+        if (q.quantity <= 0n || quote(q.quantity, q.price) < t.minNotional || cost > orderCap)
+          continue;
+        const reserved = side === 0 ? cost : q.quantity;
         if (funding === 1) claims -= reserved;
         else credit -= reserved;
-        room -= quantity;
+        room -= q.quantity;
         remainingBudget -= min(remainingBudget, cost);
-        previous = price;
-        out.push({ branch, side, level, price, quantity, funding });
+        previous = q.price;
+        taken++;
+        out.push(q);
       }
     }
   return out;

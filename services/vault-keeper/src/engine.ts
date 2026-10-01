@@ -147,51 +147,30 @@ const holdingsOf = (b: Basket) => ({
   })),
 });
 
-/** Cancels and placements bringing the market's quotes to `desired`, per ladder (branch x side),
- * best price first. A resting quote is kept only if it is current, its funding and fee cap
- * match, it is not about to expire, and its price and size are close to the target (never
- * larger, so limits computed for the target hold). */
-export function orderChanges(
-  existing: OrderState[],
-  desired: Quote[],
+/** Whether a resting quote may stay: good-till-expiry, placed by the vault itself under its
+ * current epoch and fee cap, and not about to expire. */
+export function keepable(
+  o: OrderState,
   now: bigint,
-  s: Pick<Settings, "pollMs" | "repriceBps">,
-  live: { epoch: bigint; maxFeeBps: number; tick: bigint },
+  pollMs: number,
+  live: { epoch: bigint; maxFeeBps: number },
 ) {
-  const cancels: bigint[] = [],
-    places: Quote[] = [];
-  const horizon = now + BigInt(Math.ceil(s.pollMs / 1000) * 2);
-  for (const branch of [0, 1] as const)
-    for (const side of [0, 1] as const) {
-      const ranked = existing
-        .filter((o) => o.branch === branch && o.side === side)
-        .sort((a, b) =>
-          a.ticks === b.ticks ? 0 : (a.ticks > b.ticks ? -1 : 1) * (side === 0 ? 1 : -1),
-        );
-      const targets = desired
-        .filter((q) => q.branch === branch && q.side === side)
-        .sort((a, b) => a.level - b.level);
-      for (let i = 0; i < Math.max(ranked.length, targets.length); i++) {
-        const o = ranked[i],
-          q = targets[i];
-        const keep =
-          o !== undefined &&
-          q !== undefined &&
-          o.fundingKind === q.funding &&
-          o.tif === 0 &&
-          !o.delegate &&
-          o.epoch === live.epoch &&
-          o.maxFeeBps === live.maxFeeBps &&
-          o.expiry > horizon &&
-          o.remaining <= q.quantity &&
-          abs(o.ticks * live.tick - q.price) * BPS < q.price * BigInt(s.repriceBps) &&
-          (q.quantity - o.remaining) * 4n < q.quantity;
-        if (keep) continue;
-        if (o) cancels.push(BigInt(o.key));
-        if (q) places.push(q);
-      }
-    }
-  return { cancels, places };
+  return (
+    o.tif === 0 &&
+    !o.delegate &&
+    o.epoch === live.epoch &&
+    o.maxFeeBps === live.maxFeeBps &&
+    o.expiry > now + BigInt(Math.ceil(pollMs / 1000) * 2)
+  );
+}
+/** Cancels and placements bringing the market's quotes to `desired`: the resting quotes the
+ * ladders kept stay, every other one is cancelled and every new quote is placed. */
+export function orderChanges(existing: OrderState[], desired: Quote[]) {
+  const kept = new Set(desired.flatMap((q) => (q.key === undefined ? [] : [q.key])));
+  return {
+    cancels: existing.map((o) => BigInt(o.key)).filter((key) => !kept.has(key)),
+    places: desired.filter((q) => q.key === undefined),
+  };
 }
 
 /** Reads one market's reference within a round (tests substitute their own). */
@@ -558,6 +537,7 @@ export class Keeper {
     if (implied !== null && abs(implied - r.probability) > BigInt(set.maxProbabilityDriftX6))
       throw new Error("Order books imply a different probability than the reference");
     const own = vaultOrders(s, this.vault, market);
+    const live = { epoch: traderOf(s, this.vault).epoch, maxFeeBps: makerBps };
     const desired = ladders({
       terms: m,
       fair,
@@ -575,12 +555,19 @@ export class Keeper {
       maxImbalance: vm.risk.maxImbalance,
       funds: marketFunds(v, market, own, m.tick, set.reserveBps),
       best,
+      resting: own
+        .filter((o) => keepable(o, now, set.pollMs, live))
+        .map((o) => ({
+          key: BigInt(o.key),
+          branch: o.branch as 0 | 1,
+          side: o.side as 0 | 1,
+          price: o.ticks * m.tick,
+          quantity: o.remaining,
+          funding: o.fundingKind as 0 | 1,
+        })),
+      repriceBps: set.repriceBps,
     });
-    const { cancels, places } = orderChanges(own, desired, now, set, {
-      epoch: traderOf(s, this.vault).epoch,
-      maxFeeBps: makerBps,
-      tick: m.tick,
-    });
+    const { cancels, places } = orderChanges(own, desired);
     this.log("plan", {
       market,
       spot: r.spot,
