@@ -15,11 +15,36 @@
       "question": "US recession by end of 2026?",
       "rationale": "A recession hits every one: consumer and ad spend (AMZN retail, NFLX subscriptions), big-ticket autos (TSLA), cyclical semiconductors (AMD) and high-multiple growth software (PLTR).",
       "markets": {
-        "TSLA": {},
-        "AMZN": {},
-        "PLTR": {},
-        "NFLX": {},
-        "AMD": {}
+        "TSLA": {
+          "packetHash": "0x66398f82fc09cf4965d2052a9aa632863eb07df137fe3578c1c91528f98aa901",
+          "marketId": "1",
+          "transactionHash": "0x604a9592b6727dd4571d6f64ae534c3d943578004561cfafa2afa08d30cfe803",
+          "opened": true
+        },
+        "AMZN": {
+          "packetHash": "0xa62091f08d4650e91c175bdda7f930d3297cdb6ebb7c710ec226394c3dbde01b",
+          "marketId": "2",
+          "transactionHash": "0xe789398a94adbd77b0a511555f2c7bdceed1834939f9c0959e08040d8e94e257",
+          "opened": true
+        },
+        "PLTR": {
+          "packetHash": "0x27b573cc973a8bdafb2009e38f6270b054db3a93001062be274fc698f5b9137b",
+          "marketId": "3",
+          "transactionHash": "0x9b04e170ace0c440b77f46cd0abbc433153740e5ec01d3f97d510d6b47907f67",
+          "opened": true
+        },
+        "NFLX": {
+          "packetHash": "0x0bf4b90c8cc9386f65c17a89755424fb6b425dbd281f4152778171def318699e",
+          "marketId": "4",
+          "transactionHash": "0x0b42b7d40b0735c26ad487f0ee96418ac639cab5390ebbec16b33ef6ad41d17b",
+          "opened": true
+        },
+        "AMD": {
+          "packetHash": "0x2f43ae8b28defa67ecb925e5bbd8e2ddbfa96a067a7a2d6062d210d80a29aec5",
+          "marketId": "5",
+          "transactionHash": "0x006431f2423864c0929ea1cb3b59008e7860f5dc810ea8bac0ad983da5e87664",
+          "opened": true
+        }
       }
     },
     {
@@ -28,10 +53,30 @@
       "question": "AI bubble burst in 2026?",
       "rationale": "An AI downturn reprices AI compute (AMD GPUs), AI software (PLTR AIP), cloud AI capex and Amazon's Anthropic stake (AMZN), and Tesla's autonomy and robotics valuation (TSLA).",
       "markets": {
-        "AMD": {},
-        "PLTR": {},
-        "AMZN": {},
-        "TSLA": {}
+        "AMD": {
+          "packetHash": "0x5cf0d94d8c62422480126f3609b1a2b10fdc2975adf3c336ad35b90e50a1b76f",
+          "marketId": "6",
+          "transactionHash": "0x324b4850587e1bed04043e8736502bec26e8545fb736ebc74950adc67fe5c5a3",
+          "opened": true
+        },
+        "PLTR": {
+          "packetHash": "0x53c38a6d9b0fad64a46881344919161e21ad9d2da56ba25cc9b282366308845e",
+          "marketId": "7",
+          "transactionHash": "0x8a122c970f190eab542d4eca7fde92964d70a476bd454a14687b11723c5dea2f",
+          "opened": true
+        },
+        "AMZN": {
+          "packetHash": "0xb011f5edb9f657e144c2c863e46eac566f6cf2e64d00c310bd7f7da4f0ad6fdd",
+          "marketId": "8",
+          "transactionHash": "0x5efe3088213080baeec974d973f947ebba2d88331fe6837a14ecc8a1ec8f60fe",
+          "opened": true
+        },
+        "TSLA": {
+          "packetHash": "0x4f592becb5486d92fadf829d7144b58a7bbf1f566a56cabd95a7dc6ca068f338",
+          "marketId": "9",
+          "transactionHash": "0xdd873b612b99d8d697e0d20d7fed47b7d1a6c905276e630aabcf85b1c5feeb7d",
+          "opened": true
+        }
       }
     },
     {
@@ -40,7 +85,12 @@
       "question": "Tesla and SpaceX merger officially announced by December 31?",
       "rationale": "A Tesla-SpaceX combination directly changes Tesla's ownership, valuation and share count.",
       "markets": {
-        "TSLA": {}
+        "TSLA": {
+          "packetHash": "0x75ed565017806a7c68906d7987f8f4d092ee495ff8da17e5ee1ceb794aea57c2",
+          "marketId": "10",
+          "transactionHash": "0x61472b58ef4d40496bfbbd189c00637390417983b3965a2d3706f360cca4cabd",
+          "opened": true
+        }
       }
     },
     {
@@ -49,7 +99,12 @@
       "question": "Will Anthropic IPO by December 31, 2026?",
       "rationale": "Amazon is Anthropic's largest strategic investor and cloud partner; an IPO marks its stake to market.",
       "markets": {
-        "AMZN": {}
+        "AMZN": {
+          "packetHash": "0x3db1696f9f4a1a4c163d07e74149da59783211d62d738da18fc614715acd1e0a",
+          "marketId": "11",
+          "transactionHash": "0xacef394e80fdf8ed2a3b32e02576504d110bc3a72c21ccf2ac05f177b19f6499",
+          "opened": true
+        }
       }
     }
   ]
