@@ -38,6 +38,9 @@ const DDL = [
   `CREATE INDEX IF NOT EXISTS trades_market ON probabl.trades (deployment, market, block, log_index)`,
   `CREATE INDEX IF NOT EXISTS trades_maker ON probabl.trades (deployment, maker, block, log_index)`,
   `CREATE INDEX IF NOT EXISTS trades_taker ON probabl.trades (deployment, taker, block, log_index)`,
+  // Recent trades by time, covering what windowed volume reads (an index-only range scan).
+  `CREATE INDEX IF NOT EXISTS trades_time ON probabl.trades (deployment, block_time)
+    INCLUDE (market, block, quote)`,
   // Closed orders (open ones live in the checkpointed replica). The key serves the only read,
   // an owner's newest closed orders, and makes re-persisting a batch idempotent.
   `CREATE TABLE IF NOT EXISTS probabl.closed_orders (

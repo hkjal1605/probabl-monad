@@ -156,6 +156,9 @@ export class ChainFollower {
   base: ChainState;
   confirmed: ChainState;
   ready = false;
+  /** The block of the checkpoint this run resumed from: its history was persisted by an earlier
+   * run, and every later block is finalized again by this one. Undefined without a checkpoint. */
+  restored: bigint | undefined;
   /** Increments whenever the confirmed replica changes, so reads can be memoized per revision. */
   revision = 0;
   /** Unfinalized blocks with protocol events, applied to the confirmed replica. */
@@ -222,6 +225,7 @@ export class ChainFollower {
       if (getAddress(restored.quote) !== getAddress(this.options.quote))
         throw new Error("Checkpoint belongs to another deployment");
       this.base = restored;
+      this.restored = restored.block;
     }
     // Blocks after the checkpoint are read from the chain by the first finality pass.
     this.confirmed = cloneState(this.base);

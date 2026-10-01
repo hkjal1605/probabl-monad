@@ -209,6 +209,21 @@ test("history is idempotent, reads use one index each, and checkpoints advance o
   });
   expect((await db.checkpoint(other))!.block).toBe("159");
 
+  // 24-hour volume reads group quote by market and minute, within a time and block range:
+  // blocks 120..150 here, all in one minute.
+  const minute = Number((1_800_000_000n + 120n) / 60n);
+  expect(
+    (await db.minuteVolumes(other, 1_800_000_120n, 150n)).sort((a, b) => a.market - b.market),
+  ).toEqual([
+    { market: 1, minute, quote: 11n * 2n * 10n ** 8n },
+    { market: 2, minute, quote: 10n * 2n * 10n ** 8n },
+    { market: 3, minute, quote: 10n * 2n * 10n ** 8n },
+  ]);
+  // Another deployment's trades are not this one's.
+  expect(
+    await db.minuteVolumes("31337:0x00000000000000000000000000000000000000E3", 0n, 1_000n),
+  ).toEqual([]);
+
   // Each history read is an index scan (no sort, no sequential scan), even when tiny tables
   // would tempt the planner otherwise.
   const client = await pool.connect();
@@ -234,6 +249,20 @@ test("history is idempotent, reads use one index each, and checkpoints advance o
       expect(plan).toContain("Index Scan Backward");
       expect(plan).not.toContain("Sort");
     }
+    // The volume read, as in production (every block so far, the latest trades by time), covers
+    // its columns from the time index alone once statistics exist, as autovacuum keeps them for
+    // this append-only table.
+    await client.query("VACUUM (ANALYZE) probabl.trades");
+    const plan = (
+      await client.query(
+        `EXPLAIN SELECT market, block_time / 60, sum(quote) FROM probabl.trades
+        WHERE deployment = 2 AND block_time >= $1 AND block <= $2 GROUP BY market, block_time / 60`,
+        [1_800_000_150, 159],
+      )
+    ).rows
+      .map((r) => r["QUERY PLAN"])
+      .join("\n");
+    expect(plan).toContain("Index Only Scan using trades_time");
   } finally {
     client.release();
   }

@@ -42,6 +42,7 @@ import {
 import { type Reconciliation, reconcile } from "./reconcile.ts";
 import { createIndexStream, updateOf } from "./stream.ts";
 import { TokenReader } from "./tokens.ts";
+import { DailyVolume, windowStart } from "./volume.ts";
 
 export interface IndexerOptions {
   client: PublicClient;
@@ -118,6 +119,9 @@ export class IndexerService {
   persistError: string | null = null;
   /** Confirmed trades not yet persisted, oldest first. */
   private tail: TradeRecord[] = [];
+  /** Quote traded in the last 24 hours by finalized trades; unfinalized ones are in the tail. */
+  private volume = new DailyVolume();
+  private seeding: Promise<void> | undefined;
   private lastCheckpoint = 0;
   /** The finalized replica changed since the last checkpoint. */
   private changed = false;
@@ -171,6 +175,7 @@ export class IndexerService {
   async start() {
     await this.options.db.registerDeployment(this.domain);
     await this.follower.start();
+    this.seedVolume();
     await this.refreshLive();
     await this.audit();
     this.timers.push(
@@ -178,7 +183,10 @@ export class IndexerService {
         () => void this.refreshLive().catch((error) => this.options.onError?.(error)),
         10_000,
       ),
-      setInterval(() => void this.audit().catch((error) => this.options.onError?.(error)), 30_000),
+      setInterval(() => {
+        this.seedVolume();
+        void this.audit().catch((error) => this.options.onError?.(error));
+      }, 30_000),
     );
   }
 
@@ -188,6 +196,7 @@ export class IndexerService {
     this.follower.stop();
     await this.follower.drain();
     this.stopped = true;
+    await this.seeding;
     // Give queued finalized batches a bounded chance to land; the next start replays the rest.
     await Promise.race([this.writing, new Promise((resolve) => setTimeout(resolve, 10_000))]);
   }
@@ -261,6 +270,7 @@ export class IndexerService {
     const trades = notice.events
       .filter((e) => e.name === "Trade")
       .map((e) => tradeRecord(e, notice.trades.get(`${e.block}:${e.logIndex}`)!));
+    for (const t of trades) this.volume.add(t.market, t.blockTime, t.quote);
     const orders = notice.closed.map((o) =>
       closedOrderRecord(o, notice.base.markets.get(o.market)!),
     );
@@ -342,11 +352,58 @@ export class IndexerService {
     }
   }
 
-  /** Market view with the base token's live issuer state and token identities. */
-  view(s: ChainState, m: ChainState["markets"] extends Map<number, infer T> ? T : never) {
-    return marketView(s, m, this.deployment, this.tokens.live.get(m.base), (token) =>
-      this.tokens.identity.get(token),
-    );
+  /** Counts the trades finalized by earlier runs into the 24-hour volume, once: one grouped
+   * read of those up to the checkpoint this run resumed from (later blocks finalize again in
+   * this run, and are counted as they do). Retried by the audit timer until it succeeds. */
+  private seedVolume() {
+    if (this.volume.ready || this.seeding || this.stopped) return;
+    const through = this.follower.restored;
+    const since = BigInt(windowStart(Date.now()) * 60);
+    this.seeding = (
+      through === undefined
+        ? Promise.resolve([])
+        : this.options.db.minuteVolumes(this.domain, since, through)
+    )
+      .then((rows) => this.volume.seed(rows))
+      .catch((error) => this.options.onError?.(error))
+      .finally(() => {
+        this.seeding = undefined;
+      });
+  }
+
+  /** Quote traded per market (by venue id, raw units) in the last 24 hours: finalized trades
+   * from the window, unfinalized ones from the confirmed tail. Undefined until the trades of
+   * earlier runs are counted. Callers must not modify the map. */
+  dailyVolume(nowMs = Date.now()): ReadonlyMap<number, bigint> | undefined {
+    if (!this.volume.ready) return undefined;
+    const finalized = this.volume.window(nowMs);
+    const base = this.follower.base.block,
+      since = BigInt(windowStart(nowMs) * 60);
+    const recent = this.tail.filter((t) => t.block > base && t.blockTime >= since);
+    if (!recent.length) return finalized;
+    const totals = new Map(finalized);
+    for (const t of recent) totals.set(t.market, (totals.get(t.market) ?? 0n) + t.quote);
+    return totals;
+  }
+  /** What a market response depends on besides the replica: the volume window's minute and
+   * whether earlier runs' trades are counted yet. */
+  private volumeKey() {
+    return `${windowStart(Date.now())}:${this.volume.ready ? 1 : 0}`;
+  }
+
+  /** Market view with the base token's live issuer state, token identities and the quote
+   * traded in the last 24 hours (raw units; null until counted). */
+  view(
+    s: ChainState,
+    m: ChainState["markets"] extends Map<number, infer T> ? T : never,
+    volume = this.dailyVolume(),
+  ) {
+    return {
+      ...marketView(s, m, this.deployment, this.tokens.live.get(m.base), (token) =>
+        this.tokens.identity.get(token),
+      ),
+      volume24h: volume ? (volume.get(m.id) ?? 0n).toString() : null,
+    };
   }
 
   /** Issuer state can only change in a new block: nothing is read while the head stands still. */
@@ -510,19 +567,22 @@ export class IndexerService {
     app.get("/markets", (c) => {
       const s = this.trading();
       const all = c.req.query("venues") === "all";
-      return this.memo(c, all ? "markets:all" : "markets", false, () => ({
-        markets: (all ? [...s.markets.values()] : [...publicMarkets(s).values()]).map((m) =>
-          this.view(s, m),
-        ),
-        block: s.block.toString(),
-        confirmation: "confirmed",
-      }));
+      return this.memo(c, `${all ? "markets:all" : "markets"}@${this.volumeKey()}`, false, () => {
+        const volume = this.dailyVolume();
+        return {
+          markets: (all ? [...s.markets.values()] : [...publicMarkets(s).values()]).map((m) =>
+            this.view(s, m, volume),
+          ),
+          block: s.block.toString(),
+          confirmation: "confirmed",
+        };
+      });
     });
     app.get("/markets/:id", (c) => {
       const s = this.trading();
       const m = this.market(c.req.param("id"), s);
       return m
-        ? this.memo(c, `market:${m.id}`, false, () => this.view(s, m))
+        ? this.memo(c, `market:${m.id}@${this.volumeKey()}`, false, () => this.view(s, m))
         : c.json({ error: "not-found" }, 404);
     });
     app.get("/orders", async (c) => {

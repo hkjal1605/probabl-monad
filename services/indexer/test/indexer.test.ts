@@ -55,6 +55,13 @@ async function send(index: number, envelope: tx.Envelope) {
 }
 const get = async (path: string) =>
   (await app.request(path)).json() as Promise<Record<string, unknown>>;
+/** The first market's 24-hour volume, as a service serves it. */
+const volume = async (from = app) =>
+  (
+    (await (await from.request("/markets")).json()) as {
+      markets: { volume24h: string | null }[];
+    }
+  ).markets[0]!.volume24h;
 const settle = async (predicate: () => boolean | Promise<boolean>, timeout = 15_000) => {
   const until = Date.now() + timeout;
   while (Date.now() < until) {
@@ -197,6 +204,9 @@ describe("indexer", () => {
       taker: alice,
     });
     expect(((await get("/markets")).markets as { state: number }[])[0]!.state).toBe(2);
+    // The market's 24-hour volume counts the confirmed trade: 1 NVDA at 200 USDC.
+    const traded = (200n * 10n ** 6n).toString();
+    expect(await volume()).toBe(traded);
     const book = (await get("/orderbook/1")).orders as { remaining: string }[];
     expect(book[0]!.remaining).toBe((2n * NVDA).toString());
     // Alice's immediate-or-cancel buy filled completely: closed, not yet final.
@@ -213,6 +223,8 @@ describe("indexer", () => {
       async () => (await db.trades(service.domain, { markets: [1], limit: 10 })).length === 1,
     );
     const finalized = (await get("/trades?marketId=1")).trades as { confirmation: string }[];
+    // Final, the trade counts once: from the finalized window, no longer from the tail.
+    expect(await volume()).toBe(traded);
     expect(finalized.map((t) => t.confirmation)).toEqual(["finalized"]);
     // The stored forms serve exactly what the replica served.
     expect(finalized[0]).toEqual({ ...trades[0]!, confirmation: "finalized" });
@@ -255,6 +267,11 @@ describe("indexer", () => {
     });
     await restarted.start();
     await settle(() => restarted.follower.confirmed.block >= service.follower.confirmed.block);
+    // It reads the trades finalized before its checkpoint once, and counts each once.
+    const resumed = new Hono();
+    restarted.mount(resumed);
+    await settle(async () => (await volume(resumed)) !== null);
+    expect(await volume(resumed)).toBe(traded);
     const strip = (s: typeof service.follower.confirmed) =>
       serializeState({ ...s, block: 0n, hash: "0x", timestamp: 0n });
     expect(strip(restarted.follower.base)).toBe(strip(service.follower.base));

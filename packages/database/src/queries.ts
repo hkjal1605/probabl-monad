@@ -24,6 +24,12 @@ export interface TradeRecord {
   maker: string;
   taker: string;
 }
+/** Quote traded in one market during one minute (unix time / 60), raw units. */
+export interface MinuteVolume {
+  market: number;
+  minute: number;
+  quote: bigint;
+}
 /** An order closed (filled or cancelled) at or before a finalized block. Its remaining quantity
  * is zero; it is filled when `filled` equals `quantity`. */
 export interface ClosedOrderRecord {
@@ -174,6 +180,19 @@ export function queries(db: Connection) {
           [domain, limit],
         )
       ).rows.map(tradeRecord);
+    },
+    /** Quote traded per market and minute since `since` (unix seconds), in blocks up to
+     * `through`: one index-only range read of the recent trades, grouped. */
+    async minuteVolumes(domain: string, since: bigint, through: bigint): Promise<MinuteVolume[]> {
+      return (
+        await db.query<{ market: number; minute: string; quote: string }>(
+          `SELECT market, (block_time / 60)::text AS minute, sum(quote)::text AS quote
+          FROM probabl.trades
+          WHERE deployment = ${DEPLOYMENT} AND block_time >= $2 AND block <= $3
+          GROUP BY market, block_time / 60`,
+          [domain, since.toString(), through.toString()],
+        )
+      ).rows.map((r) => ({ market: r.market, minute: Number(r.minute), quote: BigInt(r.quote) }));
     },
     /** Closed orders of one owner, newest first. */
     async closedOrders(domain: string, owner: string, limit = 200): Promise<ClosedOrderRecord[]> {

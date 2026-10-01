@@ -7,6 +7,7 @@ export type {
   Checkpoint,
   ClosedOrderRecord,
   FinalizedBatch,
+  MinuteVolume,
   Queries,
   TradeRecord,
 } from "./queries.ts";
