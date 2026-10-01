@@ -502,9 +502,11 @@ export class Keeper {
       set = this.settings;
     if (v.paused) throw new Error("Vault paused");
     if (m.state !== OPEN || m.open > now) throw new Error("Market not open");
-    // Orders must expire before the vault's cutoff buffer and within its lifetime limit.
+    // Orders must expire before the vault's cutoff buffer and within its lifetime limit, which
+    // the vault measures from the block's timestamp: the latest block seen bounds it, as this
+    // host's clock may run ahead of the chain's.
     const stopAt = BigInt(vm.cutoff - vm.risk.cutoffBuffer),
-      expiry = min(now + BigInt(set.ttlSeconds), now + BigInt(v.limits.maxTtl), stopAt);
+      expiry = min(now + BigInt(set.ttlSeconds), s.timestamp + BigInt(v.limits.maxTtl), stopAt);
     if (expiry <= now + BigInt(Math.ceil(set.pollMs / 1000) * 3))
       throw new Error("Quoting window closed before cutoff");
     const stale = set.allowStaleSpot && TESTNETS.includes(this.chainId);

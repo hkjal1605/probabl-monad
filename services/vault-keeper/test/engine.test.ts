@@ -1,5 +1,5 @@
 /** The keeper against a real exchange and Δ-vault on anvil. */
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, setSystemTime, test } from "bun:test";
 import * as tx from "@conditional-stocks/evm-client";
 import { traderOf } from "@conditional-stocks/evm-client/ledger";
 import { ChainFollower, TokenReader } from "@conditional-stocks/indexer";
@@ -535,4 +535,26 @@ describe("several vaults in one process", () => {
     expect(vaultOrders(after, vault, 2).length).toBe(0);
     expect(vaultOrders(after, second, 2).length > 0).toBe(true);
   }, 120_000);
+
+  test("orders stay within the vault's lifetime limit while this host's clock runs ahead of the chain", async () => {
+    // The order lifetime equals the vault's maxTtl (600 s): only chain time keeps it valid.
+    const config = settings({
+      vaults: [{ vault, keeper: keeperAccount.address }],
+      model: { anchorBps: 300, impactBps: 50, maxGapBps: 800, orderQuote: "5000" },
+      quoteLevels: 2,
+      pollMs: 1000,
+      ttlSeconds: 600,
+    });
+    const chainNow = (await synced()).timestamp;
+    setSystemTime(new Date(Date.now() + 10_000));
+    try {
+      setReference(100n * USDC, 400_000n);
+      await keeperOf(vault, keeperAccount, config).cycle(round());
+    } finally {
+      setSystemTime();
+    }
+    const orders = vaultOrders(await synced(), vault, 2);
+    expect(orders.length > 0).toBe(true);
+    expect(orders.every((o) => o.expiry <= chainNow + 600n + 5n)).toBe(true);
+  }, 60_000);
 });
