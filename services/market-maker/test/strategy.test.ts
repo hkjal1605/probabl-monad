@@ -69,7 +69,7 @@ export function polymarket(now: number, midpoint = 600_000n) {
     },
   };
 }
-export function pyth(chainId: number, quoteToken: Address, base: Address, now: number, share = 50) {
+export function spot(chainId: number, quoteToken: Address, base: Address, now: number, share = 50) {
   const price = (token: Address, priceUsd: number, kind: string) => ({
     token,
     symbol: null,
@@ -82,7 +82,7 @@ export function pyth(chainId: number, quoteToken: Address, base: Address, now: n
     valuationCompatible: kind !== "stock",
   });
   return {
-    source: "pyth",
+    source: "robinhood",
     displayOnly: true,
     chainId,
     asOf: Math.floor(now / 1000),
@@ -111,7 +111,7 @@ describe("pricing", () => {
     // $50 per share, 2 shares per token: $100 per token.
     const r = reference(
       polymarket(now),
-      pyth(31337, QUOTE, BASE, now),
+      spot(31337, QUOTE, BASE, now),
       market,
       policy,
       s,
@@ -121,16 +121,16 @@ describe("pricing", () => {
     expect(r.spot).toBe(SPOT);
     expect(r.probability).toBe(600_000n);
     expect(() =>
-      reference(polymarket(now), pyth(1, QUOTE, BASE, now), market, policy, s, units, now),
+      reference(polymarket(now), spot(1, QUOTE, BASE, now), market, policy, s, units, now),
     ).toThrow("identity");
     const stale = polymarket(now - 60_000);
     expect(() =>
-      reference(stale, pyth(31337, QUOTE, BASE, now), market, policy, s, units, now),
+      reference(stale, spot(31337, QUOTE, BASE, now), market, policy, s, units, now),
     ).toThrow("Stale");
     const flipped = polymarket(now);
     flipped.metadata.normalized.outcomes[0]!.indexSet = "2";
     expect(() =>
-      reference(flipped, pyth(31337, QUOTE, BASE, now), market, policy, s, units, now),
+      reference(flipped, spot(31337, QUOTE, BASE, now), market, policy, s, units, now),
     ).toThrow("mapping");
   });
 

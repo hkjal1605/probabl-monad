@@ -45,7 +45,7 @@ export const fetchSpotPrices = (key: string, force = false) =>
         );
       const batches = await Promise.all(tasks);
       return {
-        source: "pyth",
+        source: "robinhood",
         displayOnly: true,
         chainId: protocolConfig.chainId,
         asOf: Math.max(...batches.map((b) => b.asOf)),

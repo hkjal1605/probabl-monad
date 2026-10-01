@@ -323,13 +323,13 @@ if (process.env.MM_CONFIG_PATH && markets.length) {
       2,
     ),
   );
-  // The maker quotes only from live reference prices (Pyth Hermes requires PYTH_HERMES_API_KEY).
+  // The maker quotes only from live reference prices (Robinhood's Stock Token API).
   const spot = await call<{ prices: { status: string }[] }>(
     `/v1/spot-prices?tokens=${deployment.quote},${markets[0]!.base}`,
   );
   if (spot.prices.some((price) => price.status !== "available" && price.status !== "stale")) {
     console.warn(
-      "Reference prices are unavailable (set PYTH_HERMES_API_KEY for the API); market maker funding skipped.",
+      "Reference prices are unavailable (the API could not reach Robinhood's price API); market maker funding skipped.",
     );
     process.exit(0);
   }

@@ -55,7 +55,7 @@ while (!stopped) {
       await client.waitForTransactionReceipt({ hash });
     }
   } catch {
-    // Reference prices are optional locally (PYTH_HERMES_API_KEY); try again shortly.
+    // Reference prices may be briefly unavailable; try again shortly.
   }
   await Bun.sleep(15_000);
 }

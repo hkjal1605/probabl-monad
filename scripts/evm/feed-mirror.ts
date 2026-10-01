@@ -1,11 +1,11 @@
-/** Testnet only: copies each new round of the stocks' Chainlink feeds on Robinhood Chain mainnet
- * into their mock feeds (deployments/<chainId>-mock-feeds.json, from deploy-mock-feeds.ts), so
+/** Testnet only: copies each new round of the stocks' Chainlink feeds on their mainnets
+ * (Robinhood Chain, or BNB Chain for stocks it has no feed of) into their mock feeds (deployments/<chainId>-mock-feeds.json, from deploy-mock-feeds.ts), so
  * testnet Δ-vaults see mainnet's prices and staleness. Keep it running while testnet vaults
  * quote; --once mirrors a single time. The key must own the mocks: FEED_MIRROR_PRIVATE_KEY (a
  * dedicated relay wallet the mocks were handed to), else the deployer's.
  *
  *   FEED_MIRROR_PRIVATE_KEY=… (or DEPLOYER_PRIVATE_KEY=…) RPC_URL=… CHAIN_ID=46630
- *   FEED_SOURCE_RPC_URL=<Robinhood Chain mainnet> [POLL_SECONDS=60]
+ *   FEED_SOURCE_RPC_URL=<mainnet RPC, one per source chain>,… [POLL_SECONDS=60]
  *   bun scripts/evm/feed-mirror.ts [--once] */
 import { resolve } from "node:path";
 import {
@@ -24,8 +24,23 @@ const TESTNETS: Record<number, string> = {
   46630: "Robinhood Chain Testnet",
   84532: "Base Sepolia",
 };
-/** Robinhood Chain mainnet, where Chainlink publishes the stock tokens' feeds. */
-const SOURCE_CHAIN_ID = 4663;
+/** Mainnets whose Chainlink feeds testnet mocks copy: Robinhood Chain for its stock tokens, BNB
+ * Chain for stocks Robinhood Chain has no feed of (Chainlink's NFLX / USD, say). */
+const SOURCES: Record<number, string> = { 4663: "Robinhood Chain", 56: "BNB Chain" };
+/** One client per source chain, from the comma-separated `FEED_SOURCE_RPC_URL`. */
+async function sourceClients(urls: string) {
+  const clients = new Map<number, ReturnType<typeof createPublicClient>>();
+  for (const url of urls
+    .split(",")
+    .map((u) => u.trim())
+    .filter(Boolean)) {
+    const client = createPublicClient({ transport: http(url) });
+    const id = await client.getChainId();
+    if (!SOURCES[id]) throw new Error(`FEED_SOURCE_RPC_URL serves chain ${id}, not a feed source`);
+    clients.set(id, client);
+  }
+  return clients;
+}
 const feedAbi = parseAbi([
   "function latestRoundData() view returns (uint80, int256, uint256, uint256, uint80)",
   "function owner() view returns (address)",
@@ -59,24 +74,30 @@ const chain = defineChain({
 });
 const transport = fallback(rpcs.map((url) => http(url)));
 const client = createPublicClient({ chain, transport });
-const source = createPublicClient({ transport: http(required("FEED_SOURCE_RPC_URL")) });
+const sources = await sourceClients(required("FEED_SOURCE_RPC_URL"));
 if ((await client.getChainId()) !== chainId)
   throw new Error("RPC_URL serves a different chain than CHAIN_ID");
-if ((await source.getChainId()) !== SOURCE_CHAIN_ID)
-  throw new Error("FEED_SOURCE_RPC_URL must serve Robinhood Chain mainnet (4663)");
 
 const path = resolve(import.meta.dir, `../../deployments/${chainId}-mock-feeds.json`);
 const feeds = (await Bun.file(path)
   .json()
   .catch(() => {
     throw new Error(`Deploy the mock feeds first: ${path} is missing`);
-  })) as { symbol: string; feed: Address; source: { feed: Address } }[];
+  })) as { symbol: string; feed: Address; source: { chainId: number; feed: Address } }[];
 for (const f of feeds) {
+  if (!sources.has(f.source.chainId))
+    throw new Error(`FEED_SOURCE_RPC_URL has no RPC of chain ${f.source.chainId} (${f.symbol})`);
   const owner = await client.readContract({ address: f.feed, abi: feedAbi, functionName: "owner" });
   if (owner !== account.address)
     throw new Error(`${f.symbol}'s mock feed belongs to ${owner}, not to this key`);
 }
 const wallet = createWalletClient({ account, chain, transport });
+/** The client of a feed's source chain (every one was checked at startup). */
+const reader = (f: (typeof feeds)[number]) => {
+  const source = sources.get(f.source.chainId);
+  if (!source) throw new Error(`No RPC of chain ${f.source.chainId}`);
+  return source;
+};
 
 /** Writes every mainnet round the mocks lack; returns how many feeds failed. */
 async function mirror() {
@@ -84,7 +105,7 @@ async function mirror() {
     Promise.all(
       feeds.map((f) =>
         Promise.all([
-          source.readContract({
+          reader(f).readContract({
             address: f.source.feed,
             abi: feedAbi,
             functionName: "latestRoundData",

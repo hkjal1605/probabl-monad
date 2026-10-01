@@ -15,7 +15,7 @@ export const sharedDeploymentKeys = [
   "POLYMARKET_INGESTOR_URL",
   "POLYMARKET_INTERNAL_TOKEN",
   "EVIDENCE_PUBLIC_BASE_URL",
-  "PYTH_HERMES_URL",
+  "ROBINHOOD_PRICES_URL",
 ].sort();
 export function deploymentFingerprint(environment: Record<string, string>, challenge: string) {
   return createHash("sha256")

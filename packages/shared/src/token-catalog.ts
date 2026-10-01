@@ -14,8 +14,6 @@ export interface CatalogAsset {
   kind: AssetKind;
   /** Bundled logo served by the UI. */
   logo: string;
-  /** Pyth price feed symbol of the reference price (per share for stocks). */
-  pyth: string;
   /** Economic asset of stocks and ETFs, `REGION:TICKER` (e.g. "US:NVDA"): shared by every
    * issuer's token of it. */
   underlying?: string;
@@ -26,7 +24,6 @@ const stock = (symbol: string, name: string, kind: AssetKind = "stock"): Catalog
   name,
   kind,
   logo: `/tokens/${symbol.toLowerCase()}.svg`,
-  pyth: `Equity.US.${symbol}/USD`,
   underlying: `US:${symbol}`,
 });
 
@@ -51,42 +48,36 @@ export const ASSET_CATALOG: readonly CatalogAsset[] = Object.freeze([
     name: "USD Coin",
     kind: "stablecoin",
     logo: "/tokens/usdc.svg",
-    pyth: "Crypto.USDC/USD",
   },
   {
     symbol: "USDG",
     name: "Global Dollar",
     kind: "stablecoin",
     logo: "/tokens/usdg.svg",
-    pyth: "Crypto.USDG/USD",
   },
   {
     symbol: "ETH",
     name: "Ethereum",
     kind: "crypto",
     logo: "/tokens/eth.svg",
-    pyth: "Crypto.ETH/USD",
   },
   {
     symbol: "WETH",
     name: "Wrapped Ether",
     kind: "crypto",
     logo: "/tokens/eth.svg",
-    pyth: "Crypto.ETH/USD",
   },
   {
     symbol: "BTC",
     name: "Bitcoin",
     kind: "crypto",
     logo: "/tokens/btc.svg",
-    pyth: "Crypto.BTC/USD",
   },
   {
     symbol: "cbBTC",
     name: "Coinbase Wrapped BTC",
     kind: "crypto",
     logo: "/tokens/btc.svg",
-    pyth: "Crypto.BTC/USD",
   },
 ]);
 

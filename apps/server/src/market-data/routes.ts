@@ -12,7 +12,7 @@ import { HTTPException } from "hono/http-exception";
 import { streamSSE } from "hono/streaming";
 import { type Address, getAddress } from "viem";
 import type { PolymarketIngestorClient } from "../integrations/polymarket.ts";
-import type { PythSpotPrices } from "./pyth.ts";
+import type { SpotPriceSource } from "./robinhood.ts";
 
 export const PROBABILITY_CACHE_TTL_SECONDS = 60;
 
@@ -49,7 +49,7 @@ export function mountMarketData(
   app: Hono,
   options: {
     indexer: IndexerService;
-    prices: PythSpotPrices;
+    prices: SpotPriceSource;
     probabilities: CachedProbability;
     polymarket: () => PolymarketIngestorClient;
   },

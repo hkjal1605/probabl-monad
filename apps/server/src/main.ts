@@ -19,7 +19,7 @@ import { mountCustody } from "./custody/routes.ts";
 import { mountDeltaVaults } from "./delta-vaults/routes.ts";
 import { mountFaucet } from "./faucet.ts";
 import { PolymarketIngestorClient } from "./integrations/polymarket.ts";
-import { PythSpotPrices } from "./market-data/pyth.ts";
+import { RobinhoodSpotPrices } from "./market-data/robinhood.ts";
 import { CachedProbability, mountMarketData } from "./market-data/routes.ts";
 import { DelegatedTrading, tradingSigner } from "./trading/delegated.ts";
 import { createOrderPlan } from "./trading/plan.ts";
@@ -187,12 +187,7 @@ const probabilities = new CachedProbability(probabilityCache, (condition) =>
 );
 mountMarketData(app, {
   indexer,
-  prices: new PythSpotPrices(
-    chainId,
-    process.env.PYTH_HERMES_URL || undefined,
-    fetch,
-    process.env.PYTH_HERMES_API_KEY || undefined,
-  ),
+  prices: new RobinhoodSpotPrices(chainId, process.env.ROBINHOOD_PRICES_URL || undefined),
   probabilities,
   polymarket,
 });

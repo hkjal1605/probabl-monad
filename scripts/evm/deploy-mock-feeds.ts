@@ -1,12 +1,14 @@
 /** Testnet only: Chainlink publishes no testnet stock feeds, so this deploys a mock feed
  * (contracts/test/mocks/MockPriceFeed.sol) per stock token, seeded with the latest round of the
- * stock's Chainlink feed on Robinhood Chain mainnet, and records them in
+ * stock's Chainlink feed on a mainnet (Robinhood Chain, or BNB Chain for stocks it has no feed
+ * of), and records them in
  * deployments/<chainId>-mock-feeds.json. The deployer key owns the mocks; feed-mirror.ts keeps
  * them on their mainnet feeds. Pass a mock as PRICE_FEED to deploy-vault.ts. Take each mainnet
  * feed from Chainlink's list: docs.chain.link/data-feeds/price-feeds/addresses?network=robinhood
  *
- *   DEPLOYER_PRIVATE_KEY=… RPC_URL=… CHAIN_ID=46630 FEED_SOURCE_RPC_URL=<Robinhood Chain mainnet>
- *   FEEDS=<testnet token>:<mainnet feed>,… bun scripts/evm/deploy-mock-feeds.ts */
+ *   DEPLOYER_PRIVATE_KEY=… RPC_URL=… CHAIN_ID=46630 FEED_SOURCE_RPC_URL=<mainnet RPC>,…
+ *   FEEDS=<testnet token>:<mainnet feed>[@<source chain id, default 4663>],…
+ *   bun scripts/evm/deploy-mock-feeds.ts */
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
@@ -25,8 +27,23 @@ const TESTNETS: Record<number, string> = {
   46630: "Robinhood Chain Testnet",
   84532: "Base Sepolia",
 };
-/** Robinhood Chain mainnet, where Chainlink publishes the stock tokens' feeds. */
-const SOURCE_CHAIN_ID = 4663;
+/** Mainnets whose Chainlink feeds testnet mocks copy: Robinhood Chain for its stock tokens, BNB
+ * Chain for stocks Robinhood Chain has no feed of (Chainlink's NFLX / USD, say). */
+const SOURCES: Record<number, string> = { 4663: "Robinhood Chain", 56: "BNB Chain" };
+/** One client per source chain, from the comma-separated `FEED_SOURCE_RPC_URL`. */
+async function sourceClients(urls: string) {
+  const clients = new Map<number, ReturnType<typeof createPublicClient>>();
+  for (const url of urls
+    .split(",")
+    .map((u) => u.trim())
+    .filter(Boolean)) {
+    const client = createPublicClient({ transport: http(url) });
+    const id = await client.getChainId();
+    if (!SOURCES[id]) throw new Error(`FEED_SOURCE_RPC_URL serves chain ${id}, not a feed source`);
+    clients.set(id, client);
+  }
+  return clients;
+}
 const feedAbi = parseAbi([
   "function decimals() view returns (uint8)",
   "function description() view returns (string)",
@@ -59,9 +76,11 @@ const account = privateKeyToAccount(required("DEPLOYER_PRIVATE_KEY") as Hex);
 const pairs = required("FEEDS")
   .split(",")
   .map((pair) => {
-    const [token, feed] = pair.split(":").map((part) => part.trim());
-    if (!token || !feed) throw new Error("FEEDS lists <testnet token>:<mainnet feed> pairs");
-    return { token: getAddress(token), source: getAddress(feed) };
+    const [token, at] = pair.split(":").map((part) => part.trim());
+    const [feed, source = "4663"] = (at ?? "").split("@");
+    if (!token || !feed)
+      throw new Error("FEEDS lists <testnet token>:<mainnet feed>[@chain] pairs");
+    return { token: getAddress(token), source: getAddress(feed), sourceChain: Number(source) };
   });
 
 const chain = defineChain({
@@ -71,11 +90,12 @@ const chain = defineChain({
   rpcUrls: { default: { http: [rpc] } },
 });
 const client = createPublicClient({ chain, transport: http(rpc) });
-const source = createPublicClient({ transport: http(required("FEED_SOURCE_RPC_URL")) });
+const sources = await sourceClients(required("FEED_SOURCE_RPC_URL"));
 if ((await client.getChainId()) !== chainId)
   throw new Error("RPC_URL serves a different chain than CHAIN_ID");
-if ((await source.getChainId()) !== SOURCE_CHAIN_ID)
-  throw new Error("FEED_SOURCE_RPC_URL must serve Robinhood Chain mainnet (4663)");
+for (const pair of pairs)
+  if (!sources.has(pair.sourceChain))
+    throw new Error(`FEED_SOURCE_RPC_URL has no RPC of chain ${pair.sourceChain}`);
 
 const root = resolve(import.meta.dir, "../..");
 const artifactPath = resolve(root, "contracts/out/MockPriceFeed.sol/MockPriceFeed.json");
@@ -92,6 +112,8 @@ const records = (await Bun.file(path)
 const wallet = createWalletClient({ account, chain, transport: http(rpc) });
 
 for (const pair of pairs) {
+  const source = sources.get(pair.sourceChain);
+  if (!source) throw new Error(`No RPC of chain ${pair.sourceChain}`);
   const symbol = await client.readContract({
     address: pair.token,
     abi: erc20Abi,
@@ -144,7 +166,7 @@ for (const pair of pairs) {
     feed,
     decimals,
     description: `${description} (testnet mock)`,
-    source: { chainId: SOURCE_CHAIN_ID, feed: pair.source, description },
+    source: { chainId: pair.sourceChain, feed: pair.source, description },
     owner,
     deploymentBlock: String(receipt.blockNumber),
     transactionHash: hash,

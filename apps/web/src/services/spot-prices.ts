@@ -53,7 +53,7 @@ export function parseSpotPricesResponse(
   const wanted = new Set(tokens.map((token) => getAddress(token)));
   if (
     !response ||
-    response.source !== "pyth" ||
+    response.source !== "robinhood" ||
     response.displayOnly !== true ||
     response.chainId !== chainId ||
     !Number.isSafeInteger(response.asOf) ||
@@ -94,7 +94,7 @@ export function parseSpotPricesResponse(
     } else if (["available", "stale"].includes(price.status)) throw new Error("Missing spot price");
   }
   return {
-    source: "pyth",
+    source: "robinhood",
     displayOnly: true,
     chainId,
     asOf: response.asOf!,

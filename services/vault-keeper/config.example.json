@@ -1,16 +1,32 @@
 {
-  "vault": "0x0000000000000000000000000000000000000001",
-  "basePriceMultiplier": "1",
-  "quotePriceMultiplier": "1",
-  "markets": [
+  "vaults": [
     {
-      "market": 1,
-      "anchorBps": 0,
-      "impactBps": 10,
-      "maxGapBps": 800,
-      "orderQuote": "2000"
+      "vault": "0x0000000000000000000000000000000000000001",
+      "keeper": "0x0000000000000000000000000000000000000011",
+      "markets": [
+        {
+          "market": 1,
+          "anchorBps": -300
+        }
+      ]
+    },
+    {
+      "vault": "0x0000000000000000000000000000000000000002",
+      "keeper": "0x0000000000000000000000000000000000000012",
+      "markets": [
+        {
+          "market": 4,
+          "disabled": true
+        }
+      ]
     }
   ],
+  "model": {
+    "anchorBps": 0,
+    "impactBps": 10,
+    "maxGapBps": 800,
+    "orderQuote": "2000"
+  },
   "quoteLevels": 2,
   "halfSpreadBps": 40,
   "ttlSeconds": 300,

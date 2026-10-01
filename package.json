@@ -38,6 +38,7 @@
     "deploy:ui:cloudflare": "bun --filter @conditional-stocks/web deploy:cloudflare",
     "deploy:ui:cloudflare:strict": "bun --filter @conditional-stocks/web deploy:cloudflare:strict",
     "deploy:vault": "bun scripts/evm/deploy-vault.ts",
+    "provision:vaults": "bun scripts/evm/provision-vaults.ts",
     "dev": "bun --env-file=.local/anvil.env scripts/evm/dev.ts",
     "dev:admin-ui": "bun --filter @conditional-stocks/admin-ui dev",
     "dev:api": "bun --filter @conditional-stocks/api dev",

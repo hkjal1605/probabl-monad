@@ -16,7 +16,7 @@ export interface SpotPrice {
   /** Token address (the request key). */
   token: string;
   symbol: string | null;
-  /** Reference feed (e.g. "Equity.US.NVDA/USD"), or null when the token is not catalogued. */
+  /** Reference source ("robinhood:NVDA", "usd-peg"), or null when the token has none. */
   source: string | null;
   kind: "stock" | "etf" | "stablecoin" | "crypto" | null;
   status: SpotStatus;
@@ -29,8 +29,9 @@ export interface SpotPrice {
   valuationCompatible: boolean;
 }
 
+/** Robinhood's Stock Token API for stocks and ETFs; USD stablecoins at their peg. */
 export interface SpotPricesResponse {
-  source: "pyth";
+  source: "robinhood";
   displayOnly: true;
   chainId: number;
   asOf: number;

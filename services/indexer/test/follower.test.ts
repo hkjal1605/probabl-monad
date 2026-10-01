@@ -221,3 +221,43 @@ test("skips blocks with an empty bloom once the endpoint is seen to compute bloo
   bloom = `0x${"0".repeat(512)}`;
   expect(await logsPerBlock()).toBe(0);
 });
+
+test("a poke polls at once and waiters resolve on the block they wait for", async () => {
+  let latest = 20n;
+  let polls = 0;
+  const client = {
+    getBlock: async (args?: { blockNumber?: bigint; blockTag?: string }) => {
+      if (args?.blockTag === undefined && args?.blockNumber === undefined) polls++;
+      return header(args?.blockTag === "finalized" ? 10n : (args?.blockNumber ?? latest));
+    },
+    getLogs: async () => [],
+  } as unknown as PublicClient;
+  // A long fixed interval: without a poke the follower would not poll again during the test.
+  const follower = new ChainFollower({
+    client,
+    exchange,
+    quote,
+    deploymentBlock: 1n,
+    domain: "stub",
+    pollMs: 60_000,
+  });
+  await follower.start();
+  expect(follower.confirmed.block).toBe(20n);
+  await follower.reached(20n, 1_000); // already there
+  const before = polls;
+  latest = 22n;
+  const waiting = follower.reached(22n, 5_000);
+  const started = Date.now();
+  follower.poke();
+  await waiting;
+  expect(Date.now() - started).toBeLessThan(1_000);
+  expect(follower.confirmed.block).toBe(22n);
+  expect(polls).toBe(before + 1);
+  // A block that never comes: the wait times out instead of hanging.
+  await expect(follower.reached(99n, 50)).rejects.toThrow("did not reach block 99");
+  // Stopping releases every waiter.
+  const pending = follower.reached(100n, 60_000);
+  follower.stop();
+  await expect(pending).rejects.toThrow("stopped");
+  follower.poke(); // a no-op once stopped
+});

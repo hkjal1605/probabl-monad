@@ -177,6 +177,11 @@ export class ChainFollower {
   private endpoint = 0;
   private advancedAt = 0;
   private probedAt = 0;
+  /** Whether a poll is in flight, and whether a poke asked for another right after it. */
+  private polling = false;
+  private again = false;
+  /** Callers waiting for the confirmed replica to reach a block. */
+  private waiters: { block: bigint; resolve: () => void; reject: (error: Error) => void }[] = [];
   /** An empty logsBloom proves a block without logs once the endpoint is seen to compute blooms
    * (chains may zero them); a finalized re-read that differs from the tip revokes the trust. */
   private emptyBloom: "unknown" | "trusted" | "revoked" = "unknown";
@@ -230,6 +235,45 @@ export class ChainFollower {
   stop() {
     this.stopped = true;
     clearTimeout(this.timer);
+    const waiters = this.waiters;
+    this.waiters = [];
+    for (const w of waiters) w.reject(new Error("The chain follower stopped"));
+  }
+
+  /** Polls now instead of at the next scheduled poll (say, once the caller's own transaction
+   * was included); a poll in flight is followed by another straight away. */
+  poke() {
+    if (this.stopped || !this.ready) return;
+    if (this.polling) {
+      this.again = true;
+      return;
+    }
+    clearTimeout(this.timer);
+    this.schedule(0);
+  }
+
+  /** Resolves as soon as the confirmed replica reaches `block`, or rejects after `timeoutMs`. */
+  reached(block: bigint, timeoutMs: number): Promise<void> {
+    if (this.confirmed.block >= block) return Promise.resolve();
+    if (this.stopped) return Promise.reject(new Error("The chain follower stopped"));
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.waiters = this.waiters.filter((w) => w !== waiter);
+        reject(new Error(`The chain view did not reach block ${block} in time`));
+      }, timeoutMs);
+      const waiter = {
+        block,
+        resolve: () => {
+          clearTimeout(timer);
+          resolve();
+        },
+        reject: (error: Error) => {
+          clearTimeout(timer);
+          reject(error);
+        },
+      };
+      this.waiters.push(waiter);
+    });
   }
 
   /** Waits for an in-flight poll (shutdown). */
@@ -241,6 +285,7 @@ export class ChainFollower {
     if (this.stopped) return;
     this.timer = setTimeout(() => {
       let next = this.interval();
+      this.polling = true;
       this.running = this.tick()
         .then((advanced) => {
           next = this.delay(advanced);
@@ -249,7 +294,12 @@ export class ChainFollower {
           this.rotate();
           this.options.onError?.(error);
         })
-        .finally(() => this.schedule(next));
+        .finally(() => {
+          this.polling = false;
+          const now = this.again;
+          this.again = false;
+          this.schedule(now ? 0 : next);
+        });
     }, delay);
   }
 
@@ -428,6 +478,11 @@ export class ChainFollower {
     this.confirmed.hash = head.hash;
     this.confirmed.timestamp = head.timestamp;
     this.revision++;
+    if (this.waiters.some((w) => w.block <= head.number)) {
+      const ready = this.waiters.filter((w) => w.block <= head.number);
+      this.waiters = this.waiters.filter((w) => w.block > head.number);
+      for (const w of ready) w.resolve();
+    }
     this.options.onCommit?.({
       block: head.number,
       state: this.confirmed,

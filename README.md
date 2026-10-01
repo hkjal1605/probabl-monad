@@ -6,7 +6,7 @@ the deployment's quote token and one Polymarket condition: traders buy or sell t
 *if NO*, and resolution pays each branch's claims exactly (YES 1/0, NO 0/1, INVALID ½/½).
 
 It is the EVM port of the Solana implementation, with the same product surface: the trading UI,
-admin evidence workflow, delegated one-click trading, testnet faucet, Pyth/Polymarket references and
+admin evidence workflow, delegated one-click trading, testnet faucet, Robinhood/Polymarket references and
 an inventory-managing market maker.
 
 ## Architecture
@@ -24,7 +24,7 @@ packages/domain            Exact decimal/raw-unit conversions shared by the UIs
 services/indexer           Chain follower (confirmed + finalized replicas, reorgs), projections, SSE
 services/polymarket-ingestor  Display-only Polymarket metadata and probability ingestion
 packages/operator          Signing runtime of the bots: journaled executor, locked state file, references
-services/market-maker      Two-branch quoting from Pyth + Polymarket with risk and gas limits
+services/market-maker      Two-branch quoting from Robinhood + Polymarket with risk and gas limits
 services/vault-keeper      Δ-vault quoting: the Δ-model's branch prices within the vault's on-chain limits
 apps/server                API process: embeds the chain index and serves /v1 (auth, trading,
                            custody, admin evidence, faucet, reference prices)
@@ -102,9 +102,10 @@ The bootstrap also deploys a seeded NVDA Δ-vault over a mock Chainlink feed (ke
 price by `scripts/evm/feed-relay.ts`); seeding registers its NVDA markets, and `dev` then runs its
 keeper. Vaults: http://localhost:3001/vaults; controls: http://localhost:3002/vaults.
 
-Reference prices come from Pyth Hermes, whose price endpoints require an entitled key: set
-`PYTH_HERMES_API_KEY` (and optionally `PYTH_HERMES_URL`) for the API. Without it prices show as
-unavailable and the market maker does not quote.
+Reference stock prices come from Robinhood's public Stock Token API (the bid/ask midpoint of each
+underlying share, no key needed; `ROBINHOOD_PRICES_URL` overrides its base URL). USD stablecoins
+are priced at their peg. A trading halt, or an unreachable API, makes a price unavailable, and the
+market maker and the vault keeper do not quote it.
 
 ## Deployment
 
@@ -120,7 +121,7 @@ unavailable and the market maker does not quote.
    `API_AUTH_ORIGINS`, optional `POLL_MS` (fixes polling; by default it follows the block time) and
    `FINALITY_DEPTH` (RPCs without the `finalized` tag),
    `TRADING_DELEGATE_ADDRESS`/`TRADING_DELEGATE_PRIVATE_KEY`, `POLYMARKET_INGESTOR_URL`/
-   `POLYMARKET_INTERNAL_TOKEN`, `EVIDENCE_PUBLIC_BASE_URL`, `PYTH_HERMES_API_KEY`, `REDIS_URL`, and
+   `POLYMARKET_INTERNAL_TOKEN`, `EVIDENCE_PUBLIC_BASE_URL`, `REDIS_URL`, and
    `FAUCET_PRIVATE_KEY` (testnets only).
 3. UIs: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_CHAIN_ID`, `NEXT_PUBLIC_CHAIN_NAME`, `NEXT_PUBLIC_RPC_URL`,
    `NEXT_PUBLIC_EXCHANGE_ADDRESS` (and `API_URL` for the admin's server routes).
@@ -130,11 +131,17 @@ unavailable and the market maker does not quote.
    `PRICE_FEED` (the token's own Chainlink feed) and dedicated `VAULT_ADMIN`, `CURATOR`, `KEEPER`,
    `GUARDIAN` (Base pins its sequencer-uptime feed). Testnets have no Chainlink stock feeds:
    `bun run deploy:mock-feeds` (`FEEDS`, `FEED_SOURCE_RPC_URL`) deploys mocks seeded from the
-   stocks' Robinhood Chain mainnet feeds, and `bun run start:feed-mirror` keeps them current. The
+   stocks' Robinhood Chain mainnet feeds (or BNB Chain's, `token:feed@56`), and
+   `bun run start:feed-mirror` keeps them current; `bun run provision:vaults` then deploys and
+   provisions the vaults of `deployments/<chainId>-vault-plan.json` end to end. The
    vault admin signs the printed role and cap calls; the curator sets limits and adds markets
-   (admin console → Vault controls); the admin makes the first deposit. Then set `DELTA_VAULT_ADDRESSES` (API) and `NEXT_PUBLIC_DELTA_VAULTS` (UIs), and
-   run the keeper with `VK_*` settings (see `services/vault-keeper/src/main.ts` and
-   `scripts/evm/bootstrap.ts`) from a wallet holding only `KEEPER_ROLE`.
+   (admin console → Vault controls); the admin makes the first deposit. Then set
+   `DELTA_VAULT_ADDRESSES` (API) and `NEXT_PUBLIC_DELTA_VAULTS` (UIs). One keeper process quotes
+   every Δ-vault (`VK_*` settings, see `services/vault-keeper/src/main.ts` and
+   `config.example.json`): its config lists the vaults, each with its own keeper wallet holding
+   only `KEEPER_ROLE` (`VK_PRIVATE_KEYS`/`VK_WALLET_ADDRESSES`, comma-separated in the same
+   order), and a default Δ-`model` for every market a vault registers, which the keeper reads
+   from the chain each round: markets the curator adds or that settle need no restart.
 
 `ops/ec2` runs the ingestor, the API and (when `.env.market-maker` or `.env.vault-keeper` exists) the
 market maker and the vault keeper under PM2 behind nginx. A testnet host (x86_64 or Graviton) runs the

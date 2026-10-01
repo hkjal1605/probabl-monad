@@ -2,7 +2,6 @@ import {
   ARCHIVED,
   type DeltaVaultHoldings,
   type DeltaVaultQuote,
-  type DeltaVaultState,
   deltaVaultCancelAll,
   deltaVaultMerge,
   deltaVaultSettle,
@@ -10,7 +9,6 @@ import {
   OPEN,
   quote,
   REDEEMABLE,
-  readDeltaVault,
   reservation,
 } from "@conditional-stocks/evm-client";
 import {
@@ -24,17 +22,26 @@ import {
   abs,
   BPS,
   type Executor,
-  fetchReference,
   max,
   min,
   PROB,
   type Reference,
+  type ReferenceLimits,
+  type ReferencePolicy,
+  reference,
+  spotPair,
   TESTNETS,
   type Units,
   units,
 } from "@conditional-stocks/operator";
 import type { Address, PublicClient } from "viem";
-import type { MarketModel, Settings } from "./config.ts";
+import {
+  type MarketModel,
+  type MarketOverride,
+  marketModel,
+  type Settings,
+  type VaultSettings,
+} from "./config.ts";
 import {
   type Book,
   conditionalGap,
@@ -48,6 +55,8 @@ import {
   widening,
 } from "./model.ts";
 import type { Basket, KeeperState, MarketRecord } from "./state.ts";
+import type { Tick } from "./tick.ts";
+import { readVaultView, type VaultIdentity, type VaultView } from "./vault.ts";
 
 export const log = (event: string, detail: Record<string, unknown> = {}) =>
   console.log(
@@ -78,7 +87,7 @@ export function foreignBook(s: ChainState, vault: Address, m: MarketState): Book
 /** What one market's quotes may reserve: unreserved credit and claims plus what the market's
  * own quotes (all of which may be replaced) hold, less the withdrawal reserve on plain holdings. */
 export function marketFunds(
-  v: DeltaVaultState,
+  v: Pick<VaultView, "holdings">,
   market: number,
   own: OrderState[],
   tick: bigint,
@@ -185,44 +194,78 @@ export function orderChanges(
   return { cancels, places };
 }
 
+/** Reads one market's reference within a round (tests substitute their own). */
+export type ReferenceReader = (
+  tick: Tick,
+  market: MarketState,
+  policy: ReferencePolicy,
+  limits: ReferenceLimits,
+  units: Units,
+) => Promise<Reference>;
+/** The round's shared reads of the market's event and of the spot prices. */
+export const tickReference: ReferenceReader = async (tick, market, policy, limits, u) => {
+  const [source, prices] = await Promise.all([
+    tick.polymarket(market.id, market.condition),
+    tick.spotPrices(),
+  ]);
+  return reference(source, spotPair(prices, u.quote, policy.base), market, policy, limits, u);
+};
+
+/** Quotes one Δ-vault: every market it registers, both branches. Several keepers run in one
+ * process over one chain follower; each signs with its own wallet, so none waits on another. */
 export class Keeper {
   stopped = false;
+  /** Markets the vault registered at the last read: the next read fetches their terms along. */
+  private known: number[] = [];
+  private readonly overrides: Map<number, MarketOverride>;
+
   constructor(
     readonly follower: ChainFollower,
     readonly tokens: TokenReader,
     readonly client: PublicClient,
     readonly chainId: number,
     readonly settings: Settings,
-    readonly origin: string,
+    readonly config: VaultSettings,
+    readonly identity: VaultIdentity,
     readonly state: KeeperState,
-    readonly save: () => void,
+    readonly save: () => void | Promise<void>,
     readonly executor?: Executor,
-    readonly readReference = fetchReference,
-  ) {}
+    readonly readReference: ReferenceReader = tickReference,
+  ) {
+    this.overrides = new Map(config.markets.map((m) => [m.market, m]));
+  }
 
   get vault() {
-    return this.settings.vault;
+    return this.identity.address;
+  }
+
+  log(event: string, detail: Record<string, unknown> = {}) {
+    log(event, { vault: this.vault, ...detail });
+  }
+
+  /** The Δ-model of a registered market; undefined when it is not to be quoted. */
+  model(market: number): MarketModel | undefined {
+    return marketModel(this.settings.model, this.overrides.get(market));
   }
 
   /** The replica, never older than the keeper's last included transaction, and the vault. */
   async snapshot() {
-    const until = Date.now() + 15_000;
-    while (this.follower.confirmed.block < BigInt(this.state.lastBlock)) {
-      if (Date.now() > until)
-        throw new Error("Chain view is behind the last submitted transaction");
-      await Bun.sleep(100);
+    const last = BigInt(this.state.lastBlock);
+    if (this.follower.confirmed.block < last) {
+      // Our transaction landed after the follower's last poll: read it now, not at the next.
+      this.follower.poke();
+      await this.follower.reached(last, 15_000);
     }
     if (!this.follower.health().healthy) throw new Error("Chain view unavailable");
-    const v = await readDeltaVault(this.client, this.vault);
-    if (v.exchange !== this.follower.options.exchange)
-      throw new Error("The vault trades on a different exchange");
+    const v = await readVaultView(this.client, this.identity, this.known);
+    this.known = v.markets.map((m) => m.market);
     return { s: this.follower.confirmed, v };
   }
 
   /** Token units and the issuer's live state; an issuer pause stops quoting. */
-  async units(s: ChainState, v: DeltaVaultState): Promise<Units> {
-    await this.tokens.refreshLive([v.base]);
-    const live = this.tokens.live.get(v.base)!;
+  units(s: ChainState, v: VaultView): Units {
+    const live = this.tokens.live.get(v.base);
+    if (!live) throw new Error("The issuer's state of the vault's stock is unknown");
     if (live.paused) throw new Error("The issuer paused the vault's stock token");
     const quoteDecimals = s.pools.get(v.quote)?.decimals,
       baseDecimals = s.pools.get(v.base)?.decimals;
@@ -252,57 +295,82 @@ export class Keeper {
       await this.executor.send(deltaVaultCancelAll(this.vault), true);
   }
 
-  async cancelMarket(market: number) {
-    if (!this.executor) return;
-    await this.executor.reconcilePending();
-    const { s, v } = await this.snapshot();
+  /** Cancels the vault's orders in one market, rereading the chain unless `s` is current. */
+  async cancelMarket(market: number, s?: ChainState) {
+    if (!this.executor) return false;
+    if (!s) {
+      await this.executor.reconcilePending();
+      ({ s } = await this.snapshot());
+    }
     const m = s.markets.get(market),
       keys = vaultOrders(s, this.vault, market).map((o) => BigInt(o.key));
-    if (!m || !keys.length || !v.markets.some((x) => x.market === market)) return;
+    if (!m || !keys.length || !this.known.includes(market)) return false;
     await this.executor.send(deltaVaultUpdate(this.vault, market, keys, [], m.tick), true);
+    return true;
   }
 
-  async cycle() {
+  /** One round: settle, merge, then bring every registered market's quotes to its ladders.
+   * The risk state is persisted at the end of the round, whatever the outcome. */
+  async cycle(tick: Tick) {
+    try {
+      await this.round(tick);
+    } finally {
+      await this.save();
+    }
+  }
+
+  private async round(tick: Tick) {
     await this.executor?.reconcilePending();
     if (this.state.halted) {
-      log("halted", { reason: "Drawdown latch set; an operator must review and clear it" });
+      this.log("halted", { reason: "Drawdown latch set; an operator must review and clear it" });
       await this.cancelAll();
       return;
     }
-    let { s, v } = await this.snapshot();
-    // Resolved markets: redeem the vault's claims (anyone may; the keeper does it promptly).
-    for (const { market } of v.markets) {
-      const state = s.markets.get(market)?.state;
-      if ((state === REDEEMABLE || state === ARCHIVED) && this.executor) {
-        await this.executor.send(deltaVaultSettle(this.vault, market), true);
-        log("settled", { market });
-      }
+    // The references of the markets the vault had registered are read while the chain is.
+    const view = this.follower.confirmed;
+    for (const market of this.known) {
+      const m = view.markets.get(market);
+      if (m && this.model(market)) tick.prefetch(market, m.condition);
     }
-    ({ s, v } = await this.snapshot());
-    const u = await this.units(s, v);
-    const models = new Map(this.settings.markets.map((m) => [m.market, m]));
+    let [{ s, v }] = await Promise.all([this.snapshot(), tick.issuers()]);
+    // Resolved markets: redeem the vault's claims and free their slots (anyone may; the keeper
+    // does it promptly).
+    let settled = false;
+    if (this.executor)
+      for (const { market } of v.markets) {
+        const state = s.markets.get(market)?.state;
+        if (state === REDEEMABLE || state === ARCHIVED) {
+          await this.executor.send(deltaVaultSettle(this.vault, market), true);
+          this.log("settled", { market });
+          settled = true;
+        }
+      }
+    if (settled) ({ s, v } = await this.snapshot());
+    const u = this.units(s, v);
     const references = new Map<number, Reference>();
     await Promise.all(
       v.markets
-        .filter(({ market }) => models.has(market) && s.markets.has(market))
+        .filter(({ market }) => this.model(market) && s.markets.has(market))
         .map(async ({ market }) => {
           try {
             references.set(
               market,
               await this.readReference(
-                this.origin,
+                tick,
                 s.markets.get(market)!,
-                this.policy(v),
+                this.policy(),
                 this.settings,
                 u,
               ),
             );
           } catch (error) {
-            log("reference-unavailable", { market, reason: (error as Error).message });
+            this.log("reference-unavailable", { market, reason: (error as Error).message });
           }
         }),
     );
     if (this.drawdown(v, references)) {
+      // The latch is durable before anything else happens.
+      await this.save();
       await this.cancelAll();
       return;
     }
@@ -324,43 +392,47 @@ export class Keeper {
       }
       if (merged) ({ s, v } = await this.snapshot());
     }
-    for (const { market } of v.markets) {
+    const markets = v.markets.map(({ market }) => market);
+    for (const [i, market] of markets.entries()) {
       if (this.stopped) break;
-      const model = models.get(market);
+      const model = this.model(market);
       let stage = "validation";
+      let changed = false;
       try {
         if (!model) {
-          // Registered by the curator but not configured here: never leave quotes behind.
-          await this.cancelMarket(market);
-          continue;
+          // Disabled here, or no model applies: never leave quotes behind.
+          changed = await this.cancelMarket(market, s);
+        } else {
+          if (!s.markets.has(market)) throw new Error("The market is not in the chain view yet");
+          const r = references.get(market);
+          if (!r) throw new Error("Reference unavailable");
+          stage = "quoting";
+          changed = await this.quote(market, model, s, v, u, r);
         }
-        const r = references.get(market);
-        if (!r) throw new Error("Reference unavailable");
-        stage = "quoting";
-        await this.quote(model, s, v, u, r);
-        ({ s, v } = await this.snapshot());
       } catch (error) {
-        log("market-paused", {
+        this.log("market-paused", {
           market,
           stage,
           reason: error instanceof Error ? error.message : "Safety check failed",
         });
-        await this.cancelMarket(market);
+        changed = await this.cancelMarket(market).catch(() => true);
       }
+      // Funds are shared across the vault's markets: the next one plans on the new state.
+      if (changed && i < markets.length - 1) ({ s, v } = await this.snapshot());
     }
   }
 
   /** Reviewed unit conversion of the vault stock's reference price. */
-  private policy(v: DeltaVaultState) {
+  private policy(): ReferencePolicy {
     return {
-      base: v.base,
-      basePriceMultiplier: this.settings.basePriceMultiplier,
-      quotePriceMultiplier: this.settings.quotePriceMultiplier,
+      base: this.identity.base,
+      basePriceMultiplier: this.config.basePriceMultiplier,
+      quotePriceMultiplier: this.config.quotePriceMultiplier,
     };
   }
 
   /** Δ̂ of a market at the vault's current exposure. */
-  private gap(model: MarketModel, v: DeltaVaultState, market: number, widen: bigint) {
+  private gap(model: MarketModel, v: VaultView, market: number, widen: bigint) {
     const vm = v.markets.find((m) => m.market === market)!;
     return conditionalGap({
       anchorBps: model.anchorBps,
@@ -375,18 +447,22 @@ export class Keeper {
   /** Latches a vault-wide halt when trading lost `maxDrawdownBps` of value since the
    * checkpoint: both baskets (per share) are marked at the same current prices, so stock-price
    * moves, deposits and withdrawals never count, only trading. */
-  drawdown(v: DeltaVaultState, references: Map<number, Reference>): boolean {
+  drawdown(
+    v: Pick<VaultView, "totalSupply" | "holdings" | "markets">,
+    references: Map<number, Reference>,
+  ): boolean {
     if (v.totalSupply === 0n) return false;
     const spot = [...references.values()][0]?.spot;
     if (spot === undefined) return false;
-    const models = new Map(this.settings.markets.map((m) => [m.market, m]));
     const marks = (market: number) => {
       const r = references.get(market),
         stored = this.state.markets[market]?.probability,
-        model = models.get(market);
+        model = this.model(market);
       const probability = r?.probability ?? (stored ? BigInt(stored) : PROB / 2n);
       const gapPpm =
-        model && v.markets.some((m) => m.market === market) ? this.gap(model, v, market, BPS) : 0n;
+        model && v.markets.some((m) => m.market === market)
+          ? this.gap(model, v as VaultView, market, BPS)
+          : 0n;
       return { probability, gapPpm };
     };
     const now = Date.now(),
@@ -398,29 +474,28 @@ export class Keeper {
         current.markets.map((m) => m.market).join();
     if (!checkpoint || !sameMarkets || now - checkpoint.at >= this.settings.drawdownWindowMs) {
       this.state.checkpoint = { at: now, basket: current };
-      this.save();
       return false;
     }
     const then = markedValue(holdingsOf(checkpoint.basket), spot, marks),
       value = markedValue(holdingsOf(current), spot, marks);
     if (then > 0n && (then - value) * BPS >= then * BigInt(this.settings.maxDrawdownBps)) {
       this.state.halted = true;
-      this.save();
-      log("drawdown-halt", { checkpointValue: then, value });
+      this.log("drawdown-halt", { checkpointValue: then, value });
       return true;
     }
     return false;
   }
 
+  /** Brings one market's quotes to the model's ladders; returns whether a transaction was sent. */
   private async quote(
+    market: number,
     model: MarketModel,
     s: ChainState,
-    v: DeltaVaultState,
+    v: VaultView,
     u: Units,
     r: Reference,
   ) {
-    const market = model.market,
-      m = s.markets.get(market)!,
+    const m = s.markets.get(market)!,
       vm = v.markets.find((x) => x.market === market)!,
       nowMs = Date.now(),
       now = seconds(),
@@ -461,7 +536,6 @@ export class Keeper {
     record.spot = String(r.spot);
     record.probability = String(r.probability);
     record.observedAt = r.observedAt;
-    this.save();
     if (nowMs < (record.cooldownUntil ?? 0)) throw new Error("Cooling down after a jump");
 
     const widen = widening(stopAt - now, set.wideningSeconds, set.wideningFactor);
@@ -505,7 +579,7 @@ export class Keeper {
       maxFeeBps: makerBps,
       tick: m.tick,
     });
-    log("plan", {
+    this.log("plan", {
       market,
       spot: r.spot,
       probability: r.probability,
@@ -517,7 +591,7 @@ export class Keeper {
       cancels: cancels.length,
       places: places.length,
     });
-    if (!cancels.length && !places.length) return;
+    if (!cancels.length && !places.length) return false;
     const quotes: DeltaVaultQuote[] = places.map((q) => ({
       order: {
         maker: this.vault,
@@ -535,8 +609,8 @@ export class Keeper {
       deadline: min(now + 60n, expiry),
     }));
     if (!this.executor) {
-      log("dry-run", { market, cancels, quotes: places });
-      return;
+      this.log("dry-run", { market, cancels, quotes: places });
+      return false;
     }
     const fresh = () => !this.stopped && Date.now() - r.observedAt <= set.maxFeedAgeMs;
     await this.executor.send(
@@ -544,5 +618,6 @@ export class Keeper {
       false,
       fresh,
     );
+    return true;
   }
 }

@@ -16,7 +16,7 @@ Three numbers describe the market:
 
 | Symbol | Meaning | Where it comes from |
 |---|---|---|
-| s | NVDA spot price | Pyth |
+| s | NVDA spot price | Robinhood (Stock Token API) |
 | p | probability of the Fed cut | Polymarket |
 | Δ = Y − N | how much higher NVDA is if the Fed cuts | **only our market** |
 
@@ -117,7 +117,7 @@ Repeated every time the price moves, this is **LVR (loss-versus-rebalancing)**. 
 
 Now compare two naive YES/NO constant-product pools with the Δ-Vault. Take NVDA +$1, with Δ and p unchanged:
 - **Two pools:** both are now stale by $1. Arbitrageurs pick off both.
-- **Δ-Vault:** it read s = 101 from Pyth, so its quotes were already 104 / 99. There's nothing to pick off.
+- **Δ-Vault:** it read s = 101 from its reference, so its quotes were already 104 / 99. There's nothing to pick off.
 
 Take Polymarket moving p from 0.40 to 0.60:
 - **Two pools:** Y and N don't change, so nothing happens, but spot moved, which puts us back in the first case.
@@ -235,7 +235,7 @@ Everything else is permissionless or held by a separate role:
 The keeper implements §2 with one refinement. The depth κ scales with the vault: δ̂ moves by `impactBps` per 1% of the vault's stock inventory that it is long or short between the worlds. Deposits and withdrawals scale positions and inventory together, so they never move the price. Only fills do.
 
 Each cycle, per market, it:
-1. **Reads the inputs.** Spot comes from Pyth and p from Polymarket, through the API. The vault's holdings, exposure and limits come from the chain, and the book from its own replica of the exchange.
+1. **Reads the inputs.** Spot comes from Robinhood's Stock Token API and p from Polymarket, through the API. The vault's holdings, exposure and limits come from the chain, and the book from its own replica of the exchange.
 2. **Prices the two branches.** δ̂ = δ₀ − impact × (YES − NO stock) ⁄ inventory, bounded by `maxGapBps`. Then Y = s(1 + (1−p)δ̂) and N = s(1 − pδ̂).
 3. **Sets the half-spread.** It is the largest of a floor and the sum of the maker fee edge, an adverse-selection margin, twice the recent price movement, and the probability uncertainty (Polymarket spread × |δ̂|). It widens up to 3× over the last day before quoting stops.
 4. **Builds ladders on both branches.** Each quote stays a margin inside the vault's band, never crosses other traders' orders, and fits the per-order, resting and imbalance caps. Quotes are funded from the branch's claims first, which nets the vault's unpaired positions, and from plain credit after, keeping a withdrawal reserve free.
@@ -244,7 +244,7 @@ Each cycle, per market, it:
 The market's quotes are pulled when any of these holds:
 - a reference is stale,
 - the price and the probability were observed too far apart,
-- Pyth and the vault's Chainlink price disagree,
+- the reference spot price and the vault's Chainlink price disagree,
 - the price or probability jumped (a cooldown follows),
 - the issuer paused the token,
 - the market is near cutoff or closed,
@@ -258,12 +258,12 @@ Resolved markets are settled promptly. Paired claims are merged back into credit
 **v2: fully on-chain.** Traders would swap directly against a contract that reads Pyth. The hard part is still a trustworthy on-chain probability feed, since no production one exists. In v1 the keeper supplies p off-chain, and the vault bounds what it can do with it.
 
 **Safeguards**:
-- **Time alignment.** Implemented as a maximum skew between the Pyth publish time and the Polymarket observation time.
+- **Time alignment.** Implemented as a maximum skew between the reference price's publish time and the Polymarket observation time.
 - **Consistency breaker.** Implemented as above.
 - **Staleness limits.**
   - The keeper quotes only from references a few seconds to minutes old.
   - On chain, the Chainlink check is a sanity bound, not a freshness source. Equity feeds update only on a 0.5% move or a 24-hour heartbeat, and not at all while markets are closed, so the vault's oracle age must exceed a day.
-  - The keeper stops quoting outside market hours because its Pyth reference goes stale.
+  - The keeper stops quoting during a trading halt, or when its reference price goes stale.
 - **Hard limits.**
   - The imbalance cap per event, the δ̂ bound, and the cutoff buffer.
   - Widening spreads and faster δ̂ moves near resolution.
@@ -307,7 +307,7 @@ Historically, conditional markets didn't exist, so Δ was never observed. It can
 1. **Deploy.** Run `bun run deploy:vault` with the stock token, its Chainlink feed, and dedicated admin, curator, keeper and guardian addresses. On Base, the sequencer-uptime feed is pinned. The script prints the admin's calls: the three role grants and, optionally, the deposit caps.
 2. **Configure.** The curator sets the order limits: lifetime, oracle age (above a day for equity feeds) and fee cap. Then, for each event, it adds the market with its band, per-order and resting caps, imbalance cap and cutoff buffer, in the admin console under Vault controls.
 3. **Seed.** The admin makes the first deposit, which sets the vault's initial USDC/NVDA ratio and locks 1,000 shares.
-4. **Run the keeper.** Use a wallet that holds only `KEEPER_ROLE`, with `VK_*` settings and one Δ-model per market (δ₀, impact, bound, size), `VK_MODE=live` and `--execute`.
+4. **Run the keeper.** One process quotes every Δ-vault. Its config lists the vaults, each with its own keeper wallet that holds only `KEEPER_ROLE` (separate wallets keep one vault's transactions from ever waiting on another's), and a default Δ-model (δ₀, impact, bound, size) for every market a vault registers, with per-market overrides or `disabled` where needed. The keeper reads each vault's markets from the chain every round, so markets the curator adds, or that settle, need no restart. Run it with `VK_MODE=live` and `--execute`.
 5. **List it.** Add the vault to `DELTA_VAULT_ADDRESSES` (the API) and `NEXT_PUBLIC_DELTA_VAULTS` (the UIs, which never take vault addresses from the API).
 6. **Incidents.**
    - The guardian pauses: deposits and quoting stop, and every resting quote is invalidated at once.

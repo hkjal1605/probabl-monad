@@ -56,7 +56,7 @@ function polymarket(observedAt: number) {
     },
   };
 }
-function pyth(publishedAt: number, fetchedAt: number) {
+function spot(publishedAt: number, fetchedAt: number) {
   const price = (token: string, priceUsd: number) => ({
     token,
     status: "available",
@@ -64,7 +64,7 @@ function pyth(publishedAt: number, fetchedAt: number) {
     priceTimestamp: Math.floor(publishedAt / 1000),
     fetchedAt: Math.floor(fetchedAt / 1000),
   });
-  return { source: "pyth", chainId: 31337, prices: [price(QUOTE, 1), price(BASE, 125.5)] };
+  return { source: "robinhood", chainId: 31337, prices: [price(QUOTE, 1), price(BASE, 125.5)] };
 }
 
 const directories: string[] = [];
@@ -85,7 +85,7 @@ test("a reference carries the spot and probability times separately", () => {
   const now = 1_800_000_000_000;
   const r = reference(
     polymarket(now - 4000),
-    pyth(now - 1000, now - 500),
+    spot(now - 1000, now - 500),
     market,
     policy,
     limits,
@@ -102,7 +102,7 @@ test("a reference carries the spot and probability times separately", () => {
   expect(() =>
     reference(
       polymarket(now - 40_000),
-      pyth(now, now),
+      spot(now, now),
       market,
       policy,
       limits,

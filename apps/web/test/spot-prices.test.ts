@@ -33,7 +33,7 @@ const price = (token: string = T.base, changes: Partial<SpotPrice> = {}): SpotPr
   ...changes,
 });
 const response = (prices = [price()]): SpotPricesResponse => ({
-  source: "pyth",
+  source: "robinhood",
   displayOnly: true,
   chainId: CHAIN,
   asOf: at,
@@ -191,7 +191,7 @@ describe("UI and trading separation", () => {
     const render = (p?: SpotPrice) =>
       renderToStaticMarkup(createElement(SpotReference, { price: p }));
     const live = render(price());
-    expect(live).not.toMatch(/pyth/i);
+    expect(live).not.toMatch(/pyth|robinhood/i);
     expect(live).toContain("Spot reference · USD");
     expect(render(price(T.base, { status: "stale" }))).toContain("last known");
     expect(render()).toContain("Price unavailable");

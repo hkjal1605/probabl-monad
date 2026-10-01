@@ -1,6 +1,6 @@
 import { WAD } from "@conditional-stocks/evm-client";
 import type { MarketState } from "@conditional-stocks/evm-client/ledger";
-import type { SpotPricesResponse } from "@conditional-stocks/shared/spot-prices";
+import { SPOT_BATCH_SIZE, type SpotPricesResponse } from "@conditional-stocks/shared/spot-prices";
 import { type Address, getAddress } from "viem";
 import { BPS, decimal, PROB, TESTNETS } from "./numbers.ts";
 
@@ -23,7 +23,7 @@ export interface Reference {
   observedAt: number;
   /** Polymarket bid-ask spread x 1e6. */
   spread: bigint;
-  /** Pyth publish time (ms), or the probability time when stale prices are allowed. */
+  /** Reference publish time (ms), or the probability time when stale prices are allowed. */
   spotAt: number;
   /** Polymarket observation time (ms). */
   probabilityAt: number;
@@ -153,7 +153,7 @@ export function reference(
   const response = prices as SpotPricesResponse;
   if (
     !response ||
-    response.source !== "pyth" ||
+    response.source !== "robinhood" ||
     response.chainId !== units.chainId ||
     !Array.isArray(response.prices) ||
     response.prices.length !== 2 ||
@@ -183,7 +183,7 @@ export function reference(
     return value;
   };
   const quoteUsd = observe(0, policy.quotePriceMultiplier);
-  // Pyth prices one economic share; one whole token is `multiplier` shares.
+  // The reference prices one economic share; one whole token is `multiplier` shares.
   const tokenUsd = (observe(1, policy.basePriceMultiplier) * units.multiplier) / WAD;
   const spot =
     (tokenUsd * WAD * 10n ** BigInt(units.quoteDecimals)) /
@@ -191,6 +191,35 @@ export function reference(
   if (spot <= 0n || spot * BPS < market.tick) throw new Error("Unsupported token units");
   return { spot, probability: p, spread, observedAt: Math.min(...times), spotAt, probabilityAt };
 }
+/** Reference prices of `tokens`, in their order, in as few requests as the API accepts. */
+export async function fetchSpotPrices(
+  origin: string,
+  tokens: readonly Address[],
+): Promise<SpotPricesResponse> {
+  const batches: Address[][] = [];
+  for (let i = 0; i < tokens.length; i += SPOT_BATCH_SIZE)
+    batches.push(tokens.slice(i, i + SPOT_BATCH_SIZE));
+  const responses = (await Promise.all(
+    batches.map((batch) => json(`${origin}/v1/spot-prices?tokens=${batch.join(",")}`)),
+  )) as SpotPricesResponse[];
+  const first = responses[0];
+  if (!first || responses.some((r) => !Array.isArray(r?.prices)))
+    throw new Error("Invalid spot price response");
+  return { ...first, prices: responses.flatMap((r) => r.prices) };
+}
+/** The two prices one market's reference reads, from a response covering several markets: its
+ * quote token's, then its base token's. A missing price fails `reference`'s identity check. */
+export function spotPair(
+  response: SpotPricesResponse,
+  quote: Address,
+  base: Address,
+): SpotPricesResponse {
+  const find = (token: Address) => response.prices.filter((p) => getAddress(p.token) === token);
+  return { ...response, prices: [...find(quote).slice(0, 1), ...find(base).slice(0, 1)] };
+}
+/** Polymarket metadata and the latest probability of one market's event. */
+export const fetchPolymarket = (origin: string, market: number) =>
+  json(`${origin}/v1/markets/${market}/polymarket`);
 export async function fetchReference(
   origin: string,
   market: Pick<MarketState, "id" | "condition" | "yesIndex" | "noIndex" | "tick">,

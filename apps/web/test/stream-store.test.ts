@@ -18,7 +18,7 @@ test("an initial spot stream image satisfies concurrent consumers without an ext
   globalThis.EventSource = class {} as unknown as typeof EventSource;
   const key = TOKEN;
   const data: SpotPricesResponse = {
-    source: "pyth",
+    source: "robinhood",
     displayOnly: true,
     chainId: protocolConfig.chainId,
     asOf: Math.floor(Date.now() / 1000),

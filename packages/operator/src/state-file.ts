@@ -11,6 +11,7 @@ import {
   unlinkSync,
   writeFileSync,
 } from "node:fs";
+import { chmod, open, rename } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import type { Journal } from "./execution.ts";
 
@@ -48,6 +49,9 @@ export class StateFile<S> {
   readonly path: string;
   readonly lock: string;
   state: S;
+  /** The last write, and one queued behind it that has not started yet. */
+  private writing: Promise<void> = Promise.resolve();
+  private queued: Promise<void> | undefined;
   constructor(path: string, validate: (value: unknown) => S, initial: () => S) {
     this.path = resolve(path);
     this.lock = `${this.path}.lock`;
@@ -105,6 +109,37 @@ export class StateFile<S> {
       fsyncSync(directory);
     } finally {
       closeSync(directory);
+    }
+  }
+  /** `save` off the event loop. Writes run one at a time and each persists the state as it is
+   * when the write starts, so a caller sharing a write that has not started is covered by it:
+   * a burst of changes costs one write, and the returned promise resolves once it is durable. */
+  saveAsync(): Promise<void> {
+    if (this.queued) return this.queued;
+    const write = this.writing.then(() => {
+      this.queued = undefined;
+      return this.persist();
+    });
+    this.queued = write;
+    this.writing = write.catch(() => undefined);
+    return write;
+  }
+  private async persist() {
+    const next = `${this.path}.next`;
+    const file = await open(next, "wx", 0o600);
+    try {
+      await file.writeFile(JSON.stringify(this.state));
+      await file.sync();
+    } finally {
+      await file.close();
+    }
+    await rename(next, this.path);
+    await chmod(this.path, 0o600);
+    const directory = await open(dirname(this.path), "r");
+    try {
+      await directory.sync();
+    } finally {
+      await directory.close();
     }
   }
   close() {
