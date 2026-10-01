@@ -1,0 +1,250 @@
+{
+  "chainId": 46630,
+  "exchange": "0x1879c9161E56f274Fd107C6265bc5a80aA0B49B5",
+  "quote": "0x509E319A1bA0C429596A05294594D884F5610D73",
+  "admin": "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0",
+  "guardian": "0x3c75eE21AF23832057760433Bf95DA9f9c0c7c41",
+  "adminDelay": 86400,
+  "limits": {
+    "maxTtl": 3600,
+    "maxOracleAge": 259200,
+    "maxFeeBps": 100
+  },
+  "vaults": [
+    {
+      "symbol": "TSLA",
+      "token": "0xC9f9c86933092BbbfFF3CCb4b105A4A94bf3Bd4E",
+      "priceFeed": "0x3775baC90DAf126828f2eEc4d49F0EE7089C9685",
+      "keeper": "0x172268f29D4AB5e328dD9416845Dd16Df92643dD",
+      "caps": {
+        "quote": "100000",
+        "base": "1000"
+      },
+      "seed": {
+        "quote": "179",
+        "base": "0.5"
+      },
+      "deposit": {
+        "quote": "1639",
+        "base": "4.5"
+      },
+      "markets": [
+        {
+          "market": 1,
+          "risk": {
+            "bandBps": 1500,
+            "cutoffBuffer": 3600,
+            "maxOrder": "150",
+            "maxResting": "1200",
+            "maxImbalance": "2"
+          }
+        },
+        {
+          "market": 9,
+          "risk": {
+            "bandBps": 1500,
+            "cutoffBuffer": 3600,
+            "maxOrder": "150",
+            "maxResting": "1200",
+            "maxImbalance": "2"
+          }
+        },
+        {
+          "market": 10,
+          "risk": {
+            "bandBps": 1500,
+            "cutoffBuffer": 3600,
+            "maxOrder": "150",
+            "maxResting": "1200",
+            "maxImbalance": "2"
+          }
+        }
+      ],
+      "vault": "0x506C964F7c61C824884fc035ae33D4F6b1440887",
+      "deploymentBlock": "127017936",
+      "transactionHash": "0xaf3d588cedb39df285531d18654fa33dcf1f0f381a67794f71ee36d3a57d4361",
+      "seeded": true,
+      "deposited": true
+    },
+    {
+      "symbol": "AMZN",
+      "token": "0x5884aD2f920c162CFBbACc88C9C51AA75eC09E02",
+      "priceFeed": "0x05ebC8a330e5dFbade8F7912286B5Ada4EcE618a",
+      "keeper": "0x3266A0541a767cE71B231D8dAe1Eac7ecDC5A1e8",
+      "caps": {
+        "quote": "100000",
+        "base": "1000"
+      },
+      "seed": {
+        "quote": "126",
+        "base": "0.5"
+      },
+      "deposit": {
+        "quote": "1152",
+        "base": "4.5"
+      },
+      "markets": [
+        {
+          "market": 2,
+          "risk": {
+            "bandBps": 1500,
+            "cutoffBuffer": 3600,
+            "maxOrder": "100",
+            "maxResting": "800",
+            "maxImbalance": "2"
+          }
+        },
+        {
+          "market": 8,
+          "risk": {
+            "bandBps": 1500,
+            "cutoffBuffer": 3600,
+            "maxOrder": "100",
+            "maxResting": "800",
+            "maxImbalance": "2"
+          }
+        },
+        {
+          "market": 11,
+          "risk": {
+            "bandBps": 1500,
+            "cutoffBuffer": 3600,
+            "maxOrder": "100",
+            "maxResting": "800",
+            "maxImbalance": "2"
+          }
+        }
+      ],
+      "vault": "0x5428BB13eA9c8CE2324D7e655Df4756908071BC5",
+      "deploymentBlock": "127018236",
+      "transactionHash": "0x9c517d7231e0823c39a29db7d3a7dd2ee78c4546934403dabf204f5126d8e7d0",
+      "seeded": true,
+      "deposited": true
+    },
+    {
+      "symbol": "PLTR",
+      "token": "0x1FBE1a0e43594b3455993B5dE5Fd0A7A266298d0",
+      "priceFeed": "0x55b76717C9cC90f5044FA422ac496049b2491cfb",
+      "keeper": "0x8E10a7F1685B2E06A722060975bE25b129b608D6",
+      "caps": {
+        "quote": "100000",
+        "base": "1000"
+      },
+      "seed": {
+        "quote": "94",
+        "base": "0.5"
+      },
+      "deposit": {
+        "quote": "863",
+        "base": "4.5"
+      },
+      "markets": [
+        {
+          "market": 3,
+          "risk": {
+            "bandBps": 1500,
+            "cutoffBuffer": 3600,
+            "maxOrder": "100",
+            "maxResting": "800",
+            "maxImbalance": "2"
+          }
+        },
+        {
+          "market": 7,
+          "risk": {
+            "bandBps": 1500,
+            "cutoffBuffer": 3600,
+            "maxOrder": "100",
+            "maxResting": "800",
+            "maxImbalance": "2"
+          }
+        }
+      ],
+      "vault": "0xF5eE777A3C633230A60DaC855860cb4ff3C12869",
+      "deploymentBlock": "127018546",
+      "transactionHash": "0xaf2a6f3b830fcc57cfec133adbd53eeaeb49381304cdadcec3b784a9cb6d363e",
+      "seeded": true,
+      "deposited": true
+    },
+    {
+      "symbol": "NFLX",
+      "token": "0x3b8262A63d25f0477c4DDE23F83cfe22Cb768C93",
+      "priceFeed": "0x1Baa50056b13aC863F837eD91adaCB4Ac584CC83",
+      "keeper": "0xfEE41eA7B15ABA146F1316464d0180F21fb6a5cb",
+      "caps": {
+        "quote": "100000",
+        "base": "1000"
+      },
+      "seed": {
+        "quote": "35",
+        "base": "0.5"
+      },
+      "deposit": {
+        "quote": "321",
+        "base": "4.5"
+      },
+      "markets": [
+        {
+          "market": 4,
+          "risk": {
+            "bandBps": 1500,
+            "cutoffBuffer": 3600,
+            "maxOrder": "60",
+            "maxResting": "480",
+            "maxImbalance": "2"
+          }
+        }
+      ],
+      "vault": "0x1d0501CB9BD1e0fe55afa9D7dA3EcE1dfDe1C60B",
+      "deploymentBlock": "127018851",
+      "transactionHash": "0x8fa252294d8146475a662919322bd3a6bc8b70e97b6ecf4ce3560ebf53f877a3",
+      "seeded": true,
+      "deposited": true
+    },
+    {
+      "symbol": "AMD",
+      "token": "0x71178BAc73cBeb415514eB542a8995b82669778d",
+      "priceFeed": "0x16cfe20B7a1a81F4210f3214144F36E0d45582F9",
+      "keeper": "0x6de87d2E9545A0C8Bb01E763265C0A6dcFE5a110",
+      "caps": {
+        "quote": "100000",
+        "base": "1000"
+      },
+      "seed": {
+        "quote": "314",
+        "base": "0.5"
+      },
+      "deposit": {
+        "quote": "2879",
+        "base": "4.5"
+      },
+      "markets": [
+        {
+          "market": 5,
+          "risk": {
+            "bandBps": 1500,
+            "cutoffBuffer": 3600,
+            "maxOrder": "300",
+            "maxResting": "2400",
+            "maxImbalance": "2"
+          }
+        },
+        {
+          "market": 6,
+          "risk": {
+            "bandBps": 1500,
+            "cutoffBuffer": 3600,
+            "maxOrder": "300",
+            "maxResting": "2400",
+            "maxImbalance": "2"
+          }
+        }
+      ],
+      "vault": "0xCF9EB2415a51E26Acf88C76CE6c5bf445fb48F3c",
+      "deploymentBlock": "127019101",
+      "transactionHash": "0xf52a8dd5da17c2d947ebf08dc307560eaa282bdb1c3e329f3864d687ce2b71cb",
+      "seeded": true,
+      "deposited": true
+    }
+  ]
+}
