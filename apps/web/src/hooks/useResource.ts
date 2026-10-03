@@ -9,6 +9,8 @@ export function useResource<T>(
   key: string,
   load: (force?: boolean) => Promise<void>,
   enabled = true,
+  /** How old data may get before it is read again (resources that change slowly read less). */
+  refreshMs = 10_000,
 ) {
   const latest = useRef(load);
   latest.current = load;
@@ -38,7 +40,7 @@ export function useResource<T>(
         "resolution",
       ].includes(resource.name);
       if (covered && indexStreamHealthy() && !current.error && current.data !== undefined) return;
-      if (Date.now() - current.updatedAt >= (current.error ? 30_000 : 10_000))
+      if (Date.now() - current.updatedAt >= (current.error ? 30_000 : refreshMs))
         void latest.current(true);
     }, 10_000);
     return () => {
@@ -46,7 +48,7 @@ export function useResource<T>(
       const active = resource.active.get(key);
       if (active && --active.count === 0) resource.active.delete(key);
     };
-  }, [resource, key, enabled, resource.generation()]);
+  }, [resource, key, enabled, refreshMs, resource.generation()]);
   return {
     data: entry.data,
     error: entry.error,

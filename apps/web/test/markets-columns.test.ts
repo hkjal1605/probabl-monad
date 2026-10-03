@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { shortDate } from "../src/lib/format/display";
+import { priceLines } from "../src/lib/markets/history";
 import { eventMonogram } from "../src/lib/markets/presentation";
 import { MarketsPageSkeleton } from "../src/modules/MarketsPageModule/components/MarketsPageSkeleton";
 import { createUiStore } from "../src/stores/ui-store";
@@ -44,4 +45,39 @@ test("a buy intent carries no quantity: the trader enters the amount", () => {
     branch: "NO",
     nonce: 1,
   });
+});
+
+test("chart lines: recorded midpoints in display units and spot, each ending at its live value", () => {
+  // Raw prices are quote per raw base x 1e18: 1e8 is $100 per whole token in 6-decimal quote.
+  const lines = priceLines(
+    [
+      { time: 60, yes: "100000000", no: "120000000", spot: 110 },
+      { time: 120, yes: null, no: "121000000", spot: null },
+    ],
+    first,
+    { yes: 101, no: null, spot: 111.5 },
+    180,
+  );
+  expect(lines.yes).toEqual([
+    { time: 60, value: 100 },
+    { time: 180, value: 101 },
+  ]);
+  // No live NO midpoint: the line ends at its last record.
+  expect(lines.no).toEqual([
+    { time: 60, value: 120 },
+    { time: 120, value: 121 },
+  ]);
+  expect(lines.spot).toEqual([
+    { time: 60, value: 110 },
+    { time: 180, value: 111.5 },
+  ]);
+  // A live value no newer than the last record adds nothing.
+  expect(
+    priceLines(
+      [{ time: 60, yes: null, no: null, spot: 110 }],
+      first,
+      { yes: null, no: null, spot: 9 },
+      60,
+    ).spot,
+  ).toEqual([{ time: 60, value: 110 }]);
 });

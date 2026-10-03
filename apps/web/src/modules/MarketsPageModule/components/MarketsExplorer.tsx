@@ -46,8 +46,7 @@ import {
 } from "@/lib/markets/presentation";
 import { cn } from "@/lib/utils";
 import type { MarketView } from "@/types/api";
-import { FEATURED_MARKETS } from "../featured-markets";
-import { FeaturedMarketBanner } from "./FeaturedMarketBanner";
+import { HomeBanner } from "./HomeBanner";
 import { MarketsColumns } from "./MarketsColumns";
 import { MarketsPageSkeleton } from "./MarketsPageSkeleton";
 
@@ -75,17 +74,6 @@ export function MarketsExplorer({
   const listed =
     filters.lifecycle === "active" ? markets.filter((m) => m.lifecycle !== "frozen") : markets;
   const groups = groupMarkets(listed);
-  const featuredDefinition = FEATURED_MARKETS[category];
-  const featured =
-    groups.find((assets) =>
-      assets.some(
-        (market) => market.mapping.conditionId.toLowerCase() === featuredDefinition.conditionId,
-      ),
-    ) ??
-    groups.find((assets) => {
-      const market = assets[0];
-      return market && (category === "All" || marketCategory(market) === category);
-    });
   const visible = sortEventGroups(
     groups.filter((assets) =>
       assets.some(
@@ -176,13 +164,8 @@ export function MarketsExplorer({
         <MarketsPageSkeleton view={filters.view} />
       ) : (
         <>
-          {featured && (
-            <FeaturedMarketBanner
-              category={category}
-              imageSrc={featuredDefinition.imageSrc}
-              markets={featured}
-            />
-          )}
+          {/* The selected category's first event leads; the most traded span every category. */}
+          <HomeBanner featured={visible[0]} category={category} markets={listed} />
           {query.isInitialError && (
             <DataError
               retry={() => {

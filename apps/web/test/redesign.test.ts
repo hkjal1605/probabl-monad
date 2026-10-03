@@ -17,12 +17,12 @@ import { executionImpact, executionPoints } from "../src/lib/markets/history";
 import {
   groupMarkets,
   impactPercent,
-  MARKET_CATEGORIES,
   marketCategory,
   marketCategoryFromPathname,
   marketCategoryFromSlug,
   marketCategoryPath,
   midpoint,
+  mostTraded,
 } from "../src/lib/markets/presentation";
 import { outcomeLabel, safeExternalUrl } from "../src/lib/markets/resolution";
 import { conditionalPositionRows } from "../src/lib/portfolio/positions";
@@ -38,7 +38,6 @@ import { marketPriceBound, quantityForSpend } from "../src/lib/trading/entry";
 import { previewOrder } from "../src/lib/trading/order";
 import { MarketDetailPageSkeleton } from "../src/modules/MarketDetailPageModule/components/MarketDetailPageSkeleton";
 import { MarketsPageSkeleton } from "../src/modules/MarketsPageModule/components/MarketsPageSkeleton";
-import { FEATURED_MARKETS } from "../src/modules/MarketsPageModule/featured-markets";
 import { mergeOrderPages } from "../src/services/orders";
 import { createUiStore } from "../src/stores/ui-store";
 import { fixtureMarkets, fixtureState as state } from "./fixtures/protocol";
@@ -69,7 +68,8 @@ describe("markets loading state", () => {
   test("reserves the banner and responsive card grid without loading text", () => {
     const html = renderToStaticMarkup(createElement(MarketsPageSkeleton, { view: "Feed" }));
     expect(html).toContain('aria-busy="true"');
-    expect(html.match(/data-variant="market"/g)).toHaveLength(6);
+    // The banner's featured event and most traded cards, then six event cards.
+    expect(html.match(/data-variant="market"/g)).toHaveLength(2 + 6);
     expect(html.match(/data-slot="skeleton"/g)?.length).toBeGreaterThan(30);
     expect(html).not.toContain("Loading...");
   });
@@ -83,17 +83,24 @@ describe("markets loading state", () => {
   });
 });
 describe("category featured markets", () => {
-  test("assigns a distinct live condition and optimized image to every category", async () => {
-    expect(Object.keys(FEATURED_MARKETS)).toEqual([...MARKET_CATEGORIES]);
-    expect(new Set(Object.values(FEATURED_MARKETS).map((item) => item.conditionId)).size).toBe(5);
-    expect(new Set(Object.values(FEATURED_MARKETS).map((item) => item.imageSrc)).size).toBe(5);
-    for (const definition of Object.values(FEATURED_MARKETS)) {
-      expect(definition.conditionId).toMatch(/^0x[a-f0-9]{64}$/);
-      expect(definition.imageSrc).toMatch(/^\/markets\/.+-feature\.webp$/);
-      expect(
-        await Bun.file(new URL(`../public${definition.imageSrc}`, import.meta.url)).exists(),
-      ).toBe(true);
-    }
+  test("the most traded are the open markets with the most 24-hour volume, then book depth", () => {
+    const listed = (id: string, volume24h: number | null, depthUsd: number, lifecycle = "open") =>
+      ({
+        ...market,
+        id,
+        volume24h,
+        lifecycle,
+        yes: { ...market.yes, depthUsd },
+        no: { ...market.no, depthUsd: 0 },
+      }) as typeof market;
+    const ranked = mostTraded([
+      listed("a", 0, 10),
+      listed("b", 500, 0),
+      listed("c", 0, 99),
+      listed("d", 9_999, 0, "resolved"),
+      listed("e", null, 50),
+    ]);
+    expect(ranked.map((m) => m.id)).toEqual(["b", "c", "e"]);
   });
 
   test("classifies the selected Clarity Act event as policy", () => {

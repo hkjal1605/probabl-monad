@@ -16,25 +16,62 @@ const FEED_CARDS = [0, 1, 2, 3, 4, 5] as const;
 const MATRIX_ROWS = [0, 1, 2, 3, 4, 5] as const;
 const COLUMN_EVENTS = [0, 1, 2, 3] as const;
 
+/** The banner's shape: the featured event card (two thirds) and the most traded list. */
 function FeaturedBannerSkeleton() {
   return (
-    <Card className="mb-6 overflow-hidden rounded-xl bg-overlay py-0 ring-0" aria-hidden="true">
-      <CardContent className="grid gap-8 px-6 py-7 sm:px-8 sm:py-9 lg:grid-cols-[minmax(0,1fr)_minmax(420px,0.9fr)] lg:items-center lg:gap-12">
-        <div className="flex min-w-0 flex-col items-start">
-          <Skeleton className="h-3 w-36" />
-          <Skeleton className="mt-4 h-10 w-full max-w-xl" />
-          <div className="mt-3 flex w-full max-w-lg gap-5">
-            <Skeleton className="h-5 w-24" />
-            <Skeleton className="h-5 w-28" />
-            <Skeleton className="h-5 w-24" />
+    <div
+      className="mb-6 grid gap-4 lg:h-[33rem] lg:grid-cols-[minmax(0,65fr)_minmax(0,35fr)]"
+      aria-hidden="true"
+    >
+      <Card variant="market" className="flex flex-col p-5 sm:p-6">
+        <div className="flex items-start gap-4">
+          <Skeleton className="size-14 rounded-xl" />
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="h-7 w-full max-w-md" />
           </div>
-          <div className="mt-7 flex items-center gap-4">
-            <Skeleton className="h-10 w-40 rounded-lg" />
-            <Skeleton className="h-5 w-20" />
-          </div>
+          <Skeleton className="h-12 w-16 rounded-xl" />
         </div>
-      </CardContent>
-    </Card>
+        <div className="mt-5 grid gap-6 md:grid-cols-[minmax(0,5fr)_minmax(0,8fr)]">
+          <div className="flex flex-col gap-4">
+            <div className="flex gap-1.5">
+              <Skeleton className="h-8 w-20 rounded-full" />
+              <Skeleton className="h-8 w-20 rounded-full" />
+            </div>
+            {CARD_ROWS.map((row) => (
+              <div key={row} className="flex items-center justify-between py-1">
+                <Skeleton className="h-5 w-16" />
+                <Skeleton className="h-7 w-24" />
+              </div>
+            ))}
+            <Skeleton className="h-10 w-32 rounded-lg" />
+          </div>
+          <Skeleton className="min-h-64 rounded-lg" />
+        </div>
+        <div className="mt-5 flex justify-between border-border border-t pt-4">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-4 w-36" />
+        </div>
+      </Card>
+      <Card variant="market" className="flex flex-col gap-6 p-5 sm:p-6">
+        <Skeleton className="h-6 w-32" />
+        {CARD_ROWS.map((row) => (
+          <div key={row} className="flex flex-col gap-3">
+            <div className="flex gap-3">
+              <Skeleton className="size-11 rounded-xl" />
+              <div className="flex flex-1 flex-col gap-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Skeleton className="h-9 rounded-lg" />
+              <Skeleton className="h-9 rounded-lg" />
+            </div>
+          </div>
+        ))}
+      </Card>
+    </div>
   );
 }
 

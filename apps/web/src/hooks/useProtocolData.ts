@@ -2,6 +2,7 @@
 import { useWallet } from "@/components/providers/WalletProvider";
 import { fetchTrades } from "@/modules/MarketDetailPageModule/utils/fetchTrades";
 import { fetchMarkets } from "@/modules/MarketsPageModule/utils/fetchMarkets";
+import { fetchPriceHistory } from "@/modules/MarketsPageModule/utils/fetchPriceHistory";
 import { fetchOrders } from "@/modules/OrdersPageModule/utils/fetchOrders";
 import { fetchPositions } from "@/modules/PortfolioPageModule/utils/fetchPositions";
 import { fetchWalletTrades } from "@/modules/PortfolioPageModule/utils/fetchWalletTrades";
@@ -9,6 +10,7 @@ import { withMarketSpotPrices } from "@/services/spot-prices";
 import { marketsStore } from "@/stores/useMarketsStore";
 import { ordersStore } from "@/stores/useOrdersStore";
 import { positionsStore } from "@/stores/usePositionsStore";
+import { priceHistoryStore } from "@/stores/usePriceHistoryStore";
 import { tradesStore } from "@/stores/useTradesStore";
 import { walletTradesStore } from "@/stores/useWalletTradesStore";
 import type { MarketView } from "@/types/api";
@@ -64,4 +66,16 @@ export function useTrades(marketId?: string) {
     marketId === undefined || !!marketId,
   );
   return { ...query, ...useReadFreshness(query), trades: query.data?.trades ?? [] };
+}
+/** A market's recorded prices (public id). They change once a minute: read at most that often. */
+export function usePriceHistory(marketId?: string) {
+  const key = marketId ?? "";
+  const query = useResource(
+    priceHistoryStore,
+    key,
+    (force) => fetchPriceHistory(key, force),
+    !!marketId,
+    60_000,
+  );
+  return { ...query, points: query.data?.points ?? [] };
 }

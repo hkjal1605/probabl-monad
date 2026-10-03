@@ -139,6 +139,19 @@ export function marketCategory(market: MarketView) {
   if (/revenue|earnings|deliver|quarter|profit/.test(question)) return "Earnings";
   return "Other";
 }
+/** Both branches' book depth, in dollars (display only). */
+export const bookDepthUsd = (market: MarketView) => market.yes.depthUsd + market.no.depthUsd;
+/** Most traded first: 24-hour volume, then book depth, then market id. */
+export const byTrading = (a: MarketView, b: MarketView) =>
+  (b.volume24h ?? 0) - (a.volume24h ?? 0) ||
+  bookDepthUsd(b) - bookDepthUsd(a) ||
+  a.id.localeCompare(b.id);
+/** The `count` open markets traded most in the last 24 hours. */
+export const mostTraded = (markets: readonly MarketView[], count = 3) =>
+  markets
+    .filter((market) => market.lifecycle === "open")
+    .sort(byTrading)
+    .slice(0, count);
 /** Text in place of an event's image. */
 export function eventMonogram(market: MarketView) {
   const category = marketCategory(market);
