@@ -8,6 +8,7 @@
       "!.local",
       "!**/dist",
       "!**/.next",
+      "!**/.source",
       "!**/.next-cloudflare",
       "!**/.open-next",
       "!**/.wrangler",
