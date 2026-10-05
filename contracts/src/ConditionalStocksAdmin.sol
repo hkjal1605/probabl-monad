@@ -14,23 +14,16 @@ contract ConditionalStocksAdmin is ConditionalStocksBase {
 
     // ---------------------------------------------------------------- governance
 
-    function configure(
-        address marketAdmin_,
-        address guardian_,
-        address resolutionAdmin_,
-        uint16 makerBps,
-        uint16 takerBps
-    ) external {
+    function configure(address marketAdmin_, address guardian_, address resolutionAdmin_) external {
         if (msg.sender != _admin) revert Unauthorized();
         if (marketAdmin_ == address(0) || guardian_ == address(0) || resolutionAdmin_ == address(0))
         {
             revert InvalidAddress();
         }
-        if (makerBps > MAX_FEE_BPS || takerBps > MAX_FEE_BPS) revert FeeCap();
         _marketAdmin = marketAdmin_;
         _resolutionAdmin = resolutionAdmin_;
-        _control = Control(guardian_, _control.paused, makerBps, takerBps);
-        emit Configured(marketAdmin_, guardian_, resolutionAdmin_, makerBps, takerBps);
+        _control = Control(guardian_, _control.paused);
+        emit Configured(marketAdmin_, guardian_, resolutionAdmin_);
     }
 
     /// @notice Starts a delayed admin transfer; a zero successor cancels a pending one.
@@ -77,8 +70,9 @@ contract ConditionalStocksAdmin is ConditionalStocksBase {
         emit PoolListed(token, uint8(decimals), underlying_);
     }
 
-    /// @notice Lists a market in SCHEDULED state. Its terms and Polymarket mapping are immutable.
-    ///         Notional caps are raw quote units; `maxSteps` bounds the order quantity in steps.
+    /// @notice Lists a market in SCHEDULED state. Its terms, fee rates and Polymarket mapping are
+    ///         immutable. Notional caps are raw quote units; `maxSteps` bounds the order quantity
+    ///         in steps.
     function createMarket(MarketParams calldata p, string calldata metadataUri)
         external
         returns (uint32 id)
@@ -92,8 +86,10 @@ contract ConditionalStocksAdmin is ConditionalStocksBase {
                 || keccak256(bytes(metadataUri)) != p.metadataHash || p.cutoff <= p.open
                 || p.cutoff <= block.timestamp
         ) revert InvalidTerms();
+        if (p.makerBps > MAX_FEE_BPS || p.takerBps > MAX_FEE_BPS) revert FeeCap();
         _validateCaps(p);
         id = ++_marketCount;
+        _feeRates[id] = FeeRates(p.makerBps, p.takerBps);
         _terms[id] = Terms({
             base: p.base,
             state: SCHEDULED,
@@ -425,6 +421,10 @@ contract ConditionalStocksAdmin is ConditionalStocksBase {
 
     function fees(uint32 id, uint8 branch) external view returns (Fees memory) {
         return _fees[uint256(id) << 1 | branch];
+    }
+
+    function feeRates(uint32 id) external view returns (FeeRates memory) {
+        return _feeRates[id];
     }
 
     function account(uint32 id, uint8 branch, address owner)

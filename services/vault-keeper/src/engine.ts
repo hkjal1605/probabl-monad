@@ -497,8 +497,8 @@ export class Keeper {
     if (oracle === null) throw new Error("Vault oracle unavailable");
     if (abs(r.spot - oracle) * BPS > oracle * BigInt(set.maxOracleDeviationBps))
       throw new Error("Reference price and the vault oracle disagree");
-    const makerBps = s.config.makerBps;
-    if (makerBps > v.limits.maxFeeBps) throw new Error("Exchange maker fee exceeds the vault cap");
+    const makerBps = m.makerBps;
+    if (makerBps > v.limits.maxFeeBps) throw new Error("Market maker fee exceeds the vault cap");
 
     // Jumps pause quoting for a cooldown; movement widens spreads.
     const record = this.record(market);

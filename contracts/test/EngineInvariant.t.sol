@@ -7,12 +7,12 @@ import { ConditionalStocksBase } from "../src/ConditionalStocksBase.sol";
 import { Base, MockToken, Vm } from "./Base.t.sol";
 
 /// @dev Random activity over two markets that share both token pools: one with the default terms
-///      (exact quote amounts) and one whose step x tick is not a multiple of 1e18 (every quote
-///      amount and reservation rounds). Beyond test/Invariant.t.sol it drives: stale plans,
-///      duplicate and dead makers in plans, self-matches, delegated placement (placeFor), grant
-///      revocation and regeneration, replace, cancelMany, third-party release, fee changes
-///      (0..1000 bps), fee claims, claim transfers, time (order and grant expiry), pauses and
-///      token donations.
+///      (exact quote amounts) and low fee rates, and one whose step x tick is not a multiple of
+///      1e18 (every quote amount and reservation rounds) with fee rates at the 1,000 bps cap.
+///      Beyond test/Invariant.t.sol it drives: stale plans, duplicate and dead makers in plans,
+///      self-matches, delegated placement (placeFor), grant revocation and regeneration, replace,
+///      cancelMany, third-party release, fee claims, claim transfers, time (order and grant
+///      expiry), pauses and token donations.
 contract EngineHandler {
     Vm internal constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
@@ -327,13 +327,6 @@ contract EngineHandler {
         if (to < lastTime) vm.warp(to);
     }
 
-    function setFees(uint256 seed) external {
-        uint16 makerBps = uint16(seed % 4 == 0 ? (seed >> 8) % 1_001 : (seed >> 8) % 50);
-        uint16 takerBps = uint16((seed >> 24) % 4 == 0 ? (seed >> 32) % 1_001 : (seed >> 32) % 50);
-        vm.prank(admin);
-        view_.configure(marketAdmin, guardian, resolver, makerBps, takerBps);
-    }
-
     function claimFees(uint256 seed, uint256 amount) external {
         uint32 id = markets[seed % markets.length];
         uint8 branch = uint8(seed >> 8 & 1);
@@ -368,20 +361,21 @@ contract EngineInvariantTest is Base {
 
     function setUp() public virtual override {
         super.setUp();
+        useFees(7, 13);
         ConditionalStocksBase.MarketParams memory p = params(uint40(T0 - 1), uint40(T0 + 30 days));
         p.tick = TICK2;
         p.step = STEP2;
         p.maxSteps = 3_000_000;
         p.minNotional = 1e4;
         p.metadataHash = keccak256(bytes("ipfs://m2"));
+        p.makerBps = 1_000;
+        p.takerBps = 997;
         vm.prank(marketAdmin);
         uint32 m2 = view_.createMarket(p, "ipfs://m2");
         vm.prank(marketAdmin);
         view_.lifecycle(m2, 0, bytes32(0));
         markets.push(market);
         markets.push(m2);
-        vm.prank(admin);
-        view_.configure(marketAdmin, guardian, resolver, 7, 13);
 
         actors.push(alice);
         actors.push(bob);
@@ -553,7 +547,6 @@ contract EngineInvariantTest is Base {
             else if (a < 79) handler.withdraw(r >> 8, r >> 40);
             else if (a < 84) handler.delegate(r >> 8);
             else if (a < 88) handler.warp(r >> 8);
-            else if (a < 91) handler.setFees(r >> 8);
             else if (a < 94) handler.claimFees(r >> 8, r >> 40);
             else if (a < 96) handler.invalidate(r >> 8 << 3);
             else if (a < 98) handler.pause(r >> 8);

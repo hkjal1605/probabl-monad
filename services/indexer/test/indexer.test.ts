@@ -98,6 +98,8 @@ beforeAll(async () => {
         maxOrder: 10n ** 11n,
         maxWallet: 10n ** 12n,
         maxMarket: 10n ** 13n,
+        makerBps: 0,
+        takerBps: 0,
       },
       "ipfs://m",
     ),
@@ -330,6 +332,8 @@ describe("indexer", () => {
           maxOrder: rest.maxOrder,
           maxWallet: rest.maxWallet,
           maxMarket: rest.maxMarket,
+          makerBps: 15,
+          takerBps: 35,
         },
         "ipfs://m",
       ),
@@ -338,6 +342,16 @@ describe("indexer", () => {
     await settle(
       async () => ((await get("/markets?venues=all")).markets as unknown[]).length === 2,
     );
+    // Each venue serves its own fee rates.
+    const venues = (await get("/markets?venues=all")).markets as {
+      venue: { marketId: string };
+      makerFeeBps: number;
+      takerFeeBps: number;
+    }[];
+    expect(venues.map((m) => [m.venue.marketId, m.makerFeeBps, m.takerFeeBps])).toEqual([
+      ["1", 0, 0],
+      ["2", 15, 35],
+    ]);
     const listed = (await get("/markets")).markets as { id: string; venue: { marketId: string } }[];
     expect(listed.map((m) => [m.id, m.venue.marketId])).toEqual([[id, "1"]]);
     expect(((await get(`/markets/${id}`)).venue as { marketId: string }).marketId).toBe("1");

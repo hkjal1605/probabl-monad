@@ -1,5 +1,6 @@
 "use client";
 
+import { formatBps } from "@conditional-stocks/evm-client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, ClipboardCopy, FileCheck2, LoaderCircle, XCircle } from "lucide-react";
 import { useState } from "react";
@@ -33,6 +34,7 @@ const creationChecks = [
   "condition-id",
   "yes-no-orientation",
   "rules-and-dates",
+  "maker-and-taker-fees",
   "source-and-raw-hash",
 ];
 const resolutionChecks = [
@@ -155,6 +157,9 @@ export function PacketCard({ packet, onDone }: { packet: EvidenceView; onDone: (
               Stock token: {packet.envelope.packet.config.baseToken}
               <br />
               Quote: {packet.envelope.packet.config.quoteToken}
+              <br />
+              Fees: maker {formatBps(Number(packet.envelope.packet.config.makerFeeBps))} · taker{" "}
+              {formatBps(Number(packet.envelope.packet.config.takerFeeBps))}
             </p>
           )}
         </div>

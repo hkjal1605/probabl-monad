@@ -1,7 +1,9 @@
 "use client";
 import {
   type AtomicPlan,
+  formatBps,
   type OrderWire,
+  orderFeeCap,
   parseAtomicPlan,
   parseOrder,
   quote,
@@ -80,8 +82,9 @@ export function useOrderTicket({ market }: { market: MarketView }) {
     }
   };
   const [quantity, setQuantity] = useState(""),
-    [maxFeeBps, setMaxFeeBps] = useState("0"),
     [price, setPrice] = useState(initialMarketPrice);
+  // The market's fees are fixed: an order consents to exactly the rates that can apply to it.
+  const maxFeeBps = orderFeeCap(market.fees, tif === "ioc" ? 1 : 0);
   // Only user-controlled/signed inputs belong to the action identity. Indexed
   // position blocks advance in the background while a submission is in flight;
   // treating those updates as an action change used to cancel valid orders.
@@ -145,6 +148,10 @@ export function useOrderTicket({ market }: { market: MarketView }) {
     )
       throw new Error("Deposit assets and enable trading in Portfolio before placing an order.");
     if (legError) throw new Error(legError);
+    if (permission.grant.maxFeeBps < maxFeeBps)
+      throw new Error(
+        `This market's ${formatBps(maxFeeBps)} fee is above your trading permission's ${formatBps(permission.grant.maxFeeBps)} fee cap. Revoke the trading permission in Portfolio and approve it again to raise the cap.`,
+      );
     assertCurrent();
     const candidate = parseOrder(
       createOrder({
@@ -157,7 +164,7 @@ export function useOrderTicket({ market }: { market: MarketView }) {
         funding,
         // Orders name the on-chain market of the venue they trade on.
         marketId: market.venue.marketId,
-        maxFeeBps: Number(maxFeeBps),
+        maxFeeBps,
         price,
         quantity,
         side,
@@ -369,7 +376,6 @@ export function useOrderTicket({ market }: { market: MarketView }) {
     quantity,
     setQuantity,
     maxFeeBps,
-    setMaxFeeBps,
     price,
     setPrice,
     busy: busy || permissionBusy,

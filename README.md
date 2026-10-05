@@ -50,7 +50,15 @@ instant and unpausable, so anyone can leave during the window.
 **Orders** rest on chain keyed `market << 40 | branch << 32 | seq`. A placement carries a plan built by
 the API from the replica (next sequence, deadline, minimum fill and up to eight makers), is filled
 greedily, and rejects a plan that is stale or would leave a crossed book. `replace` cancels and places
-in one transaction for market makers. Fees carry fractional remainders per order.
+in one transaction for market makers.
+
+**Fees** are set per market: the market admin enters a maker and a taker rate (whole bps, at most
+1,000 = 10%) with each new market, part of its reviewed creation evidence and immutable once created.
+A fill charges the resting order the maker rate and the incoming one the taker rate, on what each
+receives (the buyer in stock claims, the seller in quote claims), and accrues them per market and
+branch for the admin to claim. Every order signs a fee cap: a maker capped below its market's maker
+rate is skipped and a taker capped below the taker rate reverts. Only placements that fill read the
+rates, so resting and cancelling cost nothing extra. Fees carry fractional remainders per order.
 
 **Delegated trading.** A wallet approves the service's trading key once (per-order and lifetime
 quote limits, fee cap, expiry); the API then submits orders for it without a wallet prompt. Retries

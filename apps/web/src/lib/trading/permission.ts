@@ -1,5 +1,5 @@
 import { parseTokenAmount } from "@conditional-stocks/domain";
-import { approveDelegate, DELEGATE_TRADE } from "@conditional-stocks/evm-client";
+import { approveDelegate, DELEGATE_TRADE, MAX_FEE_BPS } from "@conditional-stocks/evm-client";
 import { getAddress } from "viem";
 import { protocolConfig } from "@/config/protocol";
 import type { TradingPermission } from "@/services/trading-permissions";
@@ -13,8 +13,9 @@ const MAX_BASE = (1n << 128n) - 1n;
 
 /** Approval of the service's trading key: every market for 90 days. Buys are bounded in USDC
  * (per order and in total) and sells in shares, so a leaked key can spend at most the USDC
- * limit and sell at most the share limit. Re-approving replaces an earlier approval and
- * invalidates its orders. */
+ * limit and sell at most the share limit. Each market sets its own fee rates, so the fee cap is
+ * the protocol maximum; every order still caps its fee at its market's displayed rates.
+ * Re-approving replaces an earlier approval and invalidates its orders. */
 export function tradingPermissionApproval(input: {
   owner: string;
   permission: TradingPermission;
@@ -65,7 +66,7 @@ export function tradingPermissionApproval(input: {
       totalQuote,
       maxOrderBase,
       totalBase,
-      maxFeeBps: 100,
+      maxFeeBps: MAX_FEE_BPS,
       permissions: DELEGATE_TRADE,
     },
     now,

@@ -1,5 +1,6 @@
 /** Local only: keeps the Δ-vault's mock Chainlink feed at the API's reference price of the
- * vault's stock, as a real feed would, so the vault's price band follows the market.
+ * vault's stock, as a real feed would, so the vault's price band follows the market. It signs
+ * with its own development key, never the admin's, whose transactions it would race.
  *
  *   bun --env-file=.local/anvil.env scripts/evm/feed-relay.ts */
 import { deltaVaultAbi } from "@conditional-stocks/evm-client";
@@ -21,7 +22,7 @@ const client = createPublicClient({ chain, transport: http(rpc) });
 if ((await client.getChainId()) !== foundry.id)
   throw new Error("The feed relay runs on anvil only");
 const wallet = createWalletClient({
-  account: privateKeyToAccount(required("SEED_ADMIN_PRIVATE_KEY") as Hex),
+  account: privateKeyToAccount(required("FEED_RELAY_PRIVATE_KEY") as Hex),
   chain,
   transport: http(rpc),
 });

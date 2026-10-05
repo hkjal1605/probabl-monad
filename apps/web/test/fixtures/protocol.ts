@@ -32,6 +32,7 @@ export const fixtureMarkets: MarketView[] = [
     priceFormat: "raw-unit-ratio-x18",
     baseStep: "1000000000000000",
     priceTickRawX18: "10000",
+    fees: { makerBps: 10, takerBps: 25 },
     base: {
       token: FIXTURE_TOKENS.base,
       decimals: 18,

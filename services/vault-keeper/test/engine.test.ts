@@ -462,6 +462,8 @@ describe("several vaults in one process", () => {
           maxOrder: 10n ** 11n,
           maxWallet: 10n ** 12n,
           maxMarket: 10n ** 13n,
+          makerBps: 25,
+          takerBps: 60,
         },
         "ipfs://m2",
       ),
@@ -515,11 +517,17 @@ describe("several vaults in one process", () => {
     const s = await synced();
     expect(vaultOrders(s, vault, 2).length > 0).toBe(true);
     expect(vaultOrders(s, second, 2).length > 0).toBe(true);
+    // Each quote consents to exactly the market's own 25 bps maker fee.
+    const quoted = [...vaultOrders(s, vault, 2), ...vaultOrders(s, second, 2)];
+    expect(quoted.every((o) => o.maxFeeBps === 25)).toBe(true);
     // Steady state: once warm, an unchanged market costs each vault one eth_call per round (its
-    // snapshot) and nothing else: no nonce, fee or block reads, no second snapshot.
+    // snapshot) and nothing else: no nonce, fee or block reads, no second snapshot. With the
+    // keeper's multicall batching the snapshots stay apart: merged, many vaults' reads would pass
+    // the 24 KB a deployless call can return.
     const calls: string[] = [];
     const counting = createPublicClient({
       chain: node.publicClient.chain,
+      batch: { multicall: { deployless: true, batchSize: tx.DEPLOYLESS_BATCH_SIZE, wait: 5 } },
       transport: custom({
         request: ({ method, params }) => {
           calls.push(method);
@@ -568,5 +576,62 @@ describe("several vaults in one process", () => {
     const orders = vaultOrders(await synced(), vault, 2);
     expect(orders.length > 0).toBe(true);
     expect(orders.every((o) => o.expiry <= chainNow + 600n + 5n)).toBe(true);
+  }, 60_000);
+
+  test("a market whose maker fee is above the vault's fee cap is never quoted", async () => {
+    // 150 bps against the curator's 100 bps cap: every fill would cost more than allowed.
+    await send(
+      node,
+      0,
+      tx.createMarket(
+        protocol.exchange,
+        {
+          base: protocol.stock,
+          condition: keccak256(stringToBytes("condition-3")),
+          yesIndex: 1,
+          noIndex: 2,
+          rulesHash: keccak256(stringToBytes("rules")),
+          metadataHash: keccak256(stringToBytes("ipfs://m3")),
+          open: NOW - 10n,
+          cutoff: NOW + 30n * 86_400n,
+          tick: 10_000n,
+          step: 10n ** 15n,
+          maxSteps: 1_000_000n,
+          minNotional: 1_000_000n,
+          maxOrder: 10n ** 11n,
+          maxWallet: 10n ** 12n,
+          maxMarket: 10n ** 13n,
+          makerBps: 150,
+          takerBps: 150,
+        },
+        "ipfs://m3",
+      ),
+    );
+    await send(node, 0, tx.lifecycle(protocol.exchange, 3, 0, zeroHash));
+    await send(
+      node,
+      0,
+      tx.deltaVaultAddMarket(vault, 3, {
+        bandBps: 1000,
+        cutoffBuffer: 3600,
+        maxOrder: 50_000n * USDC,
+        maxResting: 200_000n * USDC,
+        maxImbalance: 200n * NVDA,
+      }),
+    );
+    const config = settings({
+      vaults: [{ vault, keeper: keeperAccount.address }],
+      model: { anchorBps: 300, impactBps: 50, maxGapBps: 800, orderQuote: "5000" },
+      quoteLevels: 2,
+      pollMs: 1000,
+      ttlSeconds: 300,
+    });
+    await synced();
+    setReference(100n * USDC, 400_000n);
+    await keeperOf(vault, keeperAccount, config).cycle(round());
+    const s = await synced();
+    expect(vaultOrders(s, vault, 3)).toHaveLength(0);
+    // The vault's other market keeps its quotes.
+    expect(vaultOrders(s, vault, 2).length > 0).toBe(true);
   }, 60_000);
 });

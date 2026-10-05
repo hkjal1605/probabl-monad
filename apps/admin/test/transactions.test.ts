@@ -49,6 +49,8 @@ const creation = () =>
       maxOrderNotional: "9007199254740993123",
       maxWalletOpenNotional: "9007199254740993123",
       maxMarketOpenNotional: "18014398509481986246",
+      makerFeeBps: "12",
+      takerFeeBps: "34",
       metadataUri: "ipfs://test",
       rules: "Example",
       tradingOpen: "1800000000",
@@ -111,6 +113,8 @@ test("creation lists an unlisted stock token first and keeps raw uint64 caps exa
   const decoded = decode(create!.data);
   expect(decoded.functionName).toBe("createMarket");
   expect((decoded.args![0] as { maxWallet: bigint }).maxWallet).toBe(9007199254740993123n);
+  // The reviewed fee rates become the market's on-chain rates.
+  expect(decoded.args![0]).toMatchObject({ makerBps: 12, takerBps: 34 });
   expect(create!.from).toBe(marketAdmin);
   listed.add(base);
   expect(verifyAdminPreview(view, preview(view, "create-market"), deployment)).toHaveLength(1);

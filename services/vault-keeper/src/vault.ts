@@ -5,6 +5,7 @@ import {
   type DeltaVaultLimits,
   type DeltaVaultRisk,
   deltaVaultAbi,
+  unbatched,
 } from "@conditional-stocks/evm-client";
 import type { Address, PublicClient } from "viem";
 
@@ -43,19 +44,22 @@ const claims = (c: DeltaVaultClaims): DeltaVaultClaims => ({
 
 /** The vault's quoting state in one eth_call. The terms and exposure of the markets the vault
  * registered at the previous read (`known`) are read along with everything else; only a changed
- * market set (one added, settled or removed since) costs a second call. */
+ * market set (one added, settled or removed since) costs a second call. Each vault reads on its
+ * own: at its 8-market cap a vault's read returns about 9.4 KB, and merged with other vaults'
+ * reads it would pass the 24 KB a deployless multicall can return. */
 export async function readVaultView(
   client: PublicClient,
   vault: VaultIdentity,
   known: readonly number[],
 ): Promise<VaultView> {
   const read = { address: vault.address, abi: deltaVaultAbi } as const;
+  const direct = unbatched(client);
   const terms = (markets: readonly number[]) =>
     markets.flatMap((market) => [
       { ...read, functionName: "market", args: [market] },
       { ...read, functionName: "exposure", args: [market] },
     ]);
-  const results = (await client.multicall({
+  const results = (await direct.multicall({
     allowFailure: true,
     // Deployless: works on chains without a Multicall3 deployment (anvil).
     deployless: true,
@@ -81,7 +85,7 @@ export async function readVaultView(
     details.some((r) => r.status !== "success")
   )
     details = markets.length
-      ? ((await client.multicall({
+      ? ((await direct.multicall({
           allowFailure: true,
           deployless: true,
           contracts: terms(markets) as never,

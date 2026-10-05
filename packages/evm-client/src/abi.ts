@@ -195,18 +195,6 @@ export const conditionalStocksAbi = [
         "type": "address",
         "indexed": false,
         "internalType": "address"
-      },
-      {
-        "name": "makerBps",
-        "type": "uint16",
-        "indexed": false,
-        "internalType": "uint16"
-      },
-      {
-        "name": "takerBps",
-        "type": "uint16",
-        "indexed": false,
-        "internalType": "uint16"
       }
     ],
     "anonymous": false
@@ -531,6 +519,16 @@ export const conditionalStocksAbi = [
             "name": "maxMarket",
             "type": "uint64",
             "internalType": "uint64"
+          },
+          {
+            "name": "makerBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "takerBps",
+            "type": "uint16",
+            "internalType": "uint16"
           }
         ]
       },
@@ -1180,16 +1178,6 @@ export const conditionalStocksAbi = [
         "name": "resolutionAdmin_",
         "type": "address",
         "internalType": "address"
-      },
-      {
-        "name": "makerBps",
-        "type": "uint16",
-        "internalType": "uint16"
-      },
-      {
-        "name": "takerBps",
-        "type": "uint16",
-        "internalType": "uint16"
       }
     ],
     "outputs": [],
@@ -1214,16 +1202,6 @@ export const conditionalStocksAbi = [
             "name": "paused",
             "type": "bool",
             "internalType": "bool"
-          },
-          {
-            "name": "makerBps",
-            "type": "uint16",
-            "internalType": "uint16"
-          },
-          {
-            "name": "takerBps",
-            "type": "uint16",
-            "internalType": "uint16"
           }
         ]
       }
@@ -1313,6 +1291,16 @@ export const conditionalStocksAbi = [
             "name": "maxMarket",
             "type": "uint64",
             "internalType": "uint64"
+          },
+          {
+            "name": "makerBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "takerBps",
+            "type": "uint16",
+            "internalType": "uint16"
           }
         ]
       },
@@ -1436,6 +1424,37 @@ export const conditionalStocksAbi = [
         "name": "activatableAt",
         "type": "uint64",
         "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "feeRates",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct ConditionalStocksBase.FeeRates",
+        "components": [
+          {
+            "name": "makerBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "takerBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          }
+        ]
       }
     ],
     "stateMutability": "view"

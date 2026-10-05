@@ -62,6 +62,8 @@ beforeAll(async () => {
         maxOrder: 10n ** 11n,
         maxWallet: 10n ** 12n,
         maxMarket: 10n ** 13n,
+        makerBps: 15,
+        takerBps: 40,
       },
       "ipfs://m",
     ),
@@ -147,6 +149,8 @@ test("funds claims once, quotes both books, requotes atomically and cancels", as
   const first = owned(s, maker.address, 1);
   expect(first.map((o) => `${o.branch}:${o.side}`).sort()).toEqual(["0:0", "0:1", "1:0", "1:1"]);
   expect(first.every((o) => o.fundingKind === 1 && o.tif === 0)).toBe(true);
+  // Every quote consents to exactly its market's maker fee.
+  expect(first.every((o) => o.maxFeeBps === 15)).toBe(true);
 
   // A 1% move reprices every level through `replace` (one transaction per level).
   spot = 101_000_000n;

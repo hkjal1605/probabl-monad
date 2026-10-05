@@ -3,7 +3,8 @@
  * API transaction preview, checked against a locally built one → signed by the market admin →
  * reconciled (subscribes the Polymarket ingestor) → opened. Each planned event lists the stock
  * tokens it moves; every (event, stock) pair is one market, trading until the event's end.
- * Resumable: progress is written back to the plan file.
+ * A market's maker and taker fees (whole bps, fixed at creation) come from its own `fees`, else
+ * its event's, else the plan's, else none. Resumable: progress is written back to the plan file.
  *
  *   MARKET_ADMIN_PRIVATE_KEY=… RPC_URL=… CHAIN_ID=46630 bun scripts/evm/create-markets.ts */
 import { resolve } from "node:path";
@@ -30,7 +31,13 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
+/** Fee rates in whole bps, as decimal strings (e.g. "25" = 0.25%). */
+interface Fees {
+  makerFeeBps: string;
+  takerFeeBps: string;
+}
 interface MarketRecord {
+  fees?: Fees;
   packetHash?: string;
   marketId?: string;
   transactionHash?: string;
@@ -40,7 +47,9 @@ interface Plan {
   chainId: number;
   api: string;
   tokens: Record<string, `0x${string}`>;
+  fees?: Fees;
   events: {
+    fees?: Fees;
     gammaMarketId: string;
     slug: string;
     question: string;
@@ -60,6 +69,7 @@ const LIMITS = {
   maxWalletOpenNotional: "100000000000",
   maxMarketOpenNotional: "1000000000000",
 };
+const NO_FEES: Fees = { makerFeeBps: "0", takerFeeBps: "0" };
 /** A Polymarket metadata snapshot recorded by the API. */
 type Snapshot = {
   snapshotId: string;
@@ -159,6 +169,7 @@ const checklist = Object.fromEntries(
     "condition-id",
     "yes-no-orientation",
     "rules-and-dates",
+    "maker-and-taker-fees",
     "source-and-raw-hash",
   ].map((key) => [key, true]),
 );
@@ -191,6 +202,7 @@ for (const event of plan.events) {
               baseToken: base,
               quoteToken: quote,
               ...LIMITS,
+              ...(record.fees ?? event.fees ?? plan.fees ?? NO_FEES),
               tradingOpen: String(now - 60),
               tradingCutoff: String(end),
               metadataUri: s.normalized.canonicalUrl,

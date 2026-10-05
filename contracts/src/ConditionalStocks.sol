@@ -67,7 +67,7 @@ contract ConditionalStocks is ConditionalStocksBase {
         _admin = admin_;
         _marketAdmin = marketAdmin_;
         _resolutionAdmin = resolutionAdmin_;
-        _control = Control(guardian_, false, 0, 0);
+        _control = Control(guardian_, false);
         (bool ok, bytes memory data) = quote_.staticcall(abi.encodeWithSelector(0x313ce567));
         if (!ok || data.length < 32) revert InvalidAddress();
         uint256 decimals = abi.decode(data, (uint256));
@@ -75,7 +75,7 @@ contract ConditionalStocks is ConditionalStocksBase {
         _pools[quote_] = Pool(0, uint8(decimals), true);
         emit AdminAccepted(admin_);
         emit PoolListed(quote_, uint8(decimals), bytes32(0));
-        emit Configured(marketAdmin_, guardian_, resolutionAdmin_, 0, 0);
+        emit Configured(marketAdmin_, guardian_, resolutionAdmin_);
     }
 
     /// @notice The immutable module implementing governance, delegation and views.
@@ -187,8 +187,9 @@ contract ConditionalStocks is ConditionalStocksBase {
     ///          resting remainder must not cross an opposite order placed since.
     /// @param m Up to eight maker sequences + 1, 32 bits each from the low end; 0 ends the list.
     ///          Makers fill greedily in order, each capped by what remains. A maker closed,
-    ///          expired, invalidated, delegation-revoked or priced out of its fee cap since
-    ///          planning is skipped.
+    ///          expired, invalidated or delegation-revoked since planning, or whose fee cap is
+    ///          below the market's maker rate, is skipped. The taker's fee cap must cover the
+    ///          market's taker rate.
     /// @return key The order key: market << 40 | branch << 32 | seq.
     function place(uint256 o, uint256 p, uint256 m) external returns (uint256 key) {
         return _place(msg.sender, address(0), o, p, m);
@@ -209,8 +210,7 @@ contract ConditionalStocks is ConditionalStocksBase {
         private
         returns (uint256 key)
     {
-        Control memory c = _control;
-        if (c.paused) revert NotTrading();
+        if (_control.paused) revert NotTrading();
         Taker memory t;
         t.owner = owner;
         t.market = uint32(o);
@@ -259,11 +259,14 @@ contract ConditionalStocks is ConditionalStocksBase {
         t.remaining = quantity;
         uint256 prefix = uint256(t.market) << 40 | t.branch << 32;
         key = prefix | t.seq;
+        // Only a placement that names makers can fill, so only it reads the fee rates.
+        FeeRates memory r;
+        if (uint32(m) != 0) r = _feeRates[t.market];
         for (uint256 i; i < MAX_MAKERS && t.remaining != 0; ++i) {
             uint256 entry = uint32(m >> (32 * i));
             if (entry == 0) break;
             if (entry > nextSeq) revert StalePlan();
-            _fill(t, c, tm.tick, tm.step, prefix | (entry - 1), b);
+            _fill(t, r, tm.tick, tm.step, prefix | (entry - 1), b);
         }
         if (t.filled < uint96(p >> 72)) revert StalePlan();
 
@@ -384,7 +387,7 @@ contract ConditionalStocks is ConditionalStocksBase {
     ///      aggregated in `t` and applied by `_settleTaker`.
     function _fill(
         Taker memory t,
-        Control memory c,
+        FeeRates memory r,
         uint256 tick,
         uint256 step,
         uint256 key,
@@ -395,7 +398,7 @@ contract ConditionalStocks is ConditionalStocksBase {
         if (
             (mo.flags & S_SELL != 0) == t.sell || (t.sell ? mo.ticks < t.ticks : mo.ticks > t.ticks)
         ) revert StalePlan();
-        if (mo.expiry <= block.timestamp || c.makerBps > mo.maxFeeBps) return;
+        if (mo.expiry <= block.timestamp || r.makerBps > mo.maxFeeBps) return;
         Member memory mm = _members[mo.owner];
         address owner = mm.owner;
         if (
@@ -403,7 +406,7 @@ contract ConditionalStocks is ConditionalStocksBase {
                 || (mo.flags & S_DELEGATED != 0
                     && !_delegateLive(key, owner, mo.generation, _traders[owner].delegationEpoch))
         ) return;
-        if (c.takerBps > t.maxFee) revert FeeCap();
+        if (r.takerBps > t.maxFee) revert FeeCap();
 
         uint256 remaining = uint256(mo.steps) * step;
         uint256 q = t.remaining < remaining ? t.remaining : remaining;
@@ -421,8 +424,8 @@ contract ConditionalStocks is ConditionalStocksBase {
         uint256 improvement;
         if (!t.sell) {
             // The taker buys from a resting ask at the ask price.
-            (buyerFee, t.carry) = _fee(q, c.takerBps, t.carry);
-            (sellerFee, mo.carry) = _fee(quoteAmount, c.makerBps, mo.carry);
+            (buyerFee, t.carry) = _fee(q, r.takerBps, t.carry);
+            (sellerFee, mo.carry) = _fee(quoteAmount, r.makerBps, mo.carry);
             improvement =
                 _quoteUp(t.remaining, t.price) - _quoteUp(t.remaining - q, t.price) - quoteAmount;
             a.quote = _u96(a.quote + quoteAmount - sellerFee);
@@ -439,8 +442,8 @@ contract ConditionalStocks is ConditionalStocksBase {
             }
         } else {
             // The taker sells into a resting bid at the bid price; the bid keeps its improvement.
-            (buyerFee, mo.carry) = _fee(q, c.makerBps, mo.carry);
-            (sellerFee, t.carry) = _fee(quoteAmount, c.takerBps, t.carry);
+            (buyerFee, mo.carry) = _fee(q, r.makerBps, mo.carry);
+            (sellerFee, t.carry) = _fee(quoteAmount, r.takerBps, t.carry);
             improvement = makerReduction - quoteAmount;
             a.base = _u96(a.base + q - buyerFee);
             if (makerClaim) a.quote = _u96(a.quote + improvement);

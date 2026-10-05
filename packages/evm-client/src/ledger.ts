@@ -34,6 +34,9 @@ export interface MarketState {
   maxOrder: bigint;
   maxWallet: bigint;
   maxMarket: bigint;
+  /** Fee rates in bps, fixed at creation. */
+  makerBps: number;
+  takerBps: number;
   state: number;
   openNotional: bigint;
   /** Next sequence per branch. */
@@ -91,8 +94,6 @@ export interface Config {
   guardian: Address | null;
   resolutionAdmin: Address | null;
   paused: boolean;
-  makerBps: number;
-  takerBps: number;
 }
 export interface ChainState {
   block: bigint;
@@ -128,8 +129,6 @@ export function emptyState(quote: Address): ChainState {
       guardian: null,
       resolutionAdmin: null,
       paused: false,
-      makerBps: 0,
-      takerBps: 0,
     },
     pools: new Map(),
     credits: new Map(),
@@ -279,9 +278,6 @@ export function applyTransaction(
         s.config.marketAdmin = addr(a.marketAdmin);
         s.config.guardian = addr(a.guardian);
         s.config.resolutionAdmin = addr(a.resolutionAdmin);
-        s.config.makerBps = num(a.makerBps);
-        s.config.takerBps = num(a.takerBps);
-        for (const id of s.markets.keys()) changes.markets.add(id);
         break;
       case "PauseSet":
         s.config.paused = a.paused as boolean;
@@ -336,6 +332,8 @@ export function applyTransaction(
           maxOrder: bi(p.maxOrder),
           maxWallet: bi(p.maxWallet),
           maxMarket: bi(p.maxMarket),
+          makerBps: num(p.makerBps),
+          takerBps: num(p.takerBps),
           state: 1,
           openNotional: 0n,
           seq: [0n, 0n],
@@ -772,7 +770,8 @@ const untag = (value: unknown): unknown =>
         : Object.fromEntries(Object.entries(value).map(([k, v]) => [k, untag(v)]))
       : value;
 
-const CHECKPOINT_VERSION = 2;
+/** 3: markets carry their fee rates. */
+const CHECKPOINT_VERSION = 3;
 
 /** Compact JSON form of a replica (see `restoreState`). */
 export function encodeCheckpoint(s: ChainState): string {

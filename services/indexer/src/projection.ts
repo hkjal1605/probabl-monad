@@ -144,6 +144,9 @@ export function marketView(
     maxOrderNotional: m.maxOrder.toString(),
     maxWalletOpenNotional: m.maxWallet.toString(),
     maxMarketOpenNotional: m.maxMarket.toString(),
+    /** Fee rates in bps, fixed at creation: makers pay the first, takers the second. */
+    makerFeeBps: m.makerBps,
+    takerFeeBps: m.takerBps,
     openNotional: m.openNotional.toString(),
     sequences: { yes: m.seq[0].toString(), no: m.seq[1].toString() },
     quoteToken: s.quote,
@@ -230,7 +233,8 @@ export function liveOrder(
     s.config.paused ||
     m.state !== 2 ||
     m.cutoff <= now ||
-    o.expiry <= now
+    o.expiry <= now ||
+    o.maxFeeBps < m.makerBps
   )
     return false;
   const trader = traderOf(s, o.owner);
@@ -255,7 +259,10 @@ export function bookMidpoints(s: ChainState, now?: bigint) {
     if (!liveOrder(o, s, now)) continue;
     const price = o.ticks * s.markets.get(o.market)!.tick;
     let books = best.get(o.market);
-    if (!books) best.set(o.market, (books = [{}, {}]));
+    if (!books) {
+      books = [{}, {}];
+      best.set(o.market, books);
+    }
     const book = books[o.branch]!;
     if (o.side === 0) book.bid = book.bid === undefined || price > book.bid ? price : book.bid;
     else book.ask = book.ask === undefined || price < book.ask ? price : book.ask;

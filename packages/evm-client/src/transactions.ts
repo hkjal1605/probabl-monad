@@ -179,6 +179,9 @@ export interface MarketParams {
   maxOrder: bigint;
   maxWallet: bigint;
   maxMarket: bigint;
+  /** The market's fee rates in bps (at most `MAX_FEE_BPS`), immutable once created. */
+  makerBps: number;
+  takerBps: number;
 }
 
 /** `underlying` is the bytes32 asset id (`underlyingId("US:NVDA")`); immutable once listed. */
@@ -215,15 +218,11 @@ export const resolve = (
 export const configure = (
   exchange: Address,
   roles: { marketAdmin: Address; guardian: Address; resolutionAdmin: Address },
-  makerBps: number,
-  takerBps: number,
 ) =>
   exchangeCall(exchange, "configure", [
     address(roles.marketAdmin),
     address(roles.guardian),
     address(roles.resolutionAdmin),
-    makerBps,
-    takerBps,
   ]);
 export const pause = (exchange: Address, paused: boolean, reason: Hex) =>
   exchangeCall(exchange, "pause", [paused, reason]);
@@ -258,7 +257,7 @@ const messages: Record<string, string> = {
   InvalidDelegation: "Trading permission is inactive or outside its limits.",
   DelegationInactive: "Trading permission was revoked, expired or replaced.",
   DelegateBudget: "The order exceeds your trading permission allowance.",
-  FeeCap: "The current trading fee exceeds your approved fee limit.",
+  FeeCap: "This market's trading fee exceeds your approved fee limit.",
   NotTrading: "Trading is closed or paused for this market.",
   Expired: "The order expiry is invalid for this market.",
   CapExceeded: "The order exceeds a market or wallet risk limit.",

@@ -11,6 +11,7 @@ import {
   type BatchResult,
   buildBatchPlans,
   defaultMarketCaps,
+  defaultMarketFees,
   MAX_BATCH_MARKETS,
   parseAssetRows,
   prepareMarketBatch,
@@ -19,6 +20,7 @@ import {
   tokenIdentity,
   type VerifiedTokens,
   validateMarketCaps,
+  validateMarketFees,
 } from "../src/lib/market-batch";
 
 const marketAdmin = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
@@ -62,8 +64,8 @@ const shared = {
 const plans = () =>
   buildBatchPlans({
     rows: [
-      { base: nvda, caps: defaultMarketCaps(18, 6) },
-      { base: tsla, caps: defaultMarketCaps(18, 6) },
+      { base: nvda, caps: defaultMarketCaps(18, 6), fees: { makerFeeBps: "5", takerFeeBps: "20" } },
+      { base: tsla, caps: defaultMarketCaps(18, 6), fees: { makerFeeBps: "0", takerFeeBps: "50" } },
     ],
     quote,
     source,
@@ -129,6 +131,29 @@ test("caps outside the contract's integer domains or ordering are rejected", () 
     expect(() => validateMarketCaps({ ...caps, ...change })).toThrow();
 });
 
+test("fee rates are whole bps from 0 to the exchange's 1,000 bps cap", () => {
+  expect(defaultMarketFees()).toEqual({ makerFeeBps: "0", takerFeeBps: "0" });
+  for (const value of ["0", "7", "1000"])
+    expect(() => validateMarketFees({ makerFeeBps: value, takerFeeBps: value })).not.toThrow();
+  for (const value of ["", "-1", "1001", "1.5", "01", "1e3", "abc", "10000"]) {
+    expect(() => validateMarketFees({ makerFeeBps: value, takerFeeBps: "0" })).toThrow(
+      "makerFeeBps",
+    );
+    expect(() => validateMarketFees({ makerFeeBps: "0", takerFeeBps: value })).toThrow(
+      "takerFeeBps",
+    );
+  }
+  const result = resolveRows(verified({ [nvda.address]: { ok: true, token: nvda } }), [
+    {
+      token: nvda.address,
+      caps: defaultMarketCaps(18, 6),
+      fees: { makerFeeBps: "1001", takerFeeBps: "0" },
+    },
+  ]);
+  expect(result.rows).toEqual([]);
+  expect(result.problems[0]![0]).toContain("makerFeeBps");
+});
+
 test("paused, unverified and quote tokens are reported per market before any API write", () => {
   const paused = token(tsla.address, "TSLA", 18, true);
   const result = resolveRows(
@@ -138,10 +163,14 @@ test("paused, unverified and quote tokens are reported per market before any API
       [quote.address]: { ok: true, token: quote },
     }),
     [
-      { token: nvda.address, caps: defaultMarketCaps(18, 6) },
-      { token: tsla.address, caps: defaultMarketCaps(18, 6) },
-      { token: quote.address, caps: defaultMarketCaps(6, 6) },
-      { token: "0x0000000000000000000000000000000000000001", caps: defaultMarketCaps(18, 6) },
+      { token: nvda.address, caps: defaultMarketCaps(18, 6), fees: defaultMarketFees() },
+      { token: tsla.address, caps: defaultMarketCaps(18, 6), fees: defaultMarketFees() },
+      { token: quote.address, caps: defaultMarketCaps(6, 6), fees: defaultMarketFees() },
+      {
+        token: "0x0000000000000000000000000000000000000001",
+        caps: defaultMarketCaps(18, 6),
+        fees: defaultMarketFees(),
+      },
     ],
   );
   expect(result.rows).toEqual([]);
@@ -161,7 +190,9 @@ test("paused, unverified and quote tokens are reported per market before any API
 
 test("an unlisted token needs a catalogued underlying; an already listed one keeps its own", () => {
   const unknown = token("0x0000000000000000000000000000000000000abc", "ZZZZ");
-  const rows = [{ token: unknown.address, caps: defaultMarketCaps(18, 6) }];
+  const rows = [
+    { token: unknown.address, caps: defaultMarketCaps(18, 6), fees: defaultMarketFees() },
+  ];
   const checks = { [unknown.address]: { ok: true as const, token: unknown } };
   expect(resolveRows(verified(checks), rows).problems[0]![0]).toContain("asset catalog");
   const listed = { ...verified(checks), listed: { [unknown.address]: true } };
@@ -176,13 +207,17 @@ test("plans bind one Polymarket condition to each stock token and require the ma
     baseStep: "1000000000000000",
   });
   expect(second!.envelope.packet.config.baseToken).toBe(tsla.address);
+  // Every market of the batch carries its own fee rates into its hash-bound evidence.
+  expect(first!.envelope.packet.config).toMatchObject({ makerFeeBps: "5", takerFeeBps: "20" });
+  expect(second!.envelope.packet.config).toMatchObject({ makerFeeBps: "0", takerFeeBps: "50" });
+  expect(first!.body.config).toMatchObject({ makerFeeBps: "5", takerFeeBps: "20" });
   expect(first!.envelope.packet.polymarket.conditionId).toBe(
     second!.envelope.packet.polymarket.conditionId,
   );
   expect(first!.body.metadataSnapshotId).toBe("snapshot");
   expect(() =>
     buildBatchPlans({
-      rows: [{ base: nvda, caps: defaultMarketCaps(18, 6) }],
+      rows: [{ base: nvda, caps: defaultMarketCaps(18, 6), fees: defaultMarketFees() }],
       quote,
       source,
       shared,
@@ -192,7 +227,7 @@ test("plans bind one Polymarket condition to each stock token and require the ma
   ).toThrow("market-admin");
   expect(() =>
     buildBatchPlans({
-      rows: [{ base: nvda, caps: defaultMarketCaps(18, 6) }],
+      rows: [{ base: nvda, caps: defaultMarketCaps(18, 6), fees: defaultMarketFees() }],
       quote,
       source,
       shared: { ...shared, tradingCutoff: "1" },
@@ -203,8 +238,8 @@ test("plans bind one Polymarket condition to each stock token and require the ma
   expect(() =>
     buildBatchPlans({
       rows: [
-        { base: nvda, caps: defaultMarketCaps(18, 6) },
-        { base: nvda, caps: defaultMarketCaps(18, 6) },
+        { base: nvda, caps: defaultMarketCaps(18, 6), fees: defaultMarketFees() },
+        { base: nvda, caps: defaultMarketCaps(18, 6), fees: defaultMarketFees() },
       ],
       quote,
       source,

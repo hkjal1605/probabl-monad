@@ -2,7 +2,7 @@
  * `/v1` product API in one process, sharing one RPC poller and one in-memory replica. */
 
 import { createDatabase } from "@conditional-stocks/db";
-import { conditionalStocksAbi } from "@conditional-stocks/evm-client";
+import { conditionalStocksAbi, DEPLOYLESS_BATCH_SIZE } from "@conditional-stocks/evm-client";
 import { IndexerService } from "@conditional-stocks/indexer";
 import { MarketDataError } from "@conditional-stocks/market-data";
 import { requestLogging } from "@conditional-stocks/shared/http";
@@ -50,8 +50,9 @@ const transports = rpcUrls.map((url) =>
 );
 const client = createPublicClient({
   chain,
-  // Concurrent contract reads share one Multicall3 eth_call (deployless: works on any chain).
-  batch: { multicall: { deployless: true, batchSize: 16_384, wait: 5 } },
+  // Concurrent contract reads share Multicall3 eth_calls (deployless: works on any chain), each
+  // within the initcode limit.
+  batch: { multicall: { deployless: true, batchSize: DEPLOYLESS_BATCH_SIZE, wait: 5 } },
   transport: transports.length > 1 ? fallback(transports) : transports[0]!,
 });
 // The chain follower reads through one endpoint at a time (each failing over to the rest) and

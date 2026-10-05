@@ -64,13 +64,7 @@ abstract contract ConditionalStocksBase {
 
     // ---------------------------------------------------------------- events
 
-    event Configured(
-        address marketAdmin,
-        address guardian,
-        address resolutionAdmin,
-        uint16 makerBps,
-        uint16 takerBps
-    );
+    event Configured(address marketAdmin, address guardian, address resolutionAdmin);
     event AdminProposed(address indexed successor, uint64 acceptableAfter);
     event AdminAccepted(address indexed admin);
     event PauseSet(bool paused, bytes32 reason);
@@ -133,6 +127,9 @@ abstract contract ConditionalStocksBase {
 
     // ---------------------------------------------------------------- types
 
+    /// @dev `makerBps` and `takerBps` are the market's fee rates, at most MAX_FEE_BPS each: a
+    ///      fill charges its resting side the maker rate and its incoming side the taker rate,
+    ///      on what each receives.
     struct MarketParams {
         address base;
         bytes32 condition;
@@ -149,6 +146,8 @@ abstract contract ConditionalStocksBase {
         uint64 maxOrder;
         uint64 maxWallet;
         uint64 maxMarket;
+        uint16 makerBps;
+        uint16 takerBps;
     }
 
     /// @dev Immutable terms plus lifecycle state; read by every placement (three slots).
@@ -184,6 +183,13 @@ abstract contract ConditionalStocksBase {
     struct Backing {
         uint128 quote;
         uint128 base;
+    }
+
+    /// @dev A market's fee rates, fixed at creation (one slot). Only placements that fill read
+    ///      them.
+    struct FeeRates {
+        uint16 makerBps;
+        uint16 takerBps;
     }
 
     /// @dev Fees accrued in claims of one market branch.
@@ -295,8 +301,6 @@ abstract contract ConditionalStocksBase {
     struct Control {
         address guardian;
         bool paused;
-        uint16 makerBps;
-        uint16 takerBps;
     }
 
     /// @dev A scheduled extension change; `activatableAt` zero means none is pending.
@@ -345,6 +349,7 @@ abstract contract ConditionalStocksBase {
     ///      every deployment.
     mapping(uint32 market => bytes32) internal _eventKeys;
     mapping(address token => bytes32) internal _underlyings;
+    mapping(uint32 market => FeeRates) internal _feeRates;
 
     constructor(address quote_) {
         if (quote_.code.length == 0) revert InvalidAddress();

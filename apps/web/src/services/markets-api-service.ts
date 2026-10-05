@@ -6,6 +6,7 @@ import {
   type ShareUnits,
   tokenDecimals,
 } from "@conditional-stocks/domain";
+import { type FeeRates, isFeeRate } from "@conditional-stocks/evm-client";
 import { polymarketImageUrl } from "@conditional-stocks/market-data";
 import { marketTokenDisplay } from "../lib/tokens/catalog";
 import type {
@@ -138,6 +139,14 @@ export function parseBase(
   };
 }
 
+/** The market's fee rates: a market without valid ones is never shown as tradable. */
+export function parseFees(market: Record<string, unknown>): FeeRates {
+  const { makerFeeBps, takerFeeBps } = market;
+  if (!isFeeRate(makerFeeBps) || !isFeeRate(takerFeeBps))
+    throw new Error("Invalid market fee rates");
+  return { makerBps: makerFeeBps, takerBps: takerFeeBps };
+}
+
 /** Aggregate price levels (or full indexed orders) into one branch book. */
 export function aggregateBook(
   orders: Record<string, unknown>[],
@@ -220,6 +229,7 @@ async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<Mar
       if (!PUBLIC_ID.test(id)) throw new Error("Invalid market id");
       const venue = parseVenue(market.venue);
       const base = parseBase(market);
+      const fees = parseFees(market);
       const quoteToken = address(market.quoteToken, "quote token");
       const condition = text(market.polymarketConditionId).toLowerCase();
       const [attached, book] = await Promise.all([
@@ -279,6 +289,7 @@ async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<Mar
         priceFormat: market.priceFormat,
         baseStep: text(market.baseStep),
         priceTickRawX18: text(market.priceTickRawX18, "1"),
+        fees,
         bookQuality: book.unavailable ? "unavailable" : book.truncated ? "truncated" : "available",
         base: {
           ...base,

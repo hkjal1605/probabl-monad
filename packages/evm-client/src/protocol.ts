@@ -34,6 +34,21 @@ export const ARCHIVED = 7;
 export const DELEGATE_TRADE = 1;
 export const DELEGATE_CANCEL = 2;
 
+/** A market's fee rates in bps, fixed when it is created. A fill charges its resting side the
+ * maker rate and its incoming side the taker rate, on what each receives. */
+export interface FeeRates {
+  makerBps: number;
+  takerBps: number;
+}
+export const isFeeRate = (rate: unknown): rate is number =>
+  Number.isInteger(rate) && (rate as number) >= 0 && (rate as number) <= MAX_FEE_BPS;
+/** The fee cap an order signs to trade a market at its rates: an immediate-or-cancel order only
+ * takes, a resting one may take and then make. */
+export const orderFeeCap = (rates: FeeRates, tif: number) =>
+  tif === 1 ? rates.takerBps : Math.max(rates.makerBps, rates.takerBps);
+/** A bps rate as a percentage: 25 → "0.25%". */
+export const formatBps = (bps: number) => `${bps / 100}%`;
+
 /** Collateral 0 is the deployment quote token, 1 the market's base (stock) token. */
 export const QUOTE = 0;
 export const BASE = 1;

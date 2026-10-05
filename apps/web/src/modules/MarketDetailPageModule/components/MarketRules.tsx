@@ -1,3 +1,4 @@
+import { formatBps } from "@conditional-stocks/evm-client";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import type { MarketView } from "@/types/api";
@@ -15,6 +16,10 @@ export function MarketRules({ market }: { market: MarketView }) {
           [`Stock token · ${market.base.symbol}`, market.base.token],
           ["Quote token", market.quoteToken],
           ["Token decimals", String(market.shareDecimals)],
+          [
+            "Maker / taker fee",
+            `${formatBps(market.fees.makerBps)} / ${formatBps(market.fees.takerBps)}`,
+          ],
         ].map(([label, value]) => (
           <div key={label}>
             <dt className="text-xs font-medium text-muted-foreground">{label}</dt>

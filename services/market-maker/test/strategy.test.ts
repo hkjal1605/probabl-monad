@@ -23,6 +23,8 @@ export const market = {
   maxOrder: 10n ** 11n,
   maxWallet: 10n ** 12n,
   maxMarket: 10n ** 13n,
+  makerBps: 10,
+  takerBps: 30,
   state: 2,
   seq: [0n, 0n],
 } as unknown as MarketState;
@@ -158,7 +160,6 @@ describe("pricing", () => {
       inventory,
       targetBase: 10n ** 19n,
       orderQuote: 2_000n * 10n ** 6n,
-      makerBps: 10,
       movementBps: 0n,
       settings: s,
       best: [{}, { bid: 97_000_000n }],
@@ -187,6 +188,39 @@ describe("pricing", () => {
     expect(equity({ quote: [0n, 0n], base: [10n ** 18n, 10n ** 18n] }, r, 200)).toBe(
       (quote(10n ** 18n, fair[0]) * 600_000n + quote(10n ** 18n, fair[1]) * 400_000n) / PROB,
     );
+  });
+
+  test("each market's own maker fee sets the fee edge of its quotes", () => {
+    const now = Date.now();
+    const ladder = (makerBps: number) =>
+      quotes({
+        market: { ...market, makerBps } as MarketState,
+        reference: {
+          spot: SPOT,
+          probability: 600_000n,
+          spread: 10_000n,
+          observedAt: now,
+          spotAt: now,
+          probabilityAt: now,
+        },
+        gapBps: 200,
+        inventory: {
+          quote: [10_000n * 10n ** 6n, 10_000n * 10n ** 6n],
+          base: [10n ** 19n, 10n ** 19n],
+        },
+        targetBase: 10n ** 19n,
+        orderQuote: 2_000n * 10n ** 6n,
+        movementBps: 0n,
+        settings: s,
+        best: [{}, {}],
+      });
+    const best = (out: ReturnType<typeof ladder>, side: 0 | 1) =>
+      out.filter((q) => q.branch === 0 && q.side === side && q.level === 0).map((q) => q.price)[0]!;
+    const [cheap, dear] = [ladder(10), ladder(100)];
+    // 10 bps stays under the 60 bps spread floor; 100 bps (a 102 bps edge) widens both sides.
+    expect(best(dear, 0)).toBeLessThan(best(cheap, 0));
+    expect(best(dear, 1)).toBeGreaterThan(best(cheap, 1));
+    expect(() => ladder(1_001)).toThrow("Invalid quote inputs");
   });
 
   test("requotes replace stale levels and cancel foreign-shaped orders", () => {

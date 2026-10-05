@@ -20,6 +20,8 @@ const indexed = (m = fixtureMarkets[0]!, patch: Record<string, unknown> = {}) =>
   tradingCutoff: String(Date.parse(m.cutoff) / 1000),
   priceTickRawX18: m.priceTickRawX18,
   baseStep: m.baseStep,
+  makerFeeBps: m.fees.makerBps,
+  takerFeeBps: m.fees.takerBps,
   quoteToken: m.quoteToken,
   quoteTokenDecimals: m.quoteTokenDecimals,
   quoteSymbol: "USDC",
@@ -194,6 +196,7 @@ test("markets require v4 raw-unit semantics and a consistent base token", async 
   });
   expect(read?.lifecycle).toBe("open");
   expect(read?.cutoff).toBe(fixtureMarkets[0]!.cutoff);
+  expect(read?.fees).toEqual({ makerBps: 10, takerBps: 25 });
   const live = fixtureMarkets[0]!.base.live;
   const bad = [
     indexed(undefined, { protocolVersion: 3 }),
@@ -205,6 +208,12 @@ test("markets require v4 raw-unit semantics and a consistent base token", async 
     indexed(undefined, {
       base: { ...indexed().base, live: { ...live, halt: "delisted", tradable: false } },
     }),
+    // A market's fees must be whole bps within the exchange's 1,000 bps cap.
+    indexed(undefined, { makerFeeBps: undefined }),
+    indexed(undefined, { takerFeeBps: "25" }),
+    indexed(undefined, { makerFeeBps: 1_001 }),
+    indexed(undefined, { takerFeeBps: -1 }),
+    indexed(undefined, { makerFeeBps: 2.5 }),
   ];
   for (const market of bad) await expect(readOne(market)).rejects.toThrow();
   // An issuer pause is shown, not hidden.

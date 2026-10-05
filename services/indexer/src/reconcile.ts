@@ -1,6 +1,6 @@
 /** Fail-closed checks of the replica: its own conservation laws, then equality with on-chain
  * storage (pool liabilities, token custody, and every market's book, backing and fees). */
-import { conditionalStocksAbi } from "@conditional-stocks/evm-client";
+import { conditionalStocksAbi, deploylessMulticall } from "@conditional-stocks/evm-client";
 import type { ChainState } from "@conditional-stocks/evm-client/ledger";
 import { type Address, erc20Abi, type PublicClient } from "viem";
 
@@ -110,52 +110,53 @@ export async function reconcile(
       m.fees[1].base,
     ],
   }));
-  const read = (functionName: string, args: unknown[]) =>
-    client.readContract({
-      address: exchange,
-      abi: conditionalStocksAbi,
-      functionName,
-      args,
-      blockNumber,
-    } as never) as Promise<Record<string, bigint | number>>;
-  await Promise.all([
-    ...pools.map(async ({ token, liability }) => {
-      const [onchain, balance] = await Promise.all([
-        read("pool", [token]),
-        client.readContract({
-          address: token,
-          abi: erc20Abi,
-          functionName: "balanceOf",
-          args: [exchange],
-          blockNumber,
-        }),
-      ]);
-      if (BigInt(onchain.liability!) !== liability)
-        issues.push(`replica pool liability differs ${token}`);
-      if (balance < liability) issues.push(`custody shortfall ${token}`);
-    }),
-    ...markets.map(async ({ id, expected }) => {
-      const [book, backing, yes, no] = await Promise.all([
-        read("book", [id]),
-        read("backing", [id]),
-        read("fees", [id, 0]),
-        read("fees", [id, 1]),
-      ]);
-      const actual = [
-        book.openNotional,
-        book.seqYes,
-        book.seqNo,
-        backing.quote,
-        backing.base,
-        yes.quote,
-        yes.base,
-        no.quote,
-        no.base,
-      ].map((v) => BigInt(v!));
-      if (actual.some((value, i) => value !== expected[i]))
-        marketIssues.set(id, `replica market ${id} differs from chain`);
-    }),
-  ]);
+  const exchangeCall = (functionName: string, args: unknown[]) => ({
+    address: exchange,
+    abi: conditionalStocksAbi,
+    functionName,
+    args,
+  });
+  // Every read at the replica's block, in as few calls as the deployless limit allows.
+  const results = (await deploylessMulticall(
+    client,
+    [
+      ...pools.flatMap(({ token }) => [
+        exchangeCall("pool", [token]),
+        { address: token, abi: erc20Abi, functionName: "balanceOf", args: [exchange] },
+      ]),
+      ...markets.flatMap(({ id }) => [
+        exchangeCall("book", [id]),
+        exchangeCall("backing", [id]),
+        exchangeCall("fees", [id, 0]),
+        exchangeCall("fees", [id, 1]),
+      ]),
+    ],
+    { blockNumber },
+  )) as (Record<string, bigint | number> | bigint)[];
+  for (const [i, { token, liability }] of pools.entries()) {
+    const onchain = results[2 * i] as Record<string, bigint>,
+      balance = results[2 * i + 1] as bigint;
+    if (BigInt(onchain.liability!) !== liability)
+      issues.push(`replica pool liability differs ${token}`);
+    if (balance < liability) issues.push(`custody shortfall ${token}`);
+  }
+  for (const [j, { id, expected }] of markets.entries()) {
+    const at = 2 * pools.length + 4 * j;
+    const [book, backing, yes, no] = results.slice(at, at + 4) as Record<string, bigint | number>[];
+    const actual = [
+      book!.openNotional,
+      book!.seqYes,
+      book!.seqNo,
+      backing!.quote,
+      backing!.base,
+      yes!.quote,
+      yes!.base,
+      no!.quote,
+      no!.base,
+    ].map((v) => BigInt(v!));
+    if (actual.some((value, i) => value !== expected[i]))
+      marketIssues.set(id, `replica market ${id} differs from chain`);
+  }
   issues.push(...marketIssues.values());
   return {
     healthy: issues.length === 0,

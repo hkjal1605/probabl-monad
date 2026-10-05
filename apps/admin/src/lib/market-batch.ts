@@ -1,3 +1,4 @@
+import { MAX_FEE_BPS } from "@conditional-stocks/evm-client";
 import type { AdminDeployment } from "@conditional-stocks/evm-client/admin";
 import {
   assertEvidenceIntegrity,
@@ -30,10 +31,17 @@ export interface MarketCaps {
   maxWalletOpenNotional: string;
   maxMarketOpenNotional: string;
 }
-/** One market for one asset: its stock token and caps. */
+/** Fee rates in whole bps (0 to `MAX_FEE_BPS`), fixed at creation: resting orders pay the maker
+ * rate and orders that fill on arrival the taker rate, on what they receive. */
+export interface MarketFees {
+  makerFeeBps: string;
+  takerFeeBps: string;
+}
+/** One market for one asset: its stock token, caps and fee rates. */
 export interface MarketRow {
   base: TokenInfo;
   caps: MarketCaps;
+  fees: MarketFees;
 }
 export interface MarketSource {
   normalized: NormalizedPolymarketMarket;
@@ -130,7 +138,7 @@ export function tokenProblems(check: TokenCheck, quote: TokenInfo, listed = fals
 /** Rows ready for planning (every token verified), or the problems per market. */
 export function resolveRows(
   verified: VerifiedTokens,
-  rows: { token: string; caps: MarketCaps }[],
+  rows: { token: string; caps: MarketCaps; fees: MarketFees }[],
 ): { rows: MarketRow[]; problems: string[][] } {
   const problems: string[][] = [],
     ready: MarketRow[] = [];
@@ -146,8 +154,14 @@ export function resolveRows(
     } catch (error) {
       issues.push(error instanceof Error ? error.message : "Invalid caps");
     }
+    try {
+      validateMarketFees(row.fees);
+    } catch (error) {
+      issues.push(error instanceof Error ? error.message : "Invalid fees");
+    }
     problems.push(issues);
-    if (!issues.length && check.ok) ready.push({ base: check.token, caps: row.caps });
+    if (!issues.length && check.ok)
+      ready.push({ base: check.token, caps: row.caps, fees: row.fees });
   }
   return { rows: problems.some((list) => list.length) ? [] : ready, problems };
 }
@@ -171,6 +185,19 @@ export function defaultMarketCaps(baseDecimals: number, quoteDecimals: number): 
     maxWalletOpenNotional: String(min(100000n * quote, U64)),
     maxMarketOpenNotional: String(min(1000000n * quote, U64)),
   };
+}
+
+/** No fees until the admin enters them. */
+export const defaultMarketFees = (): MarketFees => ({ makerFeeBps: "0", takerFeeBps: "0" });
+
+/** Whole bps up to the exchange's cap, as `createMarket` checks them. */
+export const isFeeBps = (value: string) =>
+  /^(0|[1-9][0-9]{0,3})$/.test(value) && Number(value) <= MAX_FEE_BPS;
+
+export function validateMarketFees(fees: MarketFees) {
+  for (const [name, value] of Object.entries(fees))
+    if (!isFeeBps(value))
+      throw new Error(`${name} must be whole bps from 0 to ${MAX_FEE_BPS} (10%)`);
 }
 
 /** Mirrors the exchange's `createMarket` checks with exact integers, before any API write. */
@@ -242,8 +269,10 @@ export function buildBatchPlans(input: {
     );
     if (problems.length) throw new Error(`Market ${index + 1}: ${problems[0]}`);
     validateMarketCaps(row.caps);
+    validateMarketFees(row.fees);
     const config = {
       ...row.caps,
+      ...row.fees,
       baseToken: row.base.address,
       quoteToken: quote.address,
       tradingOpen: shared.tradingOpen,

@@ -116,11 +116,12 @@ export async function send(node: Anvil, index: number, envelope: Pick<Envelope, 
 }
 
 /** Lists the stock as US:NVDA and opens market 1 on it: $0.01 ticks, 0.001-share steps, cutoff
- * in 30 days. */
+ * in 30 days, and the given fee rates (none by default). */
 export async function openMarket(
   node: Anvil,
   protocol: Awaited<ReturnType<typeof deployProtocol>>,
   now: bigint,
+  fees = { makerBps: 0, takerBps: 0 },
 ) {
   await send(node, 0, listPool(protocol.exchange, protocol.stock, underlyingId("US:NVDA")));
   await send(
@@ -144,6 +145,7 @@ export async function openMarket(
         maxOrder: 10n ** 11n,
         maxWallet: 10n ** 12n,
         maxMarket: 10n ** 13n,
+        ...fees,
       },
       "ipfs://m",
     ),

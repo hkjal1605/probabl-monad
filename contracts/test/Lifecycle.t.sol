@@ -2,7 +2,7 @@
 pragma solidity 0.8.30;
 
 import { ConditionalStocksBase } from "../src/ConditionalStocksBase.sol";
-import { Base } from "./Base.t.sol";
+import { Base, Vm } from "./Base.t.sol";
 
 contract LifecycleTest is Base {
     uint256 internal constant NVDA = 1e18;
@@ -164,8 +164,7 @@ contract LifecycleTest is Base {
     }
 
     function testClaimTransferAndFeeClaim() public {
-        vm.prank(admin);
-        view_.configure(marketAdmin, guardian, resolver, 0, 100);
+        useFees(0, 100);
         _tradeYes();
         ConditionalStocksBase.Fees memory f = view_.fees(market, YES);
         eq(f.base, 4 * NVDA / 100, "taker fee in stock-if-YES");
@@ -192,10 +191,46 @@ contract LifecycleTest is Base {
         ok(view_.admin() == carol, "new admin");
     }
 
-    function testRolesAndFeeBounds() public {
+    function testMarketFeeBounds() public {
+        ConditionalStocksBase.MarketParams memory p = params(uint40(T0), uint40(T0 + 1 days));
+        p.makerBps = 1_001;
         vm.expectRevert(ConditionalStocksBase.FeeCap.selector);
+        vm.prank(marketAdmin);
+        view_.createMarket(p, "ipfs://metadata");
+        p.makerBps = 0;
+        p.takerBps = 1_001;
+        vm.expectRevert(ConditionalStocksBase.FeeCap.selector);
+        vm.prank(marketAdmin);
+        view_.createMarket(p, "ipfs://metadata");
+        p.makerBps = 1_000;
+        p.takerBps = 1_000;
+        vm.prank(marketAdmin);
+        uint32 id = view_.createMarket(p, "ipfs://metadata");
+        ConditionalStocksBase.FeeRates memory r = view_.feeRates(id);
+        eq(r.makerBps, 1_000, "maker rate at the cap");
+        eq(r.takerBps, 1_000, "taker rate at the cap");
+    }
+
+    function testMarketCreatedAnnouncesFeeRates() public {
+        ConditionalStocksBase.MarketParams memory p = params(uint40(T0), uint40(T0 + 1 days));
+        p.makerBps = 7;
+        p.takerBps = 13;
+        vm.recordLogs();
+        vm.prank(marketAdmin);
+        uint32 id = view_.createMarket(p, "ipfs://metadata");
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        eq(logs.length, 1, "one event");
+        eq(uint256(logs[0].topics[1]), id, "market id");
+        (ConditionalStocksBase.MarketParams memory announced,) =
+            abi.decode(logs[0].data, (ConditionalStocksBase.MarketParams, string));
+        eq(announced.makerBps, 7, "announced maker rate");
+        eq(announced.takerBps, 13, "announced taker rate");
+    }
+
+    function testRoleBounds() public {
+        vm.expectRevert(ConditionalStocksBase.Unauthorized.selector);
         vm.prank(admin);
-        view_.configure(marketAdmin, guardian, resolver, 1_001, 0);
+        view_.createMarket(params(uint40(T0), uint40(T0 + 1 days)), "ipfs://metadata");
         vm.expectRevert(ConditionalStocksBase.Unauthorized.selector);
         vm.prank(marketAdmin);
         view_.pause(true, keccak256("x"));

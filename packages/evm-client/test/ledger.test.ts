@@ -124,6 +124,8 @@ beforeAll(async () => {
         maxOrder: 100_000_000_000n,
         maxWallet: 1_000_000_000_000n,
         maxMarket: 10_000_000_000_000n,
+        makerBps: 7,
+        takerBps: 13,
       },
       uri,
     ),
@@ -139,16 +141,11 @@ beforeAll(async () => {
   );
   await send(
     0,
-    tx.configure(
-      exchange,
-      {
-        marketAdmin: accounts[0]!.address,
-        guardian: accounts[0]!.address,
-        resolutionAdmin: accounts[0]!.address,
-      },
-      7,
-      13,
-    ),
+    tx.configure(exchange, {
+      marketAdmin: accounts[0]!.address,
+      guardian: accounts[0]!.address,
+      resolutionAdmin: accounts[0]!.address,
+    }),
   );
   for (const [i, user] of users.entries()) {
     const w = node.wallet(i + 1);
@@ -358,6 +355,12 @@ describe("ledger replica", () => {
       (await read("underlying", [stock])) as unknown as `0x${string}`,
     );
     const market = state.markets.get(1)!;
+    const rates = await read("feeRates", [1]);
+    expect([market.makerBps, market.takerBps]).toEqual([7, 13]);
+    expect([market.makerBps, market.takerBps]).toEqual([
+      Number(rates.makerBps),
+      Number(rates.takerBps),
+    ]);
     const book = await read("book", [1]);
     expect([market.openNotional, market.seq[0], market.seq[1]]).toEqual([
       BigInt(book.openNotional!),

@@ -45,7 +45,9 @@ test("trade ticket defaults build one deployment-wide, bounded 90-day approval",
     10_000_000_000n,
     10n * 10n ** 18n,
     100n * 10n ** 18n,
-    100,
+    // Markets set their own fees: the approval allows up to the protocol maximum, and each
+    // order caps its fee at its market's rates.
+    1_000,
     1,
   ]);
   expect(DEFAULT_MAX_ORDER_QUOTE).toBe("1000");

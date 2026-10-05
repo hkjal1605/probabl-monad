@@ -165,13 +165,17 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     return check;
   };
   /** Reads on-chain roles and confirms the wallet's chain; an interactive check asks the
-   * wallet to switch to the deployment's chain. */
-  const verifyNetwork = async (interactive = false) => {
+   * wallet to switch to the deployment's chain. A recheck (before a transaction) keeps the
+   * roles and chain verified earlier until it completes, so the signed-in page stays mounted
+   * with its state; a failed recheck clears them. */
+  const verifyNetwork = async (interactive = false, recheck = false) => {
     const request = ++networkRequest.current,
       owner = identity.current;
     const current = () => request === networkRequest.current && owner === identity.current;
-    setOperators(null);
-    setChainId(null);
+    if (!recheck) {
+      setOperators(null);
+      setChainId(null);
+    }
     setNetworkError(null);
     setCheckingNetwork(true);
     try {
@@ -193,12 +197,17 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         throw new Error(`Switch the operator wallet to ${adminConfig.chainName}.`);
       return addresses;
     } catch (error) {
-      if (current())
+      if (current()) {
+        if (recheck) {
+          setOperators(null);
+          setChainId(null);
+        }
         setNetworkError(
           error instanceof Error
             ? error.message
             : "Unable to verify on-chain operator roles. Retry the connection.",
         );
+      }
       throw error;
     } finally {
       if (current()) setCheckingNetwork(false);
@@ -360,7 +369,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     setSigning(true);
     try {
       const check = captureContext();
-      await verifyNetwork(true);
+      await verifyNetwork(true, true);
       await preflightTransaction(transaction);
       check();
       const hash = (await currentWallet().request({

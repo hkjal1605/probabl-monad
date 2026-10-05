@@ -203,10 +203,11 @@ export function TradingPermissionCard() {
             <DialogTitle>Approve trading</DialogTitle>
             <DialogDescription>
               Let the protocol trading key place orders across your markets for up to 90 days. It
-              pays network fees and cannot withdraw your vault funds. Its trading-fee cap is 1%.
-              Buys count against the USDC limits and sells against the share limits, whatever their
-              price. Limits are charged when orders are placed and are not restored by cancelling
-              them.
+              pays network fees and cannot withdraw your vault funds. Each market sets its own
+              trading fees, up to the protocol maximum of 10%, and every order is capped at its
+              market's displayed fee. Buys count against the USDC limits and sells against the share
+              limits, whatever their price. Limits are charged when orders are placed and are not
+              restored by cancelling them.
             </DialogDescription>
           </DialogHeader>
           <FieldSet disabled={busy}>

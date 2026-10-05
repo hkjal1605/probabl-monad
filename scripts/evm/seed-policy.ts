@@ -20,6 +20,15 @@ export const MARKET_TICKERS = [
 ] as const;
 export type SeedTicker = (typeof MARKET_TICKERS)[number];
 
+/** Demo fee rates in whole bps, by category, so the local catalogue shows markets with
+ * different maker and taker fees. Every maker rate stays within the demo Δ-vault's 1% fee cap. */
+export const DEMO_FEES: Record<SeedCategory, { makerFeeBps: string; takerFeeBps: string }> = {
+  Macro: { makerFeeBps: "0", takerFeeBps: "10" },
+  Earnings: { makerFeeBps: "5", takerFeeBps: "25" },
+  Policy: { makerFeeBps: "10", takerFeeBps: "30" },
+  Other: { makerFeeBps: "0", takerFeeBps: "0" },
+};
+
 export interface SeedMarket {
   category: SeedCategory;
   gammaMarketId: string;

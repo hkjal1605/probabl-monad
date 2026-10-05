@@ -1,6 +1,7 @@
 "use client";
 
 import { formatShareAmount, formatTokenAmount } from "@conditional-stocks/domain";
+import { formatBps } from "@conditional-stocks/evm-client";
 import { Repeat2Icon, WalletIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -43,6 +44,7 @@ import { usePositions } from "@/hooks/useProtocolData";
 import { formatCompactNumber, formatNumber, formatUsd } from "@/lib/format/display";
 import { stepQuantity } from "@/lib/markets/base";
 import { bestPriceFor, marketPriceBound, quantityForSpend } from "@/lib/trading/entry";
+import { takerFee } from "@/lib/trading/order";
 import type { MarketView } from "@/types/api";
 
 export function OrderTicket({ market }: { market: MarketView }) {
@@ -123,6 +125,8 @@ export function OrderTicket({ market }: { market: MarketView }) {
           ? `${quantityLabel} ${unitSymbol} claim`
           : "No payout (active claim only)";
   const prepared = t.preparation;
+  const fees = `${formatBps(market.fees.takerBps)} taker · ${formatBps(market.fees.makerBps)} maker`;
+  const fillFee = prepared ? takerFee(prepared.plan, t.side, market.fees.takerBps) : 0n;
   const available = t.available === null ? null : t.available.toString();
   const availableDecimals = t.side === "buy" ? market.quoteTokenDecimals : market.base.decimals;
   const balanceError = !positions.isDataFresh;
@@ -526,6 +530,17 @@ export function OrderTicket({ market }: { market: MarketView }) {
                       />
                     </>
                   )}
+                  <Row label="Trading fees" value={fees} />
+                  {fillFee > 0n && (
+                    <Row
+                      label="Fee on fill now"
+                      value={
+                        t.side === "buy"
+                          ? `≈ ${formatShareAmount(fillFee, market)} ${market.ticker}`
+                          : `≈ ${formatTokenAmount(fillFee, market.quoteTokenDecimals)} ${quoteSymbol}`
+                      }
+                    />
+                  )}
                 </section>
                 {!prepared.funding.balanceSufficient && (
                   <Alert variant="destructive">
@@ -540,6 +555,7 @@ export function OrderTicket({ market }: { market: MarketView }) {
         </FieldSet>
       </CardContent>
       <CardFooter className="-mt-1 flex-col items-stretch gap-3 border-t-0 pt-0">
+        <p className="text-xs leading-4 text-muted-foreground">Trading fees: {fees}</p>
         <div className="grid grid-cols-2 gap-2 text-xs leading-5">
           <Item variant="outline" size="sm">
             <ItemContent>

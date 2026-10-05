@@ -1,4 +1,4 @@
-import { quote, U96_MAX, U128_MAX, WAD } from "@conditional-stocks/evm-client";
+import { isFeeRate, quote, U96_MAX, U128_MAX, WAD } from "@conditional-stocks/evm-client";
 import type { MarketState } from "@conditional-stocks/evm-client/ledger";
 import type { Reference } from "@conditional-stocks/operator";
 import { abs, BPS, ceil, max, min, PROB, type Settings } from "./config.ts";
@@ -60,7 +60,6 @@ export function quotes(input: {
   /** Reference branch position in raw base units. */
   targetBase: bigint;
   orderQuote: bigint;
-  makerBps: number;
   movementBps: bigint;
   settings: Settings;
   best: Book;
@@ -79,15 +78,13 @@ export function quotes(input: {
     target <= 0n ||
     [...inv.quote, ...inv.base].some((v) => v < 0n || v > U96_MAX) ||
     notional <= 0n ||
-    !Number.isInteger(input.makerBps) ||
-    input.makerBps < 0 ||
-    input.makerBps > 1000
+    !isFeeRate(m.makerBps)
   )
     throw new Error("Invalid quote inputs");
   const fair = fairPrices(r.spot, r.probability, input.gapBps);
   const uncertainty = ceil(r.spread * BigInt(Math.abs(input.gapBps)), PROB);
   // Sellers receive quote net of fees: 1+f is insufficient at large fee rates.
-  const feeEdge = ceil(BigInt(input.makerBps) * BPS, BPS - BigInt(input.makerBps));
+  const feeEdge = ceil(BigInt(m.makerBps) * BPS, BPS - BigInt(m.makerBps));
   const half = max(
     BigInt(s.halfSpreadBps),
     feeEdge + BigInt(s.adverseSelectionBps) + input.movementBps * 2n + uncertainty,

@@ -150,13 +150,28 @@ abstract contract Base {
             minNotional: 1e6,
             maxOrder: 1e11,
             maxWallet: 1e12,
-            maxMarket: 1e13
+            maxMarket: 1e13,
+            makerBps: 0,
+            takerBps: 0
         });
     }
 
     function createMarket(uint40 open, uint40 cutoff) internal returns (uint32 id) {
         vm.prank(marketAdmin);
         id = view_.createMarket(params(open, cutoff), "ipfs://metadata");
+    }
+
+    /// @dev Opens a market with the default terms and these fee rates, and points the order
+    ///      helpers at it.
+    function useFees(uint16 makerBps, uint16 takerBps) internal {
+        ConditionalStocksBase.MarketParams memory p =
+            params(uint40(now_() - 1), uint40(T0 + 30 days));
+        p.makerBps = makerBps;
+        p.takerBps = takerBps;
+        vm.prank(marketAdmin);
+        market = view_.createMarket(p, "ipfs://metadata");
+        vm.prank(marketAdmin);
+        view_.lifecycle(market, 0, bytes32(0));
     }
 
     function fund(address user, uint256 quoteAmount, uint256 baseAmount) internal {

@@ -199,7 +199,7 @@ On the web, the vault page shows what one share holds, and every deposit or with
 
 The keeper can only call `update(market, cancels, places)`, which posts **passive** orders. They never take liquidity and are never immediate-or-cancel. The vault owns them. Every new order must:
 - sit within the market's **band** around the Chainlink price of the stock token (for example 10%),
-- accept at most the vault's **fee cap**,
+- accept at most the vault's **fee cap** (the keeper signs exactly the market's maker fee, and does not quote a market whose maker fee is above the cap),
 - expire within the **order lifetime** (minutes) and before the market's **cutoff buffer**,
 - stay under the **per-order** notional cap.
 
@@ -237,7 +237,7 @@ The keeper implements §2 with one refinement. The depth κ scales with the vaul
 Each cycle, per market, it:
 1. **Reads the inputs.** Spot comes from Robinhood's Stock Token API and p from Polymarket, through the API. The vault's holdings, exposure and limits come from the chain, and the book from its own replica of the exchange.
 2. **Prices the two branches.** δ̂ = δ₀ − impact × (YES − NO stock) ⁄ inventory, bounded by `maxGapBps`. Then Y = s(1 + (1−p)δ̂) and N = s(1 − pδ̂).
-3. **Sets the half-spread.** It is the largest of a floor and the sum of the maker fee edge, an adverse-selection margin, twice the recent price movement, and the probability uncertainty (Polymarket spread × |δ̂|). It widens up to 3× over the last day before quoting stops.
+3. **Sets the half-spread.** It is the largest of a floor and the sum of the market's maker fee edge, an adverse-selection margin, twice the recent price movement, and the probability uncertainty (Polymarket spread × |δ̂|). It widens up to 3× over the last day before quoting stops.
 4. **Builds ladders on both branches.** Each quote stays a margin inside the vault's band, never crosses other traders' orders, and fits the per-order, resting and imbalance caps. Quotes are funded from the branch's claims first, which nets the vault's unpaired positions, and from plain credit after, keeping a withdrawal reserve free.
 5. **Diffs and sends.** It compares the ladders with the resting quotes and sends a single atomic `update`.
 

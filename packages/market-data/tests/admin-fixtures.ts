@@ -28,6 +28,8 @@ export const creationFixture = () =>
       maxOrderNotional: "100000000000",
       maxWalletOpenNotional: "200000000000",
       maxMarketOpenNotional: "400000000000",
+      makerFeeBps: "5",
+      takerFeeBps: "15",
       metadataUri: "ipfs://test-market",
       rules: "Test-only event rules",
       tradingOpen: "1800000000",

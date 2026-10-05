@@ -4,8 +4,19 @@ pragma solidity 0.8.30;
 import { ConditionalStocksBase } from "../src/ConditionalStocksBase.sol";
 import { Base, MockToken } from "./Base.t.sol";
 
+interface VmAccesses {
+    function record() external;
+    function accesses(address target)
+        external
+        returns (bytes32[] memory readSlots, bytes32[] memory writeSlots);
+}
+
 contract TradingTest is Base {
+    VmAccesses internal constant vma =
+        VmAccesses(address(uint160(uint256(keccak256("hevm cheat code")))));
     uint256 internal constant NVDA = 1e18;
+    /// Storage slot of `_feeRates`, from `forge inspect ConditionalStocks storageLayout`.
+    uint256 internal constant FEE_RATES_SLOT = 25;
 
     function _split(address user, uint8 collateral, uint256 amount) internal {
         vm.prank(user);
@@ -72,8 +83,7 @@ contract TradingTest is Base {
     }
 
     function testWholeFundedBidFilledByWholeFundedSellerWithFees() public {
-        vm.prank(admin);
-        view_.configure(marketAdmin, guardian, resolver, 10, 20);
+        useFees(10, 20);
         uint256 bid = rest(carol, NO, false, false, 15_000, 3 * NVDA);
         eq(credit(carol, address(usdc)), 1_000_000e6 - 450e6, "bid escrow");
 
@@ -89,6 +99,71 @@ contract TradingTest is Base {
         eq(f.quote, 3e5, "taker fee");
         eq(view_.backing(market).quote, 150e6, "quote backing");
         eq(view_.backing(market).base, NVDA, "base backing");
+    }
+
+    /// @dev The same trade in two markets: each charges its own maker and taker rates and
+    ///      accrues them in its own fee pools.
+    function testEachMarketChargesItsOwnFeeRates() public {
+        uint32 free = market;
+        useFees(10, 20);
+        uint32 low = market;
+        _split(bob, 1, 10 * NVDA);
+        uint256 ask = rest(bob, YES, true, true, 20_000, NVDA);
+        take(alice, YES, false, false, 20_000, NVDA, one(uint32(ask)));
+        useFees(250, 5);
+        uint32 high = market;
+        _split(bob, 1, 10 * NVDA);
+        ask = rest(bob, YES, true, true, 20_000, NVDA);
+        take(alice, YES, false, false, 20_000, NVDA, one(uint32(ask)));
+
+        ConditionalStocksBase.FeeRates memory r = view_.feeRates(low);
+        eq(r.makerBps, 10, "low maker rate");
+        eq(r.takerBps, 20, "low taker rate");
+        r = view_.feeRates(high);
+        eq(r.makerBps, 250, "high maker rate");
+        eq(r.takerBps, 5, "high taker rate");
+        r = view_.feeRates(free);
+        eq(uint256(r.makerBps) + r.takerBps, 0, "default market is fee-free");
+
+        // The taker (buyer) pays in stock-if-YES, the maker (seller) in quote-if-YES.
+        ConditionalStocksBase.Fees memory f = view_.fees(low, YES);
+        eq(f.base, NVDA * 20 / 10_000, "low taker fee");
+        eq(f.quote, 200e6 * 10 / 10_000, "low maker fee");
+        eq(view_.account(low, YES, alice).base, NVDA - NVDA * 20 / 10_000, "low net stock");
+        eq(view_.account(low, YES, bob).quote, 200e6 - 200e6 * 10 / 10_000, "low net quote");
+        f = view_.fees(high, YES);
+        eq(f.base, NVDA * 5 / 10_000, "high taker fee");
+        eq(f.quote, 200e6 * 250 / 10_000, "high maker fee");
+        eq(view_.account(high, YES, alice).base, NVDA - NVDA * 5 / 10_000, "high net stock");
+        eq(view_.account(high, YES, bob).quote, 200e6 - 200e6 * 250 / 10_000, "high net quote");
+    }
+
+    /// @dev Resting placements and cancels (a market maker's requotes) never read the fee rates;
+    ///      only a placement that fills does.
+    function testOnlyFillingPlacementsReadTheFeeRates() public {
+        useFees(10, 20);
+        bytes32 slot = keccak256(abi.encode(uint256(market), FEE_RATES_SLOT));
+        _split(bob, 1, 10 * NVDA);
+        vma.record();
+        uint256 ask = rest(bob, YES, true, true, 20_000, NVDA);
+        ok(!_reads(slot), "a resting placement reads no fee rates");
+        vma.record();
+        vm.prank(bob);
+        cs.cancel(ask);
+        ok(!_reads(slot), "a cancel reads no fee rates");
+        ask = rest(bob, YES, true, true, 20_000, NVDA);
+        vma.record();
+        take(alice, YES, false, false, 20_000, NVDA, one(uint32(ask)));
+        ok(_reads(slot), "a filling placement reads the fee rates");
+        eq(view_.fees(market, YES).base, NVDA * 20 / 10_000, "and charges them");
+    }
+
+    function _reads(bytes32 slot) internal returns (bool) {
+        (bytes32[] memory reads,) = vma.accesses(address(cs));
+        for (uint256 i; i < reads.length; ++i) {
+            if (reads[i] == slot) return true;
+        }
+        return false;
     }
 
     function testExactStepPricesLeaveNoImprovement() public {
@@ -225,13 +300,14 @@ contract TradingTest is Base {
     }
 
     function testFeeCapsSkipMakerAndRejectTaker() public {
+        useFees(10, 20);
         _split(bob, 1, 10 * NVDA);
+        // Resting places no fill, so a cap below the market's maker rate is accepted...
         O memory lowCap = O(market, YES, true, true, false, 5, uint40(T0 + 1 days), 20_000, NVDA);
         uint256 seq = seqOf(market, YES);
         vm.prank(bob);
         uint256 ask = cs.place(pack(lowCap), plan(seq, now_() + 60, 0), 0);
-        vm.prank(admin);
-        view_.configure(marketAdmin, guardian, resolver, 10, 20);
+        // ...but such a maker never fills.
         take(alice, YES, false, false, 20_000, NVDA, one(uint32(ask)));
         eq(acct(alice, YES).base, 0, "maker priced out of its cap is skipped");
 

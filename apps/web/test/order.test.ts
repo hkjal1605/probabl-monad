@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { createOrder, previewOrder } from "@/lib/trading/order";
+import { orderFeeCap } from "@conditional-stocks/evm-client";
+import { createOrder, previewOrder, takerFee } from "@/lib/trading/order";
 
 const form = {
   shareDecimals: 18,
@@ -24,6 +25,22 @@ describe("order form math", () => {
     for (const value of [-1, 1.5, 1001, Number.NaN, Infinity]) {
       expect(() => createOrder({ ...form, maxFeeBps: value })).toThrow("Maximum fee");
     }
+  });
+  test("orders sign their market's fee rates: the taker rate, plus the maker rate if they rest", () => {
+    const fees = { makerBps: 10, takerBps: 25 };
+    expect(createOrder({ ...form, maxFeeBps: orderFeeCap(fees, 1) }).maxFeeBps).toBe(25);
+    expect(
+      createOrder({
+        ...form,
+        tif: "gtc",
+        maxFeeBps: orderFeeCap({ makerBps: 40, takerBps: 25 }, 0),
+      }).maxFeeBps,
+    ).toBe(40);
+    // A buy pays the taker fee in the stock it receives, a sell in the quote it receives.
+    const plan = { filledQuantity: "2000000000000000000", executionQuote: "400000000" };
+    expect(takerFee(plan, "buy", 25)).toBe(5_000_000_000_000_000n);
+    expect(takerFee(plan, "sell", 25)).toBe(1_000_000n);
+    expect(takerFee(plan, "buy", 0)).toBe(0n);
   });
   test("uses exact raw-unit ratio math for an 18-decimal stock token and 6-decimal USDC", () => {
     expect(previewOrder("2.5", "123.456", form)).toEqual({

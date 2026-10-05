@@ -1,5 +1,6 @@
 "use client";
 
+import { formatBps } from "@conditional-stocks/evm-client";
 import { lifecycleTransaction } from "@conditional-stocks/evm-client/admin";
 import { useQuery } from "@tanstack/react-query";
 import { ClipboardCopy, Snowflake } from "lucide-react";
@@ -37,6 +38,8 @@ interface Market {
   maxMarketOpenNotional: string | null;
   maxOrderNotional: string | null;
   maxWalletOpenNotional: string | null;
+  makerFeeBps: number;
+  takerFeeBps: number;
   state: number;
   tradingOpen: string | null;
   tradingCutoff: string | null;
@@ -148,6 +151,8 @@ function MarketControl({
           <Fact label="Order cap" value={market.maxOrderNotional ?? "—"} />
           <Fact label="Wallet open-order cap" value={market.maxWalletOpenNotional ?? "—"} />
           <Fact label="Market open-order cap" value={market.maxMarketOpenNotional ?? "—"} />
+          <Fact label="Maker fee" value={formatBps(market.makerFeeBps)} />
+          <Fact label="Taker fee" value={formatBps(market.takerFeeBps)} />
         </div>
         {(market.state === 1 ||
           (market.state === 3 && Number(market.tradingCutoff ?? 0) > now)) && (

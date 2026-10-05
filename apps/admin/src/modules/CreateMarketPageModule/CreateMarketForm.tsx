@@ -1,6 +1,7 @@
 "use client";
 
 import { formatTokenAmount } from "@conditional-stocks/domain";
+import { formatBps, MAX_FEE_BPS } from "@conditional-stocks/evm-client";
 import { FileSearch, LoaderCircle, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
@@ -24,9 +25,12 @@ import {
   type BatchResult,
   buildBatchPlans,
   defaultMarketCaps,
+  defaultMarketFees,
+  isFeeBps,
   loadBatchTokens,
   MAX_BATCH_MARKETS,
   type MarketCaps,
+  type MarketFees,
   type MarketSource,
   parseAssetRows,
   prepareMarketBatch,
@@ -46,6 +50,7 @@ interface AssetInput {
 interface AssetRow {
   token: string;
   caps: MarketCaps;
+  fees: MarketFees;
 }
 const label = (value: string) =>
   value.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase());
@@ -62,6 +67,10 @@ const tickText = (tick: string, baseDecimals: number, quoteDecimals: number) => 
   return `≈ ${formatTokenAmount(perToken, quoteDecimals)} quote per token. Quote raw per base raw unit × 10¹⁸; a price increment, not an initial price.`;
 };
 const tokenName = (token: TokenInfo) => token.symbol ?? short(token.address);
+const feeText = (name: keyof MarketFees, bps: string) =>
+  isFeeBps(bps)
+    ? `${formatBps(Number(bps))} of what ${name === "makerFeeBps" ? "a resting (maker) order" : "an order filling on arrival (taker)"} receives.`
+    : `Enter whole bps from 0 to ${MAX_FEE_BPS} (${formatBps(MAX_FEE_BPS)}).`;
 
 export function CreateMarketForm() {
   const admin = useAdmin();
@@ -139,6 +148,7 @@ export function CreateMarketForm() {
           return {
             token,
             caps: defaultMarketCaps(checked?.ok ? checked.token.decimals : 18, info.quote.decimals),
+            fees: defaultMarketFees(),
           };
         }),
       );
@@ -375,11 +385,13 @@ export function CreateMarketForm() {
             {verified && rows.length > 0 && resolved && (
               <Card className="ring-0">
                 <CardHeader>
-                  <CardTitle>3. Review stock tokens, caps and shared timing</CardTitle>
+                  <CardTitle>3. Review stock tokens, caps, fees and shared timing</CardTitle>
                   <p className="text-sm text-muted-foreground">
                     {rows.length} {rows.length === 1 ? "market" : "separate markets"} will share
                     this Polymarket condition. Quantities (step, maximum quantity) are raw units of
-                    each stock token; notional caps are quote raw units. Review every market.
+                    each stock token; notional caps are quote raw units. Maker and taker fees are
+                    whole bps (100 = 1%), set per market and fixed once it is created. Review every
+                    market.
                   </p>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-5">
@@ -472,8 +484,8 @@ export function CreateMarketForm() {
                         {rows.length === 1 ? "market" : "markets"}
                       </strong>
                       I checked every stock token (the right asset, decimals, multiplier), the quote
-                      token, YES/NO orientation, rules, timing, step, tick and caps. Preparing
-                      evidence does not approve or sign transactions.
+                      token, YES/NO orientation, rules, timing, step, tick, caps and maker and taker
+                      fees. Preparing evidence does not approve or sign transactions.
                     </span>
                   </label>
                   <Button
@@ -662,6 +674,24 @@ function AssetMarketReview({
                     ? `${amount(row.caps[name], decimals)} tokens`
                     : `${amount(row.caps[name], quote.decimals)} quote units`}
             </p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        {(Object.keys(row.fees) as (keyof MarketFees)[]).map((name) => (
+          <div key={name}>
+            <Label htmlFor={`market-${index}-${name}`}>{label(name)}</Label>
+            <Input
+              id={`market-${index}-${name}`}
+              className="mt-2 font-mono"
+              inputMode="numeric"
+              value={row.fees[name]}
+              onChange={(event) => {
+                const value = event.target.value;
+                onChange((current) => ({ ...current, fees: { ...current.fees, [name]: value } }));
+              }}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">{feeText(name, row.fees[name])}</p>
           </div>
         ))}
       </div>

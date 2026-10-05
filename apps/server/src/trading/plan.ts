@@ -85,8 +85,8 @@ export function createOrderPlan(indexer: IndexerService) {
       now,
       step: m.step,
       nextSequence: m.seq[order.branch]!,
-      makerFeeBps: s.config.makerBps,
-      takerFeeBps: s.config.takerBps,
+      makerFeeBps: m.makerBps,
+      takerFeeBps: m.takerBps,
     });
     // A resting remainder counts toward the wallet cap, and a resting bid toward the market cap.
     if (order.tif === 0 && BigInt(plan.remainingQuantity) > 0n) {

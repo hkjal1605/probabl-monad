@@ -37,10 +37,11 @@
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "1.20.6",
-    "@types/node": "26.4.1",
     "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "26.4.1",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
+    "happy-dom": "^20.14.5",
     "tailwindcss": "4.3.3",
     "typescript": "7.0.2",
     "wrangler": "4.129.1"

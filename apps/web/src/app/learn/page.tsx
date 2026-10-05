@@ -34,8 +34,9 @@ export default function LearnPage() {
             Buy YES stock with whole USDC and a fill gives you YES stock claims plus complementary
             NO cash claims. Sell with whole stock and you receive cash claims plus complementary
             stock claims. Funding with an existing active claim does not mint an extra complementary
-            claim. Maker and taker fees, if enabled, are deducted from received claims and must fit
-            your signed fee cap.
+            claim. Each market has its own maker and taker fees, fixed when it is created and shown
+            in its rules: a fill deducts them from the claims you receive, and your order's fee cap
+            must cover them.
           </p>
         </section>
         <section>

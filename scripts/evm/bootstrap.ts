@@ -41,7 +41,7 @@ if (await Bun.file(resolve(destination, "anvil.env")).exists())
   );
 
 const MNEMONIC = "test test test test test test test test test test test junk";
-const [admin, alice, bob, maker, faucet, delegate, keeper] = [0, 1, 2, 3, 4, 5, 6].map(
+const [admin, alice, bob, maker, faucet, delegate, keeper, relay] = [0, 1, 2, 3, 4, 5, 6, 7].map(
   (addressIndex) => mnemonicToAccount(MNEMONIC, { addressIndex }),
 );
 const chain = { ...foundry, rpcUrls: { default: { http: [rpc] } } };
@@ -216,6 +216,8 @@ const env = {
   MM_STATE_PATH: resolve(destination, "market-maker/state.json"),
   MM_CONFIG_PATH: resolve(destination, "market-maker.json"),
   SEED_ADMIN_PRIVATE_KEY: key(admin),
+  // Its own key: the relay writes while the admin seeds markets, and one key's nonces collide.
+  FEED_RELAY_PRIVATE_KEY: key(relay),
   DELTA_VAULT_ADDRESSES: vault.address,
   NEXT_PUBLIC_DELTA_VAULTS: vault.address,
   DELTA_VAULT_FEED: feed,

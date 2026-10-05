@@ -11,8 +11,7 @@ contract GasTest is Base {
 
     function setUp() public override {
         super.setUp();
-        vm.prank(admin);
-        view_.configure(marketAdmin, guardian, resolver, 5, 10);
+        useFees(5, 10);
         for (uint256 i; i < 4; ++i) {
             address user = [bob, carol, bot, admin][i];
             if (user == admin) fund(admin, 1_000_000e6, 10_000e18);

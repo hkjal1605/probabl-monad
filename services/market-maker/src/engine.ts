@@ -105,7 +105,6 @@ export function quoteChange(
 export function passiveOrder(
   owner: Address,
   m: MarketState,
-  s: ChainState,
   q: Quote,
   ttl: number,
   now: bigint,
@@ -116,7 +115,7 @@ export function passiveOrder(
     quantity: String(q.quantity),
     limitPriceRawX18: String(q.price),
     expiry: String(min(now + BigInt(ttl), m.cutoff - 1n)),
-    maxFeeBps: s.config.makerBps,
+    maxFeeBps: m.makerBps,
     branch: q.branch,
     side: q.side,
     fundingKind: 1,
@@ -264,7 +263,6 @@ export class Engine {
       inventory: inv,
       targetBase: targetBase(p, u),
       orderQuote: units(p.orderQuote, u.quoteDecimals),
-      makerBps: s.config.makerBps,
       movementBps: BigInt(record.movement ?? "0"),
       settings: this.settings,
       best: foreignBook(s, this.owner, m),
@@ -280,7 +278,7 @@ export class Engine {
     guard: () => boolean,
   ) {
     const now = seconds(),
-      order = passiveOrder(this.owner, m, s, q, this.settings.ttlSeconds, now),
+      order = passiveOrder(this.owner, m, q, this.settings.ttlSeconds, now),
       a = accountOf(s, m.id, q.branch, this.owner);
     // A replaced order of the same ladder releases its reservation into the same claims.
     const released = cancelled
@@ -294,8 +292,8 @@ export class Engine {
       now,
       step: m.step,
       nextSequence: m.seq[q.branch],
-      makerFeeBps: s.config.makerBps,
-      takerFeeBps: s.config.takerBps,
+      makerFeeBps: m.makerBps,
+      takerFeeBps: m.takerBps,
     });
     log("quote", {
       market: m.id,
@@ -362,7 +360,7 @@ export class Engine {
             seconds(),
             this.settings,
             {
-              makerBps: s.config.makerBps,
+              makerBps: m.makerBps,
               epoch: traderOf(s, this.owner).epoch,
               tick: m.tick,
             },
@@ -421,7 +419,7 @@ export class Engine {
                 o.fundingKind !== 1 ||
                 o.tif !== 0 ||
                 o.delegate ||
-                o.maxFeeBps !== s.config.makerBps ||
+                o.maxFeeBps !== market.makerBps ||
                 o.epoch !== epoch,
             )
           )
@@ -456,7 +454,6 @@ export class Engine {
             inventory: inventory(s, this.owner, m),
             targetBase: targetBase(p, u),
             orderQuote: units(p.orderQuote, u.quoteDecimals),
-            makerBps: s.config.makerBps,
             movementBps: 0n,
             settings: this.settings,
             best: [{}, {}],

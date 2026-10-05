@@ -14,6 +14,7 @@ import {
   zeroAddress,
 } from "viem";
 import { deltaVaultAbi } from "./abi.ts";
+import { unbatched } from "./multicall.ts";
 import { type OrderWire, packOrder, packPlan, U128_MAX } from "./protocol.ts";
 import type { Envelope } from "./transactions.ts";
 
@@ -264,13 +265,16 @@ const claims = (c: {
   noBase: c.noBase,
 });
 
-/** The vault in two multicall round trips: configuration and holdings, then its markets. */
+/** The vault in two multicall round trips: configuration and holdings, then its markets. Each
+ * vault reads on its own: at its 8-market cap each read returns about 6 to 7 KB, and merged with
+ * other vaults' reads they would pass the 24 KB a deployless multicall can return. */
 export async function readDeltaVault(
   client: PublicClient,
   vault: Address,
 ): Promise<DeltaVaultState> {
   const address = getAddress(vault);
   const read = { address, abi: deltaVaultAbi } as const;
+  const direct = unbatched(client);
   const [
     exchange,
     quote,
@@ -289,7 +293,7 @@ export async function readDeltaVault(
     limits,
     holdings,
     markets,
-  ] = await client.multicall({
+  ] = await direct.multicall({
     allowFailure: false,
     // Deployless: works on chains without a Multicall3 deployment (anvil).
     deployless: true,
@@ -315,7 +319,7 @@ export async function readDeltaVault(
   });
   const [price, details] = await Promise.all([
     client.readContract({ ...read, functionName: "oraclePrice" }).catch(() => null),
-    client.multicall({
+    direct.multicall({
       allowFailure: false,
       deployless: true,
       contracts: markets.flatMap((id) => [

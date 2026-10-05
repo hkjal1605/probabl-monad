@@ -1,4 +1,5 @@
 import type { ShareUnits } from "@conditional-stocks/domain";
+import type { FeeRates } from "@conditional-stocks/evm-client";
 import type { SpotPrice } from "@conditional-stocks/shared/spot-prices";
 import type { TokenDisplayMetadata } from "../lib/tokens/catalog";
 
@@ -70,6 +71,9 @@ export interface MarketView extends ShareUnits {
   /** Quantity step in raw base units. */
   baseStep: string;
   priceTickRawX18?: string;
+  /** Fee rates in bps, fixed when the market was created: resting orders pay the maker rate
+   * and incoming ones the taker rate, on what they receive. */
+  fees: FeeRates;
   bookQuality?: "available" | "unavailable" | "truncated";
   base: BaseTokenView;
   /** Stable identity of the traded asset (e.g. `asset:NVDA`) used to group sibling markets. */

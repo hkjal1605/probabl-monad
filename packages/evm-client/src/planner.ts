@@ -22,7 +22,7 @@ export interface Candidate {
 export interface AtomicPlan {
   /** Branch sequence observed by the planner; every maker is older. */
   nextSequence: string;
-  /** Fee rates the plan was reviewed at (display only; signed caps bind on chain). */
+  /** The market's fee rates (display only; signed caps bind on chain). */
   makerFeeBps: number;
   takerFeeBps: number;
   /** Maker order keys and their sequences, best price first, FIFO within a price. */
@@ -126,6 +126,9 @@ export function planOrder(input: {
   }
   if (makers.length && taker.maxFeeBps < input.takerFeeBps)
     throw new Error("Order fee cap is below the taker rate");
+  // The contract accepts it, but a maker capped below the rate is skipped by every fill.
+  if (taker.tif === 0 && remaining > 0n && taker.maxFeeBps < input.makerFeeBps)
+    throw new Error("Order fee cap is below the maker rate, so its resting remainder never fills");
   return {
     nextSequence: input.nextSequence.toString(),
     makerFeeBps: input.makerFeeBps,

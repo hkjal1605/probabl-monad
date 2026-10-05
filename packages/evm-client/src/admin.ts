@@ -13,7 +13,7 @@ import {
   stringToBytes,
   zeroHash,
 } from "viem";
-import { resolutionHash } from "./protocol.ts";
+import { isFeeRate, MAX_FEE_BPS, resolutionHash } from "./protocol.ts";
 import { createMarket, type Envelope, lifecycle, listPool, resolve } from "./transactions.ts";
 
 export type AdminAction = "list-pool" | "create-market" | "begin-resolution" | "resolve-market";
@@ -48,6 +48,10 @@ export function creationParams(c: CreationEvidencePacket["config"]) {
     maxQuantity = BigInt(c.maxOrderQuantity);
   if (maxQuantity % step !== 0n || maxQuantity / step > 4_294_967_295n)
     throw new Error("Maximum order quantity must be at most 2^32-1 steps");
+  const makerBps = Number(c.makerFeeBps),
+    takerBps = Number(c.takerFeeBps);
+  if (!isFeeRate(makerBps) || !isFeeRate(takerBps))
+    throw new Error(`Fee rates must be whole bps from 0 to ${MAX_FEE_BPS}`);
   return {
     base: getAddress(c.baseToken),
     condition: c.polymarketConditionId as Hex,
@@ -64,6 +68,8 @@ export function creationParams(c: CreationEvidencePacket["config"]) {
     maxOrder: BigInt(c.maxOrderNotional),
     maxWallet: BigInt(c.maxWalletOpenNotional),
     maxMarket: BigInt(c.maxMarketOpenNotional),
+    makerBps,
+    takerBps,
   };
 }
 

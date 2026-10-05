@@ -8,7 +8,7 @@ import {
   quoteForReservation,
   type ShareUnits,
 } from "@conditional-stocks/domain";
-import type { OrderWire } from "@conditional-stocks/evm-client";
+import type { AtomicPlan, OrderWire } from "@conditional-stocks/evm-client";
 
 export interface OrderFormValues extends ShareUnits {
   baseStep?: string;
@@ -64,6 +64,17 @@ export const previewOrder = (
     };
   }
 };
+
+/** The taker fee of a planned immediate fill, before the order's rounding carry: stock claims
+ * of a buy, quote claims of a sell. */
+export const takerFee = (
+  plan: Pick<AtomicPlan, "filledQuantity" | "executionQuote">,
+  side: "buy" | "sell",
+  takerBps: number,
+) =>
+  ((side === "buy" ? BigInt(plan.filledQuantity) : BigInt(plan.executionQuote)) *
+    BigInt(takerBps)) /
+  10_000n;
 
 export const createOrder = (
   values: OrderFormValues,

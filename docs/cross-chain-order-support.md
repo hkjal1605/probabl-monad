@@ -291,7 +291,7 @@ be expressed exactly on both legs is not made.
   - no release request covers the funds
   - both parties pass issuer eligibility
   - per-user and per-group exposure caps hold
-- **Fees.** Per chain, as today:
+- **Fees.** Per chain, as today, at each leg's market's own maker and taker rates:
   - the buyer's fee is taken in base claims on the stock chain
   - the seller's fee is taken in quote claims on the dollar chain
 

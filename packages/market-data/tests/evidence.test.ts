@@ -29,6 +29,7 @@ describe("admin evidence packets", () => {
       config: {
         baseStep: "1000000000000000000",
         baseToken: "0x0000000000000000000000000000000000000010",
+        makerFeeBps: "10",
         maxMarketOpenNotional: "1000000000000000000000000",
         maxOrderNotional: "1000000000000000000000",
         maxOrderQuantity: "100000000000000000000",
@@ -38,6 +39,7 @@ describe("admin evidence packets", () => {
         priceTickRawX18: "10000000000000000",
         quoteToken: "0x0000000000000000000000000000000000000020",
         rules: metadata.rules,
+        takerFeeBps: "25",
         tradingCutoff: "1800000000",
         tradingOpen: "1700000000",
       },
@@ -60,7 +62,32 @@ describe("admin evidence packets", () => {
     expect(first.packet.config).toMatchObject({
       polymarketNoIndex: "2",
       polymarketYesIndex: "1",
+      makerFeeBps: "10",
+      takerFeeBps: "25",
     });
+    expect(first.packet.schemaVersion).toBe(6);
+    // The fee rates are part of the reviewed, hash-bound terms.
+    expect(
+      buildCreationEvidence({ ...input, config: { ...input.config, takerFeeBps: "26" } })
+        .packetHash,
+    ).not.toBe(first.packetHash);
+    expect(
+      buildCreationEvidence({
+        ...input,
+        config: { ...input.config, makerFeeBps: "0", takerFeeBps: "1000" },
+      }).packet.config,
+    ).toMatchObject({ makerFeeBps: "0", takerFeeBps: "1000" });
+    for (const [field, value, message] of [
+      ["makerFeeBps", "1001", "exceeds 1000 bps"],
+      ["takerFeeBps", "1001", "exceeds 1000 bps"],
+      ["makerFeeBps", "-1", "decimal integer"],
+      ["takerFeeBps", "2.5", "decimal integer"],
+      ["makerFeeBps", undefined, "decimal integer"],
+      ["takerFeeBps", 25, "decimal integer"],
+    ] as const)
+      expect(() =>
+        buildCreationEvidence({ ...input, config: { ...input.config, [field]: value } }),
+      ).toThrow(message);
     assertEvidenceIntegrity(first);
     expect(() =>
       assertEvidenceIntegrity({
@@ -68,6 +95,19 @@ describe("admin evidence packets", () => {
         packet: { ...first.packet, sourceUrls: ["https://attacker.invalid/"] },
       }),
     ).toThrow(MarketDataError);
+    // A fee rate edited after hashing is tampering; an earlier schema cannot authorize anything.
+    expect(() =>
+      assertEvidenceIntegrity({
+        ...first,
+        packet: { ...first.packet, config: { ...first.packet.config, makerFeeBps: "0" } },
+      }),
+    ).toThrow("packet hash");
+    expect(() =>
+      assertEvidenceIntegrity({
+        ...first,
+        packet: { ...first.packet, schemaVersion: 5 as never },
+      }),
+    ).toThrow("Unsupported evidence schema");
   });
 
   test("rejects wrong Polygon network and conflicting outcome evidence", () => {

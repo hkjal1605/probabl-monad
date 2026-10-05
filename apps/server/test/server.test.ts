@@ -121,6 +121,8 @@ beforeAll(async () => {
         maxOrder: 10n ** 11n,
         maxWallet: 10n ** 12n,
         maxMarket: 10n ** 13n,
+        makerBps: 20,
+        takerBps: 50,
       },
       "ipfs://m",
     ),
@@ -172,6 +174,7 @@ test("serves indexed markets and readiness", async () => {
   const { markets } = await call("/markets");
   expect(markets).toHaveLength(1);
   expect(markets[0].base.token).toBe(protocol.stock);
+  expect(markets[0]).toMatchObject({ makerFeeBps: 20, takerFeeBps: 50 });
   expect((await call("/v1/system/readiness?marketId=1")).reason).toBe("ready");
 });
 
@@ -197,9 +200,14 @@ test("custody, owner-signed and delegated trading", async () => {
   );
 
   // Bob rests a sell (stock-if-YES for quote-if-YES) through an owner-signed transaction.
+  // A resting order capped below the market's 20 bps maker fee could never fill.
+  await expect(
+    call("/v1/orders/prepare", { order: order(bob, 1, 2n * NVDA, { maxFeeBps: 19 }) }),
+  ).rejects.toThrow("maker rate");
   const ask = order(bob, 1, 2n * NVDA);
   const planned = await call("/v1/orders/prepare", { order: ask });
   expect(planned.plan.makers).toHaveLength(0);
+  expect(planned.plan).toMatchObject({ makerFeeBps: 20, takerFeeBps: 50 });
   const { transaction } = await call(
     "/v1/orders/transaction",
     { order: ask, plan: planned.plan },
@@ -225,7 +233,11 @@ test("custody, owner-signed and delegated trading", async () => {
     }),
   );
   await settle(async () => (await call(`/v1/trading/permission?owner=${alice}`)).active === true);
-  const bid = order(alice, 0, NVDA, { delegate, tif: 1 });
+  // A taker capped below the market's 50 bps taker fee is refused before any transaction.
+  await expect(
+    call("/v1/orders/prepare", { order: order(alice, 0, NVDA, { tif: 1, maxFeeBps: 49 }) }),
+  ).rejects.toThrow("taker rate");
+  const bid = order(alice, 0, NVDA, { delegate, tif: 1, maxFeeBps: 50 });
   const submitted = await call(
     "/v1/trading/submit",
     { order: bid, clientId: "client-request-1" },
@@ -239,11 +251,15 @@ test("custody, owner-signed and delegated trading", async () => {
   ).toBe(submitted.transactionHash);
   await settle(async () => (await call(`/trades?marketId=1`)).trades.length === 1);
   const [trade] = (await call(`/trades?owner=${alice}`)).trades;
+  // The market's own rates: alice (taker, buyer) pays 50 bps of the stock she receives, bob
+  // (maker, seller) 20 bps of the $100 he receives.
   expect(trade).toMatchObject({
     fillQuantity: NVDA.toString(),
     executionPriceRawX18: PRICE.toString(),
     maker: bob,
     taker: alice,
+    buyerFee: ((NVDA * 50n) / 10_000n).toString(),
+    sellerFee: ((100n * 10n ** 6n * 20n) / 10_000n).toString(),
   });
   const { positions } = await call(`/positions/${alice}`);
   expect(positions.length).toBeGreaterThan(0);

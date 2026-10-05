@@ -40,6 +40,7 @@ const creationChecks = [
   "condition-id",
   "yes-no-orientation",
   "rules-and-dates",
+  "maker-and-taker-fees",
   "source-and-raw-hash",
 ];
 const resolutionChecks = [

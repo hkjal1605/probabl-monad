@@ -1,6 +1,10 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { DELTA_VAULT_ROLES, deltaVaultAbi } from "@conditional-stocks/evm-client";
+import {
+  DELTA_VAULT_ROLES,
+  DEPLOYLESS_BATCH_SIZE,
+  deltaVaultAbi,
+} from "@conditional-stocks/evm-client";
 import { ChainFollower, TokenReader } from "@conditional-stocks/indexer";
 import { apiOrigin, Executor, signer } from "@conditional-stocks/operator";
 import { type Address, createPublicClient, defineChain, getAddress, http } from "viem";
@@ -68,10 +72,11 @@ async function main() {
     nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
     rpcUrls: { default: { http: [rpc] } },
   });
-  // Concurrent reads of every vault share one JSON-RPC batch, and contract reads one multicall.
+  // Concurrent reads of every vault share one JSON-RPC batch, and contract reads share deployless
+  // multicalls, each within a deployless call's limits. Each vault's view is a multicall of its own.
   const client = createPublicClient({
     chain,
-    batch: { multicall: { deployless: true, batchSize: 16_384, wait: 5 } },
+    batch: { multicall: { deployless: true, batchSize: DEPLOYLESS_BATCH_SIZE, wait: 5 } },
     transport: http(rpc, { batch: { wait: 5 }, retryCount: 2 }),
   });
   if ((await client.getChainId()) !== chainId) throw new Error("RPC serves a different chain");

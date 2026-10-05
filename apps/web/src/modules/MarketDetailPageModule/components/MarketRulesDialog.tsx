@@ -1,4 +1,5 @@
 "use client";
+import { formatBps } from "@conditional-stocks/evm-client";
 import { InfoIcon, XIcon } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -65,6 +66,14 @@ export function MarketRulesDialog({ market }: { market: MarketView }) {
             <div className="flex flex-col gap-1">
               <dt className="text-muted-foreground">Trading cutoff</dt>
               <dd>{formatTime(market.cutoff)}</dd>
+            </div>
+            <div className="flex flex-col gap-1">
+              <dt className="text-muted-foreground">Maker fee · resting orders</dt>
+              <dd>{formatBps(market.fees.makerBps)}</dd>
+            </div>
+            <div className="flex flex-col gap-1">
+              <dt className="text-muted-foreground">Taker fee · orders that fill now</dt>
+              <dd>{formatBps(market.fees.takerBps)}</dd>
             </div>
           </dl>
           <Alert role="note" className="p-4">

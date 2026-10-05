@@ -117,8 +117,7 @@ contract InvariantTest is Base {
 
     function setUp() public override {
         super.setUp();
-        vm.prank(admin);
-        view_.configure(marketAdmin, guardian, resolver, 7, 13);
+        useFees(7, 13);
         actors.push(alice);
         actors.push(bob);
         actors.push(carol);

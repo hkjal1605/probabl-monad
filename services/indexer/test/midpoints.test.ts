@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { emptyState } from "@conditional-stocks/evm-client/ledger";
-import { bookMidpoints } from "../src/projection.ts";
+import { bookMidpoints, liveOrder } from "../src/projection.ts";
 
 const QUOTE = "0x00000000000000000000000000000000000000A1";
 
@@ -36,4 +36,28 @@ test("book midpoints: halfway between the best live bid and ask of each branch",
   expect(mids.get(2)).toEqual({ yes: null, no: null });
   // Once the market's trading cutoff passes, nothing is live.
   expect(bookMidpoints(s, 2_000n).size).toBe(0);
+});
+
+test("an order capped below its market's maker fee is not live: every fill skips it", () => {
+  const s = emptyState(QUOTE);
+  s.markets.set(1, { id: 1, state: 2, cutoff: 2_000n, tick: 10n, makerBps: 10 } as never);
+  const order = (side: number, ticks: bigint, maxFeeBps: number) =>
+    ({
+      market: 1,
+      branch: 0,
+      side,
+      ticks,
+      maxFeeBps,
+      status: "open",
+      expiry: 2_000n,
+      owner: "0x00000000000000000000000000000000000000B1",
+      epoch: 0n,
+    }) as never;
+  s.orders.set("1", order(0, 100n, 10));
+  s.orders.set("2", order(1, 120n, 9));
+  expect(liveOrder(s.orders.get("1")!, s, 1_000n)).toBe(true);
+  expect(liveOrder(s.orders.get("2")!, s, 1_000n)).toBe(false);
+  expect(bookMidpoints(s, 1_000n).get(1)).toEqual({ yes: null, no: null });
+  s.orders.set("3", order(1, 120n, 1_000));
+  expect(bookMidpoints(s, 1_000n).get(1)).toEqual({ yes: 1_100n, no: null });
 });

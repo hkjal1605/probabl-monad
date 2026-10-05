@@ -34,6 +34,8 @@ export interface MarketConfigEvidence {
   /** Order step in raw base-token units. */
   baseStep: string;
   baseToken: Address;
+  /** Fee rate of resting orders, in bps of what they receive (0 to `MAX_FEE_BPS`). */
+  makerFeeBps: string;
   maxMarketOpenNotional: string;
   maxOrderNotional: string;
   maxOrderQuantity: string;
@@ -47,6 +49,8 @@ export interface MarketConfigEvidence {
   priceTickRawX18: string;
   quoteToken: Address;
   rulesHash: Hex;
+  /** Fee rate of orders that fill on arrival, in bps of what they receive. */
+  takerFeeBps: string;
   tradingCutoff: string;
   tradingOpen: string;
 }
@@ -71,7 +75,7 @@ export interface CreationEvidencePacket {
   };
   preparedAt: string;
   preparer: Address;
-  schemaVersion: 5;
+  schemaVersion: 6;
   sourceUrls: string[];
 }
 
@@ -145,6 +149,16 @@ const isoTime = (value: unknown, name: string): string => {
   return new Date(parsed).toISOString();
 };
 
+/** The exchange's fee-rate cap (`ConditionalStocksBase.MAX_FEE_BPS`). */
+const MAX_FEE_BPS = 1_000;
+
+const feeBps = (value: unknown, name: string): string => {
+  const bps = decimalInteger(value, name, true);
+  if (BigInt(bps) > BigInt(MAX_FEE_BPS))
+    throw new MarketDataError("INVALID_EVIDENCE", `${name} exceeds ${MAX_FEE_BPS} bps`);
+  return bps;
+};
+
 const secureUrl = (value: unknown, name: string): string => {
   const input = requiredString(value, name, 2_048);
   const url = new URL(input);
@@ -205,6 +219,7 @@ const parseConfig = (
   const config: MarketConfigEvidence = {
     baseStep: decimalInteger(raw.baseStep, "config.baseStep"),
     baseToken: address(raw.baseToken, "config.baseToken"),
+    makerFeeBps: feeBps(raw.makerFeeBps, "config.makerFeeBps"),
     maxMarketOpenNotional: decimalInteger(
       raw.maxMarketOpenNotional,
       "config.maxMarketOpenNotional",
@@ -224,6 +239,7 @@ const parseConfig = (
     priceTickRawX18: decimalInteger(raw.priceTickRawX18, "config.priceTickRawX18"),
     quoteToken: address(raw.quoteToken, "config.quoteToken"),
     rulesHash: keccak256(toBytes(rules)),
+    takerFeeBps: feeBps(raw.takerFeeBps, "config.takerFeeBps"),
     tradingCutoff: decimalInteger(raw.tradingCutoff, "config.tradingCutoff"),
     tradingOpen: decimalInteger(raw.tradingOpen, "config.tradingOpen", true),
   };
@@ -299,7 +315,7 @@ export const buildCreationEvidence = (input: {
     },
     preparedAt: isoTime(input.preparedAt, "preparedAt"),
     preparer: address(input.preparer, "preparer"),
-    schemaVersion: 5,
+    schemaVersion: 6,
     sourceUrls: sourceUrls(input.sourceUrls),
   };
   return { packet, packetHash: hashCanonical(packet) };
@@ -395,7 +411,7 @@ export const assertEvidenceIntegrity = <
   envelope: EvidenceEnvelope<T>,
 ): void => {
   if (
-    (envelope.packet.kind === "market-creation" && envelope.packet.schemaVersion !== 5) ||
+    (envelope.packet.kind === "market-creation" && envelope.packet.schemaVersion !== 6) ||
     (envelope.packet.kind === "market-resolution" && envelope.packet.schemaVersion !== 3)
   ) {
     throw new MarketDataError(

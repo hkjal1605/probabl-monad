@@ -29,7 +29,7 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { foundry } from "viem/chains";
-import { DEMO_MARKET_SEED, validateMarketSeed } from "./seed-policy.ts";
+import { DEMO_FEES, DEMO_MARKET_SEED, validateMarketSeed } from "./seed-policy.ts";
 
 const required = (name: string) => {
   const value = process.env[name];
@@ -93,6 +93,7 @@ const checklist = Object.fromEntries(
     "condition-id",
     "yes-no-orientation",
     "rules-and-dates",
+    "maker-and-taker-fees",
     "source-and-raw-hash",
   ].map((key) => [key, true]),
 );
@@ -133,6 +134,7 @@ for (const event of DEMO_MARKET_SEED) {
                 maxOrderNotional: "10000000000",
                 maxWalletOpenNotional: "100000000000",
                 maxMarketOpenNotional: "1000000000000",
+                ...DEMO_FEES[event.category],
                 tradingOpen: String(now - 60),
                 tradingCutoff: String(end > now + 3600 ? end : now + 90 * 86_400),
                 metadataUri: snapshot!.normalized.canonicalUrl,

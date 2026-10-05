@@ -24,6 +24,8 @@ test("market reads include saved artwork, including legacy raw snapshots, withou
                 ...fixtureMarkets[0],
                 state: 2,
                 polymarketConditionId: fixtureMarkets[0]!.mapping.conditionId,
+                makerFeeBps: fixtureMarkets[0]!.fees.makerBps,
+                takerFeeBps: fixtureMarkets[0]!.fees.takerBps,
               },
             ],
           });
