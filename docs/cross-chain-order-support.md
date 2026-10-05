@@ -294,6 +294,7 @@ be expressed exactly on both legs is not made.
 - **Fees.** Per chain, as today, at each leg's market's own maker and taker rates:
   - the buyer's fee is taken in base claims on the stock chain
   - the seller's fee is taken in quote claims on the dollar chain
+  - the maker's rebate, its market's share of the taker's fee, is paid on the taker fee's chain
 
   This mirrors the existing `Trade` semantics.
 - **Existing on-chain liquidity.** Resting on-chain orders appear as depth. A signed taker order

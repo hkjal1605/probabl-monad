@@ -12,9 +12,17 @@ import {
   encodeCheckpoint,
   restoreState,
   serializeState,
+  tradeDetails,
   transactions,
 } from "../src/ledger.ts";
-import { packMakers, packOrder, packPlan, parseOrderKey, resolutionHash } from "../src/protocol.ts";
+import {
+  makerRebate,
+  packMakers,
+  packOrder,
+  packPlan,
+  parseOrderKey,
+  resolutionHash,
+} from "../src/protocol.ts";
 import * as tx from "../src/transactions.ts";
 import { type Anvil, accounts, deployProtocol, startAnvil, tokenAbi } from "./anvil.ts";
 
@@ -171,6 +179,8 @@ describe("ledger replica", () => {
   test("replaying the log reproduces every on-chain balance, order and book", async () => {
     const { exchange, usdc, stock } = protocol;
     const [alice, bob, carol, dave] = users as [Address, Address, Address, Address];
+    // Makers get a third of each taker fee back; the rate changes between fills below.
+    await send(0, tx.setMakerRebate(exchange, 1, 3_333));
     // Positions and resting liquidity of every funding kind and side.
     await send(2, tx.position(exchange, "split", 1, 1, 50n * NVDA));
     await send(3, tx.position(exchange, "split", 1, 0, 50_000n * 10n ** 6n));
@@ -197,13 +207,15 @@ describe("ledger replica", () => {
       [ask1.seq, ask2.seq],
       true,
     );
-    // Whole-funded GTC sell across both bids with a resting remainder.
+    // Whole-funded GTC sell across both bids with a resting remainder, at a half rebate.
+    await send(0, tx.setMakerRebate(exchange, 1, 5_000));
     await place(
       4,
       order(dave, { branch: 1, side: 1, funding: 0, tif: 0, ticks: 14_000n, qty: 9n * NVDA }),
       [bid1.seq, bid2.seq],
     );
-    // Claim-funded taker sell into a fresh bid; improvement-free exact prices.
+    // Claim-funded taker sell into a fresh bid; improvement-free exact prices; no rebate.
+    await send(0, tx.setMakerRebate(exchange, 1, 0));
     await send(1, tx.position(exchange, "split", 1, 1, 5n * NVDA));
     const bid3 = await place(
       3,
@@ -222,6 +234,7 @@ describe("ledger replica", () => {
       [bid3.seq],
       true,
     );
+    await send(0, tx.setMakerRebate(exchange, 1, 2_500));
     // Delegation: charge, delegated resting order, revocation.
     await send(
       1,
@@ -356,11 +369,25 @@ describe("ledger replica", () => {
     );
     const market = state.markets.get(1)!;
     const rates = await read("feeRates", [1]);
-    expect([market.makerBps, market.takerBps]).toEqual([7, 13]);
-    expect([market.makerBps, market.takerBps]).toEqual([
+    expect([market.makerBps, market.takerBps, market.rebateBps]).toEqual([7, 13, 2_500]);
+    expect([market.makerBps, market.takerBps, market.rebateBps]).toEqual([
       Number(rates.makerBps),
       Number(rates.takerBps),
+      Number(rates.rebateBps),
     ]);
+    // Each trade records the rebate its maker got: the rate in force at that fill, applied to
+    // the taker's fee (balances and fee pools above match the chain only if every one is right).
+    const rebateRates = [3_333, 3_333, 5_000, 5_000, 0];
+    const trades = events.filter((e) => e.name === "Trade");
+    expect(trades.length).toBe(rebateRates.length);
+    for (const [i, e] of trades.entries()) {
+      const fees = BigInt(e.args.fees as bigint);
+      const takerFee =
+        tradeDetails(state, e).takerSide === 0 ? fees & ((1n << 128n) - 1n) : fees >> 128n;
+      expect(e.args.makerRebate).toBe(makerRebate(takerFee, rebateRates[i]!));
+      expect(tradeDetails(state, e).makerRebate).toBe(String(e.args.makerRebate));
+    }
+    expect(trades.filter((e) => (e.args.makerRebate as bigint) > 0n).length).toBe(4);
     const book = await read("book", [1]);
     expect([market.openNotional, market.seq[0], market.seq[1]]).toEqual([
       BigInt(book.openNotional!),

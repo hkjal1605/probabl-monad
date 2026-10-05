@@ -208,7 +208,9 @@ contract ExtensionsTest is Base {
     function testUnknownSelectorsAndDirectModuleCallsRevert() public {
         (bool success,) = address(cs).call(abi.encodeWithSelector(bytes4(0xdeadbeef)));
         ok(!success, "unknown selector");
-        (success,) = cs.module().call(abi.encodeWithSelector(MockExtension.ping.selector));
+        address module_ = view_.module();
+        ok(module_ != address(cs) && module_.code.length != 0, "the module is its own contract");
+        (success,) = module_.call(abi.encodeWithSelector(MockExtension.ping.selector));
         ok(!success, "the module's own storage has no extensions");
     }
 

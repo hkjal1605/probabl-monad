@@ -4,7 +4,9 @@
  * reconciled (subscribes the Polymarket ingestor) → opened. Each planned event lists the stock
  * tokens it moves; every (event, stock) pair is one market, trading until the event's end.
  * A market's maker and taker fees (whole bps, fixed at creation) come from its own `fees`, else
- * its event's, else the plan's, else none. Resumable: progress is written back to the plan file.
+ * its event's, else the plan's, else none; its maker rebate (bps of the taker fee, up to 5,000)
+ * likewise from `makerRebateBps`, set before the market opens and updated on a later run when
+ * the plan changes it. Resumable: progress is written back to the plan file.
  *
  *   MARKET_ADMIN_PRIVATE_KEY=… RPC_URL=… CHAIN_ID=46630 bun scripts/evm/create-markets.ts */
 import { resolve } from "node:path";
@@ -14,6 +16,7 @@ import {
   type AdminTransaction,
   evidenceTransactions,
   lifecycleTransaction,
+  makerRebateTransaction,
   type PacketEnvelope,
   preflightAdmin,
 } from "@conditional-stocks/evm-client/admin";
@@ -38,6 +41,10 @@ interface Fees {
 }
 interface MarketRecord {
   fees?: Fees;
+  /** Maker rebate in bps of the taker fee, as a decimal string (e.g. "2500" = 25%). */
+  makerRebateBps?: string;
+  /** The rebate this script last set on chain. */
+  rebate?: string;
   packetHash?: string;
   marketId?: string;
   transactionHash?: string;
@@ -48,8 +55,10 @@ interface Plan {
   api: string;
   tokens: Record<string, `0x${string}`>;
   fees?: Fees;
+  makerRebateBps?: string;
   events: {
     fees?: Fees;
+    makerRebateBps?: string;
     gammaMarketId: string;
     slug: string;
     question: string;
@@ -283,6 +292,19 @@ for (const event of plan.events) {
             ),
           );
         }
+        await save();
+      }
+      const rebate = record.makerRebateBps ?? event.makerRebateBps ?? plan.makerRebateBps ?? "0";
+      if (rebate !== (record.rebate ?? "0")) {
+        await send(
+          makerRebateTransaction(
+            { chainId, exchange },
+            admin.address,
+            Number(record.marketId),
+            Number(rebate),
+          ),
+        );
+        record.rebate = rebate;
         await save();
       }
       if (!record.opened) {

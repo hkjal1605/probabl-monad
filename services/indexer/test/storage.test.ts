@@ -36,6 +36,7 @@ const maker = getAddress("0x00000000000000000000000000000000000000aa");
 const taker = getAddress("0x00000000000000000000000000000000000000bb");
 const delegate = getAddress("0x00000000000000000000000000000000000000cc");
 const tx = keccak256(stringToBytes("trade"));
+const hex = (value: string) => value.slice(2).toLowerCase();
 const placedTx = keccak256(stringToBytes("placement"));
 
 let pg: Awaited<ReturnType<typeof localDatabase>>;
@@ -140,6 +141,7 @@ test("migrates version 1 storage: trades and closed orders keep their views, oth
     executionQuote: "600000000",
     buyerFee: "11",
     sellerFee: "22",
+    makerRebate: "0", // Trades before version 3 paid none.
     takerSide: 0,
     makerOrderHash: trade.makerKey,
     takerOrderHash: trade.takerKey,
@@ -184,7 +186,8 @@ test("history is idempotent, reads use one index each, and checkpoints advance o
     price: 2n * 10n ** 8n,
     quote: 2n * 10n ** 8n,
     buyerFee: 0n,
-    sellerFee: 1n,
+    sellerFee: 4n,
+    makerRebate: block % 3n,
     maker: owner.toLowerCase(),
     taker: taker.toLowerCase(),
   });
@@ -195,7 +198,12 @@ test("history is idempotent, reads use one index each, and checkpoints advance o
   const batch = { trades, orders: [], checkpoint: { block: "159", hash: "0xab", state } };
   await db.persistFinalized(other, batch);
   await db.persistFinalized(other, batch); // A replayed batch writes nothing.
-  expect(await db.trades(other, { limit: 1000 })).toHaveLength(60);
+  const all = await db.trades(other, { limit: 1000 });
+  expect(all).toHaveLength(60);
+  // Every column round-trips, the maker rebate included.
+  expect([...all].reverse()).toEqual(
+    trades.map((t) => ({ ...t, maker: t.maker.toLowerCase(), taker: t.taker.toLowerCase() })),
+  );
   const newest = await db.trades(other, { markets: [1, 2], limit: 5 });
   expect(newest.map((t) => t.block)).toEqual([159n, 157n, 156n, 154n, 153n]);
   const mine = await db.trades(other, { owner: maker, markets: [2], limit: 100 });
@@ -266,6 +274,50 @@ test("history is idempotent, reads use one index each, and checkpoints advance o
   } finally {
     client.release();
   }
+}, 30_000);
+
+test("migrates version 2 storage: earlier trades read back with no maker rebate", async () => {
+  const d = "31337:0x00000000000000000000000000000000000000E5";
+  await db.registerDeployment(d);
+  const before = {
+    block: 7n,
+    logIndex: 1,
+    blockTime: 1_800_000_007n,
+    tx: keccak256(stringToBytes("v2 trade")),
+    market: 1,
+    branch: 1,
+    takerSide: 0,
+    makerSeq: 3n,
+    takerSeq: 4n,
+    quantity: 10n ** 18n,
+    price: 2n * 10n ** 8n,
+    quote: 2n * 10n ** 8n,
+    buyerFee: 5n,
+    sellerFee: 0n,
+    makerRebate: 0n,
+    maker: maker.toLowerCase(),
+    taker: taker.toLowerCase(),
+  };
+  // A version 2 database: the trades table without the rebate column.
+  await pool.query("ALTER TABLE probabl.trades DROP COLUMN maker_rebate");
+  await pool.query("UPDATE probabl.schema_version SET version = 2");
+  await pool.query(
+    `INSERT INTO probabl.trades (deployment, block, log_index, block_time, market, branch,
+      taker_side, maker_seq, taker_seq, quantity, price, quote, buyer_fee, seller_fee, tx, maker,
+      taker)
+    VALUES ((SELECT id FROM probabl.deployments WHERE domain = $1), 7, 1, 1800000007, 1, 1, 0, 3,
+      4, $2, 200000000, 200000000, 5, 0, decode($3, 'hex'), decode($4, 'hex'), decode($5, 'hex'))`,
+    [d, (10n ** 18n).toString(), before.tx.slice(2), hex(maker), hex(taker)],
+  );
+  await db.initialize();
+  await db.initialize(); // Idempotent once migrated.
+  await db.verify();
+  expect((await pool.query("SELECT version FROM probabl.schema_version")).rows[0].version).toBe(3);
+  expect(await db.trades(d, { limit: 10 })).toEqual([before]);
+  // New trades record their rebates beside the migrated ones.
+  const after = { ...before, block: 8n, tx: keccak256(stringToBytes("v3 trade")), makerRebate: 2n };
+  await db.persistFinalized(d, { trades: [after], orders: [] });
+  expect(await db.trades(d, { limit: 10 })).toEqual([after, before]);
 }, 30_000);
 
 test("market prices: a minute's first record is kept, read back as each interval's last", async () => {

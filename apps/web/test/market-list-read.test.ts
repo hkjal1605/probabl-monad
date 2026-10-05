@@ -22,6 +22,7 @@ const indexed = (m = fixtureMarkets[0]!, patch: Record<string, unknown> = {}) =>
   baseStep: m.baseStep,
   makerFeeBps: m.fees.makerBps,
   takerFeeBps: m.fees.takerBps,
+  makerRebateBps: m.makerRebateBps,
   quoteToken: m.quoteToken,
   quoteTokenDecimals: m.quoteTokenDecimals,
   quoteSymbol: "USDC",
@@ -197,6 +198,10 @@ test("markets require v4 raw-unit semantics and a consistent base token", async 
   expect(read?.lifecycle).toBe("open");
   expect(read?.cutoff).toBe(fixtureMarkets[0]!.cutoff);
   expect(read?.fees).toEqual({ makerBps: 10, takerBps: 25 });
+  expect(read?.makerRebateBps).toBe(2_000);
+  // An API that does not serve the rebate yet means none.
+  const [older] = await readOne(indexed(undefined, { makerRebateBps: undefined }));
+  expect(older?.makerRebateBps).toBe(0);
   const live = fixtureMarkets[0]!.base.live;
   const bad = [
     indexed(undefined, { protocolVersion: 3 }),
@@ -214,6 +219,10 @@ test("markets require v4 raw-unit semantics and a consistent base token", async 
     indexed(undefined, { makerFeeBps: 1_001 }),
     indexed(undefined, { takerFeeBps: -1 }),
     indexed(undefined, { makerFeeBps: 2.5 }),
+    // And its maker rebate whole bps of the taker fee, at most half of it.
+    indexed(undefined, { makerRebateBps: 5_001 }),
+    indexed(undefined, { makerRebateBps: 12.5 }),
+    indexed(undefined, { makerRebateBps: "2000" }),
   ];
   for (const market of bad) await expect(readOne(market)).rejects.toThrow();
   // An issuer pause is shown, not hidden.

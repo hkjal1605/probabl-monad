@@ -431,6 +431,25 @@ export const conditionalStocksAbi = [
   },
   {
     "type": "event",
+    "name": "MakerRebateSet",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "uint32",
+        "indexed": true,
+        "internalType": "uint32"
+      },
+      {
+        "name": "rebateBps",
+        "type": "uint16",
+        "indexed": false,
+        "internalType": "uint16"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "MarketCreated",
     "inputs": [
       {
@@ -1453,6 +1472,11 @@ export const conditionalStocksAbi = [
             "name": "takerBps",
             "type": "uint16",
             "internalType": "uint16"
+          },
+          {
+            "name": "rebateBps",
+            "type": "uint16",
+            "internalType": "uint16"
           }
         ]
       }
@@ -2154,6 +2178,24 @@ export const conditionalStocksAbi = [
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "setMakerRebate",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "name": "rebateBps",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",

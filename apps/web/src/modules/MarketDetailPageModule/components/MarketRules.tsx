@@ -1,6 +1,7 @@
 import { formatBps } from "@conditional-stocks/evm-client";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { makerRebateText } from "@/lib/trading/order";
 import type { MarketView } from "@/types/api";
 export function MarketRules({ market }: { market: MarketView }) {
   return (
@@ -20,6 +21,7 @@ export function MarketRules({ market }: { market: MarketView }) {
             "Maker / taker fee",
             `${formatBps(market.fees.makerBps)} / ${formatBps(market.fees.takerBps)}`,
           ],
+          ["Maker rebate", makerRebateText(market)],
         ].map(([label, value]) => (
           <div key={label}>
             <dt className="text-xs font-medium text-muted-foreground">{label}</dt>

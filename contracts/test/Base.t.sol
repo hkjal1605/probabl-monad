@@ -174,6 +174,13 @@ abstract contract Base {
         view_.lifecycle(market, 0, bytes32(0));
     }
 
+    /// @dev Sets the current market's maker rebate: this share of each fill's taker fee, in bps of
+    ///      the fee, goes to the filled maker.
+    function useRebate(uint16 rebateBps) internal {
+        vm.prank(marketAdmin);
+        view_.setMakerRebate(market, rebateBps);
+    }
+
     function fund(address user, uint256 quoteAmount, uint256 baseAmount) internal {
         usdc.mint(user, quoteAmount);
         stock.mint(user, baseAmount);

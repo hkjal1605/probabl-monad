@@ -29,6 +29,16 @@ export const DEMO_FEES: Record<SeedCategory, { makerFeeBps: string; takerFeeBps:
   Other: { makerFeeBps: "0", takerFeeBps: "0" },
 };
 
+/** Demo maker rebates in bps of the taker fee, by category: Earnings makers get back a fifth of
+ * a 25 bps taker fee (5 bps, their whole maker fee), Policy makers half of a 30 bps one (15 bps,
+ * more than their 10 bps maker fee). */
+export const DEMO_REBATES: Record<SeedCategory, number> = {
+  Macro: 0,
+  Earnings: 2_000,
+  Policy: 5_000,
+  Other: 0,
+};
+
 export interface SeedMarket {
   category: SeedCategory;
   gammaMarketId: string;

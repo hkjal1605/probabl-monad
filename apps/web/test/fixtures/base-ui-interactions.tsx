@@ -412,16 +412,28 @@ test("render-composed dialog trigger opens a labelled dialog without nested butt
   expect(document.querySelector('[role="dialog"][data-open]')).toBeNull();
 });
 
-test("market rules and terms show the market's own maker and taker fees", async () => {
-  const market = { ...fixtureMarkets[0]!, fees: { makerBps: 5, takerBps: 30 } };
+test("market rules and terms show the market's own maker and taker fees and maker rebate", async () => {
+  const market = {
+    ...fixtureMarkets[0]!,
+    fees: { makerBps: 5, takerBps: 30 },
+    makerRebateBps: 2_500,
+  };
   await render(<MarketRulesDialog market={market} />);
   await click(button("Rules"));
   const rules = document.querySelector('[role="dialog"]')?.textContent ?? "";
   expect(rules).toContain("Maker fee · resting orders0.05%");
   expect(rules).toContain("Taker fee · orders that fill now0.3%");
+  // A quarter of a 0.3% taker fee: 0.075% of each fill goes back to its maker.
+  expect(rules).toContain(
+    "Maker rebate · share of the taker fee25% of the taker fee · 0.075% of each fill",
+  );
   await click(document.querySelector('button[aria-label="Close rules"]'));
   await render(<MarketRules market={market} />);
   expect(host.textContent).toContain("Maker / taker fee0.05% / 0.3%");
+  expect(host.textContent).toContain("Maker rebate25% of the taker fee · 0.075% of each fill");
+  // A market without a rebate says so.
+  await render(<MarketRules market={{ ...market, makerRebateBps: 0 }} />);
+  expect(host.textContent).toContain("Maker rebateNone");
   await render(null);
 });
 

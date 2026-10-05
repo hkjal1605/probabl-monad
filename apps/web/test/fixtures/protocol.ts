@@ -33,6 +33,7 @@ export const fixtureMarkets: MarketView[] = [
     baseStep: "1000000000000000",
     priceTickRawX18: "10000",
     fees: { makerBps: 10, takerBps: 25 },
+    makerRebateBps: 2_000,
     base: {
       token: FIXTURE_TOKENS.base,
       decimals: 18,

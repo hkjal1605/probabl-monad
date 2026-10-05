@@ -12,6 +12,8 @@ contract GasTest is Base {
     function setUp() public override {
         super.setUp();
         useFees(5, 10);
+        // A rebate prices its path in: makers get a quarter of each taker fee.
+        useRebate(2_500);
         for (uint256 i; i < 4; ++i) {
             address user = [bob, carol, bot, admin][i];
             if (user == admin) fund(admin, 1_000_000e6, 10_000e18);

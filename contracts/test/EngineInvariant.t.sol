@@ -339,6 +339,13 @@ contract EngineHandler {
         view_.claimFees(id, branch, collateral, to, 1 + amount % have);
     }
 
+    /// A new maker rebate, from none to the largest, applying to the fills after it.
+    function setRebate(uint256 seed) external {
+        uint32 id = markets[seed % markets.length];
+        vm.prank(marketAdmin);
+        view_.setMakerRebate(id, uint16((seed >> 8) % 5_001));
+    }
+
     function pause(uint256 seed) external {
         bool paused = view_.control().paused;
         if (!paused && seed % 8 != 0) return;
@@ -362,6 +369,7 @@ contract EngineInvariantTest is Base {
     function setUp() public virtual override {
         super.setUp();
         useFees(7, 13);
+        useRebate(5_000);
         ConditionalStocksBase.MarketParams memory p = params(uint40(T0 - 1), uint40(T0 + 30 days));
         p.tick = TICK2;
         p.step = STEP2;
@@ -374,6 +382,8 @@ contract EngineInvariantTest is Base {
         uint32 m2 = view_.createMarket(p, "ipfs://m2");
         vm.prank(marketAdmin);
         view_.lifecycle(m2, 0, bytes32(0));
+        vm.prank(marketAdmin);
+        view_.setMakerRebate(m2, 3_333);
         markets.push(market);
         markets.push(m2);
 
@@ -550,7 +560,8 @@ contract EngineInvariantTest is Base {
             else if (a < 94) handler.claimFees(r >> 8, r >> 40);
             else if (a < 96) handler.invalidate(r >> 8 << 3);
             else if (a < 98) handler.pause(r >> 8);
-            else handler.donate(r >> 8, r >> 40);
+            else if (a < 99) handler.donate(r >> 8, r >> 40);
+            else handler.setRebate(r >> 8);
             if (i % 50 == 49) _checkAll();
         }
     }

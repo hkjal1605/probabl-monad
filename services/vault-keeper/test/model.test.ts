@@ -172,6 +172,8 @@ describe("spreads", () => {
       halfSpread({
         minBps: 40,
         makerBps: 0,
+        takerBps: 0,
+        rebateBps: 0,
         adverseSelectionBps: 20,
         movementBps: 0n,
         probabilitySpread: 10_000n,
@@ -182,6 +184,15 @@ describe("spreads", () => {
     expect(h()).toBe(40n);
     // A seller receives quote net of the fee: 10 bps needs an 11 bps edge.
     expect(h({ makerBps: 10, movementBps: 15n })).toBe(11n + 20n + 30n);
+    // A maker rebate comes back on every fill: a quarter of a 30 bps taker fee leaves a 3 bps
+    // edge, and half of it outweighs the fee (-5 bps), down to the minimum spread at most.
+    expect(h({ makerBps: 10, takerBps: 30, rebateBps: 2_500, movementBps: 15n })).toBe(
+      3n + 20n + 30n,
+    );
+    expect(h({ minBps: 1, makerBps: 10, takerBps: 30, rebateBps: 5_000, movementBps: 15n })).toBe(
+      -5n + 20n + 30n,
+    );
+    expect(h({ takerBps: 100, rebateBps: 5_000 })).toBe(40n);
     // A 1% probability spread with δ̂ = 5% adds 5 bps.
     expect(h({ minBps: 1, gapPpm: 50_000n })).toBe(25n);
     expect(h({ widen: 25_000n })).toBe(100n);

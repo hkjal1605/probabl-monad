@@ -25,6 +25,7 @@ export const market = {
   maxMarket: 10n ** 13n,
   makerBps: 10,
   takerBps: 30,
+  rebateBps: 0,
   state: 2,
   seq: [0n, 0n],
 } as unknown as MarketState;
@@ -190,11 +191,11 @@ describe("pricing", () => {
     );
   });
 
-  test("each market's own maker fee sets the fee edge of its quotes", () => {
+  test("each market's own maker fee and rebate set the fee edge of its quotes", () => {
     const now = Date.now();
-    const ladder = (makerBps: number) =>
+    const ladder = (makerBps: number, takerBps = 30, rebateBps = 0) =>
       quotes({
-        market: { ...market, makerBps } as MarketState,
+        market: { ...market, makerBps, takerBps, rebateBps } as MarketState,
         reference: {
           spot: SPOT,
           probability: 600_000n,
@@ -221,6 +222,14 @@ describe("pricing", () => {
     expect(best(dear, 0)).toBeLessThan(best(cheap, 0));
     expect(best(dear, 1)).toBeGreaterThan(best(cheap, 1));
     expect(() => ladder(1_001)).toThrow("Invalid quote inputs");
+    // A rebate comes back on every fill: a quarter of a 1% taker fee narrows both sides...
+    const [none, quarter] = [ladder(100, 100), ladder(100, 100, 2_500)];
+    expect(best(quarter, 0)).toBeGreaterThan(best(none, 0));
+    expect(best(quarter, 1)).toBeLessThan(best(none, 1));
+    // ...and half of a 3% taker fee outweighs the 1% maker fee, but never passes the spread floor.
+    const [generous, free] = [ladder(100, 300, 5_000), ladder(0, 0)];
+    expect([best(generous, 0), best(generous, 1)]).toEqual([best(free, 0), best(free, 1)]);
+    expect(() => ladder(10, 30, 5_001)).toThrow("Invalid quote inputs");
   });
 
   test("requotes replace stale levels and cancel foreign-shaped orders", () => {

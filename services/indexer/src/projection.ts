@@ -147,6 +147,8 @@ export function marketView(
     /** Fee rates in bps, fixed at creation: makers pay the first, takers the second. */
     makerFeeBps: m.makerBps,
     takerFeeBps: m.takerBps,
+    /** The filled maker's share of each fill's taker fee, in bps of that fee. */
+    makerRebateBps: m.rebateBps,
     openNotional: m.openNotional.toString(),
     sequences: { yes: m.seq[0].toString(), no: m.seq[1].toString() },
     quoteToken: s.quote,
@@ -381,7 +383,8 @@ export function tradeRecord(e: DecodedEvent, trade: TradeDetails): TradeRecord {
     trade.maker === null ||
     trade.taker === null ||
     trade.price === null ||
-    trade.takerSide === null
+    trade.takerSide === null ||
+    trade.makerRebate === null
   )
     throw new Error(`Trade ${e.transactionHash}:${e.logIndex} references unknown orders`);
   return {
@@ -399,6 +402,7 @@ export function tradeRecord(e: DecodedEvent, trade: TradeDetails): TradeRecord {
     quote: amounts & LOW128,
     buyerFee: fees & LOW128,
     sellerFee: fees >> 128n,
+    makerRebate: BigInt(trade.makerRebate),
     maker: trade.maker,
     taker: trade.taker,
   };
@@ -421,6 +425,9 @@ export function tradeView(
     executionQuote: r.quote.toString(),
     buyerFee: r.buyerFee.toString(),
     sellerFee: r.sellerFee.toString(),
+    /** Paid to the maker out of the taker's fee (buyer fee when the taker bought, seller fee
+     * when it sold), in the same claims. */
+    makerRebate: r.makerRebate.toString(),
     takerSide: r.takerSide,
     makerOrderHash: orderKeyString(r.market, r.branch, r.makerSeq),
     takerOrderHash: orderKeyString(r.market, r.branch, r.takerSeq),

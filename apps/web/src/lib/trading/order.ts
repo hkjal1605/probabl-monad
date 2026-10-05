@@ -8,7 +8,12 @@ import {
   quoteForReservation,
   type ShareUnits,
 } from "@conditional-stocks/domain";
-import type { AtomicPlan, OrderWire } from "@conditional-stocks/evm-client";
+import {
+  type AtomicPlan,
+  type FeeRates,
+  formatBps,
+  type OrderWire,
+} from "@conditional-stocks/evm-client";
 
 export interface OrderFormValues extends ShareUnits {
   baseStep?: string;
@@ -75,6 +80,14 @@ export const takerFee = (
   ((side === "buy" ? BigInt(plan.filledQuantity) : BigInt(plan.executionQuote)) *
     BigInt(takerBps)) /
   10_000n;
+
+/** A market's maker rebate as its rules show it: the share of the taker fee and what that is of
+ * each fill ("25% of the taker fee · 0.075% of each fill"), or none. */
+export function makerRebateText(market: { fees: FeeRates; makerRebateBps: number }) {
+  const { fees, makerRebateBps } = market;
+  if (makerRebateBps === 0 || fees.takerBps === 0) return "None";
+  return `${formatBps(makerRebateBps)} of the taker fee · ${formatBps((fees.takerBps * makerRebateBps) / 10_000)} of each fill`;
+}
 
 export const createOrder = (
   values: OrderFormValues,

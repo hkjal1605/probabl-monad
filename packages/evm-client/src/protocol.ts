@@ -12,6 +12,9 @@ import {
 export const WAD = 10n ** 18n;
 export const BPS = 10_000n;
 export const MAX_FEE_BPS = 1_000;
+/** The largest maker rebate, in bps of each fill's taker fee: half, so matching one's own
+ * orders always costs more than it returns. */
+export const MAX_REBATE_BPS = 5_000;
 /** Resting makers one placement can fill (all fit one packed calldata word). */
 export const MAX_MAKERS = 8;
 /** Resting placements per branch retained on chain for the crossed-book race check. */
@@ -42,6 +45,24 @@ export interface FeeRates {
 }
 export const isFeeRate = (rate: unknown): rate is number =>
   Number.isInteger(rate) && (rate as number) >= 0 && (rate as number) <= MAX_FEE_BPS;
+/** A market's maker rebate: the share of each fill's taker fee, in bps of that fee, paid to the
+ * filled maker. The market admin may change it at any time. */
+export const isRebateRate = (rate: unknown): rate is number =>
+  Number.isInteger(rate) && (rate as number) >= 0 && (rate as number) <= MAX_REBATE_BPS;
+/** What a maker rebate pays the filled maker on one fill: its share of the taker's fee, rounded
+ * down as the exchange rounds it, in the claims the fee was charged in. */
+export const makerRebate = (takerFee: bigint, rebateBps: number) =>
+  (takerFee * BigInt(rebateBps)) / BPS;
+/** The edge, in bps of the price, a maker's quote needs to break even on a market's fees: its
+ * maker fee less its rebate, rounded up; negative when the rebate outweighs the fee. An ask at P
+ * nets P(1 - m)/(1 - r) and a bid at P pays P(1 - r)/(1 - m) (maker rate m, rebate r of the
+ * fill: rebate share x taker rate); (m - r)/(1 - m) covers both. */
+export function makerFeeEdge(market: { makerBps: number; takerBps: number; rebateBps: number }) {
+  const net = BigInt(market.makerBps) * BPS - BigInt(market.takerBps) * BigInt(market.rebateBps);
+  const denominator = BPS - BigInt(market.makerBps);
+  // BigInt division truncates toward zero: up for a negative edge, so round a positive one up.
+  return net > 0n ? (net + denominator - 1n) / denominator : net / denominator;
+}
 /** The fee cap an order signs to trade a market at its rates: an immediate-or-cancel order only
  * takes, a resting one may take and then make. */
 export const orderFeeCap = (rates: FeeRates, tif: number) =>

@@ -13,6 +13,9 @@ abstract contract ConditionalStocksBase {
     uint256 internal constant WAD = 1e18;
     uint256 internal constant BPS = 10_000;
     uint16 internal constant MAX_FEE_BPS = 1_000;
+    /// @dev The largest share of a fill's taker fee, in bps of that fee, a market may pay the
+    ///      filled maker: half, so matching one's own orders always costs more than it returns.
+    uint16 internal constant MAX_REBATE_BPS = 5_000;
     uint256 internal constant MAX_MAKERS = 8;
     /// @dev Placements up to a branch's latest resting one that the crossed-book race check
     ///      reads back.
@@ -74,6 +77,7 @@ abstract contract ConditionalStocksBase {
     event Deposited(address indexed owner, address indexed token, uint256 amount);
     event Withdrawn(address indexed owner, address indexed token, uint256 amount, address to);
     event MarketCreated(uint32 indexed market, MarketParams params, string metadataUri);
+    event MakerRebateSet(uint32 indexed market, uint16 rebateBps);
     event MarketState(uint32 indexed market, uint8 state, address actor, bytes32 commitment);
     event MarketResolved(
         uint32 indexed market, uint8 yes, uint8 no, bytes32 evidence, string uri, address actor
@@ -117,7 +121,9 @@ abstract contract ConditionalStocksBase {
     );
     /// @param fill quantity(96) | makerSeq(32) << 96 | takerSeq(32) << 128 | branch(8) << 160.
     /// @param amounts quote(128) | buyer price improvement(128) << 128.
-    /// @param fees buyer fee in base claims(128) | seller fee in quote claims(128) << 128.
+    /// @param fees buyer fee in base claims(128) | seller fee in quote claims(128) << 128. The
+    ///        maker gets the market's `rebateBps` share of the taker's fee (rounded down) back in
+    ///        the same claims.
     event Trade(uint32 indexed market, uint256 fill, uint256 amounts, uint256 fees);
     event OrderCancelled(uint32 indexed market, uint256 key);
     /// @param module Zero proposes removal of the selector's extension.
@@ -185,11 +191,14 @@ abstract contract ConditionalStocksBase {
         uint128 base;
     }
 
-    /// @dev A market's fee rates, fixed at creation (one slot). Only placements that fill read
-    ///      them.
+    /// @dev A market's fee rates, fixed at creation, and its maker rebate (one slot). Only
+    ///      placements that fill read them. `rebateBps` is the share of each fill's taker fee, in
+    ///      bps of that fee, paid to the filled maker in the claims the fee is charged in; the
+    ///      market admin may change it at any time.
     struct FeeRates {
         uint16 makerBps;
         uint16 takerBps;
+        uint16 rebateBps;
     }
 
     /// @dev Fees accrued in claims of one market branch.

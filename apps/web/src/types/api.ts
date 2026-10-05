@@ -74,6 +74,9 @@ export interface MarketView extends ShareUnits {
   /** Fee rates in bps, fixed when the market was created: resting orders pay the maker rate
    * and incoming ones the taker rate, on what they receive. */
   fees: FeeRates;
+  /** The filled maker's share of each fill's taker fee, in bps of that fee (the market admin
+   * may change it), paid in the claims the fee is charged in. */
+  makerRebateBps: number;
   bookQuality?: "available" | "unavailable" | "truncated";
   base: BaseTokenView;
   /** Stable identity of the traded asset (e.g. `asset:NVDA`) used to group sibling markets. */
@@ -196,6 +199,8 @@ export interface TradeView {
   fillQuantity: string;
   buyerFee?: string;
   sellerFee?: string;
+  /** Paid to the maker out of the taker's fee, in the same claims. */
+  makerRebate?: string;
   takerSide?: number;
   maker?: string;
   taker?: string;

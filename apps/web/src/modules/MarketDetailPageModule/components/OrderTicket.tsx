@@ -125,7 +125,11 @@ export function OrderTicket({ market }: { market: MarketView }) {
           ? `${quantityLabel} ${unitSymbol} claim`
           : "No payout (active claim only)";
   const prepared = t.preparation;
-  const fees = `${formatBps(market.fees.takerBps)} taker · ${formatBps(market.fees.makerBps)} maker`;
+  const fees = `${formatBps(market.fees.takerBps)} taker · ${formatBps(market.fees.makerBps)} maker${
+    market.makerRebateBps > 0 && market.fees.takerBps > 0
+      ? ` · makers earn ${formatBps(market.makerRebateBps)} of taker fees`
+      : ""
+  }`;
   const fillFee = prepared ? takerFee(prepared.plan, t.side, market.fees.takerBps) : 0n;
   const available = t.available === null ? null : t.available.toString();
   const availableDecimals = t.side === "buy" ? market.quoteTokenDecimals : market.base.decimals;

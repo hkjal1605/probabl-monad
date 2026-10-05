@@ -50,6 +50,8 @@ contract ConditionalStocks is ConditionalStocksBase {
         uint256 quoteFee;
         uint256 quoteBacking;
         uint256 baseBacking;
+        /// @dev The market's maker rebate, read with its fee rates by a placement that fills.
+        uint16 rebateBps;
     }
 
     constructor(
@@ -76,11 +78,6 @@ contract ConditionalStocks is ConditionalStocksBase {
         emit AdminAccepted(admin_);
         emit PoolListed(quote_, uint8(decimals), bytes32(0));
         emit Configured(marketAdmin_, guardian_, resolutionAdmin_);
-    }
-
-    /// @notice The immutable module implementing governance, delegation and views.
-    function module() external view returns (address) {
-        return MODULE;
     }
 
     fallback() external {
@@ -259,9 +256,13 @@ contract ConditionalStocks is ConditionalStocksBase {
         t.remaining = quantity;
         uint256 prefix = uint256(t.market) << 40 | t.branch << 32;
         key = prefix | t.seq;
-        // Only a placement that names makers can fill, so only it reads the fee rates.
+        // Only a placement that names makers can fill, so only it reads the fee rates (and the
+        // maker rebate each fill pays).
         FeeRates memory r;
-        if (uint32(m) != 0) r = _feeRates[t.market];
+        if (uint32(m) != 0) {
+            r = _feeRates[t.market];
+            t.rebateBps = r.rebateBps;
+        }
         for (uint256 i; i < MAX_MAKERS && t.remaining != 0; ++i) {
             uint256 entry = uint32(m >> (32 * i));
             if (entry == 0) break;
@@ -429,7 +430,6 @@ contract ConditionalStocks is ConditionalStocksBase {
             improvement =
                 _quoteUp(t.remaining, t.price) - _quoteUp(t.remaining - q, t.price) - quoteAmount;
             a.quote = _u96(a.quote + quoteAmount - sellerFee);
-            _storeAccount(_accounts[mb][owner], a);
             if (!makerClaim) {
                 t.baseBacking += q;
                 _claim(t.market, 1 - t.branch, 1, owner, q, true);
@@ -446,9 +446,9 @@ contract ConditionalStocks is ConditionalStocksBase {
             (sellerFee, t.carry) = _fee(quoteAmount, r.takerBps, t.carry);
             improvement = makerReduction - quoteAmount;
             a.base = _u96(a.base + q - buyerFee);
-            if (makerClaim) a.quote = _u96(a.quote + improvement);
-            _storeAccount(_accounts[mb][owner], a);
-            if (!makerClaim) {
+            if (makerClaim) {
+                a.quote = _u96(a.quote + improvement);
+            } else {
                 t.quoteBacking += quoteAmount;
                 _claim(t.market, 1 - t.branch, 0, owner, quoteAmount, true);
                 if (improvement != 0) _credit[owner][QUOTE] += improvement;
@@ -461,6 +461,26 @@ contract ConditionalStocks is ConditionalStocksBase {
             }
             b.openNotional = uint64(b.openNotional - makerReduction);
         }
+        emit Trade(
+            t.market,
+            q | uint256(uint32(key)) << 96 | t.seq << 128 | t.branch << 160,
+            quoteAmount | improvement << 128,
+            buyerFee | sellerFee << 128
+        );
+        // The maker gets its share of the taker's fee back in the claims it gave, in its account
+        // on this branch, which every fill writes anyway; the protocol keeps the rest.
+        unchecked {
+            if (t.sell) {
+                uint256 rebate = sellerFee * t.rebateBps / BPS;
+                a.quote = _u96(a.quote + rebate);
+                sellerFee -= rebate;
+            } else {
+                uint256 rebate = buyerFee * t.rebateBps / BPS;
+                a.base = _u96(a.base + rebate);
+                buyerFee -= rebate;
+            }
+        }
+        _storeAccount(_accounts[mb][owner], a);
         t.baseFee += buyerFee;
         t.quoteFee += sellerFee;
         t.remaining -= q;
@@ -472,12 +492,6 @@ contract ConditionalStocks is ConditionalStocksBase {
             mo.steps -= uint32(q / step);
             _storeOrder(_orders[key], mo);
         }
-        emit Trade(
-            t.market,
-            q | uint256(uint32(key)) << 96 | t.seq << 128 | t.branch << 160,
-            quoteAmount | improvement << 128,
-            buyerFee | sellerFee << 128
-        );
     }
 
     /// @dev Whether the grant a delegated order was placed under still lets it trade.

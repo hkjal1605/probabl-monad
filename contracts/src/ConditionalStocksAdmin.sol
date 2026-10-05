@@ -10,6 +10,10 @@ import { ConditionalStocksBase } from "./ConditionalStocksBase.sol";
 /// @dev Called directly it only reads and writes its own empty storage. Its fallback routes
 ///      selectors that neither contract implements to activated extension modules.
 contract ConditionalStocksAdmin is ConditionalStocksBase {
+    /// @dev This module's own address: under the exchange's delegatecall, `address(this)` is the
+    ///      exchange.
+    address private immutable SELF = address(this);
+
     constructor(address quote_) ConditionalStocksBase(quote_) { }
 
     // ---------------------------------------------------------------- governance
@@ -89,7 +93,7 @@ contract ConditionalStocksAdmin is ConditionalStocksBase {
         if (p.makerBps > MAX_FEE_BPS || p.takerBps > MAX_FEE_BPS) revert FeeCap();
         _validateCaps(p);
         id = ++_marketCount;
-        _feeRates[id] = FeeRates(p.makerBps, p.takerBps);
+        _feeRates[id] = FeeRates(p.makerBps, p.takerBps, 0);
         _terms[id] = Terms({
             base: p.base,
             state: SCHEDULED,
@@ -105,6 +109,17 @@ contract ConditionalStocksAdmin is ConditionalStocksBase {
         });
         _eventKeys[id] = keccak256(abi.encode(p.condition, p.yesIndex, p.noIndex));
         emit MarketCreated(id, p, metadataUri);
+    }
+
+    /// @notice Sets the share of each fill's taker fee, in bps of that fee (at most
+    ///         MAX_REBATE_BPS), that the market pays the filled maker in the same claims. A rebate
+    ///         only redirects the protocol's part of the fee, so it may change at any time.
+    function setMakerRebate(uint32 id, uint16 rebateBps) external {
+        if (msg.sender != _marketAdmin) revert Unauthorized();
+        if (_terms[id].state == 0) revert InvalidState();
+        if (rebateBps > MAX_REBATE_BPS) revert FeeCap();
+        _feeRates[id].rebateBps = rebateBps;
+        emit MakerRebateSet(id, rebateBps);
     }
 
     /// @dev One step at the smallest tick-aligned price reaching the minimum notional must be
@@ -370,6 +385,11 @@ contract ConditionalStocksAdmin is ConditionalStocksBase {
     }
 
     // ---------------------------------------------------------------- views
+
+    /// @notice The immutable module implementing governance, delegation and views.
+    function module() external view returns (address) {
+        return SELF;
+    }
 
     function quote() external view returns (address) {
         return QUOTE;

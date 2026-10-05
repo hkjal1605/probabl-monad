@@ -11,7 +11,14 @@ import {
 import { conditionalStocksAbi } from "./abi.ts";
 import { type DelegateLimits, validateDelegateLimits } from "./delegation.ts";
 import { type AtomicPlan, planWords } from "./planner.ts";
-import { address, type OrderWire, packOrder, parseOrder, U128_MAX } from "./protocol.ts";
+import {
+  address,
+  isRebateRate,
+  type OrderWire,
+  packOrder,
+  parseOrder,
+  U128_MAX,
+} from "./protocol.ts";
 
 /** A wallet call: always to a known contract, never with value. */
 export interface Envelope {
@@ -224,6 +231,11 @@ export const configure = (
     address(roles.guardian),
     address(roles.resolutionAdmin),
   ]);
+/** The share of each fill's taker fee, in bps of that fee, the market pays the filled maker. */
+export function setMakerRebate(exchange: Address, market: number, rebateBps: number) {
+  if (!isRebateRate(rebateBps)) throw new Error("Invalid maker rebate");
+  return exchangeCall(exchange, "setMakerRebate", [market, rebateBps]);
+}
 export const pause = (exchange: Address, paused: boolean, reason: Hex) =>
   exchangeCall(exchange, "pause", [paused, reason]);
 export const claimFees = (

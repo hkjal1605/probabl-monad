@@ -16,6 +16,7 @@ import {
   type AdminTransaction,
   evidenceTransactions,
   lifecycleTransaction,
+  makerRebateTransaction,
   type PacketEnvelope,
 } from "@conditional-stocks/evm-client/admin";
 import { catalogUnderlying } from "@conditional-stocks/shared/token-catalog";
@@ -29,7 +30,7 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { foundry } from "viem/chains";
-import { DEMO_FEES, DEMO_MARKET_SEED, validateMarketSeed } from "./seed-policy.ts";
+import { DEMO_FEES, DEMO_MARKET_SEED, DEMO_REBATES, validateMarketSeed } from "./seed-policy.ts";
 
 const required = (name: string) => {
   const value = process.env[name];
@@ -52,7 +53,7 @@ const client = createPublicClient({ chain, transport: http(rpc), pollingInterval
 const wallet = createWalletClient({ account: admin, chain, transport: http(rpc) });
 validateMarketSeed();
 
-type SeedRecord = { packetHash?: string; marketId?: string; opened?: true };
+type SeedRecord = { packetHash?: string; marketId?: string; rebate?: number; opened?: true };
 const state: Record<string, SeedRecord> = (await Bun.file(statePath).exists())
   ? await Bun.file(statePath).json()
   : {};
@@ -227,6 +228,20 @@ for (const event of DEMO_MARKET_SEED) {
             `Market ${record.marketId} reconciled with a warning: ${error instanceof Error ? error.message : error}`,
           ),
         );
+      }
+      // The category's maker rebate, before the market opens so its first fill pays it.
+      const rebate = DEMO_REBATES[event.category];
+      if (rebate !== (record.rebate ?? 0)) {
+        await send(
+          makerRebateTransaction(
+            { chainId: foundry.id, exchange: deployment.exchange },
+            admin.address,
+            Number(record.marketId),
+            rebate,
+          ),
+        );
+        record.rebate = rebate;
+        await save();
       }
       if (!record.opened) {
         await send(

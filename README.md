@@ -60,6 +60,14 @@ branch for the admin to claim. Every order signs a fee cap: a maker capped below
 rate is skipped and a taker capped below the taker rate reverts. Only placements that fill read the
 rates, so resting and cancelling cost nothing extra. Fees carry fractional remainders per order.
 
+**Maker rebates.** The market admin may also set a market's maker rebate at any time
+(`setMakerRebate`): a share of each fill's taker fee, at most half, paid to the filled maker in the
+claims that fee is charged in (stock claims when the taker buys, quote claims when it sells). The
+fill already writes the maker's account on that branch, so the rebate adds no storage write; it is
+rounded down and the protocol keeps the rest. Capping it at half means matching one's own orders
+always costs more than it returns. The `Trade` log reports the fees as charged; the indexer derives
+each rebate from the market's rate at that fill and records it with the trade.
+
 **Delegated trading.** A wallet approves the service's trading key once (per-order and lifetime
 quote limits, fee cap, expiry); the API then submits orders for it without a wallet prompt. Retries
 with the same client id never place a second order.

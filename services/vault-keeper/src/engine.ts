@@ -525,6 +525,8 @@ export class Keeper {
     const half = halfSpread({
       minBps: set.halfSpreadBps,
       makerBps,
+      takerBps: m.takerBps,
+      rebateBps: m.rebateBps,
       adverseSelectionBps: set.adverseSelectionBps,
       movementBps: BigInt(record.movement ?? "0"),
       probabilitySpread: r.spread,

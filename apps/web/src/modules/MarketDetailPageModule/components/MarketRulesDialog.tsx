@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { formatTime } from "@/lib/format/display";
+import { makerRebateText } from "@/lib/trading/order";
 import type { MarketView } from "@/types/api";
 import { rulesTextParts, safeRulesLink } from "../utils/rulesText";
 
@@ -74,6 +75,10 @@ export function MarketRulesDialog({ market }: { market: MarketView }) {
             <div className="flex flex-col gap-1">
               <dt className="text-muted-foreground">Taker fee · orders that fill now</dt>
               <dd>{formatBps(market.fees.takerBps)}</dd>
+            </div>
+            <div className="flex flex-col gap-1 sm:col-span-2">
+              <dt className="text-muted-foreground">Maker rebate · share of the taker fee</dt>
+              <dd>{makerRebateText(market)}</dd>
             </div>
           </dl>
           <Alert role="note" className="p-4">

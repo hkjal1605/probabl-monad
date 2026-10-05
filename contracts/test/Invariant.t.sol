@@ -118,6 +118,7 @@ contract InvariantTest is Base {
     function setUp() public override {
         super.setUp();
         useFees(7, 13);
+        useRebate(4_000);
         actors.push(alice);
         actors.push(bob);
         actors.push(carol);

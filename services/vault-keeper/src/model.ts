@@ -7,7 +7,7 @@
  * δ̂ is stateless: the anchor moved against the vault's YES-minus-NO stock imbalance, measured as
  * a share of its stock inventory, so deposits and withdrawals (which scale both) never move it.
  * Every function here is pure; prices are raw quote per raw base x 1e18. */
-import { quote, U128_MAX, WAD } from "@conditional-stocks/evm-client";
+import { makerFeeEdge, quote, U128_MAX, WAD } from "@conditional-stocks/evm-client";
 import { abs, BPS, ceil, max, min, PROB } from "@conditional-stocks/operator";
 
 export const PPM = 1_000_000n;
@@ -110,14 +110,18 @@ export function widening(secondsLeft: bigint, window: number, factor: number): b
 export function halfSpread(input: {
   minBps: number;
   makerBps: number;
+  takerBps: number;
+  /** The market's maker rebate, in bps of the taker fee. */
+  rebateBps: number;
   adverseSelectionBps: number;
   movementBps: bigint;
   probabilitySpread: bigint;
   gapPpm: bigint;
   widen: bigint;
 }): bigint {
-  // Sellers receive quote net of fees: 1+f is insufficient at large fee rates.
-  const feeEdge = ceil(BigInt(input.makerBps) * BPS, BPS - BigInt(input.makerBps));
+  // Sellers receive quote net of fees (1+f is insufficient at large fee rates); the maker
+  // rebate comes back on every fill, so it narrows the quotes, never below the minimum.
+  const feeEdge = makerFeeEdge(input);
   const uncertainty = ceil(input.probabilitySpread * abs(input.gapPpm), PROB * 100n);
   const base = max(
     BigInt(input.minBps),

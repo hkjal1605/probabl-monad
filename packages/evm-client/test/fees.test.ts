@@ -1,9 +1,20 @@
 import { describe, expect, test } from "bun:test";
 import type { CreationEvidencePacket } from "@conditional-stocks/market-data";
-import type { Address } from "viem";
+import { type Address, decodeFunctionData, type Hex } from "viem";
+import { conditionalStocksAbi } from "../src/abi.ts";
 import { creationParams } from "../src/admin.ts";
 import { type Candidate, planOrder } from "../src/planner.ts";
-import { formatBps, isFeeRate, type OrderWire, orderFeeCap } from "../src/protocol.ts";
+import {
+  formatBps,
+  isFeeRate,
+  isRebateRate,
+  MAX_REBATE_BPS,
+  makerFeeEdge,
+  makerRebate,
+  type OrderWire,
+  orderFeeCap,
+} from "../src/protocol.ts";
+import { setMakerRebate } from "../src/transactions.ts";
 
 const TICK = 10_000n;
 const STEP = 10n ** 15n;
@@ -42,6 +53,60 @@ const plan = (o: OrderWire, candidates: Candidate[], makerFeeBps: number, takerF
     makerFeeBps,
     takerFeeBps,
   });
+
+describe("maker rebates", () => {
+  test("are whole bps of the taker fee, up to half of it", () => {
+    expect(MAX_REBATE_BPS).toBe(5_000);
+    for (const rate of [0, 1, 2_500, 5_000]) expect(isRebateRate(rate)).toBe(true);
+    for (const rate of [-1, 5_001, 10_000, 0.5, Number.NaN, "100", null])
+      expect(isRebateRate(rate)).toBe(false);
+  });
+
+  test("pay the maker its share of the taker fee, rounded down as the exchange rounds", () => {
+    expect(makerRebate(3_000_000_000_000_000n, 5_000)).toBe(1_500_000_000_000_000n);
+    expect(makerRebate(105_007n, 3_333)).toBe(34_998n); // 34,998.83: the rest stays with the protocol
+    expect(makerRebate(105_007n, 5_000)).toBe(52_503n);
+    expect(makerRebate(1n, 5_000)).toBe(0n);
+    expect(makerRebate(105_007n, 0)).toBe(0n);
+  });
+
+  test("narrow a maker's break-even edge by what comes back on each fill", () => {
+    // Without a rebate: the maker fee grossed up, rounded up (10 bps needs 11).
+    for (const makerBps of [0, 1, 10, 25, 999, 1_000])
+      expect(makerFeeEdge({ makerBps, takerBps: 30, rebateBps: 0 })).toBe(
+        (BigInt(makerBps) * 10_000n + 9_999n - BigInt(makerBps)) / (10_000n - BigInt(makerBps)),
+      );
+    expect(makerFeeEdge({ makerBps: 10, takerBps: 30, rebateBps: 2_500 })).toBe(3n); // 2.5
+    expect(makerFeeEdge({ makerBps: 10, takerBps: 30, rebateBps: 5_000 })).toBe(-5n); // -5.005
+    // Half of a 10% taker fee returns 5% of each fill.
+    expect(makerFeeEdge({ makerBps: 0, takerBps: 1_000, rebateBps: 5_000 })).toBe(-500n);
+    // At that edge both sides break even: an ask at F(1 + e) nets at least F after its maker fee
+    // and rebate, and a bid at F(1 - e) pays at most F (exact rationals, scaled by 1e8).
+    const F = 10n ** 8n;
+    for (const makerBps of [0, 3, 10, 150, 1_000])
+      for (const takerBps of [0, 7, 30, 1_000])
+        for (const rebateBps of [0, 1, 2_500, 3_333, 5_000]) {
+          const e = makerFeeEdge({ makerBps, takerBps, rebateBps });
+          const m = BigInt(makerBps) * 10_000n,
+            r = BigInt(takerBps) * BigInt(rebateBps);
+          const ask = F * (10_000n + e),
+            bid = F * (10_000n - e);
+          // ask (1 - m) / (1 - r) >= F and bid (1 - r) / (1 - m) <= F, in units of 1e8.
+          expect(ask * (100_000_000n - m) >= F * 10_000n * (100_000_000n - r)).toBe(true);
+          expect(bid * (100_000_000n - r) <= F * 10_000n * (100_000_000n - m)).toBe(true);
+        }
+  });
+
+  test("are set by a validated setMakerRebate call", () => {
+    const exchange = "0x00000000000000000000000000000000000000e1" as Address;
+    const envelope = setMakerRebate(exchange, 7, 2_500);
+    expect(envelope.to).toBe(exchange);
+    const call = decodeFunctionData({ abi: conditionalStocksAbi, data: envelope.data as Hex });
+    expect(call.functionName).toBe("setMakerRebate");
+    expect(call.args).toEqual([7, 2_500]);
+    for (const rate of [5_001, -1, 1.5]) expect(() => setMakerRebate(exchange, 7, rate)).toThrow();
+  });
+});
 
 describe("market fee rates", () => {
   test("are whole bps up to the exchange's 1,000 bps cap", () => {

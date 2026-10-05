@@ -21,6 +21,8 @@ export interface TradeRecord {
   quote: bigint;
   buyerFee: bigint;
   sellerFee: bigint;
+  /** Paid to the maker out of the taker's fee, in the claims that fee was charged in. */
+  makerRebate: bigint;
   maker: string;
   taker: string;
 }
@@ -81,7 +83,7 @@ const hex = (value: string) => value.slice(2).toLowerCase();
 const DEPLOYMENT = "(SELECT id FROM probabl.deployments WHERE domain = $1)";
 const TRADE = `t.block::text, t.log_index, t.block_time::text, t.market, t.branch, t.taker_side,
   t.maker_seq::text, t.taker_seq::text, t.quantity::text, t.price::text, t.quote::text,
-  t.buyer_fee::text, t.seller_fee::text, encode(t.tx, 'hex') AS tx,
+  t.buyer_fee::text, t.seller_fee::text, t.maker_rebate::text, encode(t.tx, 'hex') AS tx,
   encode(t.maker, 'hex') AS maker, encode(t.taker, 'hex') AS taker`;
 const NEWEST = "ORDER BY block DESC, log_index DESC LIMIT";
 // biome-ignore lint/suspicious/noExplicitAny: pg rows are untyped.
@@ -100,6 +102,7 @@ const tradeRecord = (r: any): TradeRecord => ({
   quote: BigInt(r.quote),
   buyerFee: BigInt(r.buyer_fee),
   sellerFee: BigInt(r.seller_fee),
+  makerRebate: BigInt(r.maker_rebate),
   maker: `0x${r.maker}`,
   taker: `0x${r.taker}`,
 });
@@ -532,16 +535,17 @@ export async function writeFinalized(tx: PoolClient, domain: string, batch: Fina
   if (t.length)
     await tx.query(
       `INSERT INTO probabl.trades (deployment, block, log_index, block_time, market, branch,
-        taker_side, maker_seq, taker_seq, quantity, price, quote, buyer_fee, seller_fee, tx,
-        maker, taker)
+        taker_side, maker_seq, taker_seq, quantity, price, quote, buyer_fee, seller_fee,
+        maker_rebate, tx, maker, taker)
       SELECT ${DEPLOYMENT}, x.block, x.log_index, x.block_time, x.market, x.branch, x.taker_side,
         x.maker_seq, x.taker_seq, x.quantity, x.price, x.quote, x.buyer_fee, x.seller_fee,
-        decode(x.tx, 'hex'), decode(x.maker, 'hex'), decode(x.taker, 'hex')
+        x.maker_rebate, decode(x.tx, 'hex'), decode(x.maker, 'hex'), decode(x.taker, 'hex')
       FROM unnest($2::bigint[], $3::integer[], $4::bigint[], $5::integer[], $6::smallint[],
         $7::smallint[], $8::bigint[], $9::bigint[], $10::numeric[], $11::numeric[],
-        $12::numeric[], $13::numeric[], $14::numeric[], $15::text[], $16::text[], $17::text[])
+        $12::numeric[], $13::numeric[], $14::numeric[], $15::numeric[], $16::text[], $17::text[],
+        $18::text[])
         AS x(block, log_index, block_time, market, branch, taker_side, maker_seq, taker_seq,
-          quantity, price, quote, buyer_fee, seller_fee, tx, maker, taker)
+          quantity, price, quote, buyer_fee, seller_fee, maker_rebate, tx, maker, taker)
       ON CONFLICT DO NOTHING`,
       [
         domain,
@@ -558,6 +562,7 @@ export async function writeFinalized(tx: PoolClient, domain: string, batch: Fina
         text(t.map((r) => r.quote)),
         text(t.map((r) => r.buyerFee)),
         text(t.map((r) => r.sellerFee)),
+        text(t.map((r) => r.makerRebate)),
         t.map((r) => hex(r.tx)),
         t.map((r) => hex(r.maker)),
         t.map((r) => hex(r.taker)),

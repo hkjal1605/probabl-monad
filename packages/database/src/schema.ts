@@ -1,7 +1,7 @@
 import type { Pool } from "pg";
 
 /** Bump with a migration step below when a table or its meaning changes. */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 /** The protocol's persistent state. Trading and custody reads are served from the in-memory
  * chain index; PostgreSQL keeps only what must survive a restart or is read historically:
@@ -33,8 +33,9 @@ const DDL = [
     taker_seq bigint NOT NULL, log_index integer NOT NULL, market integer NOT NULL,
     deployment smallint NOT NULL, branch smallint NOT NULL, taker_side smallint NOT NULL,
     quantity numeric(78,0) NOT NULL, price numeric(78,0) NOT NULL, quote numeric(78,0) NOT NULL,
-    buyer_fee numeric(78,0) NOT NULL, seller_fee numeric(78,0) NOT NULL, tx bytea NOT NULL,
-    maker bytea NOT NULL, taker bytea NOT NULL, PRIMARY KEY (deployment, block, log_index))`,
+    buyer_fee numeric(78,0) NOT NULL, seller_fee numeric(78,0) NOT NULL,
+    maker_rebate numeric(78,0) NOT NULL DEFAULT 0, tx bytea NOT NULL, maker bytea NOT NULL,
+    taker bytea NOT NULL, PRIMARY KEY (deployment, block, log_index))`,
   `CREATE INDEX IF NOT EXISTS trades_market ON probabl.trades (deployment, market, block, log_index)`,
   `CREATE INDEX IF NOT EXISTS trades_maker ON probabl.trades (deployment, maker, block, log_index)`,
   `CREATE INDEX IF NOT EXISTS trades_taker ON probabl.trades (deployment, taker, block, log_index)`,
@@ -148,6 +149,12 @@ const FROM_V1_AFTER = [
   "DROP TABLE probabl.orders",
 ];
 
+/** Version 3 records each trade's maker rebate (the market's share of the taker fee, which the
+ * Trade log does not carry); trades before it paid none. */
+const FROM_V2 = [
+  "ALTER TABLE probabl.trades ADD COLUMN maker_rebate numeric(78,0) NOT NULL DEFAULT 0",
+];
+
 export async function initializeStorage(pool: Pool) {
   const tx = await pool.connect();
   try {
@@ -158,9 +165,10 @@ export async function initializeStorage(pool: Pool) {
     for (const statement of DDL.slice(0, 2)) await tx.query(statement);
     const row = (await tx.query("SELECT version FROM probabl.schema_version WHERE id")).rows[0];
     const version: number | undefined = row?.version;
-    if (version !== undefined && version !== 1 && version !== SCHEMA_VERSION)
+    if (version !== undefined && version !== 1 && version !== 2 && version !== SCHEMA_VERSION)
       throw new Error("Database schema belongs to another release: provision a fresh schema");
     if (version === 1) for (const statement of FROM_V1_BEFORE) await tx.query(statement);
+    if (version === 2) for (const statement of FROM_V2) await tx.query(statement);
     for (const statement of DDL.slice(2)) await tx.query(statement);
     if (version === 1) for (const statement of FROM_V1_AFTER) await tx.query(statement);
     await tx.query(

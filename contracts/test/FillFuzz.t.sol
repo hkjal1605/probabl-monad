@@ -9,8 +9,9 @@ import { Base, Vm } from "./Base.t.sol";
 ///      Every Trade event is checked against an independent reference model (quote at the maker
 ///      price floored, improvement, per-order fee carry). After a full unwind (owners cancel,
 ///      market resolves, fee claims go to the admin, everyone redeems) each participant's
-///      underlying credit must have moved by exactly the economic trades at maker prices, fees
-///      must have reached the admin, and custody must equal the remaining credit.
+///      underlying credit must have moved by exactly the economic trades at maker prices, each
+///      maker's rebate (the market's share of its fills' taker fees, rounded down) must have
+///      reached it, the rest of the fees the admin, and custody must equal the remaining credit.
 contract FillFuzzTest is Base {
     uint128 internal constant TICK2 = 7_777;
     uint96 internal constant STEP2 = 333_333_333_333_337;
@@ -34,6 +35,7 @@ contract FillFuzzTest is Base {
     mapping(address => int256) internal expBase;
     uint256 internal makerBps;
     uint256 internal takerBps;
+    uint256 internal rebateBps;
     uint8 internal branch;
     uint8 internal winner;
     uint256 internal fillCount;
@@ -46,14 +48,14 @@ contract FillFuzzTest is Base {
     // ------------------------------------------------------------------ tests
 
     /// One taker (alice) against 1-3 resting makers (possibly alice herself), every funding
-    /// combination, IOC or GTC remainder, random market fee rates.
+    /// combination, IOC or GTC remainder, random market fee rates and maker rebate.
     function testFuzz_OneTakerAgainstMakers(uint256 seed) public {
         branch = uint8(seed & 1);
         winner = uint8(seed >> 1 & 1);
         bool takerSell = seed >> 2 & 1 != 0;
         bool takerClaim = seed >> 3 & 1 != 0;
         bool gtc = seed >> 4 & 1 != 0;
-        _createMarket((seed >> 8) % 1_001, (seed >> 24) % 1_001);
+        _createMarket((seed >> 8) % 1_001, (seed >> 24) % 1_001, (seed >> 200) % 5_001);
         uint256[10] memory before = _snapshot();
         uint64 tTicks = uint64(23_000 + (seed >> 40) % 6_000);
         uint256 tQty = uint256(STEP2) * (1 + (seed >> 56) % 6_000);
@@ -81,14 +83,15 @@ contract FillFuzzTest is Base {
     }
 
     /// One resting maker (bob) filled by 1-4 sequential IOC takers (possibly bob himself) at
-    /// random market fee rates: exercises the maker's carry chain, notional telescoping over
-    /// partial fills and the escrow refund on the final cancel.
+    /// random market fee rates, the maker rebate changing between takers: exercises the maker's
+    /// carry chain, notional telescoping over partial fills and the escrow refund on the final
+    /// cancel.
     function testFuzz_OneMakerAgainstTakers(uint256 seed) public {
         branch = uint8(seed & 1);
         winner = uint8(seed >> 1 & 1);
         bool makerSell = seed >> 2 & 1 != 0;
         bool makerClaim = seed >> 3 & 1 != 0;
-        _createMarket((seed >> 8) % 1_001, (seed >> 24) % 1_001);
+        _createMarket((seed >> 8) % 1_001, (seed >> 24) % 1_001, (seed >> 200) % 5_001);
         uint256[10] memory before = _snapshot();
         uint64 mTicks = uint64(23_000 + (seed >> 40) % 6_000);
         uint256 mQty = uint256(STEP2) * (1 + (seed >> 56) % 6_000);
@@ -103,6 +106,7 @@ contract FillFuzzTest is Base {
             uint64 off = uint64((r >> 16) % 400);
             uint64 tTicks = makerSell ? mTicks + off : mTicks - off;
             uint256 tQty = uint256(STEP2) * (1 + (r >> 32) % 2_000);
+            if (r >> 64 & 1 != 0) _setRebate((r >> 72) % 5_001);
             if (claim) _fundClaims(t, !makerSell, tTicks, tQty);
             vm.recordLogs();
             ks[i + 1] = _placeAs(t, !makerSell, claim, true, tTicks, tQty, uint32(ks[0]) + 1);
@@ -115,8 +119,8 @@ contract FillFuzzTest is Base {
 
     // ------------------------------------------------------------------ helpers
 
-    /// @dev Opens `m2`: a market whose step x tick rounds, at these fee rates.
-    function _createMarket(uint256 mb, uint256 tb) internal {
+    /// @dev Opens `m2`: a market whose step x tick rounds, at these fee rates and maker rebate.
+    function _createMarket(uint256 mb, uint256 tb, uint256 rb) internal {
         makerBps = mb;
         takerBps = tb;
         ConditionalStocksBase.MarketParams memory p = params(uint40(T0 - 1), uint40(T0 + 30 days));
@@ -131,6 +135,13 @@ contract FillFuzzTest is Base {
         m2 = view_.createMarket(p, "ipfs://m2");
         vm.prank(marketAdmin);
         view_.lifecycle(m2, 0, bytes32(0));
+        _setRebate(rb);
+    }
+
+    function _setRebate(uint256 rb) internal {
+        rebateBps = rb;
+        vm.prank(marketAdmin);
+        view_.setMakerRebate(m2, uint16(rb));
     }
 
     function _price(uint64 ticks) internal pure returns (uint256) {
@@ -194,8 +205,19 @@ contract FillFuzzTest is Base {
             expBase[buyer] += int256(q - buyerFee);
             expQuote[seller] += int256(quoteAmount - sellerFee);
             expBase[seller] -= int256(q);
-            expQuote[admin] += int256(sellerFee);
-            expBase[admin] += int256(buyerFee);
+            // The maker gets the market's share of the taker's fee, rounded down, in the claims
+            // the taker paid it in; the admin gets the rest of both fees.
+            if (tk.sell) {
+                uint256 rebate = sellerFee * rebateBps / BPS;
+                expQuote[mk.owner] += int256(rebate);
+                expQuote[admin] += int256(sellerFee - rebate);
+                expBase[admin] += int256(buyerFee);
+            } else {
+                uint256 rebate = buyerFee * rebateBps / BPS;
+                expBase[mk.owner] += int256(rebate);
+                expBase[admin] += int256(buyerFee - rebate);
+                expQuote[admin] += int256(sellerFee);
+            }
         }
     }
 

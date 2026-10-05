@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { adminConfig } from "@/config/protocol";
 import { readVenues } from "@/lib/admin-api";
 import { readRoles } from "@/lib/chain";
+import { MakerRebateAction } from "./MakerRebateAction";
 import { MarketLifecycleAction } from "./MarketLifecycleAction";
 
 interface Market {
@@ -40,6 +41,7 @@ interface Market {
   maxWalletOpenNotional: string | null;
   makerFeeBps: number;
   takerFeeBps: number;
+  makerRebateBps: number;
   state: number;
   tradingOpen: string | null;
   tradingCutoff: string | null;
@@ -153,7 +155,20 @@ function MarketControl({
           <Fact label="Market open-order cap" value={market.maxMarketOpenNotional ?? "—"} />
           <Fact label="Maker fee" value={formatBps(market.makerFeeBps)} />
           <Fact label="Taker fee" value={formatBps(market.takerFeeBps)} />
+          <Fact
+            label="Maker rebate"
+            value={`${formatBps(market.makerRebateBps)} of the taker fee`}
+          />
         </div>
+        {market.state >= 1 && market.state <= 3 && (
+          <MakerRebateAction
+            key={market.makerRebateBps}
+            marketId={market.id}
+            takerFeeBps={market.takerFeeBps}
+            rebateBps={market.makerRebateBps}
+            marketAdmin={marketAdmin}
+          />
+        )}
         {(market.state === 1 ||
           (market.state === 3 && Number(market.tradingCutoff ?? 0) > now)) && (
           <>

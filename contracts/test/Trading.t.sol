@@ -2,7 +2,7 @@
 pragma solidity 0.8.30;
 
 import { ConditionalStocksBase } from "../src/ConditionalStocksBase.sol";
-import { Base, MockToken } from "./Base.t.sol";
+import { Base, MockToken, Vm } from "./Base.t.sol";
 
 interface VmAccesses {
     function record() external;
@@ -17,6 +17,7 @@ contract TradingTest is Base {
     uint256 internal constant NVDA = 1e18;
     /// Storage slot of `_feeRates`, from `forge inspect ConditionalStocks storageLayout`.
     uint256 internal constant FEE_RATES_SLOT = 25;
+    bytes32 internal constant TRADE_EVENT = keccak256("Trade(uint32,uint256,uint256,uint256)");
 
     function _split(address user, uint8 collateral, uint256 amount) internal {
         vm.prank(user);
@@ -164,6 +165,166 @@ contract TradingTest is Base {
             if (reads[i] == slot) return true;
         }
         return false;
+    }
+
+    // ---------------------------------------------------------------- maker rebates
+
+    /// @dev A taker buy: the taker pays its whole fee in the stock-if-YES it receives; the maker,
+    ///      which sold that stock, gets the market's share of the fee back in it, still pays its
+    ///      own maker fee, and the protocol keeps the rest.
+    function testMakerRebateOnATakerBuyIsPaidInTheStockClaimsTheMakerSold() public {
+        useFees(10, 30);
+        useRebate(5_000);
+        _split(bob, 1, 10 * NVDA);
+        uint256 ask = rest(bob, YES, true, true, 20_000, NVDA);
+        vm.recordLogs();
+        take(alice, YES, false, false, 20_000, NVDA, one(uint32(ask)));
+
+        uint256 takerFee = NVDA * 30 / 10_000;
+        uint256 makerFee = 200e6 * 10 / 10_000;
+        uint256 rebate = takerFee / 2;
+        eq(acct(alice, YES).base, NVDA - takerFee, "the taker pays its whole fee");
+        eq(acct(bob, YES).base, 9 * NVDA + rebate, "the maker gets half of it back");
+        eq(acct(bob, YES).quote, 200e6 - makerFee, "and still pays the maker fee");
+        ConditionalStocksBase.Fees memory f = view_.fees(market, YES);
+        eq(f.base, takerFee - rebate, "the protocol keeps the rest of the taker fee");
+        eq(f.quote, makerFee, "and the maker fee");
+        eq(
+            acct(alice, YES).base + acct(bob, YES).base + f.base,
+            view_.backing(market).base,
+            "stock-if-YES claims stay exactly backed"
+        );
+        // The event reports the fees as charged; the rebate follows from the market's rate.
+        uint256 fees = _lastTradeFees();
+        eq(uint128(fees), takerFee, "event: buyer fee");
+        eq(fees >> 128, makerFee, "event: seller fee");
+    }
+
+    /// @dev A taker sell: the taker pays its fee in the quote-if-NO it receives; the maker, a
+    ///      whole-funded bid that paid in quote, gets its share back in quote-if-NO.
+    function testMakerRebateOnATakerSellIsPaidInTheQuoteClaimsTheMakerPaid() public {
+        useFees(10, 30);
+        useRebate(2_500);
+        uint256 bid = rest(carol, NO, false, false, 15_000, 3 * NVDA);
+        take(bob, NO, true, false, 14_000, NVDA, one(uint32(bid)));
+
+        uint256 takerFee = 150e6 * 30 / 10_000;
+        uint256 makerFee = NVDA * 10 / 10_000;
+        uint256 rebate = takerFee / 4;
+        eq(acct(bob, NO).quote, 150e6 - takerFee, "the taker pays its whole fee");
+        eq(acct(carol, NO).quote, rebate, "the maker gets a quarter of it back");
+        eq(acct(carol, NO).base, NVDA - makerFee, "and still pays the maker fee");
+        eq(acct(carol, YES).quote, 150e6, "the bid keeps its quote-if-YES");
+        ConditionalStocksBase.Fees memory f = view_.fees(market, NO);
+        eq(f.quote, takerFee - rebate, "the protocol keeps the rest of the taker fee");
+        eq(f.base, makerFee, "and the maker fee");
+        eq(
+            acct(bob, NO).quote + acct(carol, NO).quote + f.quote,
+            view_.backing(market).quote,
+            "quote-if-NO claims stay exactly backed"
+        );
+    }
+
+    /// @dev The rebate rounds down, the remainder staying with the protocol, and a new rate
+    ///      applies from the next fill on: zero leaves the whole taker fee to the protocol.
+    function testMakerRebateRoundsDownAndAppliesFromTheNextFill() public {
+        useFees(0, 7);
+        useRebate(3_333);
+        uint256 bid = rest(carol, NO, false, false, 15_001, 3 * NVDA);
+        // Each fill trades 150.01 USDC, a 105,007 taker fee at 7 bps.
+        take(bob, NO, true, false, 15_001, NVDA, one(uint32(bid)));
+        eq(acct(carol, NO).quote, 34_998, "a third of the fee, rounded down");
+        eq(view_.fees(market, NO).quote, 105_007 - 34_998, "the protocol keeps the remainder");
+
+        useRebate(0);
+        take(bob, NO, true, false, 15_001, NVDA, one(uint32(bid)));
+        eq(acct(carol, NO).quote, 34_998, "no rebate once it is zero");
+        eq(view_.fees(market, NO).quote, 2 * 105_007 - 34_998, "the protocol keeps the fee");
+
+        useRebate(5_000);
+        take(bob, NO, true, false, 15_001, NVDA, one(uint32(bid)));
+        eq(acct(carol, NO).quote, 34_998 + 52_503, "half of the next fee, rounded down");
+        eq(view_.fees(market, NO).quote, 3 * 105_007 - 34_998 - 52_503, "and the protocol the rest");
+    }
+
+    /// @dev One taker filling three makers: each maker gets its share of the fee its own fill
+    ///      charged, which carries the taker's fee remainder from fill to fill.
+    function testEachFilledMakerGetsTheRebateOnItsOwnFill() public {
+        useFees(0, 9);
+        useRebate(5_000);
+        address[3] memory owners = [carol, bot, alice];
+        uint64[3] memory ticks = [uint64(15_001), 15_003, 15_015];
+        uint256 qty = 7e15;
+        uint256[] memory seqs = new uint256[](3);
+        for (uint256 i; i < 3; ++i) {
+            seqs[i] = uint32(rest(owners[i], YES, false, false, ticks[i], qty));
+        }
+        take(bob, YES, true, false, 15_000, 3 * qty, makers(seqs));
+
+        uint256 carry;
+        uint256 kept;
+        uint256 lastFee;
+        for (uint256 i; i < 3; ++i) {
+            uint256 n = qty * (uint256(ticks[i]) * TICK) / WAD * 9 + carry;
+            (lastFee, carry) = (n / 10_000, n % 10_000);
+            eq(acct(owners[i], YES).quote, lastFee / 2, "each maker: half its own fill's fee");
+            kept += lastFee - lastFee / 2;
+        }
+        eq(lastFee, 946, "the carried remainder raised the last fill's fee");
+        eq(view_.fees(market, YES).quote, kept, "the protocol keeps the rest of every fee");
+    }
+
+    /// @dev Matching one's own order pays the whole taker fee and gets back at most half of it:
+    ///      even at the largest rebate, trading against oneself always loses.
+    function testSelfMatchLosesEvenAtTheLargestRebate() public {
+        useFees(0, 30);
+        useRebate(5_000);
+        _split(alice, 1, 10 * NVDA);
+        _split(alice, 0, 1_000e6);
+        uint256 ask = rest(alice, YES, true, true, 20_000, NVDA);
+        take(alice, YES, false, true, 20_000, NVDA, one(uint32(ask)));
+
+        uint256 takerFee = NVDA * 30 / 10_000;
+        eq(acct(alice, YES).base, 10 * NVDA - takerFee / 2, "she is left half a fee short");
+        eq(acct(alice, YES).quote, 1_000e6, "and gains nothing in quote");
+        eq(view_.fees(market, YES).base, takerFee / 2, "which the protocol keeps");
+    }
+
+    function testOnlyTheMarketAdminSetsARebateOfUpToHalfTheTakerFee() public {
+        useFees(10, 30);
+        eq(view_.feeRates(market).rebateBps, 0, "a market starts without a rebate");
+        vm.expectRevert(ConditionalStocksBase.Unauthorized.selector);
+        vm.prank(admin);
+        view_.setMakerRebate(market, 1_000);
+        vm.expectRevert(ConditionalStocksBase.FeeCap.selector);
+        vm.prank(marketAdmin);
+        view_.setMakerRebate(market, 5_001);
+        vm.expectRevert(ConditionalStocksBase.InvalidState.selector);
+        vm.prank(marketAdmin);
+        view_.setMakerRebate(999, 1_000);
+
+        vm.recordLogs();
+        useRebate(5_000);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        eq(logs.length, 1, "one event");
+        ok(logs[0].topics[0] == keccak256("MakerRebateSet(uint32,uint16)"), "MakerRebateSet");
+        eq(uint256(logs[0].topics[1]), market, "for the market");
+        eq(abi.decode(logs[0].data, (uint256)), 5_000, "with the new rate");
+        ConditionalStocksBase.FeeRates memory r = view_.feeRates(market);
+        eq(r.rebateBps, 5_000, "stored");
+        eq(r.makerBps, 10, "the maker rate is untouched");
+        eq(r.takerBps, 30, "the taker rate is untouched");
+    }
+
+    function _lastTradeFees() internal returns (uint256 fees) {
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i = logs.length; i != 0; --i) {
+            if (logs[i - 1].topics[0] == TRADE_EVENT) {
+                (,, fees) = abi.decode(logs[i - 1].data, (uint256, uint256, uint256));
+                return fees;
+            }
+        }
+        revert("no Trade event");
     }
 
     function testExactStepPricesLeaveNoImprovement() public {

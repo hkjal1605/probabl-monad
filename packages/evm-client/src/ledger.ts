@@ -9,7 +9,16 @@
 import { type Address, decodeEventLog, getAddress, type Hex, type Log, zeroHash } from "viem";
 import { conditionalStocksAbi } from "./abi.ts";
 import type { GrantState } from "./delegation.ts";
-import { AWAITING, quote, REDEEMABLE, reservation, U32_MAX, unpackOrder, WAD } from "./protocol.ts";
+import {
+  AWAITING,
+  makerRebate,
+  quote,
+  REDEEMABLE,
+  reservation,
+  U32_MAX,
+  unpackOrder,
+  WAD,
+} from "./protocol.ts";
 
 export interface Account {
   quote: bigint;
@@ -37,6 +46,9 @@ export interface MarketState {
   /** Fee rates in bps, fixed at creation. */
   makerBps: number;
   takerBps: number;
+  /** The filled maker's share of each fill's taker fee, in bps of that fee (zero at creation;
+   * the market admin may change it). */
+  rebateBps: number;
   state: number;
   openNotional: bigint;
   /** Next sequence per branch. */
@@ -169,6 +181,8 @@ export const touched = (): Touched => ({
 
 export interface DecodedEvent {
   name: string;
+  /** A replayed Trade also carries `makerRebate`, the rebate the replay paid its maker (the log
+   * does not carry it). */
   args: Record<string, unknown>;
   block: bigint;
   timestamp: bigint;
@@ -334,6 +348,7 @@ export function applyTransaction(
           maxMarket: bi(p.maxMarket),
           makerBps: num(p.makerBps),
           takerBps: num(p.takerBps),
+          rebateBps: 0,
           state: 1,
           openNotional: 0n,
           seq: [0n, 0n],
@@ -354,6 +369,10 @@ export function applyTransaction(
           createdTx: e.transactionHash,
         });
         changes.markets.add(id);
+        break;
+      }
+      case "MakerRebateSet": {
+        r.market(num(a.market)).rebateBps = num(a.rebateBps);
         break;
       }
       case "MarketState": {
@@ -567,6 +586,16 @@ export function applyTransaction(
         }
         r.claim(m.id, branch, 0, seller.owner, quoteAmount - sellerFee);
         m.fees[branch]!.quote += sellerFee;
+        // The maker gets the market's share of the taker's fee back, rounded down, in the claims
+        // the fee was charged in: stock claims when the taker bought, quote claims when it sold.
+        const takerBuys = taker.side === 0;
+        const rebate = makerRebate(takerBuys ? buyerFee : sellerFee, m.rebateBps);
+        if (rebate !== 0n) {
+          r.claim(m.id, branch, takerBuys ? 1 : 0, maker.owner, rebate);
+          if (takerBuys) m.fees[branch]!.base -= rebate;
+          else m.fees[branch]!.quote -= rebate;
+        }
+        a.makerRebate = rebate;
         if (improvement !== 0n) {
           if (buyer.fundingKind === 0) r.credit(buyer.owner, s.quote, improvement);
           else r.claim(m.id, branch, 0, buyer.owner, improvement);
@@ -624,6 +653,8 @@ export function tradeDetails(s: ChainState, e: DecodedEvent) {
     taker: taker?.owner ?? null,
     takerSide: taker?.side ?? null,
     price: maker && m ? (maker.ticks * m.tick).toString() : null,
+    /** Paid to the maker by the replay (see `DecodedEvent`). */
+    makerRebate: e.args.makerRebate === undefined ? null : String(e.args.makerRebate),
   };
 }
 export type TradeDetails = ReturnType<typeof tradeDetails>;
@@ -770,8 +801,8 @@ const untag = (value: unknown): unknown =>
         : Object.fromEntries(Object.entries(value).map(([k, v]) => [k, untag(v)]))
       : value;
 
-/** 3: markets carry their fee rates. */
-const CHECKPOINT_VERSION = 3;
+/** 3: markets carry their fee rates. 4: and their maker rebate. */
+const CHECKPOINT_VERSION = 4;
 
 /** Compact JSON form of a replica (see `restoreState`). */
 export function encodeCheckpoint(s: ChainState): string {

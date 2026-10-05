@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { conditionalStocksAbi, resolutionHash, underlyingId } from "@conditional-stocks/evm-client";
-import type { AdminDeployment } from "@conditional-stocks/evm-client/admin";
+import { type AdminDeployment, makerRebateTransaction } from "@conditional-stocks/evm-client/admin";
 import {
   buildCreationEvidence,
   buildResolutionEvidence,
@@ -101,6 +101,19 @@ const preview = (view: EvidenceView, action: AdminPreview["action"]): AdminPrevi
   };
 };
 const decode = (data: Hex) => decodeFunctionData({ abi: conditionalStocksAbi, data });
+
+test("a maker rebate is a market-admin setMakerRebate call of whole bps up to half the taker fee", () => {
+  const transaction = makerRebateTransaction(deployment, marketAdmin, 7, 2_500);
+  expect(transaction).toMatchObject({ to: exchange, from: marketAdmin, chainId: 31337 });
+  const call = decodeFunctionData({ abi: conditionalStocksAbi, data: transaction.data as Hex });
+  expect(call.functionName).toBe("setMakerRebate");
+  expect(call.args).toEqual([7, 2_500]);
+  expect(makerRebateTransaction(deployment, marketAdmin, 7, 0).data).not.toBe(transaction.data);
+  for (const rate of [5_001, -1, 12.5, Number.NaN])
+    expect(() => makerRebateTransaction(deployment, marketAdmin, 7, rate)).toThrow(
+      "Invalid maker rebate",
+    );
+});
 
 test("creation lists an unlisted stock token first and keeps raw uint64 caps exact", () => {
   listed.clear();

@@ -36,7 +36,8 @@ export default function LearnPage() {
             stock claims. Funding with an existing active claim does not mint an extra complementary
             claim. Each market has its own maker and taker fees, fixed when it is created and shown
             in its rules: a fill deducts them from the claims you receive, and your order's fee cap
-            must cover them.
+            must cover them. A market may also pay a maker rebate: when your resting order fills,
+            you get back a share of the taker's fee, up to half of it, in the claims you gave.
           </p>
         </section>
         <section>

@@ -6,7 +6,7 @@ import {
   type ShareUnits,
   tokenDecimals,
 } from "@conditional-stocks/domain";
-import { type FeeRates, isFeeRate } from "@conditional-stocks/evm-client";
+import { type FeeRates, isFeeRate, isRebateRate } from "@conditional-stocks/evm-client";
 import { polymarketImageUrl } from "@conditional-stocks/market-data";
 import { marketTokenDisplay } from "../lib/tokens/catalog";
 import type {
@@ -147,6 +147,14 @@ export function parseFees(market: Record<string, unknown>): FeeRates {
   return { makerBps: makerFeeBps, takerBps: takerFeeBps };
 }
 
+/** The market's maker rebate in bps of the taker fee; an API without it pays none. */
+export function parseRebate(market: Record<string, unknown>): number {
+  const { makerRebateBps } = market;
+  if (makerRebateBps === undefined) return 0;
+  if (!isRebateRate(makerRebateBps)) throw new Error("Invalid market maker rebate");
+  return makerRebateBps;
+}
+
 /** Aggregate price levels (or full indexed orders) into one branch book. */
 export function aggregateBook(
   orders: Record<string, unknown>[],
@@ -230,6 +238,7 @@ async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<Mar
       const venue = parseVenue(market.venue);
       const base = parseBase(market);
       const fees = parseFees(market);
+      const makerRebateBps = parseRebate(market);
       const quoteToken = address(market.quoteToken, "quote token");
       const condition = text(market.polymarketConditionId).toLowerCase();
       const [attached, book] = await Promise.all([
@@ -290,6 +299,7 @@ async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<Mar
         baseStep: text(market.baseStep),
         priceTickRawX18: text(market.priceTickRawX18, "1"),
         fees,
+        makerRebateBps,
         bookQuality: book.unavailable ? "unavailable" : book.truncated ? "truncated" : "available",
         base: {
           ...base,

@@ -14,7 +14,14 @@ import {
   zeroHash,
 } from "viem";
 import { isFeeRate, MAX_FEE_BPS, resolutionHash } from "./protocol.ts";
-import { createMarket, type Envelope, lifecycle, listPool, resolve } from "./transactions.ts";
+import {
+  createMarket,
+  type Envelope,
+  lifecycle,
+  listPool,
+  resolve,
+  setMakerRebate,
+} from "./transactions.ts";
 
 export type AdminAction = "list-pool" | "create-market" | "begin-resolution" | "resolve-market";
 export interface AdminTransaction extends Envelope {
@@ -161,6 +168,21 @@ export function lifecycleTransaction(
       action,
       reason ? keccak256(stringToBytes(reason)) : zeroHash,
     ),
+    from: getAddress(actor),
+    chainId: deployment.chainId,
+  };
+}
+
+/** Sets a market's maker rebate (bps of each fill's taker fee, at most MAX_REBATE_BPS), signed
+ * by the market admin. It applies from the next fill. */
+export function makerRebateTransaction(
+  deployment: Pick<AdminDeployment, "chainId" | "exchange">,
+  actor: Address,
+  marketId: number,
+  rebateBps: number,
+): AdminTransaction {
+  return {
+    ...setMakerRebate(deployment.exchange, marketId, rebateBps),
     from: getAddress(actor),
     chainId: deployment.chainId,
   };
