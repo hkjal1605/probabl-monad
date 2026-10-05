@@ -1,5 +1,5 @@
 "use client";
-import { useWallet } from "@/components/providers/WalletProvider";
+import { useMemberAccount } from "@/components/providers/WalletProvider";
 import { fetchTrades } from "@/modules/MarketDetailPageModule/utils/fetchTrades";
 import { fetchMarkets } from "@/modules/MarketsPageModule/utils/fetchMarkets";
 import { fetchPriceHistory } from "@/modules/MarketsPageModule/utils/fetchPriceHistory";
@@ -33,21 +33,22 @@ export function useMarkets(initial: MarketView[] = [], marketId?: string) {
       : markets.map((m) => ({ ...m, bookQuality: "unavailable" as const })),
   };
 }
+/** The member's own data: read only once its wallet signed in and joined. */
 export function useOrders() {
-  const { account } = useWallet(),
+  const account = useMemberAccount(),
     key = account ?? "";
   const query = useResource(ordersStore, key, (force) => fetchOrders(key, force), !!account);
   return { ...query, ...useReadFreshness(query), orders: query.data?.orders ?? [] };
 }
 export function usePositions() {
-  const { account } = useWallet(),
+  const account = useMemberAccount(),
     key = account ?? "";
   const query = useResource(positionsStore, key, (force) => fetchPositions(key, force), !!account);
   return { ...query, ...useReadFreshness(query), positions: query.data?.positions ?? [] };
 }
 /** The connected wallet's trades: read by owner, refreshed only when the wallet changes. */
 export function useWalletTrades() {
-  const { account } = useWallet(),
+  const account = useMemberAccount(),
     key = account ?? "";
   const query = useResource(
     walletTradesStore,

@@ -99,7 +99,8 @@ if (process.env.DELTA_VAULT_FEED) run("feed-relay", ["scripts/evm/feed-relay.ts"
 if (process.env.VK_CONFIG_PATH && existsSync(process.env.VK_CONFIG_PATH))
   run("vault-keeper", ["services/vault-keeper/src/main.ts", "--execute"], false);
 console.info(
-  `Trading UI: http://localhost:3001 · Admin: http://localhost:3002 · API: http://127.0.0.1:${environment.API_PORT ?? 3000}` +
+  `Trading UI: http://localhost:3001 · Admin: http://localhost:3002 · API: http://localhost:${environment.API_PORT ?? 3000}` +
+    " · Invite codes: bun --env-file=.local/anvil.env scripts/evm/invite-codes.ts" +
     (ingestor
       ? " · Polymarket ingestor enabled"
       : " · Set POLYMARKET_INTERNAL_TOKEN to enable Polymarket data"),

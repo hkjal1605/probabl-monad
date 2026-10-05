@@ -11,7 +11,7 @@ import type { IndexerService } from "@conditional-stocks/indexer";
 import type { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { PublicClient } from "viem";
-import type { Authenticate } from "../auth/routes.ts";
+import type { Auth } from "../auth/routes.ts";
 import { type DelegatedTrading, type TradingSigner, tradingPermission } from "./delegated.ts";
 import type { OrderPlanner } from "./plan.ts";
 
@@ -20,21 +20,23 @@ export function mountTrading(
   options: {
     indexer: IndexerService;
     client: PublicClient;
-    authenticate: Authenticate;
+    auth: Auth;
     prepare: OrderPlanner;
     signer: TradingSigner | null;
     delegated: DelegatedTrading | null;
   },
 ) {
-  const { indexer, client, authenticate, prepare, signer, delegated } = options;
-  // Public, read-only planning: no signing, broadcasting or state writes.
-  app.post("/v1/orders/prepare", async (c) =>
-    c.json(prepare(parseOrder((await c.req.json()).order))),
-  );
+  const { indexer, client, auth, prepare, signer, delegated } = options;
+  // Read-only planning (no signing, broadcasting or state writes), for members' own orders.
+  app.post("/v1/orders/prepare", async (c) => {
+    const order = parseOrder((await c.req.json()).order);
+    await auth.trader(c, order.maker);
+    return c.json(prepare(order));
+  });
 
   /** Owner-signed placement: the reviewed plan as wallet calldata, simulated first. */
   app.post("/v1/orders/transaction", async (c) => {
-    const owner = await authenticate(c.req.header("authorization"));
+    const { owner } = await auth.trader(c);
     const body = await c.req.json();
     const order = parseOrder(body.order);
     if ((order.delegate ?? order.maker) !== owner)
@@ -57,11 +59,12 @@ export function mountTrading(
     return c.json({ transaction, executionVersion: 1 });
   });
 
-  app.get("/v1/trading/permission", (c) =>
-    c.json(tradingPermission(indexer, signer, address(c.req.query("owner")))),
-  );
+  app.get("/v1/trading/permission", async (c) => {
+    const { owner } = await auth.member(c, c.req.query("owner") ?? null);
+    return c.json(tradingPermission(indexer, signer, owner));
+  });
   app.post("/v1/trading/submit", async (c) => {
-    const owner = await authenticate(c.req.header("authorization"));
+    const { owner } = await auth.trader(c);
     if (!delegated) throw new HTTPException(503, { message: "Delegated trading is unavailable" });
     const body = (await c.req.json()) as { order: OrderWire; clientId: string };
     return c.json(await delegated.submit(address(owner), body.order, String(body.clientId ?? "")));
@@ -70,7 +73,8 @@ export function mountTrading(
   /** Cancellation (owner) or permissionless release of an order that can no longer fill. */
   for (const kind of ["cancel", "recovery"])
     app.post(`/v1/orders/${kind}/prepare`, async (c) => {
-      const owner = await authenticate(c.req.header("authorization"));
+      // Cancelling returns the wallet's own reservation: signing in is enough.
+      const { owner } = await auth.session(c);
       const key = String((await c.req.json()).orderHash ?? "");
       if (!/^\d{1,30}$/.test(key)) throw new Error("Invalid order id");
       const order = indexer.trading().orders.get(key);

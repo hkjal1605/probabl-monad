@@ -1,6 +1,6 @@
 "use client";
 import { getAddress } from "viem";
-import { useWallet } from "@/components/providers/WalletProvider";
+import { useMemberAccount } from "@/components/providers/WalletProvider";
 import { deltaVaults } from "@/config/protocol";
 import { pinnedVaults } from "@/lib/delta-vault/pinned";
 import { getDeltaVaultAccount, getDeltaVaults } from "@/services/delta-vaults-api-service";
@@ -20,7 +20,7 @@ export function useDeltaVaults() {
 
 /** The connected wallet's shares in `vault`, what they redeem for, and its token allowances. */
 export function useDeltaVaultAccount(vault: string | undefined) {
-  const { account } = useWallet();
+  const account = useMemberAccount();
   const key = vault && account ? `${getAddress(vault)}:${account}` : "";
   const query = useResource(
     deltaVaultAccountStore,

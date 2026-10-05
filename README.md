@@ -68,6 +68,29 @@ rounded down and the protocol keeps the rest. Capping it at half means matching 
 always costs more than it returns. The `Trade` log reports the fees as charged; the indexer derives
 each rebate from the market's rate at that fill and records it with the trade.
 
+**Access.** Anyone can browse; trading and a wallet's own data (portfolio, orders, fills, the
+order stream) need an invite. A wallet signs in with Sign-In with Ethereum, and a new wallet's
+invite code rides in that same message, so one signature both signs in and joins. A session
+lasts 30 days from its last use (the app's session read renews it, up to 90 days after sign-in),
+and each wallet keeps its own: reloading, locking the wallet or switching accounts and back never
+asks for another signature; only Disconnect signs out. Where the page's cookies reach the API (the
+UI on the API's site, checked once per browser) the session is that wallet's HttpOnly,
+`SameSite=Strict` cookie, and changes also need the app's origin and header; otherwise (a local UI
+against a remote API) it is a bearer token kept per wallet in browser storage. Scripts and the
+admin console use bearer tokens, and the API keeps only hashes. Owner-scoped reads check the
+session's wallet, and withdrawals and cancellations need only a session, so a wallet's funds are
+never held back. Members create invite codes within a quota; the market admin issues launch codes
+and suspends members (Admin → Invites & referrals, or `scripts/evm/invite-codes.ts`).
+
+**Referrals.** A code's owner earns 15% (`REFERRAL_SHARE_BPS`) of its referees' net fees (a taker
+fee less the maker rebate paid from it) for 6 months after each joins (`REFERRAL_MONTHS`), one
+level deep. Rewards accrue per fill from finalized trades in the claims the fee was charged in;
+when a market resolves, the winning side's claims become tokens, claimable from the first Monday
+00:00 UTC after resolution. A dedicated payout wallet pays claims (`REFERRAL_PAYOUT_PRIVATE_KEY`):
+each transfer is journaled before it is broadcast and settled by its receipt, so none is paid
+twice. `scripts/evm/fund-referrals.ts` tops it up from the treasury by exactly what it is short
+(dry run unless `--execute`); the admin console shows obligations against its balances.
+
 **Delegated trading.** A wallet approves the service's trading key once (per-order and lifetime
 quote limits, fee cap, expiry); the API then submits orders for it without a wallet prompt. Retries
 with the same client id never place a second order.
@@ -112,6 +135,7 @@ anvil --block-time 1                         # in another terminal
 bun run anvil:bootstrap                      # mock tokens, exchange, funded demo wallets → .local/anvil.env
 POLYMARKET_INTERNAL_TOKEN=<16+ chars> bun run dev   # PostgreSQL, API :3000, UI :3001, admin :3002, ingestor
 bun run seed:markets                         # demo catalogue through the admin evidence flow; funds the maker
+bun --env-file=.local/anvil.env scripts/evm/invite-codes.ts 3   # launch invite codes to join with
 ```
 
 The bootstrap also deploys a seeded NVDA Δ-vault over a mock Chainlink feed (kept at the reference
@@ -137,8 +161,13 @@ market maker and the vault keeper do not quote it.
    `API_AUTH_ORIGINS`, optional `POLL_MS` (fixes polling; by default it follows the block time) and
    `FINALITY_DEPTH` (RPCs without the `finalized` tag),
    `TRADING_DELEGATE_ADDRESS`/`TRADING_DELEGATE_PRIVATE_KEY`, `POLYMARKET_INGESTOR_URL`/
-   `POLYMARKET_INTERNAL_TOKEN`, `EVIDENCE_PUBLIC_BASE_URL`, `REDIS_URL`, and
-   `FAUCET_PRIVATE_KEY` (testnets only).
+   `POLYMARKET_INTERNAL_TOKEN`, `EVIDENCE_PUBLIC_BASE_URL`, `REDIS_URL`,
+   `FAUCET_PRIVATE_KEY` (testnets only), `TRUST_PROXY_HOPS` (1 behind nginx), and the access and
+   referral settings `INVITE_CODES_PER_MEMBER`, `REFERRAL_SHARE_BPS`, `REFERRAL_MONTHS` and
+   `REFERRAL_PAYOUT_PRIVATE_KEY` (see `.env.example`). Serve the trading UI on the API's site
+   (e.g. `probabl.trade` and `api.probabl.trade`), so sessions are HttpOnly cookies, and over
+   HTTP/2 (the markets feed holds a stream per market). Deploy the API before a UI that signs in
+   this way: the UI needs its session routes.
 3. UIs: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_CHAIN_ID`, `NEXT_PUBLIC_CHAIN_NAME`, `NEXT_PUBLIC_RPC_URL`,
    `NEXT_PUBLIC_EXCHANGE_ADDRESS` (and `API_URL` for the admin's server routes).
 4. Market maker: `MM_*` settings (see `scripts/evm/bootstrap.ts`) with a dedicated wallet; run `--fund`

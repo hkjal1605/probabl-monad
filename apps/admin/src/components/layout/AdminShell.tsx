@@ -5,6 +5,7 @@ import {
   ClipboardCheck,
   FileClock,
   Gavel,
+  Gift,
   History,
   LayoutDashboard,
   Menu,
@@ -45,6 +46,7 @@ const nav = [
   { href: "/markets", icon: Settings2, label: "Market controls" },
   { href: "/resolutions", icon: Gavel, label: "Resolution" },
   { href: "/vaults", icon: Vault, label: "Vault controls" },
+  { href: "/invites", icon: Gift, label: "Invites & referrals" },
   { href: "/system", icon: Activity, label: "System health" },
   { href: "/history", icon: History, label: "Audit history" },
 ];

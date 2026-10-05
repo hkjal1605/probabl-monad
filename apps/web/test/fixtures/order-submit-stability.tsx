@@ -13,8 +13,9 @@ Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
 const wallet = {
   account: "wallet-a",
-  sessionToken: "session-token",
-  authenticate: mock(async () => "session-token"),
+  access: "member",
+  sessionId: "session-id",
+  authenticate: mock(async () => "session-id"),
 };
 let positionsBlock = "100";
 const notifications: string[] = [];

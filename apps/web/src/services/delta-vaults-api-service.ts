@@ -73,4 +73,7 @@ export interface DeltaVaultAccountView {
 export const getDeltaVaults = (signal: AbortSignal) =>
   requestJson<{ vaults: DeltaVaultView[] }>("/v1/delta-vaults", { signal });
 export const getDeltaVaultAccount = (vault: string, owner: string, signal: AbortSignal) =>
-  requestJson<DeltaVaultAccountView>(`/v1/delta-vaults/${vault}/accounts/${owner}`, { signal });
+  requestJson<DeltaVaultAccountView>(`/v1/delta-vaults/${vault}/accounts/${owner}`, {
+    signal,
+    auth: true,
+  });

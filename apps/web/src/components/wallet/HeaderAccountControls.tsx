@@ -11,6 +11,7 @@ import { useOrders } from "@/hooks/useProtocolData";
 import { useWalletAssets } from "@/hooks/useWalletAssets";
 import { formatCompactUsd } from "@/lib/format/display";
 import { headerPortfolioSummary } from "@/lib/portfolio/summary";
+import { useAccountStep } from "./AccountGate";
 import { DepositDialog } from "./DepositDialog";
 import { WalletButton } from "./WalletButton";
 
@@ -22,6 +23,7 @@ export function HeaderAccountControls() {
   const assets = useWalletAssets(catalogue.markets);
   const orders = useOrders();
   const [depositOpen, setDepositOpen] = useState(false);
+  const step = useAccountStep();
   const balancesFresh = assets.isDataFresh && !catalogue.error;
   const valuationFresh = balancesFresh && orders.isDataFresh && orders.data?.openTruncated !== true;
   const balancesLoading = assets.isPending || catalogue.loading;
@@ -34,6 +36,21 @@ export function HeaderAccountControls() {
   );
 
   if (!wallet.account) return <WalletButton />;
+  // Signed out or not yet invited: the header offers the next step instead of balances.
+  if (step && wallet.access !== "suspended")
+    return (
+      <div className="flex items-center gap-5">
+        <Button
+          size="sm"
+          className="rounded-lg px-3"
+          disabled={step.disabled}
+          onClick={step.action}
+        >
+          {wallet.access === "invite-required" ? "Join with invite" : "Sign in"}
+        </Button>
+        <WalletButton />
+      </div>
+    );
   return (
     <>
       <div className="flex items-center gap-5">

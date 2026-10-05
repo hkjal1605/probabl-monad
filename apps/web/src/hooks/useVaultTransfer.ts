@@ -42,12 +42,12 @@ export function useVaultTransfer({
       const raw = vaultAmount(amount, selection.asset.decimals);
       await wallet.ensureNetwork();
       assertCurrent();
-      const token = wallet.sessionToken ?? (await wallet.authenticate());
+      const session = wallet.sessionId ?? (await wallet.authenticate());
       assertCurrent();
       const quote = await api.prepare<VaultQuote>(
         `vault/${selection.action}/prepare`,
         { asset: selection.asset.token, amount: String(raw) },
-        token,
+        session,
       );
       assertCurrent();
       const transactions = verifiedVaultTransactions({

@@ -41,9 +41,9 @@ if (await Bun.file(resolve(destination, "anvil.env")).exists())
   );
 
 const MNEMONIC = "test test test test test test test test test test test junk";
-const [admin, alice, bob, maker, faucet, delegate, keeper, relay] = [0, 1, 2, 3, 4, 5, 6, 7].map(
-  (addressIndex) => mnemonicToAccount(MNEMONIC, { addressIndex }),
-);
+const [admin, alice, bob, maker, faucet, delegate, keeper, relay, payout] = [
+  0, 1, 2, 3, 4, 5, 6, 7, 8,
+].map((addressIndex) => mnemonicToAccount(MNEMONIC, { addressIndex }));
 const chain = { ...foundry, rpcUrls: { default: { http: [rpc] } } };
 const client = createPublicClient({ chain, transport: http(rpc), pollingInterval: 250 });
 if ((await client.getChainId()) !== foundry.id)
@@ -92,6 +92,8 @@ for (const [account, quote, stock] of [
   [bob!, 1_000_000n, 1_000n],
   [maker!, 10_000_000n, 10_000n],
   [faucet!, 1_000_000n, 1_000n],
+  // Pays claimed referral rewards; on a live network ops funds it from swept fees.
+  [payout!, 100_000n, 100n],
 ] as const) {
   await send(
     wallet.sendTransaction({
@@ -200,7 +202,11 @@ const env = {
   TRADING_DELEGATE_ADDRESS: delegate!.address,
   TRADING_DELEGATE_PRIVATE_KEY: key(delegate),
   FAUCET_PRIVATE_KEY: key(faucet),
-  NEXT_PUBLIC_API_URL: "http://127.0.0.1:3000",
+  REFERRAL_PAYOUT_PRIVATE_KEY: key(payout),
+  // Plain-HTTP localhost: the session cookie drops `Secure` (and its `__Host-` name) here only.
+  SESSION_COOKIE_INSECURE: "1",
+  // The app reaches the API on the same loopback name, so the session cookie is same-site.
+  NEXT_PUBLIC_API_URL: "http://localhost:3000",
   NEXT_PUBLIC_CHAIN_ID: "31337",
   NEXT_PUBLIC_CHAIN_NAME: "Anvil",
   NEXT_PUBLIC_RPC_URL: rpc,

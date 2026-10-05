@@ -10,7 +10,8 @@
     "./spot-prices": "./src/spot-prices.ts",
     "./read-cache": "./src/read-cache.ts",
     "./redis-cache": "./src/redis-cache.ts",
-    "./token-catalog": "./src/token-catalog.ts"
+    "./token-catalog": "./src/token-catalog.ts",
+    "./invites": "./src/invites.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

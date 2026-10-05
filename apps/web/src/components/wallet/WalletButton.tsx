@@ -2,6 +2,7 @@
 import {
   BriefcaseBusiness,
   CheckCircle2,
+  Gift,
   Landmark,
   ListOrdered,
   LogOut,
@@ -163,6 +164,12 @@ export function WalletButton({ compact = false }: { compact?: boolean }) {
               >
                 <Vault /> Vaults
               </DropdownMenuItem>
+              <DropdownMenuItem
+                render={<Link href="/invites" />}
+                className="gap-3 px-3 py-2.5 font-medium"
+              >
+                <Gift /> Invites & rewards
+              </DropdownMenuItem>
               <DropdownMenuCheckboxItem
                 checked={resolvedTheme === "dark"}
                 onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
@@ -232,9 +239,29 @@ export function WalletButton({ compact = false }: { compact?: boolean }) {
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Membership</span>
+                  <Badge
+                    variant={
+                      wallet.access === "member"
+                        ? "positive"
+                        : wallet.access === "suspended"
+                          ? "destructive"
+                          : "warning"
+                    }
+                  >
+                    {wallet.access === "member"
+                      ? "Invited"
+                      : wallet.access === "suspended"
+                        ? "Suspended"
+                        : wallet.access === "invite-required"
+                          ? "Invite needed"
+                          : "Sign in to check"}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Trading session</span>
-                  <Badge variant={wallet.sessionToken ? "positive" : "warning"}>
-                    {wallet.sessionToken ? (
+                  <Badge variant={wallet.sessionId ? "positive" : "warning"}>
+                    {wallet.sessionId ? (
                       <>
                         <CheckCircle2 />
                         Signed in
@@ -269,7 +296,7 @@ export function WalletButton({ compact = false }: { compact?: boolean }) {
                 Switch network
               </Button>
             )}
-            {!wallet.sessionToken && (
+            {!wallet.sessionId && (
               <Button
                 disabled={wallet.status === "signing" || connecting || wrongNetwork}
                 onClick={() =>

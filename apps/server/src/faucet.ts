@@ -9,13 +9,12 @@ import {
   type Address,
   encodeFunctionData,
   erc20Abi,
-  getAddress,
   type Hex,
   type PublicClient,
   parseUnits,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import type { Authenticate } from "./auth/routes.ts";
+import type { Auth } from "./auth/routes.ts";
 
 /** Anvil, Robinhood Chain testnet and Base Sepolia. */
 export const FAUCET_CHAINS: readonly number[] = [31337, 46630, 84532];
@@ -32,10 +31,10 @@ export function mountFaucet(
     indexer: IndexerService;
     db: Database;
     domain: string;
-    authenticate: Authenticate;
+    auth: Auth;
   },
 ) {
-  const { client, indexer, db, domain, authenticate } = options;
+  const { client, indexer, db, domain, auth } = options;
   const signer =
     options.secret && FAUCET_CHAINS.includes(options.chainId)
       ? privateKeyToAccount(options.secret.trim() as Hex)
@@ -43,9 +42,11 @@ export function mountFaucet(
 
   app.get("/v1/faucet/status", async (c) => {
     c.header("Cache-Control", "no-store");
-    const owner = c.req.query("owner");
+    // Availability is public; whether a wallet claimed is its member's to read.
+    const requested = c.req.query("owner");
+    const owner = requested ? (await auth.member(c, requested)).owner : null;
     if (!signer) return c.json({ available: false, claimed: false });
-    const claim = owner ? await db.faucetClaim(domain, getAddress(owner)) : undefined;
+    const claim = owner ? await db.faucetClaim(domain, owner) : undefined;
     return c.json({
       available: true,
       claimed: Boolean(claim?.completedAt),
@@ -54,7 +55,7 @@ export function mountFaucet(
   });
 
   app.post("/v1/faucet/claim", async (c) => {
-    const owner = getAddress(await authenticate(c.req.header("authorization")));
+    const { owner } = await auth.trader(c);
     if (!signer) throw new HTTPException(503, { message: "The testnet faucet is not available" });
     if (owner === signer.address)
       throw new HTTPException(400, { message: "The faucet cannot claim from itself" });

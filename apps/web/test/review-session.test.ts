@@ -2,14 +2,14 @@ import { expect, test } from "bun:test";
 import { reviewWithSession } from "../src/lib/trading/review-session";
 import { ApiError } from "../src/services/protocol-api-service";
 
-test("successful public or authenticated review never prompts", async () => {
-  for (const token of [null, "saved"]) {
+test("successful review under the current or a reviewed sign-in never prompts", async () => {
+  for (const session of [null, "saved"]) {
     let prompts = 0;
     expect(
       await reviewWithSession({
-        token,
+        session,
         request: async (received) => {
-          expect(received).toBe(token ?? undefined);
+          expect(received).toBe(session ?? true);
           return "quote";
         },
         authenticate: async () => {
@@ -24,12 +24,12 @@ test("successful public or authenticated review never prompts", async () => {
 });
 
 test("missing or expired sessions authenticate and retry exactly once", async () => {
-  for (const token of [null, "expired"]) {
-    const requests: (string | undefined)[] = [];
+  for (const session of [null, "expired"]) {
+    const requests: (string | true)[] = [];
     let prompts = 0;
     expect(
       await reviewWithSession({
-        token,
+        session,
         request: async (received) => {
           requests.push(received);
           if (requests.length === 1) throw new ApiError("Sign in", 401, null);
@@ -42,7 +42,7 @@ test("missing or expired sessions authenticate and retry exactly once", async ()
         assertCurrent() {},
       }),
     ).toBe("quote");
-    expect(requests).toEqual([token ?? undefined, "new"]);
+    expect(requests).toEqual([session ?? true, "new"]);
     expect(prompts).toBe(1);
   }
 });
@@ -53,7 +53,7 @@ test("failed retry cannot loop; non-authentication errors never prompt", async (
       prompts = 0;
     await expect(
       reviewWithSession({
-        token: null,
+        session: null,
         request: async () => {
           requests++;
           throw new ApiError("rejected", status, null);
@@ -77,7 +77,7 @@ test("wallet rejection and changed action context stop recovery", async () => {
       checks = 0;
     await expect(
       reviewWithSession({
-        token: null,
+        session: null,
         request: async () => {
           requests++;
           throw new ApiError("Sign in", 401, null);

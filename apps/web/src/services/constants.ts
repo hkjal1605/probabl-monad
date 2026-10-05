@@ -15,10 +15,22 @@ if (
 )
   throw new Error("NEXT_PUBLIC_API_URL must be an HTTPS API origin (localhost HTTP is allowed).");
 export const API_URL = configured.origin;
+const LOOPBACK = ["localhost", "127.0.0.1", "[::1]"];
+/** Local development reaches the API on the page's own loopback name: the session cookie stays
+ * same-site whether the app was opened as localhost or 127.0.0.1. */
+export const browserApiOrigin = () => {
+  if (typeof window === "undefined" || !LOOPBACK.includes(configured.hostname)) return API_URL;
+  const page = window.location.hostname;
+  if (!LOOPBACK.includes(page) || page === configured.hostname) return API_URL;
+  const local = new URL(API_URL);
+  local.hostname = page;
+  return local.origin;
+};
 export const apiUrl = (path: string) => {
   if (!path.startsWith("/") || path.startsWith("//") || path.includes("\\"))
     throw new Error("Invalid API path");
-  const url = new URL(path, API_URL);
-  if (url.origin !== API_URL) throw new Error("Foreign API origin");
+  const origin = browserApiOrigin();
+  const url = new URL(path, origin);
+  if (url.origin !== origin) throw new Error("Foreign API origin");
   return url.toString();
 };

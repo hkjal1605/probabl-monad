@@ -28,6 +28,6 @@ export interface TradingPermission {
 export function fetchTradingPermission(owner: string, signal?: AbortSignal) {
   return requestJson<TradingPermission>(
     `/v1/trading/permission?owner=${encodeURIComponent(owner)}`,
-    signal ? { signal } : {},
+    { auth: true, ...(signal ? { signal } : {}) },
   );
 }

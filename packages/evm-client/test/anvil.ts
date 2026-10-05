@@ -19,7 +19,7 @@ import { foundry } from "viem/chains";
 import { createMarket, type Envelope, lifecycle, listPool, underlyingId } from "../src/index.ts";
 
 const MNEMONIC = "test test test test test test test test test test test junk";
-export const accounts = [0, 1, 2, 3, 4, 5].map((addressIndex) =>
+export const accounts = [0, 1, 2, 3, 4, 5, 6, 7].map((addressIndex) =>
   mnemonicToAccount(MNEMONIC, { addressIndex }),
 );
 

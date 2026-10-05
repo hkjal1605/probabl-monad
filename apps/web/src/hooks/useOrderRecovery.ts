@@ -37,11 +37,11 @@ export function useOrderRecovery() {
         if (!wallet.account) throw new Error("Connect your wallet.");
         const expected = orderRecovery({ orderHash });
         if (wallet.chainId !== protocolConfig.chainId) await wallet.ensureNetwork();
-        const token = wallet.sessionToken ?? (await wallet.authenticate());
+        const session = wallet.sessionId ?? (await wallet.authenticate());
         const prepared = await api.prepare<unknown>(
           `orders/${kind === "cancel" ? "cancel" : "recovery"}/prepare`,
           { orderHash, kind },
-          token,
+          session,
         );
         assertCurrent();
         const hash = await wallet.sendTransaction(verifyRecoveryResponse(expected, prepared));

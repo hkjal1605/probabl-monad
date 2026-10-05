@@ -69,6 +69,19 @@ export function SiteHeader() {
               >
                 Vaults
               </SheetClose>
+              <SheetClose
+                nativeButton={false}
+                render={
+                  <Button
+                    variant="ghost"
+                    className="justify-start"
+                    render={<Link href="/invites" />}
+                    nativeButton={false}
+                  />
+                }
+              >
+                Invites & rewards
+              </SheetClose>
             </nav>
           </SheetContent>
         </Sheet>

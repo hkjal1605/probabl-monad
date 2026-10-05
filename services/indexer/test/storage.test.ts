@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { createDatabase, type Database } from "@conditional-stocks/db";
+import { createDatabase, type Database, SCHEMA_VERSION } from "@conditional-stocks/db";
 import { localDatabase } from "@conditional-stocks/db/local";
 import { Pool } from "@conditional-stocks/db/testing";
 import {
@@ -312,7 +312,9 @@ test("migrates version 2 storage: earlier trades read back with no maker rebate"
   await db.initialize();
   await db.initialize(); // Idempotent once migrated.
   await db.verify();
-  expect((await pool.query("SELECT version FROM probabl.schema_version")).rows[0].version).toBe(3);
+  expect((await pool.query("SELECT version FROM probabl.schema_version")).rows[0].version).toBe(
+    SCHEMA_VERSION,
+  );
   expect(await db.trades(d, { limit: 10 })).toEqual([before]);
   // New trades record their rebates beside the migrated ones.
   const after = { ...before, block: 8n, tx: keccak256(stringToBytes("v3 trade")), makerRebate: 2n };

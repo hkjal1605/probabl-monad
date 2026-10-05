@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Stat } from "@/components/ui/page";
-import { useWalletLogin } from "@/components/wallet/WalletLoginProvider";
+import { useAccountStep } from "@/components/wallet/AccountGate";
 import { tokenText } from "@/lib/delta-vault/amounts";
 import { formatUsd, tokenAmount } from "@/lib/format/display";
 import type { DeltaVaultAccountView, DeltaVaultView } from "@/services/delta-vaults-api-service";
@@ -18,7 +18,7 @@ export function VaultPosition({
   position: DeltaVaultAccountView | undefined;
   markets: MarketView[];
 }) {
-  const login = useWalletLogin();
+  const step = useAccountStep();
   const q = vault.quote.decimals ?? 6,
     b = vault.base.decimals ?? 18;
   if (!position)
@@ -29,11 +29,17 @@ export function VaultPosition({
         </CardHeader>
         <CardContent className="flex flex-col items-start gap-3">
           <p className="text-sm text-muted-foreground">
-            Connect a wallet to deposit or see shares.
+            {step && step.label !== "Trading is suspended"
+              ? step.label === "Connect wallet"
+                ? "Connect a wallet to deposit or see shares."
+                : "Members deposit and see their shares here."
+              : "Loading your position…"}
           </p>
-          <Button size="sm" onClick={login}>
-            Connect wallet
-          </Button>
+          {step && step.label !== "Trading is suspended" && (
+            <Button size="sm" disabled={step.disabled} onClick={step.action}>
+              {step.label}
+            </Button>
+          )}
         </CardContent>
       </Card>
     );

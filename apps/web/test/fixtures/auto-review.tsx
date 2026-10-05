@@ -9,9 +9,10 @@ for (const key of ["window", "document", "navigator", "HTMLElement", "Element", 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 const wallet = {
   account: "wallet-a",
-  sessionToken: null,
+  access: "member",
+  sessionId: null,
   ensureNetwork: mock(async () => {}),
-  authenticate: mock(async () => "token"),
+  authenticate: mock(async () => "session-id"),
 };
 let ready = true;
 const requests: Array<{

@@ -37,6 +37,7 @@ interface ClaimResult {
 export function DevnetFaucetBanner() {
   const wallet = useWallet();
   const owner = wallet.account;
+  const member = wallet.member !== null;
   const [available, setAvailable] = useState(false);
   const [claimed, setClaimed] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
@@ -46,10 +47,13 @@ export function DevnetFaucetBanner() {
   useEffect(() => {
     if (!devnet) return;
     const controller = new AbortController();
-    const query = owner ? `?owner=${encodeURIComponent(owner)}` : "";
+    // Whether a wallet claimed is its member's to read; availability is public.
+    const reader = owner && member ? owner : null;
+    const query = reader ? `?owner=${encodeURIComponent(reader)}` : "";
     if (owner && claimedLocally(owner)) setClaimed(owner);
     requestJson<{ available: boolean; claimed: boolean }>(`/v1/faucet/status${query}`, {
       signal: controller.signal,
+      ...(reader ? { auth: true as const } : {}),
     })
       .then((status) => {
         setAvailable(status.available);
@@ -60,7 +64,7 @@ export function DevnetFaucetBanner() {
       })
       .catch(() => undefined);
     return () => controller.abort();
-  }, [devnet, owner]);
+  }, [devnet, owner, member]);
 
   if (!devnet || !available || (owner && claimed === owner)) return null;
 
@@ -76,14 +80,10 @@ export function DevnetFaucetBanner() {
     setClaiming(true);
     try {
       const result = await reviewWithSession<ClaimResult>({
-        token: wallet.sessionToken,
-        request: (token) =>
-          requestJson<ClaimResult>("/v1/faucet/claim", {
-            body: {},
-            timeoutMs: 120_000,
-            ...(token ? { token } : {}),
-          }),
-        authenticate: wallet.authenticate,
+        session: wallet.sessionId,
+        request: (auth) =>
+          requestJson<ClaimResult>("/v1/faucet/claim", { body: {}, timeoutMs: 120_000, auth }),
+        authenticate: () => wallet.authenticate(),
         assertCurrent: () => undefined,
       });
       rememberClaim(owner);

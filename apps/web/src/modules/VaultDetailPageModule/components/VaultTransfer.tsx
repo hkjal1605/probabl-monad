@@ -94,7 +94,8 @@ export function VaultTransfer({
               </p>
             )}
             <Button
-              disabled={!wallet.account || transfer.busy || vault.paused || !quote}
+              // Investing is for members; withdrawing what a wallet holds never is gated.
+              disabled={wallet.access !== "member" || transfer.busy || vault.paused || !quote}
               onClick={() => quote && transfer.deposit(quote, walletBase)}
             >
               {transfer.busy ? <Spinner /> : vault.paused ? "Deposits paused" : "Deposit"}

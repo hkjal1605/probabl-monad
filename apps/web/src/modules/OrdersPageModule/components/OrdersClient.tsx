@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useWalletLogin } from "@/components/wallet/WalletLoginProvider";
+import { AccountStepEmpty } from "@/components/wallet/AccountGate";
 import { useOrderRecovery } from "@/hooks/useOrderRecovery";
 import {
   displayPrice,
@@ -43,19 +43,11 @@ export function OrdersClient({
   embedded?: boolean;
   fixedView?: "Open orders" | "History" | "All";
 }) {
-  const login = useWalletLogin();
   const wallet = useWallet(),
     query = useOrderRecovery();
   const [view, setView] = useState<"Open orders" | "History" | "All">("Open orders");
-  if (!wallet.account)
-    return (
-      <EmptyState>
-        <p>Connect to see canonical orders.</p>
-        <Button variant="default" onClick={login}>
-          Connect wallet
-        </Button>
-      </EmptyState>
-    );
+  if (wallet.access !== "member" && wallet.access !== "suspended")
+    return <AccountStepEmpty>Connect to see canonical orders.</AccountStepEmpty>;
   const selectedView = fixedView ?? view;
   const orders = [...query.orders].filter(
     (o) =>

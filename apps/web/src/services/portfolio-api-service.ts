@@ -9,11 +9,14 @@ export interface PayoutPage {
 }
 export const getPositions = async (owner: string, signal: AbortSignal) =>
   parseStreamWallet(
-    await requestJson<unknown>(`/positions/${encodeURIComponent(owner)}`, { signal }),
+    await requestJson<unknown>(`/positions/${encodeURIComponent(owner)}`, { signal, auth: true }),
     owner,
   );
 export async function getPayouts(owner: string, signal: AbortSignal) {
-  const page = await requestJson<PayoutPage>(`/payouts/${encodeURIComponent(owner)}`, { signal });
+  const page = await requestJson<PayoutPage>(`/payouts/${encodeURIComponent(owner)}`, {
+    signal,
+    auth: true,
+  });
   if (page.vault.toLowerCase() !== protocolConfig.exchange.toLowerCase())
     throw new Error("Payout vault configuration does not match the indexer");
   if (page.nextCursor) throw new Error("Unexpected pagination from the indexer");

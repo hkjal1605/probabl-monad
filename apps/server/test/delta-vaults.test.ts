@@ -15,6 +15,7 @@ import {
   startAnvil,
   tokenAbi,
 } from "../../../packages/evm-client/test/anvil.ts";
+import type { Auth } from "../src/auth/routes.ts";
 import { mountDeltaVaults } from "../src/delta-vaults/routes.ts";
 
 const NOW = BigInt(Math.floor(Date.now() / 1000));
@@ -94,8 +95,17 @@ beforeAll(async () => {
     indexer,
     vaults: [vault],
     probability: async () => 400_000n,
+    // A member gate that admits the wallet asked for, recording each check.
+    auth: {
+      member: async (_: unknown, owner?: string | null) => {
+        gated.push(owner ?? null);
+        return { owner: owner ?? admin };
+      },
+    } as unknown as Auth,
   });
 }, 90_000);
+
+const gated: (string | null)[] = [];
 
 afterAll(() => {
   follower?.stop();
@@ -148,6 +158,9 @@ test("previews match what the contract would do; accounts show shares and allowa
   expect(withdraw.body.quoteOut).toBe(String(10_000n * USDC));
   expect(withdraw.body.baseOut).toBe(String(100n * NVDA));
   const account = await get(`/v1/delta-vaults/${vault}/accounts/${admin}`);
+  // A wallet's account is a member read of that very wallet; previews need a member too.
+  expect(gated).toContain(admin);
+  expect(gated).toContain(null);
   expect(account.body.shares).toBe(String(10n ** 22n - 1000n));
   expect(account.body.allowance).toEqual({ quote: "0", base: "0" });
   expect(account.body.redeems.quote).toBe(String(100_000n * USDC - 1n));

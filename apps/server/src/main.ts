@@ -10,7 +10,8 @@ import { RedisCache } from "@conditional-stocks/shared/redis-cache";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
-import { createPublicClient, defineChain, fallback, getAddress, http } from "viem";
+import { BaseError, createPublicClient, defineChain, fallback, getAddress, http } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 import { mountAdmin } from "./admin/routes.ts";
 import { mountAuthentication } from "./auth/routes.ts";
 import { browserCors } from "./common/browser-cors.ts";
@@ -19,9 +20,11 @@ import { mountCustody } from "./custody/routes.ts";
 import { mountDeltaVaults } from "./delta-vaults/routes.ts";
 import { mountFaucet } from "./faucet.ts";
 import { PolymarketIngestorClient } from "./integrations/polymarket.ts";
+import { mountInvites } from "./invites/routes.ts";
 import { PriceRecorder } from "./market-data/history.ts";
 import { RobinhoodSpotPrices } from "./market-data/robinhood.ts";
 import { CachedProbability, mountMarketData } from "./market-data/routes.ts";
+import { Referrals } from "./referrals/service.ts";
 import { DelegatedTrading, tradingSigner } from "./trading/delegated.ts";
 import { createOrderPlan } from "./trading/plan.ts";
 import { mountTrading } from "./trading/routes.ts";
@@ -85,6 +88,20 @@ await db.verify();
 const origins = required("API_AUTH_ORIGINS")
   .split(",")
   .map((value) => new URL(value.trim()).origin);
+const whole = (name: string, fallback: number, max: number) => {
+  const value = Number(process.env[name]?.trim() || fallback);
+  if (!Number.isInteger(value) || value < 0 || value > max)
+    throw new Error(`${name} must be a whole number up to ${max}`);
+  return value;
+};
+/** Referral program: 15% of referees' net fees for 6 months; members create 5 codes. */
+const referralConfig = {
+  shareBps: whole("REFERRAL_SHARE_BPS", 1_500, 10_000),
+  months: whole("REFERRAL_MONTHS", 6, 120),
+};
+const codeQuota = whole("INVITE_CODES_PER_MEMBER", 5, 10_000);
+// Proxies in front of the API (each appending X-Forwarded-For): rate limits key on the client.
+const trustedHops = whole("TRUST_PROXY_HOPS", 0, 5);
 
 const indexer = new IndexerService({
   client,
@@ -96,6 +113,7 @@ const indexer = new IndexerService({
   db,
   ...(process.env.FINALITY_DEPTH ? { finalityDepth: BigInt(process.env.FINALITY_DEPTH) } : {}),
   ...(process.env.POLL_MS ? { pollMs: Number(process.env.POLL_MS) } : {}),
+  ...(process.env.FINALITY_MS ? { finalityMs: Number(process.env.FINALITY_MS) } : {}),
   onError: (error) => logger.error("indexer.error", { error }),
 });
 await indexer.start();
@@ -113,15 +131,69 @@ app.use("*", async (c, next) =>
 );
 app.onError(
   (error) =>
-    new Response(JSON.stringify({ error: { message: error.message } }), {
-      status:
-        error instanceof HTTPException
-          ? error.status
-          : error instanceof MarketDataError
+    new Response(
+      JSON.stringify({
+        error: {
+          // A chain client error's full text names the RPC endpoint (which can carry a key).
+          message: error instanceof BaseError ? error.shortMessage : error.message,
+          // Gates name why (e.g. "invite-required"), so the app can offer the right step.
+          ...(error instanceof HTTPException &&
+          typeof (error.cause as { code?: unknown } | undefined)?.code === "string"
+            ? { code: (error.cause as { code: string }).code }
+            : {}),
+        },
+      }),
+      {
+        status:
+          error instanceof HTTPException
             ? error.status
-            : 400,
-      headers: { "content-type": "application/json" },
-    }),
+            : error instanceof MarketDataError
+              ? error.status
+              : 400,
+        headers: { "content-type": "application/json" },
+      },
+    ),
+);
+
+const auth = mountAuthentication(app, {
+  db,
+  client,
+  deployment: { chainId, exchange },
+  domain,
+  origins,
+  // Plain-HTTP local development only: browsers keep `__Host-`/Secure cookies for HTTPS.
+  secureCookie: process.env.SESSION_COOKIE_INSECURE !== "1",
+  trustedHops,
+  codeQuota,
+});
+// A wallet's own portfolio, orders, trades and stream need its member session; the same reads
+// without an owner (books, market trades, the market stream) stay public.
+const ownerGate =
+  (owner: (c: Parameters<Parameters<typeof app.use>[1]>[0]) => string | undefined) =>
+  async (
+    c: Parameters<Parameters<typeof app.use>[1]>[0],
+    next: Parameters<Parameters<typeof app.use>[1]>[1],
+  ) => {
+    const wallet = owner(c);
+    if (wallet !== undefined) await auth.member(c, wallet);
+    await next();
+  };
+for (const path of ["/positions/:owner", "/balances/:owner", "/payouts/:owner"])
+  app.use(
+    path,
+    ownerGate((c) => c.req.param("owner")),
+  );
+app.use(
+  "/orders",
+  ownerGate((c) => c.req.query("maker")),
+);
+app.use(
+  "/trades",
+  ownerGate((c) => c.req.query("owner")),
+);
+app.use(
+  "/stream",
+  ownerGate((c) => c.req.query("owner")),
 );
 
 indexer.mount(app);
@@ -209,8 +281,8 @@ mountDeltaVaults(app, {
     const midpoint = ((await probabilities.get(condition)) as { midpointX6?: unknown }).midpointX6;
     return typeof midpoint === "string" && /^[0-9]{1,7}$/.test(midpoint) ? BigInt(midpoint) : null;
   },
+  auth,
 });
-const authenticate = mountAuthentication(app, db, client, { chainId, exchange }, domain, origins);
 const signer = tradingSigner(
   process.env.TRADING_DELEGATE_PRIVATE_KEY,
   process.env.TRADING_DELEGATE_ADDRESS,
@@ -219,13 +291,13 @@ const prepare = createOrderPlan(indexer);
 mountTrading(app, {
   indexer,
   client,
-  authenticate,
+  auth,
   prepare,
   signer,
   delegated: signer ? new DelegatedTrading({ indexer, db, domain, client, signer, prepare }) : null,
 });
-mountCustody(app, indexer, client, authenticate);
-mountAdmin(app, { db, indexer, client, chainId, domain, authenticate, polymarket });
+mountCustody(app, indexer, client, auth);
+mountAdmin(app, { db, indexer, client, chainId, domain, authenticate: auth.bearer, polymarket });
 const faucet = mountFaucet(app, {
   secret: process.env.FAUCET_PRIVATE_KEY,
   chainId,
@@ -233,9 +305,39 @@ const faucet = mountFaucet(app, {
   indexer,
   db,
   domain,
-  authenticate,
+  auth,
 });
 if (faucet) logger.info("faucet.enabled", { faucet });
+const payoutKey = process.env.REFERRAL_PAYOUT_PRIVATE_KEY?.trim();
+// A dedicated, separately funded wallet that pays claimed referral rewards (never a role key).
+const payout = payoutKey ? privateKeyToAccount(payoutKey as `0x${string}`) : null;
+const referrals = new Referrals({
+  db,
+  indexer,
+  client,
+  domain,
+  config: referralConfig,
+  payout,
+  probability: async (condition) => {
+    const midpoint = ((await probabilities.get(condition)) as { midpointX6?: unknown }).midpointX6;
+    return typeof midpoint === "string" && /^[0-9]{1,7}$/.test(midpoint) ? BigInt(midpoint) : null;
+  },
+  onError: (event, error) => logger.error(event, { error }),
+});
+referrals.start();
+mountInvites(app, {
+  db,
+  auth,
+  referrals,
+  marketAdmin: () => {
+    try {
+      return indexer.trading().config.marketAdmin;
+    } catch {
+      return null;
+    }
+  },
+});
+logger.info("referrals.enabled", { ...referralConfig, codeQuota, payout: payout?.address ?? null });
 
 const prune = setInterval(
   () => void db.pruneExpired().catch((error) => logger.error("prune.failed", { error })),
@@ -245,13 +347,15 @@ const server = Bun.serve({
   idleTimeout: 60,
   hostname: process.env.API_HOST ?? "127.0.0.1",
   port: Number(process.env.API_PORT ?? 3000),
-  fetch: app.fetch,
+  // The socket peer, for per-client rate limits.
+  fetch: (request, bun) => app.fetch(request, { ip: bun.requestIP(request)?.address }),
 });
 logger.info("api.listening", { url: server.url.toString(), chainId, exchange });
 for (const signal of ["SIGINT", "SIGTERM"] as const)
   process.on(signal, () => {
     clearInterval(prune);
     recorder.stop();
+    referrals.stop();
     void server
       .stop()
       .then(() => indexer.stop())

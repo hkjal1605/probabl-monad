@@ -38,7 +38,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { useWalletLogin } from "@/components/wallet/WalletLoginProvider";
+import { useAccountStep } from "@/components/wallet/AccountGate";
 import { useOrderTicket } from "@/hooks/useOrderTicket";
 import { usePositions } from "@/hooks/useProtocolData";
 import { formatCompactNumber, formatNumber, formatUsd } from "@/lib/format/display";
@@ -50,7 +50,8 @@ import type { MarketView } from "@/types/api";
 export function OrderTicket({ market }: { market: MarketView }) {
   const router = useRouter();
   const t = useOrderTicket({ market });
-  const login = useWalletLogin();
+  // Connecting, signing in and joining come before trading.
+  const step = useAccountStep();
   const quantityLabel = formatShareAmount(BigInt(t.preview.quantityRaw), market);
   const prefill = useUiStore((s) => s.prefill);
   const setPrefill = useUiStore((s) => s.setPrefill);
@@ -382,23 +383,24 @@ export function OrderTicket({ market }: { market: MarketView }) {
                         className="trade-entry-submit w-full"
                         size="lg"
                         disabled={
-                          t.busy ||
-                          Boolean(t.wallet.account && !t.permissionLoaded) ||
-                          Boolean(
-                            t.wallet.account &&
-                              t.permission?.active &&
-                              (!prepared ||
-                                t.reviewing ||
-                                t.quoteExpired ||
-                                !t.preview.valid ||
-                                Boolean(t.legError) ||
-                                !t.readiness.ready ||
-                                market.lifecycle !== "open"),
-                          )
+                          step
+                            ? step.disabled
+                            : t.busy ||
+                              !t.permissionLoaded ||
+                              Boolean(
+                                t.permission?.active &&
+                                  (!prepared ||
+                                    t.reviewing ||
+                                    t.quoteExpired ||
+                                    !t.preview.valid ||
+                                    Boolean(t.legError) ||
+                                    !t.readiness.ready ||
+                                    market.lifecycle !== "open"),
+                              )
                         }
                         onClick={() =>
-                          !t.wallet.account
-                            ? login()
+                          step
+                            ? step.action()
                             : !t.permission?.active
                               ? t.enableTrading()
                               : prepared && !prepared.funding.balanceSufficient
@@ -406,10 +408,14 @@ export function OrderTicket({ market }: { market: MarketView }) {
                                 : t.submit()
                         }
                       >
-                        {t.busy || t.reviewing || (t.wallet.account && !t.permissionLoaded) ? (
+                        {step ? (
+                          step.busy ? (
+                            <Spinner />
+                          ) : (
+                            step.label
+                          )
+                        ) : t.busy || t.reviewing || !t.permissionLoaded ? (
                           <Spinner />
-                        ) : !t.wallet.account ? (
-                          "Connect wallet"
                         ) : !t.permission?.active ? (
                           "Enable trading"
                         ) : prepared && !prepared.funding.balanceSufficient ? (

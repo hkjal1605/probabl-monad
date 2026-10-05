@@ -8,13 +8,18 @@ import {
   setIndexStreamHealthy,
 } from "@/services/index-stream";
 import { refreshStores, resources } from "@/stores/createResourceStore";
-import { useWallet } from "./WalletProvider";
+import { useMemberAccount, useWallet } from "./WalletProvider";
 
 const IndexStreamProvider = ({ children }: { children: ReactNode }) => {
-  const { account } = useWallet();
+  // A wallet's own updates ride its member session's cookie. A bearer session (an API on another
+  // site) cannot ride a stream: it rereads its data when the public stream names the wallet.
+  const member = useMemberAccount();
+  const { sessionTransport } = useWallet();
+  const account = sessionTransport === "cookie" ? member : null;
   useEffect(() => {
     const stream = new EventSource(
       apiUrl(`/stream${account ? `?owner=${encodeURIComponent(account)}` : ""}`),
+      { withCredentials: account !== null },
     );
     let block = -1n,
       wasHealthy = false,
@@ -53,7 +58,7 @@ const IndexStreamProvider = ({ children }: { children: ReactNode }) => {
               (name === "markets" && update.markets.some((m) => key === "all" || key === m)) ||
               (["trades", "resolution"].includes(name) &&
                 (key === "all" ? update.markets.length > 0 : update.markets.includes(key))) ||
-              (["wallet-orders", "wallet-trades", "payout-credits"].includes(name) &&
+              (["wallet-orders", "wallet-trades", "payout-credits", "positions"].includes(name) &&
                 update.owners.includes(key));
             if (changed) void active.refresh();
             else if (!["positions", "trading-readiness"].includes(name)) {

@@ -8,6 +8,7 @@ import {
   stringToBytes,
   zeroAddress,
 } from "viem";
+import { createSiweMessage, parseSiweMessage } from "viem/siwe";
 
 export const WAD = 10n ** 18n;
 export const BPS = 10_000n;
@@ -327,46 +328,84 @@ export interface Deployment {
   exchange: Address;
 }
 
+/** The statement every sign-in message carries. */
+export const SIGN_IN_STATEMENT = "Sign in to probabl.";
+const exchangeResource = (exchange: Address) => `urn:probabl:exchange:${getAddress(exchange)}`;
+const inviteResource = (code: string) => `urn:probabl:invite:${code}`;
+
+/** A Sign-In with Ethereum (EIP-4361) message for this deployment, bound to the page's origin:
+ * wallets show it as a sign-in and warn when the page is on another domain. The exchange is a
+ * resource; a new member's invite code is another, so one signature both signs in and joins. */
 export function signInMessage(
   deployment: Deployment,
   origin: string,
   owner: Address,
   nonce: string,
   expiresAt: Date,
+  options: { issuedAt?: Date; invite?: string | null } = {},
 ) {
-  return [
-    "Sign in to probabl",
-    `Origin: ${origin}`,
-    `Chain: ${deployment.chainId}`,
-    `Exchange: ${deployment.exchange}`,
-    `Wallet: ${owner}`,
-    `Nonce: ${nonce}`,
-    `Expires: ${expiresAt.toISOString()}`,
-  ].join("\n");
+  const page = new URL(origin);
+  return createSiweMessage({
+    domain: page.host,
+    address: getAddress(owner),
+    statement: SIGN_IN_STATEMENT,
+    uri: page.origin,
+    version: "1",
+    chainId: deployment.chainId,
+    nonce,
+    issuedAt: options.issuedAt ?? new Date(),
+    expirationTime: expiresAt,
+    resources: [
+      exchangeResource(deployment.exchange),
+      ...(options.invite ? [inviteResource(options.invite)] : []),
+    ],
+  });
 }
 
-/** The browser checks the API's challenge before asking the wallet to sign it. */
+/** The invite code a sign-in message carries, if any. */
+export function signInInvite(message: string): string | null {
+  const resources = parseSiweMessage(message).resources ?? [];
+  const resource = resources.find((r) => r.startsWith("urn:probabl:invite:"));
+  return resource ? resource.slice("urn:probabl:invite:".length) : null;
+}
+
+/** The browser checks the API's challenge before asking the wallet to sign it: every field must
+ * be exactly what this page asked for, and it must expire within a few minutes of being issued.
+ * Both times are the API's, so this page's clock (which may be off by any amount) is not used;
+ * the API refuses a stale or reused challenge itself. */
 export function assertSignInChallenge(
   challenge: { challengeId: string; message: string },
   owner: string,
   deployment: Deployment,
   origin: string,
-  now = Date.now(),
+  invite: string | null = null,
 ) {
-  const lines = challenge.message.split("\n");
+  const page = new URL(origin);
+  const m = parseSiweMessage(challenge.message);
+  const resources = [
+    exchangeResource(deployment.exchange),
+    ...(invite ? [inviteResource(invite)] : []),
+  ];
   if (
     !/^[a-f0-9]{64}$/.test(challenge.challengeId) ||
-    lines.length !== 7 ||
-    lines[0] !== "Sign in to probabl" ||
-    lines[1] !== `Origin: ${origin}` ||
-    lines[2] !== `Chain: ${deployment.chainId}` ||
-    lines[3] !== `Exchange: ${getAddress(deployment.exchange)}` ||
-    lines[4] !== `Wallet: ${address(owner)}` ||
-    lines[5] !== `Nonce: ${challenge.challengeId}` ||
-    !lines[6]?.startsWith("Expires: ")
+    m.domain !== page.host ||
+    m.uri !== page.origin ||
+    m.scheme !== undefined ||
+    m.address !== address(owner) ||
+    m.chainId !== deployment.chainId ||
+    m.version !== "1" ||
+    m.statement !== SIGN_IN_STATEMENT ||
+    m.nonce !== challenge.challengeId ||
+    m.notBefore !== undefined ||
+    m.requestId !== undefined ||
+    JSON.stringify(m.resources) !== JSON.stringify(resources) ||
+    !(m.issuedAt instanceof Date) ||
+    !(m.expirationTime instanceof Date) ||
+    // Nothing else may hide in the text: it is exactly the message these fields make.
+    createSiweMessage(m as Parameters<typeof createSiweMessage>[0]) !== challenge.message
   )
     throw new Error("Sign-in challenge differs from this deployment.");
-  const expiry = Date.parse(lines[6].slice(9));
-  if (!Number.isFinite(expiry) || expiry <= now || expiry > now + 150_000)
+  const lifetime = m.expirationTime.getTime() - m.issuedAt.getTime();
+  if (lifetime <= 0 || lifetime > 150_000)
     throw new Error("Sign-in challenge is expired or has an invalid lifetime.");
 }

@@ -129,6 +129,8 @@ export class IndexerService {
   private queue: Queued[] = [];
   private unpersisted = new Map<string, OrderState>();
   private writing: Promise<void> | undefined;
+  /** Called after each write that stored finalized trades. */
+  private tradeListeners = new Set<() => void>();
   private stopped = false;
   private timers: ReturnType<typeof setInterval>[] = [];
   private history = new History();
@@ -215,6 +217,19 @@ export class IndexerService {
     return "venueId" in parsed
       ? s.markets.get(parsed.venueId)
       : publicMarkets(s).get(parsed.publicId);
+  }
+
+  /** The finalized replica: state no reorganization can change. Settlement (referral payouts)
+   * reads it. */
+  finalized(): ChainState {
+    return this.follower.base;
+  }
+
+  /** Calls `listener` after each write that stored finalized trades, so work that reads them
+   * (referral accrual) runs when there is something new instead of polling. */
+  onPersistedTrades(listener: () => void) {
+    this.tradeListeners.add(listener);
+    return () => this.tradeListeners.delete(listener);
   }
 
   /** Custody views additionally require healthy persistence and reconciliation. */
@@ -340,6 +355,7 @@ export class IndexerService {
             scopes.add(scope);
         for (const o of batch.orders) scopes.add(`orders:o:${o.owner.toLowerCase()}`);
         this.history.invalidate(scopes);
+        if (batch.trades.length) for (const listener of this.tradeListeners) listener();
         this.persistError = null;
         delay = 500;
       } catch (error) {

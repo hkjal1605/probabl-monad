@@ -11,14 +11,15 @@ export const api = {
         : "/trades?limit=1000",
       signal ? { signal } : {},
     ),
-  /** A wallet's own trades (maker or taker), newest first. */
+  /** A wallet's own trades (maker or taker), newest first: its member session reads them. */
   walletTrades: (owner: string, signal?: AbortSignal) =>
-    requestJson<{ trades: TradeView[] }>(
-      `/trades?owner=${encodeURIComponent(owner)}&limit=1000`,
-      signal ? { signal } : {},
-    ),
-  prepare: <T>(path: string, body: unknown, token?: string) =>
-    requestJson<T>(`/v1/${path}`, { body, ...(token ? { token } : {}) }),
+    requestJson<{ trades: TradeView[] }>(`/trades?owner=${encodeURIComponent(owner)}&limit=1000`, {
+      auth: true,
+      ...(signal ? { signal } : {}),
+    }),
+  /** A trading call as the signed-in wallet: the sign-in it was reviewed under, or the current. */
+  prepare: <T>(path: string, body: unknown, auth: string | true) =>
+    requestJson<T>(`/v1/${path}`, { body, auth }),
   resolution: async (marketId: string, signal?: AbortSignal) => {
     try {
       return await requestJson<ResolutionView>(

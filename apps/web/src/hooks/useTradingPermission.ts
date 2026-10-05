@@ -1,12 +1,12 @@
 "use client";
 import { useCallback, useEffect, useRef } from "react";
 import { useStore } from "zustand";
-import { useWallet } from "@/components/providers/WalletProvider";
+import { useMemberAccount } from "@/components/providers/WalletProvider";
 import { fetchTradingPermission } from "@/services/trading-permissions";
 import { setTradingPermission, tradingPermissionStore } from "@/stores/useTradingPermissionStore";
 
 export function useTradingPermission() {
-  const { account } = useWallet();
+  const account = useMemberAccount();
   const revision = useRef(0);
   const entry = useStore(tradingPermissionStore, (state) =>
     account ? state.entries[account] : undefined,

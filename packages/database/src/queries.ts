@@ -3,6 +3,54 @@ import type { Pool, PoolClient } from "pg";
 type Connection = Pick<Pool | PoolClient, "query">;
 
 export class SignInCapacityError extends Error {}
+/** A refusal to show the user as is: an unusable invite code, or already a member. */
+export class InviteError extends Error {}
+
+/** A wallet with access. Addresses are lowercase 0x hex. */
+export interface MemberRecord {
+  wallet: string;
+  code: string;
+  referrer: string | null;
+  joinedAt: Date;
+  codeQuota: number;
+  suspendedAt: Date | null;
+}
+export interface InviteCodeRecord {
+  code: string;
+  owner: string | null;
+  maxUses: number;
+  uses: number;
+  note: string | null;
+  createdAt: Date;
+  expiresAt: Date | null;
+  revokedAt: Date | null;
+  /** Members who joined with it, oldest first. */
+  members: { wallet: string; joinedAt: Date }[];
+}
+/** One referrer's accrued rewards, summed per market branch and claim collateral. */
+export interface ReferralTotal {
+  market: number;
+  branch: number;
+  collateral: number;
+  amount: bigint;
+  fee: bigint;
+  fills: number;
+}
+export interface RefereeTotal extends ReferralTotal {
+  referee: string;
+}
+export interface ReferralPayoutRecord {
+  id: string;
+  referrer: string;
+  token: string;
+  amount: bigint;
+  /** 0 sent, awaiting its receipt; 1 paid; 2 failed. */
+  status: number;
+  tx: string;
+  raw: string;
+  createdAt: Date;
+  settledAt: Date | null;
+}
 
 /** A finalized trade. Hashes and addresses are lowercase 0x hex. */
 export interface TradeRecord {
@@ -77,6 +125,40 @@ export interface Checkpoint {
 }
 
 const bounded = (limit: number, max = 1000) => Math.min(Math.max(Math.trunc(limit), 1), max);
+// biome-ignore lint/suspicious/noExplicitAny: pg rows are untyped.
+const memberRecord = (r: any): MemberRecord => ({
+  wallet: `0x${r.wallet}`,
+  code: r.code,
+  referrer: r.referrer === null ? null : `0x${r.referrer}`,
+  joinedAt: r.joined_at,
+  codeQuota: r.code_quota,
+  suspendedAt: r.suspended_at,
+});
+const MEMBER = `encode(wallet, 'hex') AS wallet, code, encode(referrer, 'hex') AS referrer,
+  joined_at, code_quota, suspended_at`;
+// biome-ignore lint/suspicious/noExplicitAny: pg rows are untyped.
+const totalRecord = (r: any): ReferralTotal => ({
+  market: r.market,
+  branch: r.branch,
+  collateral: r.collateral,
+  amount: BigInt(r.amount),
+  fee: BigInt(r.fee),
+  fills: Number(r.fills),
+});
+// biome-ignore lint/suspicious/noExplicitAny: pg rows are untyped.
+const payoutRecord = (r: any): ReferralPayoutRecord => ({
+  id: String(r.id),
+  referrer: `0x${r.referrer}`,
+  token: `0x${r.token}`,
+  amount: BigInt(r.amount),
+  status: r.status,
+  tx: `0x${r.tx}`,
+  raw: r.raw,
+  createdAt: r.created_at,
+  settledAt: r.settled_at,
+});
+const PAYOUT = `id, status, encode(referrer, 'hex') AS referrer, encode(token, 'hex') AS token,
+  amount::text, encode(tx, 'hex') AS tx, raw, created_at, settled_at`;
 /** 0x hex to the bytea parameter form. */
 const hex = (value: string) => value.slice(2).toLowerCase();
 /** Resolved once per statement (an InitPlan), so every index below is probed directly. */
@@ -284,13 +366,34 @@ export function queries(db: Connection) {
 
     // ---------------------------------------------------------------- sign-in
 
-    async sessionOwner(domain: string, tokenHash: string) {
-      return (
-        await db.query<{ owner: string }>(
-          "SELECT owner FROM probabl.sessions WHERE token_hash=$1 AND domain=$2 AND expires_at>now()",
+    async session(domain: string, tokenHash: string) {
+      const row = (
+        await db.query<{ owner: string; expires_at_ms: string; created_at_ms: string }>(
+          `SELECT owner, (extract(epoch from expires_at)*1000)::bigint::text AS expires_at_ms,
+            (extract(epoch from created_at)*1000)::bigint::text AS created_at_ms
+          FROM probabl.sessions WHERE token_hash=$1 AND domain=$2 AND expires_at>now()`,
           [tokenHash, domain],
         )
-      ).rows[0]?.owner;
+      ).rows[0];
+      return row
+        ? {
+            owner: row.owner,
+            expiresAtMs: Number(row.expires_at_ms),
+            createdAtMs: Number(row.created_at_ms),
+          }
+        : undefined;
+    },
+    async deleteSession(domain: string, tokenHash: string) {
+      await db.query("DELETE FROM probabl.sessions WHERE token_hash=$1 AND domain=$2", [
+        tokenHash,
+        domain,
+      ]);
+    },
+    /** Signs a wallet out everywhere; returns how many sessions ended. */
+    async deleteSessions(domain: string, owner: string) {
+      return (
+        await db.query("DELETE FROM probabl.sessions WHERE domain=$1 AND owner=$2", [domain, owner])
+      ).rowCount;
     },
     async challenge(domain: string, owner: string, id: string) {
       return (
@@ -300,35 +403,293 @@ export function queries(db: Connection) {
         )
       ).rows[0]?.message;
     },
-    /** Bounded outstanding challenges: 1000 per deployment, 5 per wallet. */
+    /** Bounded outstanding challenges: 5 per wallet, and a backstop of 20,000 per deployment
+     * (callers rate-limit per client first, so no one client can exhaust it). */
     async createChallenge(domain: string, owner: string, id: string, message: string) {
       const inserted = await db.query(
         `INSERT INTO probabl.auth_challenges
         SELECT $1,$2,$3,$4,now()+interval '2 minutes'
-        WHERE (SELECT count(*) FROM probabl.auth_challenges WHERE domain=$2 AND expires_at>now()) < 1000
+        WHERE (SELECT count(*) FROM probabl.auth_challenges WHERE domain=$2 AND expires_at>now()) < 20000
           AND (SELECT count(*) FROM probabl.auth_challenges WHERE domain=$2 AND owner=$3 AND expires_at>now()) < 5`,
         [id, domain, owner, message],
       );
       if (inserted.rowCount !== 1)
         throw new SignInCapacityError("Too many pending sign-in requests; retry in a few minutes");
     },
-    async consumeChallenge(domain: string, owner: string, id: string, tokenHash: string) {
+    /** Spends a sign-in challenge on a session lasting `days`; returns its expiry (ms). */
+    async consumeChallenge(
+      domain: string,
+      owner: string,
+      id: string,
+      tokenHash: string,
+      days = 30,
+    ) {
       const consumed = await db.query(
         "DELETE FROM probabl.auth_challenges WHERE id=$1 AND domain=$2 AND owner=$3 AND expires_at>now()",
         [id, domain, owner],
       );
       if (consumed.rowCount !== 1) throw new Error("Challenge expired or already consumed");
       const issued = await db.query<{ expires_at_ms: string }>(
-        `INSERT INTO probabl.sessions VALUES($1,$2,$3,now()+interval '30 days')
+        `INSERT INTO probabl.sessions (token_hash, domain, owner, expires_at)
+        VALUES($1,$2,$3,now()+make_interval(days => $4::int))
         RETURNING (extract(epoch from expires_at)*1000)::bigint::text AS expires_at_ms`,
-        [tokenHash, domain, owner],
+        [tokenHash, domain, owner, days],
       );
       return Number(issued.rows[0]!.expires_at_ms);
+    },
+    /** Extends a live session to `days` from now, never past `maxDays` after sign-in, and only
+     * when that adds at least a day (one write a day at most). Returns the new expiry (ms), or
+     * undefined when nothing changed. */
+    async renewSession(domain: string, tokenHash: string, days: number, maxDays: number) {
+      const row = (
+        await db.query<{ expires_at_ms: string }>(
+          `UPDATE probabl.sessions SET expires_at = target.at
+          FROM (SELECT LEAST(now() + make_interval(days => $3::int),
+            created_at + make_interval(days => $4::int)) AS at
+            FROM probabl.sessions WHERE token_hash=$1 AND domain=$2) AS target
+          WHERE token_hash=$1 AND domain=$2 AND expires_at > now()
+            AND target.at >= expires_at + interval '1 day'
+          RETURNING (extract(epoch from expires_at)*1000)::bigint::text AS expires_at_ms`,
+          [tokenHash, domain, days, maxDays],
+        )
+      ).rows[0];
+      return row ? Number(row.expires_at_ms) : undefined;
     },
     /** Periodic maintenance, never on the request path. */
     async pruneExpired() {
       await db.query("DELETE FROM probabl.auth_challenges WHERE expires_at<=now()");
       await db.query("DELETE FROM probabl.sessions WHERE expires_at<=now()");
+    },
+
+    // ---------------------------------------------------------------- members and invites
+
+    async member(wallet: string): Promise<MemberRecord | undefined> {
+      const row = (
+        await db.query(`SELECT ${MEMBER} FROM probabl.members WHERE wallet = decode($1, 'hex')`, [
+          hex(wallet),
+        ])
+      ).rows[0];
+      return row ? memberRecord(row) : undefined;
+    },
+    /** Why a code cannot be redeemed by `wallet` now, or null when it can. */
+    async inviteRefusal(code: string, wallet: string): Promise<string | null> {
+      const row = (
+        await db.query<{ owner: string | null; usable: boolean }>(
+          `SELECT encode(owner, 'hex') AS owner, uses < max_uses AND revoked_at IS NULL
+            AND (expires_at IS NULL OR expires_at > now()) AS usable
+          FROM probabl.invite_codes WHERE code = $1`,
+          [code],
+        )
+      ).rows[0];
+      if (!row?.usable) return "This invite code is invalid, used up or expired.";
+      if (row.owner === hex(wallet)) return "You can't join with your own invite code.";
+      return null;
+    },
+    /** Codes owned by a wallet (or the admin's when `owner` is null), newest first, each with the
+     * members who joined with it. */
+    async inviteCodes(
+      owner: string | null,
+      options: { limit?: number; before?: Date } = {},
+    ): Promise<InviteCodeRecord[]> {
+      const rows = (
+        await db.query(
+          `SELECT c.code, encode(c.owner, 'hex') AS owner, c.max_uses, c.uses, c.note, c.created_at,
+            c.expires_at, c.revoked_at,
+            coalesce(json_agg(json_build_object('wallet', encode(m.wallet, 'hex'),
+              'joinedAt', m.joined_at) ORDER BY m.joined_at) FILTER (WHERE m.wallet IS NOT NULL),
+              '[]') AS members
+          FROM (SELECT * FROM probabl.invite_codes
+            WHERE ${owner === null ? "owner IS NULL AND $1::text IS NULL" : "owner = decode($1, 'hex')"}
+              AND ($2::timestamptz IS NULL OR created_at < $2)
+            ORDER BY created_at DESC LIMIT $3) c
+          LEFT JOIN probabl.members m ON m.code = c.code
+          GROUP BY c.code, c.owner, c.max_uses, c.uses, c.note, c.created_at, c.expires_at,
+            c.revoked_at
+          ORDER BY c.created_at DESC`,
+          [
+            owner === null ? null : hex(owner),
+            options.before ?? null,
+            bounded(options.limit ?? 200),
+          ],
+        )
+      ).rows;
+      return rows.map((r) => ({
+        code: r.code,
+        owner: r.owner === null ? null : `0x${r.owner}`,
+        maxUses: r.max_uses,
+        uses: r.uses,
+        note: r.note,
+        createdAt: r.created_at,
+        expiresAt: r.expires_at,
+        revokedAt: r.revoked_at,
+        members: (r.members as { wallet: string; joinedAt: string }[]).map((m) => ({
+          wallet: `0x${m.wallet}`,
+          joinedAt: new Date(m.joinedAt),
+        })),
+      }));
+    },
+    /** Admin-issued codes (no owner, so no referrer); codes are pre-generated by the caller. */
+    async createAdminInvites(
+      codes: string[],
+      options: { maxUses: number; expiresAt: Date | null; note: string | null },
+    ) {
+      await db.query(
+        `INSERT INTO probabl.invite_codes (code, max_uses, expires_at, note)
+        SELECT unnest($1::text[]), $2, $3, $4`,
+        [codes, options.maxUses, options.expiresAt, options.note],
+      );
+    },
+    async revokeInviteCode(code: string) {
+      return (
+        await db.query(
+          "UPDATE probabl.invite_codes SET revoked_at = now() WHERE code = $1 AND revoked_at IS NULL",
+          [code],
+        )
+      ).rowCount;
+    },
+    /** Members, newest first, with how many codes each has created. */
+    async members(options: { limit?: number; before?: Date } = {}) {
+      return (
+        await db.query(
+          `SELECT ${MEMBER}, (SELECT count(*) FROM probabl.invite_codes c
+            WHERE c.owner = m.wallet)::int AS codes_created
+          FROM probabl.members m WHERE ($1::timestamptz IS NULL OR joined_at < $1)
+          ORDER BY joined_at DESC LIMIT $2`,
+          [options.before ?? null, bounded(options.limit ?? 200)],
+        )
+      ).rows.map((r) => ({ ...memberRecord(r), codesCreated: r.codes_created as number }));
+    },
+    /** Sets a member's code quota and/or suspension; suspending also revokes its unused codes. */
+    async updateMember(wallet: string, changes: { codeQuota?: number; suspended?: boolean }) {
+      const updated = await db.query(
+        `UPDATE probabl.members SET code_quota = coalesce($2, code_quota),
+          suspended_at = CASE WHEN $3::boolean IS NULL THEN suspended_at
+            WHEN $3 THEN coalesce(suspended_at, now()) ELSE NULL END
+        WHERE wallet = decode($1, 'hex')`,
+        [hex(wallet), changes.codeQuota ?? null, changes.suspended ?? null],
+      );
+      if (changes.suspended)
+        await db.query(
+          `UPDATE probabl.invite_codes SET revoked_at = now()
+          WHERE owner = decode($1, 'hex') AND revoked_at IS NULL AND uses < max_uses`,
+          [hex(wallet)],
+        );
+      return updated.rowCount;
+    },
+
+    // ---------------------------------------------------------------- referrals
+
+    /** A referrer's rewards so far, per market branch and claim collateral. */
+    async referralTotals(domain: string, referrer: string): Promise<ReferralTotal[]> {
+      return (
+        await db.query(
+          `SELECT market, branch, collateral, sum(amount)::text AS amount, sum(fee)::text AS fee,
+            count(*) AS fills
+          FROM probabl.referral_accruals WHERE deployment = ${DEPLOYMENT} AND referrer = decode($2, 'hex')
+          GROUP BY market, branch, collateral ORDER BY market, branch, collateral`,
+          [domain, hex(referrer)],
+        )
+      ).rows.map(totalRecord);
+    },
+    /** The same, per referee. */
+    async refereeTotals(domain: string, referrer: string): Promise<RefereeTotal[]> {
+      return (
+        await db.query(
+          `SELECT encode(referee, 'hex') AS referee, market, branch, collateral,
+            sum(amount)::text AS amount, sum(fee)::text AS fee, count(*) AS fills
+          FROM probabl.referral_accruals WHERE deployment = ${DEPLOYMENT} AND referrer = decode($2, 'hex')
+          GROUP BY referee, market, branch, collateral`,
+          [domain, hex(referrer)],
+        )
+      ).rows.map((r) => ({ ...totalRecord(r), referee: `0x${r.referee}` }));
+    },
+    /** Wallets a member referred, oldest first. */
+    /** A referrer's referees, each with the end of its `months`-long earning window (calendar
+     * months, as accrual counts them). */
+    async referees(referrer: string, months: number) {
+      return (
+        await db.query(
+          `SELECT ${MEMBER}, joined_at + make_interval(months => $2::int) AS earning_until
+          FROM probabl.members WHERE referrer = decode($1, 'hex') ORDER BY joined_at`,
+          [hex(referrer), months],
+        )
+      ).rows.map((r) => ({ ...memberRecord(r), earningUntil: r.earning_until as Date }));
+    },
+    /** Every referrer's rewards, per market branch and collateral (the program's liabilities). */
+    async referralProgramTotals(domain: string): Promise<ReferralTotal[]> {
+      return (
+        await db.query(
+          `SELECT market, branch, collateral, sum(amount)::text AS amount, sum(fee)::text AS fee,
+            count(*) AS fills
+          FROM probabl.referral_accruals WHERE deployment = ${DEPLOYMENT}
+          GROUP BY market, branch, collateral ORDER BY market, branch, collateral`,
+          [domain],
+        )
+      ).rows.map(totalRecord);
+    },
+    async referralPayouts(domain: string, referrer: string, limit = 100) {
+      return (
+        await db.query(
+          `SELECT ${PAYOUT} FROM probabl.referral_payouts
+          WHERE deployment = ${DEPLOYMENT} AND referrer = decode($2, 'hex')
+          ORDER BY created_at DESC LIMIT $3`,
+          [domain, hex(referrer), bounded(limit)],
+        )
+      ).rows.map(payoutRecord);
+    },
+    /** Amounts sent or paid per token: the part of each reward no longer claimable. Pass no
+     * referrer for the whole program. */
+    async referralPaidTotals(domain: string, referrer?: string) {
+      return (
+        await db.query<{ token: string; amount: string }>(
+          `SELECT encode(token, 'hex') AS token, sum(amount)::text AS amount
+          FROM probabl.referral_payouts WHERE deployment = ${DEPLOYMENT} AND status IN (0, 1)
+            AND ($2::bytea IS NULL OR referrer = $2)
+          GROUP BY token`,
+          [domain, referrer ? Buffer.from(hex(referrer), "hex") : null],
+        )
+      ).rows.map((r) => ({ token: `0x${r.token}`, amount: BigInt(r.amount) }));
+    },
+    async recordReferralPayout(
+      domain: string,
+      payout: { referrer: string; token: string; amount: bigint; tx: string; raw: string },
+    ) {
+      return String(
+        (
+          await db.query<{ id: string }>(
+            `INSERT INTO probabl.referral_payouts (deployment, status, referrer, token, amount, tx, raw)
+            VALUES (${DEPLOYMENT}, 0, decode($2, 'hex'), decode($3, 'hex'), $4, decode($5, 'hex'), $6)
+            RETURNING id::text AS id`,
+            [
+              domain,
+              hex(payout.referrer),
+              hex(payout.token),
+              payout.amount.toString(),
+              hex(payout.tx),
+              payout.raw,
+            ],
+          )
+        ).rows[0]!.id,
+      );
+    },
+    /** Settles a sent payout once: 1 paid, 2 failed. */
+    async settleReferralPayout(id: string, status: 1 | 2) {
+      return (
+        await db.query(
+          "UPDATE probabl.referral_payouts SET status = $2, settled_at = now() WHERE id = $1 AND status = 0",
+          [id, status],
+        )
+      ).rowCount;
+    },
+    /** Payouts still awaiting a receipt, oldest first. */
+    async sentReferralPayouts(domain: string) {
+      return (
+        await db.query(
+          `SELECT ${PAYOUT} FROM probabl.referral_payouts WHERE deployment = ${DEPLOYMENT} AND status = 0
+          ORDER BY id`,
+          [domain],
+        )
+      ).rows.map(payoutRecord);
     },
 
     // ---------------------------------------------------------------- evidence

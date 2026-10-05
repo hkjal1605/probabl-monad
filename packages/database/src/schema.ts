@@ -1,7 +1,7 @@
 import type { Pool } from "pg";
 
 /** Bump with a migration step below when a table or its meaning changes. */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 /** The protocol's persistent state. Trading and custody reads are served from the in-memory
  * chain index; PostgreSQL keeps only what must survive a restart or is read historically:
@@ -69,6 +69,54 @@ const DDL = [
     token_hash text PRIMARY KEY, domain text NOT NULL, owner text NOT NULL,
     expires_at timestamptz NOT NULL)`,
   `CREATE INDEX IF NOT EXISTS sessions_expiry ON probabl.sessions (expires_at)`,
+  // When the wallet signed in: renewals extend a session for as long as it is used, up to a cap
+  // counted from here. Sessions from before this column start counting at the upgrade.
+  `ALTER TABLE probabl.sessions ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now()`,
+  // Signing out everywhere deletes a wallet's sessions in one index range.
+  `CREATE INDEX IF NOT EXISTS sessions_owner ON probabl.sessions (domain, owner)`,
+  // Invites and members are product-wide: they outlive any one deployment. Wallets are bytea so
+  // referral accruals join trades directly.
+  `CREATE TABLE IF NOT EXISTS probabl.invite_codes (
+    code text PRIMARY KEY, owner bytea, max_uses integer NOT NULL DEFAULT 1,
+    uses integer NOT NULL DEFAULT 0, note text, created_at timestamptz NOT NULL DEFAULT now(),
+    expires_at timestamptz, revoked_at timestamptz,
+    CHECK (max_uses >= 1 AND uses BETWEEN 0 AND max_uses))`,
+  `CREATE INDEX IF NOT EXISTS invite_codes_owner ON probabl.invite_codes (owner, created_at)
+    WHERE owner IS NOT NULL`,
+  `CREATE INDEX IF NOT EXISTS invite_codes_created ON probabl.invite_codes (created_at DESC)`,
+  // A wallet with access: the code it joined with, whose owner is its referrer for good.
+  `CREATE TABLE IF NOT EXISTS probabl.members (
+    wallet bytea PRIMARY KEY, code text NOT NULL, referrer bytea,
+    joined_at timestamptz NOT NULL DEFAULT now(), code_quota integer NOT NULL,
+    suspended_at timestamptz, CHECK (code_quota >= 0))`,
+  `CREATE INDEX IF NOT EXISTS members_code ON probabl.members (code)`,
+  `CREATE INDEX IF NOT EXISTS members_referrer ON probabl.members (referrer, joined_at)
+    WHERE referrer IS NOT NULL`,
+  `CREATE INDEX IF NOT EXISTS members_joined ON probabl.members (joined_at DESC)`,
+  // A referrer's share of one fill's net fee from one side (role 0: its referee made, 1: took),
+  // in the claims the fee was charged in (collateral 0 quote, 1 base) on that market branch.
+  `CREATE TABLE IF NOT EXISTS probabl.referral_accruals (
+    block bigint NOT NULL, block_time bigint NOT NULL, log_index integer NOT NULL,
+    market integer NOT NULL, deployment smallint NOT NULL, role smallint NOT NULL,
+    branch smallint NOT NULL, collateral smallint NOT NULL, rate_bps smallint NOT NULL,
+    fee numeric(78,0) NOT NULL, amount numeric(78,0) NOT NULL, referrer bytea NOT NULL,
+    referee bytea NOT NULL, PRIMARY KEY (deployment, block, log_index, role))`,
+  `CREATE INDEX IF NOT EXISTS referral_accruals_referrer ON probabl.referral_accruals
+    (deployment, referrer, market)`,
+  // The last finalized trade the accrual job has read, per deployment.
+  `CREATE TABLE IF NOT EXISTS probabl.referral_cursor (
+    deployment smallint PRIMARY KEY, block bigint NOT NULL, log_index integer NOT NULL)`,
+  // Claimed rewards: the payout wallet's exact signed transfer is journaled before broadcast.
+  // Status 0 sent (awaiting its receipt), 1 paid, 2 failed (claimable again).
+  `CREATE TABLE IF NOT EXISTS probabl.referral_payouts (
+    id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, deployment smallint NOT NULL,
+    status smallint NOT NULL, referrer bytea NOT NULL, token bytea NOT NULL,
+    amount numeric(78,0) NOT NULL, tx bytea NOT NULL, raw text NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(), settled_at timestamptz, CHECK (amount > 0))`,
+  `CREATE INDEX IF NOT EXISTS referral_payouts_referrer ON probabl.referral_payouts
+    (deployment, referrer, created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS referral_payouts_sent ON probabl.referral_payouts (deployment, id)
+    WHERE status = 0`,
   `CREATE TABLE IF NOT EXISTS probabl.evidence (
     domain text NOT NULL, hash text NOT NULL, market text, envelope jsonb NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (domain, hash))`,
@@ -165,7 +213,8 @@ export async function initializeStorage(pool: Pool) {
     for (const statement of DDL.slice(0, 2)) await tx.query(statement);
     const row = (await tx.query("SELECT version FROM probabl.schema_version WHERE id")).rows[0];
     const version: number | undefined = row?.version;
-    if (version !== undefined && version !== 1 && version !== 2 && version !== SCHEMA_VERSION)
+    // Version 4 only adds tables (invites, members, referrals), which the DDL creates.
+    if (version !== undefined && (version < 1 || version > SCHEMA_VERSION))
       throw new Error("Database schema belongs to another release: provision a fresh schema");
     if (version === 1) for (const statement of FROM_V1_BEFORE) await tx.query(statement);
     if (version === 2) for (const statement of FROM_V2) await tx.query(statement);

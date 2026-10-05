@@ -172,18 +172,20 @@ export function useOrderTicket({ market }: { market: MarketView }) {
       }),
     );
     const result = background
-      ? await api.prepare<Omit<Preparation, "funding" | "clientId">>("orders/prepare", {
-          order: candidate,
-        })
+      ? await api.prepare<Omit<Preparation, "funding" | "clientId">>(
+          "orders/prepare",
+          { order: candidate },
+          wallet.sessionId ?? true,
+        )
       : await reviewWithSession({
-          token: wallet.sessionToken,
-          request: (token) =>
+          session: wallet.sessionId,
+          request: (auth) =>
             api.prepare<Omit<Preparation, "funding" | "clientId">>(
               "orders/prepare",
               { order: candidate },
-              token,
+              auth,
             ),
-          authenticate: wallet.authenticate,
+          authenticate: () => wallet.authenticate(),
           assertCurrent,
         });
     // Funding: quote for buys, the base token for sells; vault credit or active claims.
@@ -305,12 +307,12 @@ export function useOrderTicket({ market }: { market: MarketView }) {
       throw new Error("Wallet changed or quote expired.");
     if (!current.funding.balanceSufficient)
       throw new Error("Deposit the required balance in Portfolio");
-    const token = wallet.sessionToken ?? (await wallet.authenticate());
+    const session = wallet.sessionId ?? (await wallet.authenticate());
     assertCurrent();
     const response = await api.prepare<{ transactionHash: string; orderHash: string | null }>(
       "trading/submit",
       { order: current.order, clientId: current.clientId },
-      token,
+      session,
     );
     if (!/^0x[0-9a-f]{64}$/i.test(response.transactionHash ?? ""))
       throw new Error("Submitted order identity differs from the reviewed order");

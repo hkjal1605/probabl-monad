@@ -13,6 +13,7 @@ import { ReadCache } from "@conditional-stocks/shared/read-cache";
 import type { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { type Address, erc20Abi, type Hex, type PublicClient } from "viem";
+import type { Auth } from "../auth/routes.ts";
 
 /** A market's YES probability (x1e6) by Polymarket condition, or null while unavailable. */
 export type ProbabilityOf = (condition: Hex) => Promise<bigint | null>;
@@ -34,6 +35,7 @@ export function mountDeltaVaults(
     indexer: IndexerService;
     vaults: readonly Address[];
     probability: ProbabilityOf;
+    auth: Auth;
   },
 ) {
   const reads = new ReadCache(2000, 64);
@@ -154,7 +156,7 @@ export function mountDeltaVaults(
   /** A wallet's shares, what they redeem for now, and its token balances and allowances. */
   app.get("/v1/delta-vaults/:vault/accounts/:owner", async (c) => {
     const vault = vaultOf(c.req.param("vault")),
-      owner = address(c.req.param("owner"));
+      { owner } = await deps.auth.member(c, address(c.req.param("owner")));
     c.header("Cache-Control", "no-store");
     const v = await reads.get<DeltaVaultState>(`state:${vault}`, () =>
       readDeltaVault(deps.client, vault),
@@ -208,6 +210,7 @@ export function mountDeltaVaults(
 
   /** Shares and in-kind cost of depositing up to `quote` and `base` raw units now. */
   app.get("/v1/delta-vaults/:vault/preview/deposit", async (c) => {
+    await deps.auth.member(c);
     const vault = vaultOf(c.req.param("vault"));
     const maxQuote = unsigned(c.req.query("quote") ?? "0"),
       maxBase = unsigned(c.req.query("base") ?? "0");
@@ -234,6 +237,7 @@ export function mountDeltaVaults(
 
   /** Tokens and unpaired claims `shares` withdraw for now. */
   app.get("/v1/delta-vaults/:vault/preview/withdraw", async (c) => {
+    await deps.auth.member(c);
     const vault = vaultOf(c.req.param("vault"));
     const shares = unsigned(c.req.query("shares"), 2n ** 256n - 1n);
     c.header("Cache-Control", "no-store");

@@ -1,13 +1,11 @@
 "use client";
 
-import { WalletCards } from "lucide-react";
 import Link from "next/link";
-import { useWallet } from "@/components/providers/WalletProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DataError, EmptyState, Page } from "@/components/ui/page";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useWalletLogin } from "@/components/wallet/WalletLoginProvider";
+import { AccountGate } from "@/components/wallet/AccountGate";
 import { useMarkets, useOrders, usePositions, useWalletTrades } from "@/hooks/useProtocolData";
 import { useWalletAssets } from "@/hooks/useWalletAssets";
 import { formatCompactNumber, formatNumber, tokenAmount } from "@/lib/format/display";
@@ -24,8 +22,6 @@ import { TradingPermissionCard } from "./TradingPermissionCard";
 const hasClaims = positionHasClaims;
 
 export function PortfolioClient({ markets: initial }: { markets: MarketView[] }) {
-  const wallet = useWallet();
-  const login = useWalletLogin();
   const marketQuery = useMarkets(initial);
   const { markets } = marketQuery;
   const ordersQuery = useOrders();
@@ -73,22 +69,10 @@ export function PortfolioClient({ markets: initial }: { markets: MarketView[] })
 
   return (
     <Page className="page-scrollbars-hidden max-w-[1280px] px-5 py-8 sm:px-6 sm:py-10">
-      {!wallet.account ? (
-        <div className="flex min-h-[60dvh] items-center justify-center">
-          <div className="flex max-w-sm flex-col items-center gap-4 text-center">
-            <span className="flex size-11 items-center justify-center rounded-full bg-card text-muted-foreground">
-              <WalletCards className="size-5" />
-            </span>
-            <div>
-              <h1 className="text-xl font-medium">Your portfolio</h1>
-              <p className="mt-2 text-sm font-medium text-muted-foreground">
-                Connect your wallet to view balances, event positions, claims, and fills.
-              </p>
-            </div>
-            <Button onClick={login}>Connect wallet</Button>
-          </div>
-        </div>
-      ) : (
+      <AccountGate
+        title="Your portfolio"
+        description="Connect your wallet to view balances, event positions, claims, and fills."
+      >
         <div className="flex flex-col gap-7">
           <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -234,7 +218,7 @@ export function PortfolioClient({ markets: initial }: { markets: MarketView[] })
             <PortfolioTradeHistory rows={tradeRows} isPending={tradesPending} />
           </div>
         </div>
-      )}
+      </AccountGate>
     </Page>
   );
 }

@@ -12,12 +12,16 @@ import {
 import { toast } from "@/components/ui/toast";
 import { availableWallets, walletSources } from "@/lib/wallet/injected";
 import type { WalletKind } from "@/lib/wallet/session";
+import { InviteForm } from "./InviteForm";
 
 const Context = createContext<(() => void) | null>(null);
+const InviteContext = createContext<(() => void) | null>(null);
 
 /** One wallet chooser for every "Login" / "Connect" entry point. */
 export function WalletLoginProvider({ children }: { children: ReactNode }) {
   const wallet = useWallet();
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const openInvite = useCallback(() => setInviteOpen(true), []);
   const [choices, setChoices] = useState<
     { kind: WalletKind; name: string; icon: string | null }[] | null
   >(null);
@@ -46,7 +50,18 @@ export function WalletLoginProvider({ children }: { children: ReactNode }) {
   }, [connect]);
   return (
     <Context.Provider value={login}>
-      {children}
+      <InviteContext.Provider value={openInvite}>{children}</InviteContext.Provider>
+      <Dialog open={inviteOpen && wallet.access !== "member"} onOpenChange={setInviteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Join with an invite</DialogTitle>
+            <DialogDescription>
+              probabl is invite-only for now. Enter the code a member shared with you.
+            </DialogDescription>
+          </DialogHeader>
+          <InviteForm autoFocus onJoined={() => setInviteOpen(false)} />
+        </DialogContent>
+      </Dialog>
       <Dialog open={choices !== null} onOpenChange={(open) => !open && setChoices(null)}>
         <DialogContent>
           <DialogHeader>
@@ -77,4 +92,11 @@ export function useWalletLogin() {
   const login = useContext(Context);
   if (!login) throw new Error("WalletLoginProvider is required");
   return login;
+}
+
+/** Opens the invite code dialog. */
+export function useInviteDialog() {
+  const open = useContext(InviteContext);
+  if (!open) throw new Error("WalletLoginProvider is required");
+  return open;
 }
