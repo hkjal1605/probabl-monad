@@ -5,10 +5,21 @@
   // Current UTC date supported by the pinned workerd runtime.
   "compatibility_date": "2026-09-07",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  // esbuild's keep_names adds `__name(...)` calls, which break next-themes' inline browser
+  // script (it is serialized from a function): "__name is not defined".
+  "keep_names": false,
   "workers_dev": true,
   "preview_urls": false,
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
   "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "probabl-ui" }],
   "observability": { "enabled": true },
-  "dev": { "ip": "127.0.0.1", "port": 8787 }
+  "dev": { "ip": "127.0.0.1", "port": 8787 },
+  "env": {
+    // The Robinhood Chain testnet app: `opennextjs-cloudflare deploy --env rh-testnet`.
+    "rh-testnet": {
+      "name": "probabl-ui-rh-testnet",
+      "routes": [{ "pattern": "rh-testnet.probabl.trade", "custom_domain": true }],
+      "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "probabl-ui-rh-testnet" }]
+    }
+  }
 }
