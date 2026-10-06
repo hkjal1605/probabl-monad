@@ -12,6 +12,7 @@ import type { DiscoveryFilters } from "@/stores/ui-store";
 import { COLUMNS_TABLE, ColumnsHeader } from "./MarketsColumns";
 
 const CARD_ROWS = [0, 1, 2] as const;
+const TRADED_ROWS = [0, 1, 2, 3] as const;
 const FEED_CARDS = [0, 1, 2, 3, 4, 5] as const;
 const MATRIX_ROWS = [0, 1, 2, 3, 4, 5] as const;
 const COLUMN_EVENTS = [0, 1, 2, 3] as const;
@@ -23,7 +24,7 @@ function FeaturedBannerSkeleton() {
       className="mb-6 grid gap-4 lg:h-[33rem] lg:grid-cols-[minmax(0,65fr)_minmax(0,35fr)]"
       aria-hidden="true"
     >
-      <Card variant="market" className="flex flex-col p-5 sm:p-6">
+      <Card variant="market" className="flex flex-col p-4 sm:p-5">
         <div className="flex items-start gap-4">
           <Skeleton className="size-14 rounded-xl" />
           <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -32,7 +33,7 @@ function FeaturedBannerSkeleton() {
           </div>
           <Skeleton className="h-12 w-16 rounded-xl" />
         </div>
-        <div className="mt-5 grid gap-6 md:grid-cols-[minmax(0,5fr)_minmax(0,8fr)]">
+        <div className="mt-5 grid gap-6 md:grid-cols-[minmax(0,4fr)_minmax(0,9fr)]">
           <div className="flex flex-col gap-4">
             <div className="flex gap-1.5">
               <Skeleton className="h-8 w-20 rounded-full" />
@@ -53,9 +54,9 @@ function FeaturedBannerSkeleton() {
           <Skeleton className="h-4 w-36" />
         </div>
       </Card>
-      <Card variant="market" className="flex flex-col gap-6 p-5 sm:p-6">
+      <Card variant="market" className="flex flex-col gap-6 p-4 sm:p-5">
         <Skeleton className="h-6 w-32" />
-        {CARD_ROWS.map((row) => (
+        {TRADED_ROWS.map((row) => (
           <div key={row} className="flex flex-col gap-3">
             <div className="flex gap-3">
               <Skeleton className="size-11 rounded-xl" />

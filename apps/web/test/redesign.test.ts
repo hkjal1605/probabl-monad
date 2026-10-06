@@ -100,7 +100,7 @@ describe("category featured markets", () => {
       listed("d", 9_999, 0, "resolved"),
       listed("e", null, 50),
     ]);
-    expect(ranked.map((m) => m.id)).toEqual(["b", "c", "e"]);
+    expect(ranked.map((m) => m.id)).toEqual(["b", "c", "e", "a"]);
   });
 
   test("classifies the selected Clarity Act event as policy", () => {

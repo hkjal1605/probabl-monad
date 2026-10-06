@@ -97,7 +97,7 @@ function Outcome({
         {label}
       </dt>
       <dd className="text-right">
-        <span className="block font-semibold text-2xl text-foreground tabular-nums leading-none">
+        <span className="block font-semibold text-xl text-foreground tabular-nums leading-none">
           {value === null ? "—" : dollars(value)}
         </span>
         <span className="mt-1.5 block text-muted-foreground text-xs tabular-nums">{detail}</span>
@@ -208,7 +208,7 @@ function FeaturedEvent({ assets }: { assets: MarketView[] }) {
   return (
     <Card
       variant="market"
-      className="fade-in-0 flex min-h-0 animate-in flex-col p-5 duration-500 motion-reduce:animate-none sm:p-6"
+      className="fade-in-0 flex min-h-0 animate-in flex-col p-4 duration-500 motion-reduce:animate-none sm:p-5"
     >
       <header className="flex items-start gap-4">
         <EventImage market={event} className="size-14" />
@@ -234,7 +234,7 @@ function FeaturedEvent({ assets }: { assets: MarketView[] }) {
           <StockPicker assets={assets} value={market.id} onChange={setSelected} />
         </div>
       )}
-      <div className="mt-5 grid min-h-0 flex-1 gap-6 md:grid-cols-[minmax(0,5fr)_minmax(0,8fr)]">
+      <div className="mt-5 grid min-h-0 flex-1 gap-6 md:grid-cols-[minmax(0,4fr)_minmax(0,9fr)]">
         <div className="flex min-w-0 flex-col gap-4">
           <dl className="flex flex-col">
             <Outcome
@@ -311,13 +311,10 @@ function BuyPrice({ market, branch }: { market: MarketView; branch: "YES" | "NO"
   );
 }
 
-function TradedMarket({ market, rank }: { market: MarketView; rank: number }) {
+function TradedMarket({ market }: { market: MarketView }) {
   return (
-    <li className="flex flex-1 flex-col justify-center gap-3 py-4 first:pt-0 last:pb-0">
+    <li className="flex flex-col gap-2">
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 w-3 shrink-0 font-medium text-muted-foreground text-sm tabular-nums">
-          {rank}
-        </span>
         <div className="relative shrink-0">
           <EventImage market={market} className="size-11" />
           <StockIcon
@@ -337,7 +334,7 @@ function TradedMarket({ market, rank }: { market: MarketView; rank: number }) {
           </p>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-2 pl-6">
+      <div className="grid grid-cols-2 gap-2">
         <BuyPrice market={market} branch="YES" />
         <BuyPrice market={market} branch="NO" />
       </div>
@@ -348,17 +345,17 @@ function TradedMarket({ market, rank }: { market: MarketView; rank: number }) {
 /** The markets traded most in the last 24 hours, whatever the category. */
 function MostTraded({ markets }: { markets: MarketView[] }) {
   return (
-    <Card variant="market" className="flex flex-col p-5 sm:p-6">
+    <Card variant="market" className="flex flex-col p-4 sm:p-5">
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="font-semibold text-foreground text-lg tracking-tight">Most Traded</h2>
         <span className="text-muted-foreground text-xs">Last 24 hours</span>
       </div>
       {markets.length ? (
-        <ol className="mt-4 flex flex-1 flex-col divide-y divide-border/60">
-          {markets.map((market, i) => (
-            <TradedMarket key={market.id} market={market} rank={i + 1} />
+        <ul className="mt-4 flex min-h-0 flex-1 flex-col justify-between gap-4">
+          {markets.map((market) => (
+            <TradedMarket key={market.id} market={market} />
           ))}
-        </ol>
+        </ul>
       ) : (
         <p className="m-auto py-10 text-center text-muted-foreground text-sm">
           No market is trading yet.

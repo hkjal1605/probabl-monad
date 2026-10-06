@@ -266,6 +266,11 @@
   .page-scrollbars-hidden *::-webkit-scrollbar {
     display: none;
   }
+  /* The markets page: the window never scrolls, only the banner and markets below the filters. */
+  body:has(.markets-viewport) {
+    height: 100dvh;
+    overflow: hidden;
+  }
   .market-workspace-scrollbars-hidden,
   .market-workspace-scrollbars-hidden * {
     scrollbar-width: none;

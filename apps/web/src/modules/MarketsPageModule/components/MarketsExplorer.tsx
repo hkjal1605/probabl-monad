@@ -92,10 +92,13 @@ export function MarketsExplorer({
   );
   const showSkeleton = query.isPending && markets.length === 0;
   return (
-    <Page variant="terminal" className="page-scrollbars-hidden max-w-[1350px] px-4 pt-4 lg:px-6">
+    <Page
+      variant="terminal"
+      className="page-scrollbars-hidden markets-viewport flex min-h-0 max-w-[1350px] flex-col overflow-hidden px-4 pt-4 pb-0 lg:px-6"
+    >
       <section
         aria-label="Market filters"
-        className="mb-4 flex min-h-8 items-center gap-4 overflow-x-auto"
+        className="mb-4 flex min-h-8 shrink-0 items-center gap-4 overflow-x-auto"
       >
         <Segmented
           label="Market category"
@@ -160,118 +163,121 @@ export function MarketsExplorer({
           />
         </div>
       </section>
-      {showSkeleton ? (
-        <MarketsPageSkeleton view={filters.view} />
-      ) : (
-        <>
-          {/* The selected category's first event leads; the most traded span every category. */}
-          <HomeBanner featured={visible[0]} category={category} markets={listed} />
-          {query.isInitialError && (
-            <DataError
-              retry={() => {
-                void query.refetch();
-              }}
-            />
-          )}
-          {!visible.length ? (
-            <EmptyState>No markets match this view. Try another filter.</EmptyState>
-          ) : filters.view === "Feed" ? (
-            <Masonry className="grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {visible.map((assets) => (
-                <EventCard key={assets[0] ? eventKey(assets[0]) : "empty"} markets={assets} />
-              ))}
-            </Masonry>
-          ) : filters.view === "Columns" ? (
-            <MarketsColumns groups={visible} />
-          ) : (
-            <Card variant="panel">
-              <Table>
-                <TableHeader className="[&_tr]:border-b-0">
-                  <TableRow className="border-b-0 hover:bg-transparent [&_th]:py-3">
-                    <TableHead>Event</TableHead>
-                    {tokens.map((token) => (
-                      <TableHead key={marketAssetKey(token)} className="text-foreground">
-                        <TokenIdentity
-                          symbol={token.ticker}
-                          metadata={token.assetMetadata}
-                          showName={false}
-                          iconSize="sm"
-                        />
+      {/* The filters stay put; the banner and the markets below it scroll. */}
+      <div className="min-h-0 flex-1 overflow-y-auto pb-3">
+        {showSkeleton ? (
+          <MarketsPageSkeleton view={filters.view} />
+        ) : (
+          <>
+            {/* The selected category's first event leads; the most traded span every category. */}
+            <HomeBanner featured={visible[0]} category={category} markets={listed} />
+            {query.isInitialError && (
+              <DataError
+                retry={() => {
+                  void query.refetch();
+                }}
+              />
+            )}
+            {!visible.length ? (
+              <EmptyState>No markets match this view. Try another filter.</EmptyState>
+            ) : filters.view === "Feed" ? (
+              <Masonry className="grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {visible.map((assets) => (
+                  <EventCard key={assets[0] ? eventKey(assets[0]) : "empty"} markets={assets} />
+                ))}
+              </Masonry>
+            ) : filters.view === "Columns" ? (
+              <MarketsColumns groups={visible} />
+            ) : (
+              <Card variant="panel">
+                <Table>
+                  <TableHeader className="[&_tr]:border-b-0">
+                    <TableRow className="border-b-0 hover:bg-transparent [&_th]:py-3">
+                      <TableHead>Event</TableHead>
+                      {tokens.map((token) => (
+                        <TableHead key={marketAssetKey(token)} className="text-foreground">
+                          <TokenIdentity
+                            symbol={token.ticker}
+                            metadata={token.assetMetadata}
+                            showName={false}
+                            iconSize="sm"
+                          />
+                        </TableHead>
+                      ))}
+                      <TableHead className="text-center font-medium text-foreground">
+                        Probability
                       </TableHead>
-                    ))}
-                    <TableHead className="text-center font-medium text-foreground">
-                      Probability
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {visible.map((assets) => {
-                    const market = assets[0];
-                    if (!market) return null;
-                    return (
-                      <TableRow key={eventKey(market)} className="border-b-0">
-                        <TableCell className="min-w-52 max-w-80 whitespace-normal">
-                          <Link href={marketPath(market)} className="font-semibold">
-                            {market.question}
-                          </Link>
-                          <p className="mt-2 text-xs font-medium text-muted-foreground">
-                            {marketCategory(market)} · {market.lifecycle}
-                          </p>
-                        </TableCell>
-                        {tokens.map((token) => {
-                          const asset = assets.find(
-                            (m) => marketAssetKey(m) === marketAssetKey(token),
-                          );
-                          const impact = asset ? impactPercent(asset) : null;
-                          return (
-                            <TableCell key={marketAssetKey(token)}>
-                              {asset ? (
-                                <Link
-                                  href={marketPath(asset)}
-                                  className={cn(
-                                    buttonVariants({ variant: "ghost" }),
-                                    "h-auto min-w-24 flex-col gap-2 border-0 py-3",
-                                    impact === null
-                                      ? "bg-secondary hover:bg-secondary"
-                                      : impact >= 0
-                                        ? "bg-positive-soft hover:bg-positive-soft"
-                                        : "bg-danger-soft hover:bg-danger-soft",
-                                  )}
-                                >
-                                  <span
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {visible.map((assets) => {
+                      const market = assets[0];
+                      if (!market) return null;
+                      return (
+                        <TableRow key={eventKey(market)} className="border-b-0">
+                          <TableCell className="min-w-52 max-w-80 whitespace-normal">
+                            <Link href={marketPath(market)} className="font-semibold">
+                              {market.question}
+                            </Link>
+                            <p className="mt-2 text-xs font-medium text-muted-foreground">
+                              {marketCategory(market)} · {market.lifecycle}
+                            </p>
+                          </TableCell>
+                          {tokens.map((token) => {
+                            const asset = assets.find(
+                              (m) => marketAssetKey(m) === marketAssetKey(token),
+                            );
+                            const impact = asset ? impactPercent(asset) : null;
+                            return (
+                              <TableCell key={marketAssetKey(token)}>
+                                {asset ? (
+                                  <Link
+                                    href={marketPath(asset)}
                                     className={cn(
+                                      buttonVariants({ variant: "ghost" }),
+                                      "h-auto min-w-24 flex-col gap-2 border-0 py-3",
                                       impact === null
-                                        ? "text-muted-foreground"
+                                        ? "bg-secondary hover:bg-secondary"
                                         : impact >= 0
-                                          ? "text-positive"
-                                          : "text-destructive",
+                                          ? "bg-positive-soft hover:bg-positive-soft"
+                                          : "bg-danger-soft hover:bg-danger-soft",
                                     )}
                                   >
-                                    {percent(impact)}
-                                  </span>
-                                  <span>{formatNumber(midpoint(asset.yes))}</span>
-                                </Link>
-                              ) : (
-                                "—"
-                              )}
-                            </TableCell>
-                          );
-                        })}
-                        <TableCell className="[&>[role=img]]:mx-auto">
-                          <ProbabilityGauge
-                            probability={market.probability}
-                            conditionId={market.mapping.conditionId}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </Card>
-          )}
-        </>
-      )}
+                                    <span
+                                      className={cn(
+                                        impact === null
+                                          ? "text-muted-foreground"
+                                          : impact >= 0
+                                            ? "text-positive"
+                                            : "text-destructive",
+                                      )}
+                                    >
+                                      {percent(impact)}
+                                    </span>
+                                    <span>{formatNumber(midpoint(asset.yes))}</span>
+                                  </Link>
+                                ) : (
+                                  "—"
+                                )}
+                              </TableCell>
+                            );
+                          })}
+                          <TableCell className="[&>[role=img]]:mx-auto">
+                            <ProbabilityGauge
+                              probability={market.probability}
+                              conditionId={market.mapping.conditionId}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </Card>
+            )}
+          </>
+        )}
+      </div>
     </Page>
   );
 }

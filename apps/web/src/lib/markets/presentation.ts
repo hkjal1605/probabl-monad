@@ -147,7 +147,7 @@ export const byTrading = (a: MarketView, b: MarketView) =>
   bookDepthUsd(b) - bookDepthUsd(a) ||
   a.id.localeCompare(b.id);
 /** The `count` open markets traded most in the last 24 hours. */
-export const mostTraded = (markets: readonly MarketView[], count = 3) =>
+export const mostTraded = (markets: readonly MarketView[], count = 4) =>
   markets
     .filter((market) => market.lifecycle === "open")
     .sort(byTrading)
