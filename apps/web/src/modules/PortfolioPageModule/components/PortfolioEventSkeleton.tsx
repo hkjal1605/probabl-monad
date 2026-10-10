@@ -13,11 +13,6 @@ export function PortfolioEventSkeleton() {
         <Skeleton className="h-8 w-20 shrink-0" />
       </CardHeader>
       <CardContent className="px-0 pb-0" aria-hidden="true">
-        <div className="flex gap-6 px-4 pb-4">
-          <Skeleton className="h-5 w-20" />
-          <Skeleton className="h-5 w-24" />
-          <Skeleton className="h-5 w-16" />
-        </div>
         <div className="flex flex-col gap-5 px-5 py-5">
           <div className="flex items-center justify-between gap-4">
             <Skeleton className="h-5 w-1/3" />

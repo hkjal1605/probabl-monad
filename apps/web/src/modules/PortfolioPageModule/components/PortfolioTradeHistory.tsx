@@ -34,7 +34,7 @@ export function PortfolioTradeHistory({
   };
 
   return (
-    <Card variant="panel" className="rounded-xl bg-card lg:sticky lg:top-20">
+    <Card variant="panel" className="rounded-xl bg-card">
       <CardHeader className="flex flex-row items-center justify-between gap-4 border-0 px-0 pt-0 pb-4 group-data-[variant=panel]/card:pt-0 group-data-[variant=panel]/card:pb-4">
         <CardTitle className="text-base">Trade history</CardTitle>
         <Button variant="secondary" size="sm" disabled={!rows.length} onClick={exportCsv}>

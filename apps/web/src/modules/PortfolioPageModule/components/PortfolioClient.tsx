@@ -1,16 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DataError, EmptyState, Page } from "@/components/ui/page";
+import { Segmented } from "@/components/ui/segmented";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AccountGate } from "@/components/wallet/AccountGate";
 import { useMarkets, useOrders, usePositions, useWalletTrades } from "@/hooks/useProtocolData";
 import { useWalletAssets } from "@/hooks/useWalletAssets";
-import { formatCompactNumber, formatNumber, tokenAmount } from "@/lib/format/display";
+import { formatNumber, tokenAmount } from "@/lib/format/display";
 import { groupMarkets, sortEventGroups } from "@/lib/markets/presentation";
+import { conditionalPositionRows } from "@/lib/portfolio/positions";
 import { walletTradeRows } from "@/lib/portfolio/presentation";
+import { OrdersClient } from "@/modules/OrdersPageModule/components/OrdersClient";
 import { positionHasClaims } from "@/services/index-stream";
 import type { MarketView } from "@/types/api";
 import { PortfolioEventCard } from "./PortfolioEventCard";
@@ -20,8 +24,11 @@ import { PortfolioVault } from "./PortfolioVault";
 import { TradingPermissionCard } from "./TradingPermissionCard";
 
 const hasClaims = positionHasClaims;
+const TABS = ["Trading Account", "Positions", "Orders", "Claims", "Trade History"] as const;
+type Tab = (typeof TABS)[number];
 
 export function PortfolioClient({ markets: initial }: { markets: MarketView[] }) {
+  const [tab, setTab] = useState<Tab>("Trading Account");
   const marketQuery = useMarkets(initial);
   const { markets } = marketQuery;
   const ordersQuery = useOrders();
@@ -49,23 +56,39 @@ export function PortfolioClient({ markets: initial }: { markets: MarketView[] })
         0,
       )
     : null;
-  const relevantMarketIds = new Set([
-    ...ordersQuery.orders.map((order) => order.marketId),
-    ...positionsQuery.positions.filter(hasClaims).map((position) => position.marketId),
-  ]);
-  const eventGroups = sortEventGroups(
-    groupMarkets(markets).filter((group) =>
-      group.some((market) => relevantMarketIds.has(market.id)),
-    ),
-    "newest",
+  const eventGroups = sortEventGroups(groupMarkets(markets), "newest");
+  // Events holding claims or claims reserved by open orders.
+  const positionEvents = eventGroups.filter(
+    (group) =>
+      conditionalPositionRows(group, positionsQuery.positions, ordersQuery.orders).length > 0,
   );
-  const claimEvents = eventGroups.filter((group) => {
-    const ids = new Set(group.map((market) => market.id));
-    return claims.some((position) => ids.has(position.marketId));
-  }).length;
+  const claimMarketIds = new Set(claims.map((position) => position.marketId));
+  const claimGroups = eventGroups.filter((group) =>
+    group.some((market) => claimMarketIds.has(market.id)),
+  );
+  const claimEvents = claimGroups.length;
   const tradeRows = walletTradeRows(tradesQuery.trades, ordersQuery.orders, markets);
   const eventsPending = marketQuery.isPending || ordersQuery.isPending || positionsQuery.isPending;
   const tradesPending = eventsPending || tradesQuery.isPending;
+  const eventCards = (groups: MarketView[][], view: "positions" | "claims", empty: string) =>
+    groups.length === 0 && eventsPending ? (
+      <>
+        <PortfolioEventSkeleton />
+        <PortfolioEventSkeleton />
+      </>
+    ) : groups.length === 0 ? (
+      <Card variant="panel" className="rounded-xl bg-card">
+        <EmptyState>{empty}</EmptyState>
+      </Card>
+    ) : (
+      groups.map((group) => (
+        <PortfolioEventCard
+          key={group[0]?.mapping.conditionId ?? group[0]?.id}
+          markets={group}
+          view={view}
+        />
+      ))
+    );
 
   return (
     <Page className="page-scrollbars-hidden max-w-[1280px] px-5 py-8 sm:px-6 sm:py-10">
@@ -73,7 +96,7 @@ export function PortfolioClient({ markets: initial }: { markets: MarketView[] })
         title="Your portfolio"
         description="Connect your wallet to view balances, event positions, claims, and fills."
       >
-        <div className="flex flex-col gap-7">
+        <div className="flex flex-col gap-4">
           <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h1 className="text-4xl font-medium tracking-tight sm:text-[40px] sm:leading-11">
@@ -92,12 +115,8 @@ export function PortfolioClient({ markets: initial }: { markets: MarketView[] })
               <Button
                 variant="secondary"
                 size="lg"
-                onClick={() =>
-                  document
-                    .getElementById("portfolio-events")
-                    ?.scrollIntoView({ behavior: "smooth" })
-                }
-                disabled={!eventGroups.length}
+                onClick={() => setTab("Claims")}
+                disabled={!claimGroups.length}
               >
                 View claims
               </Button>
@@ -123,7 +142,7 @@ export function PortfolioClient({ markets: initial }: { markets: MarketView[] })
           )}
 
           <Card variant="panel" className="rounded-xl bg-card">
-            <CardContent className="grid gap-7 px-0 py-7 lg:min-h-[150px] lg:grid-cols-[220px_minmax(0,1fr)] lg:items-center">
+            <CardContent className="px-0 py-7">
               <div>
                 <p className="eyebrow uppercase tracking-[0.12em] font-semibold text-muted-foreground">
                   Total balance
@@ -139,83 +158,46 @@ export function PortfolioClient({ markets: initial }: { markets: MarketView[] })
                   Available in vault · estimated value
                 </p>
               </div>
-              {assetQuery.isInitialError ? (
-                <DataError
-                  message="Token balances are unavailable."
-                  retry={() => void assetQuery.refetch()}
-                />
-              ) : assetQuery.isPending && balances.length === 0 ? (
-                <div
-                  role="status"
-                  aria-label="Loading token balances"
-                  className="grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-4 lg:grid-cols-7"
-                >
-                  {Array.from({ length: 6 }, (_, index) => (
-                    // biome-ignore lint/suspicious/noArrayIndexKey: Static placeholder rows never reorder.
-                    <div key={index} aria-hidden="true" className="flex flex-col gap-2">
-                      <Skeleton className="h-5 w-12" />
-                      <Skeleton className="h-7 w-20" />
-                    </div>
-                  ))}
-                </div>
-              ) : balances.length === 0 ? (
-                <p className="text-sm font-medium text-muted-foreground">
-                  Deposit tokens to start trading.
-                </p>
-              ) : (
-                <dl className="grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-4 lg:grid-cols-7">
-                  {balances
-                    .filter((asset) => asset.available > 0n)
-                    .map((asset) => (
-                      <div key={asset.token} className="min-w-0">
-                        <dt className="text-sm font-semibold text-muted-foreground">
-                          {asset.symbol}
-                        </dt>
-                        <dd className="mt-2 truncate text-lg font-medium tabular-nums">
-                          {formatCompactNumber(
-                            tokenAmount(asset.available.toString(), asset.decimals),
-                          )}
-                        </dd>
-                      </div>
-                    ))}
-                </dl>
-              )}
             </CardContent>
           </Card>
 
+          {/* The tabs change the left column; trading permission stays on the right. */}
           <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-            <PortfolioVault
-              assets={assetQuery.assets}
-              balances={assetQuery.balances}
-              fresh={assetQuery.isDataFresh}
-              refresh={assetQuery.refetch}
-            />
-            <TradingPermissionCard />
-          </div>
-
-          <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-            <section id="portfolio-events" className="flex min-w-0 flex-col gap-5">
-              {eventGroups.length === 0 && eventsPending ? (
-                <>
-                  <PortfolioEventSkeleton />
-                  <PortfolioEventSkeleton />
-                </>
-              ) : eventGroups.length === 0 ? (
-                <Card variant="panel" className="rounded-xl bg-card">
-                  <EmptyState>No event positions, orders, or claims yet.</EmptyState>
-                </Card>
-              ) : (
-                eventGroups.map((group) => (
-                  <PortfolioEventCard
-                    key={group[0]?.mapping.conditionId ?? group[0]?.id}
-                    markets={group}
-                    orders={ordersQuery.orders}
-                    positions={positionsQuery.positions}
-                  />
-                ))
+            <div className="flex min-w-0 flex-col gap-4">
+              <div className="flex min-h-8 items-center overflow-x-auto">
+                <Segmented
+                  label="Portfolio section"
+                  variant="category"
+                  className="shrink-0"
+                  value={tab}
+                  options={TABS}
+                  onChange={setTab}
+                />
+              </div>
+              {tab === "Trading Account" && (
+                <PortfolioVault
+                  assets={assetQuery.assets}
+                  balances={assetQuery.balances}
+                  fresh={assetQuery.isDataFresh}
+                  refresh={assetQuery.refetch}
+                />
               )}
-            </section>
-            <PortfolioTradeHistory rows={tradeRows} isPending={tradesPending} />
+              {tab === "Positions" && (
+                <section aria-label="Positions" className="flex min-w-0 flex-col gap-5">
+                  {eventCards(positionEvents, "positions", "No event positions yet.")}
+                </section>
+              )}
+              {tab === "Orders" && <OrdersClient markets={markets} plain />}
+              {tab === "Claims" && (
+                <section aria-label="Claims" className="flex min-w-0 flex-col gap-5">
+                  {eventCards(claimGroups, "claims", "No claims yet.")}
+                </section>
+              )}
+              {tab === "Trade History" && (
+                <PortfolioTradeHistory rows={tradeRows} isPending={tradesPending} />
+              )}
+            </div>
+            <TradingPermissionCard />
           </div>
         </div>
       </AccountGate>
