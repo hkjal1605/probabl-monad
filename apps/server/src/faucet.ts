@@ -3,6 +3,7 @@
  * token exactly once. Claims are serialized, resumable per asset, and rate limited. */
 import type { Database } from "@conditional-stocks/db";
 import type { IndexerService } from "@conditional-stocks/indexer";
+import { nativeCurrency, TESTNET_CHAIN_IDS } from "@conditional-stocks/shared/chains";
 import type { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import {
@@ -16,10 +17,26 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import type { Auth } from "./auth/routes.ts";
 
-/** Anvil, Robinhood Chain testnet and Base Sepolia. */
-export const FAUCET_CHAINS: readonly number[] = [31337, 46630, 84532];
-/** Whole units per claim by symbol; other listed tokens (stocks) send one token. */
-const AMOUNTS: Readonly<Record<string, string>> = { ETH: "0.002", USDC: "500", USDG: "500" };
+/** Anvil, Robinhood Chain testnet, Base Sepolia and Monad testnet. */
+export const FAUCET_CHAINS: readonly number[] = TESTNET_CHAIN_IDS;
+/** Whole units per claim by symbol, as on the Solana testnet; other listed tokens (stocks) send
+ * one token. ETH is gas where it is the native currency and an asset on Monad; MON pays for
+ * about ten Monad transactions, where gas is charged on the limit. */
+const AMOUNTS: Readonly<Record<string, string>> = {
+  ETH: "0.002",
+  MON: "0.2",
+  USDC: "500",
+  USDG: "500",
+  SPY: "0.5",
+  OPENAI: "0.5",
+  SPACEX: "5",
+  KALSHI: "0.5",
+  ANTHROPIC: "0.5",
+  BTC: "0.005",
+  SOL: "1",
+};
+/** Asset amounts that differ from their native-currency namesake (ETH gas on Ethereum chains). */
+const ASSET_AMOUNTS: Readonly<Record<string, string>> = { ETH: "0.1" };
 const HOURLY_CLAIMS = 60;
 
 export function mountFaucet(
@@ -71,11 +88,13 @@ export function mountFaucet(
             message: "The testnet faucet is busy. Please try again in a few minutes.",
           });
         const s = indexer.trading();
+        const native = nativeCurrency(options.chainId).symbol;
         const assets: { symbol: string; token: Address | null; amount: bigint }[] = [
-          { symbol: "ETH", token: null, amount: parseUnits(AMOUNTS.ETH!, 18) },
+          { symbol: native, token: null, amount: parseUnits(AMOUNTS[native] ?? "0", 18) },
           ...[...s.pools.entries()].map(([token, pool]) => {
             const symbol = indexer.tokens.identity.get(token)?.symbol ?? token;
-            return { symbol, token, amount: parseUnits(AMOUNTS[symbol] ?? "1", pool.decimals) };
+            const amount = ASSET_AMOUNTS[symbol] ?? AMOUNTS[symbol] ?? "1";
+            return { symbol, token, amount: parseUnits(amount, pool.decimals) };
           }),
         ].filter((a) => !previous?.delivered.includes(a.symbol));
         const sent: { symbol: string; amount: string }[] = [];

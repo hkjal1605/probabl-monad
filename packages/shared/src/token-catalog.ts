@@ -14,8 +14,9 @@ export interface CatalogAsset {
   kind: AssetKind;
   /** Bundled logo served by the UI. */
   logo: string;
-  /** Economic asset of stocks and ETFs, `REGION:TICKER` (e.g. "US:NVDA"): shared by every
-   * issuer's token of it. */
+  /** Economic asset, shared by every issuer's token of it: `REGION:TICKER` for listed stocks
+   * and ETFs (e.g. "US:NVDA"), `PRIVATE:NAME` for private companies, `CRYPTO:TICKER` for
+   * crypto assets listed as market collateral. */
   underlying?: string;
 }
 
@@ -25,6 +26,13 @@ const stock = (symbol: string, name: string, kind: AssetKind = "stock"): Catalog
   kind,
   logo: `/tokens/${symbol.toLowerCase()}.svg`,
   underlying: `US:${symbol}`,
+});
+const privateCompany = (symbol: string, name: string): CatalogAsset => ({
+  symbol,
+  name,
+  kind: "stock",
+  logo: `/tokens/${symbol.toLowerCase()}.png`,
+  underlying: `PRIVATE:${symbol}`,
 });
 
 export const ASSET_CATALOG: readonly CatalogAsset[] = Object.freeze([
@@ -43,6 +51,11 @@ export const ASSET_CATALOG: readonly CatalogAsset[] = Object.freeze([
   stock("NFLX", "Netflix"),
   stock("SPY", "SPDR S&P 500 ETF Trust", "etf"),
   stock("QQQ", "Invesco QQQ Trust", "etf"),
+  // Private companies (pre-IPO tokens): Monad testnet markets list one dummy token for each.
+  privateCompany("OPENAI", "OpenAI"),
+  privateCompany("SPACEX", "SpaceX"),
+  privateCompany("KALSHI", "Kalshi"),
+  privateCompany("ANTHROPIC", "Anthropic"),
   {
     symbol: "USDC",
     name: "USD Coin",
@@ -60,6 +73,7 @@ export const ASSET_CATALOG: readonly CatalogAsset[] = Object.freeze([
     name: "Ethereum",
     kind: "crypto",
     logo: "/tokens/eth.svg",
+    underlying: "CRYPTO:ETH",
   },
   {
     symbol: "WETH",
@@ -72,6 +86,14 @@ export const ASSET_CATALOG: readonly CatalogAsset[] = Object.freeze([
     name: "Bitcoin",
     kind: "crypto",
     logo: "/tokens/btc.svg",
+    underlying: "CRYPTO:BTC",
+  },
+  {
+    symbol: "SOL",
+    name: "Solana",
+    kind: "crypto",
+    logo: "/tokens/sol.svg",
+    underlying: "CRYPTO:SOL",
   },
   {
     symbol: "cbBTC",

@@ -33,6 +33,19 @@ interface Quote {
 }
 
 export const ROBINHOOD_PRICES_URL = "https://api.robinhood.com/rhj";
+export const JUPITER_PRICES_URL = "https://lite-api.jup.ag/price/v3";
+/** Assets Robinhood does not quote (crypto, pre-IPO companies), priced by Jupiter's public
+ * price API from their Solana mainnet tokens, as on the Solana testnet: the token and the
+ * issuer's UI multiplier (shares per token), so a share costs the token's price / multiplier. */
+export const JUPITER_REFERENCES: Readonly<Record<string, { mint: string; multiplier: number }>> = {
+  BTC: { mint: "cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij", multiplier: 1 },
+  ETH: { mint: "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs", multiplier: 1 },
+  SOL: { mint: "So11111111111111111111111111111111111111112", multiplier: 1 },
+  OPENAI: { mint: "PreweJYECqtQwBtpxHL171nL2K6umo692gTm7Q3rpgF", multiplier: 1.4861347 },
+  SPACEX: { mint: "PreANxuXjsy2pvisWWMNB6YaJNzr7681wJJr2rHsfTh", multiplier: 5 },
+  KALSHI: { mint: "PreLWGkkeqG1s4HEfFZSy9moCrJ7btsHuUtfcCeoRua", multiplier: 1 },
+  ANTHROPIC: { mint: "Pren1FvFX6J3E4kXhJuCiAD5aDmGEb7qJRncwA8Lkhw", multiplier: 1 },
+};
 const SCALE = 10n ** 18n;
 /** A decimal price string in 1e-18 units, or null when it is not one. */
 const scaled = (value: unknown) => {
@@ -48,6 +61,7 @@ const midpoint = (bid: bigint, ask: bigint) => {
 
 export class RobinhoodSpotPrices implements SpotPriceSource {
   private quotes: ReadCache;
+  private jupiterQuotes: ReadCache;
 
   constructor(
     private readonly chainId: number,
@@ -56,6 +70,7 @@ export class RobinhoodSpotPrices implements SpotPriceSource {
     ttlMs = 2_000,
   ) {
     this.quotes = new ReadCache(ttlMs, 256);
+    this.jupiterQuotes = new ReadCache(Math.max(ttlMs, 10_000), 16);
   }
 
   /** Robinhood's live quote of one stock or ETF symbol. */
@@ -86,6 +101,30 @@ export class RobinhoodSpotPrices implements SpotPriceSource {
     });
   }
 
+  /** Jupiter's USD prices of every mapped token, in one request per `ttlMs`. */
+  private jupiter(): Promise<Map<string, number>> {
+    return this.jupiterQuotes.get("all", async () => {
+      const ids = Object.values(JUPITER_REFERENCES).map((r) => r.mint);
+      const response = await this.fetcher(`${JUPITER_PRICES_URL}?ids=${ids.join(",")}`, {
+        redirect: "error",
+        signal: AbortSignal.timeout(8_000),
+      });
+      if (!response.ok) {
+        await response.body?.cancel();
+        throw new Error(`Jupiter prices returned ${response.status}`);
+      }
+      const text = await response.text();
+      if (text.length > 64 * 1024) throw new Error("Oversized Jupiter price response");
+      const body = JSON.parse(text) as Record<string, { usdPrice?: unknown } | null>;
+      const prices = new Map<string, number>();
+      for (const id of ids) {
+        const price = body[id]?.usdPrice;
+        if (typeof price === "number" && Number.isFinite(price) && price > 0) prices.set(id, price);
+      }
+      return prices;
+    });
+  }
+
   async getPrices(tokens: TokenIdentity[]): Promise<SpotPricesResponse> {
     if (!tokens.length || tokens.length > SPOT_BATCH_SIZE)
       throw new Error("Invalid spot price batch");
@@ -95,7 +134,11 @@ export class RobinhoodSpotPrices implements SpotPriceSource {
     const symbols = [
       ...new Set(
         assets.flatMap(({ asset }) =>
-          asset && (asset.kind === "stock" || asset.kind === "etf") ? [asset.symbol] : [],
+          asset &&
+          (asset.kind === "stock" || asset.kind === "etf") &&
+          !JUPITER_REFERENCES[asset.symbol]
+            ? [asset.symbol]
+            : [],
         ),
       ),
     ];
@@ -106,6 +149,9 @@ export class RobinhoodSpotPrices implements SpotPriceSource {
         ),
       ),
     );
+    const jupiter = assets.some(({ asset }) => asset && JUPITER_REFERENCES[asset.symbol])
+      ? await this.jupiter().catch(() => new Map<string, number>())
+      : new Map<string, number>();
     const prices = assets.map(({ token, symbol, asset }): SpotPrice => {
       const kind = asset?.kind ?? null;
       const valuationCompatible = kind === "stablecoin" || kind === "crypto";
@@ -128,6 +174,20 @@ export class RobinhoodSpotPrices implements SpotPriceSource {
           priceTimestamp: fetchedAt,
           fetchedAt,
         };
+      const reference = JUPITER_REFERENCES[asset.symbol];
+      if (reference) {
+        const usd = jupiter.get(reference.mint);
+        if (usd === undefined) return none("unavailable", `jupiter:${asset.symbol}`);
+        return expireSpotPrice(
+          {
+            ...none("available", `jupiter:${asset.symbol}`),
+            priceUsd: usd / reference.multiplier,
+            priceTimestamp: fetchedAt,
+            fetchedAt,
+          },
+          now,
+        );
+      }
       if (kind === "crypto") return none("unavailable", null);
       const source = `robinhood:${asset.symbol}`;
       const quote = quotes.get(asset.symbol);
