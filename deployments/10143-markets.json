@@ -20,9 +20,24 @@
       "question": "Will the Fed’s lower bound reach 2.75% or lower before 2027?",
       "rationale": "Rate cuts: growth equities, the index and the richest private valuation.",
       "markets": {
-        "TSLA": {},
-        "SPY": {},
-        "SPACEX": {}
+        "TSLA": {
+          "packetHash": "0xbb20c85185435622b8022ad7ca699a9a776b2dda448aa2eecd97df32a5fb007c",
+          "marketId": "1",
+          "transactionHash": "0x20520d6f2b2a69a3167c784f4cefd648ec1a80b5d0d9a5239761b4351bd99499",
+          "opened": true
+        },
+        "SPY": {
+          "packetHash": "0xeed50f5fe284241c1eae6d6acf9f3c72b1d1e1be28d4c41f33a72cd5b935b59d",
+          "marketId": "2",
+          "transactionHash": "0xe09595947a1fdf0152b0942bc20bde8a1a476ab52f32e150843bdb5803fa61aa",
+          "opened": true
+        },
+        "SPACEX": {
+          "packetHash": "0x019ec0afe21ab682d1ba6e44e36261abb936a0a420d0615f00a79a9299d26687",
+          "marketId": "3",
+          "transactionHash": "0xfa0d722598f340fc656e869669d6e0778d585a8cf93f22b33bf79ad11348a67c",
+          "opened": true
+        }
       }
     },
     {
@@ -31,9 +46,24 @@
       "question": "US recession by end of 2026?",
       "rationale": "The broad market and its two most cyclical mega-caps.",
       "markets": {
-        "NVDA": {},
-        "TSLA": {},
-        "SPY": {}
+        "NVDA": {
+          "packetHash": "0x65fee71e3e1d104930858ea8fdd6b1449c36dc1d6fcf3e43e701bad8c231de6e",
+          "marketId": "4",
+          "transactionHash": "0x4a6752ee74ccefc01266d5ac24abe74d72dcd3cacd6ac0c4363f916a983ec5d5",
+          "opened": true
+        },
+        "TSLA": {
+          "packetHash": "0xe595c3c43b7449f0a5827ecf7712b578adf61aecedc97f20141e3d104a428ec7",
+          "marketId": "5",
+          "transactionHash": "0xc46cf8f37982cad10f5006967f7dfe03c187db5a7e70c44290380405cf6ea9be",
+          "opened": true
+        },
+        "SPY": {
+          "packetHash": "0xbd6a4b96a6cb675747e1e7c94c70f253c05443ab93a92a2d2bdd49fc9e6de009",
+          "marketId": "6",
+          "transactionHash": "0x32c7a84f1c00be2a3a0978907f10356f32a9a8593db708e55c725d14a76cebdc",
+          "opened": true
+        }
       }
     },
     {
@@ -42,9 +72,24 @@
       "question": "AI bubble burst in 2026?",
       "rationale": "The AI trade: the chip supplier and the two leading labs.",
       "markets": {
-        "NVDA": {},
-        "OPENAI": {},
-        "ANTHROPIC": {}
+        "NVDA": {
+          "packetHash": "0x577535efa3baecd946e5d7d6fc95973894c12f3a35adcf61bd9e0e85ebbdc91b",
+          "marketId": "7",
+          "transactionHash": "0x2ad80886e139615d31bb54318aba3136d690cb9a66a7b0bc77cadba4d5226713",
+          "opened": true
+        },
+        "OPENAI": {
+          "packetHash": "0x279015b7fc206bc56b8bf7045d768210804892d47816b291df94c5075e3c19f3",
+          "marketId": "8",
+          "transactionHash": "0x3c847a00410c5d353e54d1861806de77f19dd365f3a072c4f023485b4feac634",
+          "opened": true
+        },
+        "ANTHROPIC": {
+          "packetHash": "0x69cb18c3bba3329f4f6062471a07d6e1e0711a32324e7343e4a3bd1b2ec5a5cf",
+          "marketId": "9",
+          "transactionHash": "0x6a4fb6eed585f5feb714f2ea0702c5110b4c25654f68389f7d227dc6a026aba1",
+          "opened": true
+        }
       }
     },
     {
@@ -53,9 +98,24 @@
       "question": "Will Anthropic IPO by December 31, 2026?",
       "rationale": "The IPO window for pre-IPO tokens: the issuer, its closest peer, Kalshi.",
       "markets": {
-        "ANTHROPIC": {},
-        "OPENAI": {},
-        "KALSHI": {}
+        "ANTHROPIC": {
+          "packetHash": "0x9e1fea8a07d6b40e381c3ee80bc4f3f149303b228d69e522fa0b19939bdf9e5f",
+          "marketId": "10",
+          "transactionHash": "0x8518ab7f43fd5b290108aaaf73e8fdde0bda53c9ff96564a0a72b17ef7d45ea6",
+          "opened": true
+        },
+        "OPENAI": {
+          "packetHash": "0x89812bc4d731e0faaaa9a7336c11504b86f8a8945839c3bb4934d6fe36adb1b8",
+          "marketId": "11",
+          "transactionHash": "0xaf59266ac36ec60c753ed7b9d8b3bc399577d9d9848f282384dd717d8839e1d7",
+          "opened": true
+        },
+        "KALSHI": {
+          "packetHash": "0xed8b8fefdd5d565f1cc064ba8dff43d38e5a0f17a90cd4c10876d94b0cb4513c",
+          "marketId": "12",
+          "transactionHash": "0x26ebc71af23bba6cef2bade4af2078d6ab398968b9e031c58a1cd787da50f983",
+          "opened": true
+        }
       }
     },
     {
@@ -64,9 +124,24 @@
       "question": "Will OpenAI IPO by December 31 2026?",
       "rationale": "Will OpenAI IPO by December 31 2026?",
       "markets": {
-        "OPENAI": {},
-        "ANTHROPIC": {},
-        "KALSHI": {}
+        "OPENAI": {
+          "packetHash": "0x964f2ed58c2100d83da5c6539830f91fae2423a8bfc18bd3facd0c3f387777e6",
+          "marketId": "13",
+          "transactionHash": "0x14125356f11f6bfb149c6d9ea88d2307ce1394e2c3ae6f990174e70ca7bcd63c",
+          "opened": true
+        },
+        "ANTHROPIC": {
+          "packetHash": "0x1efda5fad49d64256b91beb30e20e0af92f7f06001f63417a5deeecc2da0d020",
+          "marketId": "14",
+          "transactionHash": "0xd4997a11d45a290ea13e76abad0733b1478ac0b2a8324ea815c3223cc4599f2a",
+          "opened": true
+        },
+        "KALSHI": {
+          "packetHash": "0x3a6e7ef01cfe43f08e33280ab76bf46b4b80529dbfac5c6c4c10b14780285a86",
+          "marketId": "15",
+          "transactionHash": "0x142fa54115ed297e23f8e62af3cd21bc3234b8409ffda678ed9a7d84a9c0034c",
+          "opened": true
+        }
       }
     },
     {
@@ -75,9 +150,24 @@
       "question": "Tesla and SpaceX merger officially announced by December 31?",
       "rationale": "Both merger parties, and Nvidia as the GPU supplier to xAI and Tesla.",
       "markets": {
-        "SPACEX": {},
-        "TSLA": {},
-        "NVDA": {}
+        "SPACEX": {
+          "packetHash": "0x47a81ae2066d9cff1a04bdf14bf96f0bd473455a63f8acedc80851f1484c6206",
+          "marketId": "16",
+          "transactionHash": "0xfb1cb1b4a3465bb3984637e58de411728a100e25e49a0a766f716089aa28eaa9",
+          "opened": true
+        },
+        "TSLA": {
+          "packetHash": "0x7b9b3e738007f860b2331b419bc20cf0307e543b28b430466ea3f6932936c17e",
+          "marketId": "17",
+          "transactionHash": "0x9b09392f5258c55cfe9bbf8bbbe7fac0fd04c3d44aeee0596913248b393e9b31",
+          "opened": true
+        },
+        "NVDA": {
+          "packetHash": "0xf4f8ec43125be32ef8e65a3c38e84e7cee398f084e517b3396b7d50497dd6ee2",
+          "marketId": "18",
+          "transactionHash": "0xd5eef9db0bdeb0edeecc104783b257bdf01313feeb87d439ca8a87a5d20d7069",
+          "opened": true
+        }
       }
     },
     {
@@ -86,9 +176,24 @@
       "question": "Clarity Act (H.R.3633) signed into law in 2026?",
       "rationale": "US crypto market structure: SEC/CFTC jurisdiction over BTC, ETH and SOL.",
       "markets": {
-        "BTC": {},
-        "ETH": {},
-        "SOL": {}
+        "BTC": {
+          "packetHash": "0x107e80e2f3d5677b3834061c3563304e73916bd57e2daceca8919b8e2827c7fe",
+          "marketId": "19",
+          "transactionHash": "0x7d9379d844b9c3ec93c0901db8d6df76ac27be50ee505bc3f577df55453a4a48",
+          "opened": true
+        },
+        "ETH": {
+          "packetHash": "0xa7d5dc08192e026df8fbe9b08ea721bdff46df4df157a527d2b8424eae3616a9",
+          "marketId": "20",
+          "transactionHash": "0x281f118fd4614cd55a0bf345c7017468b07355fffa92fd016068e11b370b3787",
+          "opened": true
+        },
+        "SOL": {
+          "packetHash": "0x024ad510952461c343eab8dfb8f9abc9e5bda18f0b18373ffe4cca30e5f6c519",
+          "marketId": "21",
+          "transactionHash": "0x17264a25119b43fa6d8ec8e62a4705158bda7291aef7bc7a6560cf77b6a676f9",
+          "opened": true
+        }
       }
     },
     {
@@ -97,9 +202,24 @@
       "question": "Major CEX insolvent in 2026?",
       "rationale": "Exchange-failure contagion across the major crypto assets.",
       "markets": {
-        "BTC": {},
-        "ETH": {},
-        "SOL": {}
+        "BTC": {
+          "packetHash": "0x4f5c5e5b0454daada2ee54206c3df3e92e91c45863e0e71f55b48a986a654c88",
+          "marketId": "22",
+          "transactionHash": "0xf6a50e249a2bdfbca84376d2279ce93a999cdb76322c7e83e80b7b9a480aa60f",
+          "opened": true
+        },
+        "ETH": {
+          "packetHash": "0x81ef80353a95b42b5bcd77ae6208de4a23237dac52c58cc14ffcb4cb67faa904",
+          "marketId": "23",
+          "transactionHash": "0x16e0c02a78b1d21e0e325939b5e2e38ce7139586752592f262c444cee32f3671",
+          "opened": true
+        },
+        "SOL": {
+          "packetHash": "0xa5295a71d4dfec74ad29f717b867bd14fae0885ced2a41eea2ac1603cd83a495",
+          "marketId": "24",
+          "transactionHash": "0x33d72fd7909e551f5d6ed18b500abc9c3ee76921ec00c721a492607a60925758",
+          "opened": true
+        }
       }
     },
     {
@@ -108,9 +228,24 @@
       "question": "Will inflation reach more than 5% in 2026?",
       "rationale": "The inflation-hedge trade, equities, and Kalshi (the venue for CPI contracts).",
       "markets": {
-        "BTC": {},
-        "SPY": {},
-        "KALSHI": {}
+        "BTC": {
+          "packetHash": "0xca638811e29a63e1fd13caaac049c94d2007ebb49c640bc2a3f76ee860be1e1a",
+          "marketId": "25",
+          "transactionHash": "0xf3096c17fa1bb0520e345a32cec41d9c45c0e81162ab9eef2c0380947670fce3",
+          "opened": true
+        },
+        "SPY": {
+          "packetHash": "0x2b82a5454ee569dc67aeee33b12c58d8d1066881ec9b91780736a8c7b275fcf8",
+          "marketId": "26",
+          "transactionHash": "0xad0bdafd7ea27dbe06da6203b76c2e7d49495c4a6d1e4e2f173f987cfc2e9adb",
+          "opened": true
+        },
+        "KALSHI": {
+          "packetHash": "0x94f4bbde5ac0f4af6a97b7071ecf4104fbdbdbe141558ce00d7df4bcb40940bd",
+          "marketId": "27",
+          "transactionHash": "0x03b0a4094f815e2ea37e463a7e0b6f287699447649780db85350a3258ca49e75",
+          "opened": true
+        }
       }
     },
     {
@@ -119,9 +254,24 @@
       "question": "US x China tariff agreement by December 31?",
       "rationale": "Nvidia's China chip sales, Tesla's China factory and sales, trade-war risk appetite.",
       "markets": {
-        "NVDA": {},
-        "TSLA": {},
-        "BTC": {}
+        "NVDA": {
+          "packetHash": "0xf57005c92ff48c2bfb7ac35c0b4191b19d056d62863be1ba8c7bb64ff803d165",
+          "marketId": "28",
+          "transactionHash": "0x9b49f589bc8794ba2052d583fb8b0f516978a95da0f426e8a973239df53e4645",
+          "opened": true
+        },
+        "TSLA": {
+          "packetHash": "0x3d72ca156b8133ae15e43d2659b5f3f3752ff35a2ea5991c91197cfb1aa2c38e",
+          "marketId": "29",
+          "transactionHash": "0x098f382cbf366fb2fdfdba2fbda2d6ccf752fb9c134cc1741f2611a316d94cd0",
+          "opened": true
+        },
+        "BTC": {
+          "packetHash": "0xb2d88f26e9a1b17b4ea9aab8ee596cf8ccbe604350073dbf9cdf000be679b816",
+          "marketId": "30",
+          "transactionHash": "0xaec20a69beac2807499b30328c517704836bd05117a806197a491553314b073b",
+          "opened": true
+        }
       }
     },
     {
@@ -130,9 +280,24 @@
       "question": "Law banning sports prediction markets enacted in 2026?",
       "rationale": "Kalshi's core business; displaced volume moves to on-chain venues on Solana/Ethereum.",
       "markets": {
-        "KALSHI": {},
-        "SOL": {},
-        "ETH": {}
+        "KALSHI": {
+          "packetHash": "0x21d4b900c566764cc20a83ece9e0b86edc58e2e2b67bc763f344003491a65902",
+          "marketId": "31",
+          "transactionHash": "0x156c519dd4703eedb60d07b1332cf8b92cfda6b4cf0a92f481513f9376f62b27",
+          "opened": true
+        },
+        "SOL": {
+          "packetHash": "0x0aaa2015e3bdbb64dd7c2c72976001ec4127f23830b13d5474bcab7aef890f71",
+          "marketId": "32",
+          "transactionHash": "0xd78f9f1e754ab65b128214e377c224d5b0b4eb1c2583d1857c011933287b56aa",
+          "opened": true
+        },
+        "ETH": {
+          "packetHash": "0xdfca0ec45fdfb4cd4c461a5332e0833b37ff6b05fb5c81196ccefc2daf96250c",
+          "marketId": "33",
+          "transactionHash": "0x26b3a3a5799eb23245b03db10f694d5835f80430db89c93b466beae8467168ab",
+          "opened": true
+        }
       }
     },
     {
@@ -141,9 +306,24 @@
       "question": "SEC removes quarterly reporting requirement?",
       "rationale": "Musk-backed semiannual reporting; a lighter burden eases the OpenAI and Anthropic IPOs.",
       "markets": {
-        "TSLA": {},
-        "OPENAI": {},
-        "ANTHROPIC": {}
+        "TSLA": {
+          "packetHash": "0xf7fa14b2323f09ef1939435f53dba22042a37d30875cceed1c92d82421e76801",
+          "marketId": "34",
+          "transactionHash": "0xfc7a3d3034ada226c278940eae02f356807271e0e20214d08d0a7697129145da",
+          "opened": true
+        },
+        "OPENAI": {
+          "packetHash": "0xa7e47635dec9240bdbd47ea27b84c937928c9542f12cc78e468292dabd14a8ea",
+          "marketId": "35",
+          "transactionHash": "0x5e27576ffc0644d026d98c4547d651e4f5532e76261159187f3dfc81647eb01d",
+          "opened": true
+        },
+        "ANTHROPIC": {
+          "packetHash": "0x1c6b0f1c75981e8b0e05ac6e8e0fed48e4d34c68932c7917a003b24fb9f88e00",
+          "marketId": "36",
+          "transactionHash": "0x8acc4a80d9002fc9d89e1e602e7b668fdfa38012d6a548d5dd8a5d4e5ebdd22c",
+          "opened": true
+        }
       }
     },
     {
@@ -163,9 +343,24 @@
       "question": "Tesla Roadster delivered by December 31, 2026?",
       "rationale": "Tesla execution, the Roadster's SpaceX option package, a top S&P weight.",
       "markets": {
-        "TSLA": {},
-        "SPACEX": {},
-        "SPY": {}
+        "TSLA": {
+          "packetHash": "0x3b533d264d8c1ed63bddf9ad7ad60f5b9a79f475655e4364913135a5bc783e0b",
+          "marketId": "37",
+          "transactionHash": "0xca76a8669e0deebeca381ff1a0a6b110c99cb974a7b77413d0f3fd8e04671b1e",
+          "opened": true
+        },
+        "SPACEX": {
+          "packetHash": "0xee328b1ed4fcc4f246c9f98adda23af7927a6408bf8cc5713f2ef38f119dbc7c",
+          "marketId": "38",
+          "transactionHash": "0xf90a4564a7707c26b4cdb6d58701168aff1022a3c3156e9de0de800709a94190",
+          "opened": true
+        },
+        "SPY": {
+          "packetHash": "0xedf3bd714443088c3f118d2d3284d974121d90ad83c70237a6d42af5e73e829d",
+          "marketId": "39",
+          "transactionHash": "0xbc2b032797c4f03b6be2b14aa68f64041f8b5c4c41926b8e49aa6cf187a1a925",
+          "opened": true
+        }
       }
     }
   ]
