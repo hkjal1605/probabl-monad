@@ -11,6 +11,7 @@
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { conditionalStocksAbi } from "@conditional-stocks/evm-client";
+import { MONAD_TESTNET, nativeCurrency } from "@conditional-stocks/shared/chains";
 import {
   createPublicClient,
   createWalletClient,
@@ -45,6 +46,8 @@ const NETWORKS: Record<
     quote: { symbol: "USDG", address: "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168" },
   },
   46630: { name: "Robinhood Chain Testnet", mainnet: false, quote: { symbol: "USDG" } },
+  // The testnet dummy USDC (scripts/evm/deploy-testnet-tokens.ts).
+  [MONAD_TESTNET]: { name: "Monad Testnet", mainnet: false, quote: { symbol: "USDC" } },
 };
 const required = (name: string) => {
   const value = process.env[name]?.trim();
@@ -55,7 +58,7 @@ const chainId = Number(required("CHAIN_ID"));
 const network = NETWORKS[chainId];
 if (!network)
   throw new Error(
-    "CHAIN_ID must be Base, Base Sepolia, Robinhood Chain or Robinhood Chain Testnet",
+    "CHAIN_ID must be Base, Base Sepolia, Robinhood Chain, Robinhood Chain Testnet or Monad Testnet",
   );
 if (network.mainnet && !process.argv.includes("--mainnet"))
   throw new Error(`${network.name} is a mainnet: pass --mainnet explicitly`);
@@ -84,7 +87,7 @@ if ([admin, marketAdmin, guardian, resolutionAdmin].includes(account.address))
 const chain = defineChain({
   id: chainId,
   name: network.name,
-  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  nativeCurrency: nativeCurrency(chainId),
   rpcUrls: { default: { http: [rpc] } },
 });
 const client = createPublicClient({ chain, transport: http(rpc) });

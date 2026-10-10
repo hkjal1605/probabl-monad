@@ -1,4 +1,5 @@
 "use client";
+import { TESTNET_CHAIN_IDS } from "@conditional-stocks/shared/chains";
 import { useEffect, useState } from "react";
 import { useWallet } from "@/components/providers/WalletProvider";
 import { Button } from "@/components/ui/button";
@@ -41,8 +42,7 @@ export function DevnetFaucetBanner() {
   const [available, setAvailable] = useState(false);
   const [claimed, setClaimed] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
-  // Anvil, Robinhood Chain testnet and Base Sepolia.
-  const devnet = [31337, 46630, 84532].includes(protocolConfig.chainId);
+  const devnet = TESTNET_CHAIN_IDS.includes(protocolConfig.chainId);
 
   useEffect(() => {
     if (!devnet) return;

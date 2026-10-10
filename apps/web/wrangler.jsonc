@@ -20,6 +20,12 @@
       "name": "probabl-ui-rh-testnet",
       "routes": [{ "pattern": "rh-testnet.probabl.trade", "custom_domain": true }],
       "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "probabl-ui-rh-testnet" }]
+    },
+    // The Monad testnet app: `opennextjs-cloudflare deploy --env monad`.
+    "monad": {
+      "name": "probabl-ui-monad",
+      "routes": [{ "pattern": "monad.probabl.trade", "custom_domain": true }],
+      "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "probabl-ui-monad" }]
     }
   }
 }

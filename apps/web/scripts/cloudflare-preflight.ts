@@ -3,8 +3,8 @@ import { getAddress, isAddress } from "viem";
 
 type Environment = Record<string, string | undefined>;
 
-/** Base, Base Sepolia, Robinhood Chain and Robinhood Chain testnet. */
-const CHAINS = [8453, 84532, 4663, 46630];
+/** Base, Base Sepolia, Robinhood Chain, Robinhood Chain testnet and Monad testnet. */
+const CHAINS = [8453, 84532, 4663, 46630, 10143];
 
 // Offline checks only. Never print URLs; RPC query parameters may contain credentials.
 export function validateCloudflareEnvironment(env: Environment): string[] {
@@ -33,7 +33,9 @@ export function validateCloudflareEnvironment(env: Environment): string[] {
     }
   }
   if (!CHAINS.includes(Number(env.NEXT_PUBLIC_CHAIN_ID)))
-    errors.push("NEXT_PUBLIC_CHAIN_ID must be Base, Base Sepolia, Robinhood Chain or its testnet");
+    errors.push(
+      "NEXT_PUBLIC_CHAIN_ID must be Base, Base Sepolia, Robinhood Chain, its testnet or Monad testnet",
+    );
   if (!env.NEXT_PUBLIC_CHAIN_NAME?.trim()) errors.push("NEXT_PUBLIC_CHAIN_NAME is required");
   const exchange = env.NEXT_PUBLIC_EXCHANGE_ADDRESS ?? "";
   if (

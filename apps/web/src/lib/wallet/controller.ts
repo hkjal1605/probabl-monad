@@ -1,4 +1,5 @@
 import { assertSignInChallenge } from "@conditional-stocks/evm-client";
+import { nativeCurrency } from "@conditional-stocks/shared/chains";
 import { normalizeInviteCode } from "@conditional-stocks/shared/invites";
 import {
   type Address,
@@ -300,7 +301,7 @@ export function createWalletController(deps: Dependencies) {
               {
                 chainId: toHex(chainId),
                 chainName,
-                nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+                nativeCurrency: nativeCurrency(chainId),
                 rpcUrls: [rpcUrl],
                 ...(explorerUrl ? { blockExplorerUrls: [explorerUrl] } : {}),
               },

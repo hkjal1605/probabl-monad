@@ -11,7 +11,8 @@
     "./read-cache": "./src/read-cache.ts",
     "./redis-cache": "./src/redis-cache.ts",
     "./token-catalog": "./src/token-catalog.ts",
-    "./invites": "./src/invites.ts"
+    "./invites": "./src/invites.ts",
+    "./chains": "./src/chains.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

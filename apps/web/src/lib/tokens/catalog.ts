@@ -1,5 +1,6 @@
 // Display identity of listed tokens, by their on-chain symbol. Never derive trading
 // precision, prices, or balances from this map.
+import { TESTNET_CHAIN_IDS } from "@conditional-stocks/shared/chains";
 import { catalogAsset } from "@conditional-stocks/shared/token-catalog";
 
 export interface TokenDisplayMetadata {
@@ -13,7 +14,7 @@ export interface TokenDisplayMetadata {
   readonly testnet: boolean;
 }
 
-const TESTNETS: readonly number[] = [31337, 46630, 84532];
+const TESTNETS: readonly number[] = TESTNET_CHAIN_IDS;
 
 /** Display identity of a token from its on-chain symbol and name. */
 export function tokenDisplay(

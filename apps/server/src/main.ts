@@ -5,6 +5,7 @@ import { createDatabase } from "@conditional-stocks/db";
 import { conditionalStocksAbi, DEPLOYLESS_BATCH_SIZE } from "@conditional-stocks/evm-client";
 import { IndexerService } from "@conditional-stocks/indexer";
 import { MarketDataError } from "@conditional-stocks/market-data";
+import { nativeCurrency } from "@conditional-stocks/shared/chains";
 import { requestLogging } from "@conditional-stocks/shared/http";
 import { RedisCache } from "@conditional-stocks/shared/redis-cache";
 import { Hono } from "hono";
@@ -45,7 +46,7 @@ const exchange = getAddress(required("EXCHANGE_ADDRESS"));
 const chain = defineChain({
   id: chainId,
   name: `chain-${chainId}`,
-  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  nativeCurrency: nativeCurrency(chainId),
   rpcUrls: { default: { http: rpcUrls } },
 });
 const transports = rpcUrls.map((url) =>

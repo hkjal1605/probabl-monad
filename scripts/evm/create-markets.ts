@@ -9,6 +9,7 @@
  * the plan changes it. Resumable: progress is written back to the plan file.
  *
  *   MARKET_ADMIN_PRIVATE_KEY=… RPC_URL=… CHAIN_ID=46630 bun scripts/evm/create-markets.ts */
+
 import { resolve } from "node:path";
 import { conditionalStocksAbi, underlyingId } from "@conditional-stocks/evm-client";
 import {
@@ -20,6 +21,7 @@ import {
   type PacketEnvelope,
   preflightAdmin,
 } from "@conditional-stocks/evm-client/admin";
+import { nativeCurrency } from "@conditional-stocks/shared/chains";
 import { catalogUnderlying } from "@conditional-stocks/shared/token-catalog";
 import {
   createPublicClient,
@@ -112,7 +114,7 @@ const rpcs = required("RPC_URL")
 const chain = defineChain({
   id: chainId,
   name: `chain-${chainId}`,
-  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  nativeCurrency: nativeCurrency(chainId),
   rpcUrls: { default: { http: rpcs } },
 });
 const transport = fallback(rpcs.map((url) => http(url)));

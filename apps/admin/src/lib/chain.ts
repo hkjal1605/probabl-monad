@@ -1,10 +1,12 @@
 /** Direct reads of the deployed exchange: roles, market ids, pools and token facts. */
+
 import { conditionalStocksAbi, underlyingId } from "@conditional-stocks/evm-client";
 import {
   type AdminDeployment,
   type AdminTransaction,
   preflightAdmin,
 } from "@conditional-stocks/evm-client/admin";
+import { nativeCurrency } from "@conditional-stocks/shared/chains";
 import { catalogUnderlying } from "@conditional-stocks/shared/token-catalog";
 import {
   type Address,
@@ -26,7 +28,7 @@ export const publicClient = (): PublicClient =>
     chain: defineChain({
       id: adminConfig.chainId,
       name: adminConfig.chainName,
-      nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+      nativeCurrency: nativeCurrency(adminConfig.chainId),
       rpcUrls: { default: { http: [adminConfig.rpcUrl] } },
     }),
     transport: http(adminConfig.rpcUrl, { batch: true }),

@@ -1,6 +1,7 @@
 "use client";
 
 import { formatTokenAmount } from "@conditional-stocks/domain";
+import { nativeCurrency } from "@conditional-stocks/shared/chains";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClipboardCopy, Gift, Users } from "lucide-react";
 import { type FormEvent, useState } from "react";
@@ -20,6 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { adminConfig } from "@/config/protocol";
 import { adminRequest } from "@/lib/admin-api";
 import { short, time } from "@/lib/format";
 
@@ -130,8 +132,9 @@ function ProgramOverview({ overview }: { overview: Overview }) {
         )}
         {overview.gas !== null && (
           <p className="text-xs text-muted-foreground">
-            Gas balance {Number(formatTokenAmount(BigInt(overview.gas), 18)).toFixed(4)} ETH ·{" "}
-            {overview.markets} {overview.markets === 1 ? "market" : "markets"} with rewards
+            Gas balance {Number(formatTokenAmount(BigInt(overview.gas), 18)).toFixed(4)}{" "}
+            {nativeCurrency(adminConfig.chainId).symbol} · {overview.markets}{" "}
+            {overview.markets === 1 ? "market" : "markets"} with rewards
           </p>
         )}
         <Table>

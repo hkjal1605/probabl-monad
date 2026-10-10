@@ -1,9 +1,10 @@
 import { U96_MAX } from "@conditional-stocks/evm-client";
+import { TESTNET_CHAIN_IDS } from "@conditional-stocks/shared/chains";
 
 export const BPS = 10_000n;
 export const PROB = 1_000_000n;
-/** Anvil, Robinhood Chain testnet and Base Sepolia. */
-export const TESTNETS: readonly number[] = [31337, 46630, 84532];
+/** Anvil, Robinhood Chain testnet, Base Sepolia and Monad testnet. */
+export const TESTNETS: readonly number[] = TESTNET_CHAIN_IDS;
 export const min = (...values: bigint[]) => values.reduce((a, b) => (a < b ? a : b));
 export const max = (...values: bigint[]) => values.reduce((a, b) => (a > b ? a : b));
 export const abs = (value: bigint) => (value < 0n ? -value : value);

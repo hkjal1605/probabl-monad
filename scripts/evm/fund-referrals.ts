@@ -7,6 +7,7 @@
  * The overview needs the market admin's sign-in (INVITE_ADMIN_PRIVATE_KEY, or SEED_ADMIN_PRIVATE_KEY
  * locally); the tokens come from REFERRAL_FUNDER_PRIVATE_KEY (the treasury; locally the seed
  * admin). Collecting protocol fees into the treasury is a separate step. */
+import { nativeCurrency } from "@conditional-stocks/shared/chains";
 import {
   createPublicClient,
   createWalletClient,
@@ -43,7 +44,7 @@ if (!origin || !rpc || !Number.isInteger(chainId))
 const chain = defineChain({
   id: chainId,
   name: `chain-${chainId}`,
-  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  nativeCurrency: nativeCurrency(chainId),
   rpcUrls: { default: { http: [rpc] } },
 });
 const client = createPublicClient({ chain, transport: http(rpc) });
@@ -82,7 +83,9 @@ if (!overview.payoutWallet) throw new Error("The API has no referral payout wall
 const payout = getAddress(overview.payoutWallet);
 if (payout === funder.address) throw new Error("The funder must not be the payout wallet");
 
-console.info(`Payout wallet ${payout} · gas ${formatUnits(BigInt(overview.gas ?? "0"), 18)} ETH`);
+console.info(
+  `Payout wallet ${payout} · gas ${formatUnits(BigInt(overview.gas ?? "0"), 18)} ${chain.nativeCurrency.symbol}`,
+);
 const due = overview.tokens.filter((t) => BigInt(t.shortfall) > 0n);
 if (!due.length) console.info("Nothing is short: every owed reward is covered.");
 for (const t of due) {

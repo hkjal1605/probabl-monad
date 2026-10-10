@@ -1,3 +1,4 @@
+import { nativeCurrency } from "@conditional-stocks/shared/chains";
 import { createPublicClient, defineChain, type Hex, http, type PublicClient } from "viem";
 import { protocolConfig } from "@/config/protocol";
 
@@ -8,7 +9,7 @@ export const publicClient = (): PublicClient =>
     chain: defineChain({
       id: protocolConfig.chainId,
       name: protocolConfig.chainName,
-      nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+      nativeCurrency: nativeCurrency(protocolConfig.chainId),
       rpcUrls: { default: { http: [protocolConfig.rpcUrl] } },
     }),
     transport: http(protocolConfig.rpcUrl, { batch: true }),
