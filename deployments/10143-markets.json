@@ -1,0 +1,172 @@
+{
+  "chainId": 10143,
+  "api": "https://api-monad.probabl.trade",
+  "tokens": {
+    "NVDA": "0x6Bba1dDD7173d207dAEb80cbc8F66eeF7B2d8ABb",
+    "TSLA": "0x1879c9161E56f274Fd107C6265bc5a80aA0B49B5",
+    "SPY": "0x3775baC90DAf126828f2eEc4d49F0EE7089C9685",
+    "OPENAI": "0x05ebC8a330e5dFbade8F7912286B5Ada4EcE618a",
+    "SPACEX": "0x55b76717C9cC90f5044FA422ac496049b2491cfb",
+    "KALSHI": "0x16cfe20B7a1a81F4210f3214144F36E0d45582F9",
+    "ANTHROPIC": "0x35d12210008358b370a8250195ADF8dF4a5D16a4",
+    "BTC": "0xf5187230dC7849d866e42C0011c29eF62c99238E",
+    "ETH": "0xEcEf1fA3C58C0DE7Ee141f78A6db0Ad400dE4cad",
+    "SOL": "0x57C89817F52c33c2D3aC5f57bA7124dC48EB8F8B"
+  },
+  "events": [
+    {
+      "gammaMarketId": "690215",
+      "slug": "will-the-feds-lower-bound-reach-2pt75-or-lower-before-2027-448-727-854",
+      "question": "Will the Fed’s lower bound reach 2.75% or lower before 2027?",
+      "rationale": "Rate cuts: growth equities, the index and the richest private valuation.",
+      "markets": {
+        "TSLA": {},
+        "SPY": {},
+        "SPACEX": {}
+      }
+    },
+    {
+      "gammaMarketId": "609655",
+      "slug": "us-recession-by-end-of-2026",
+      "question": "US recession by end of 2026?",
+      "rationale": "The broad market and its two most cyclical mega-caps.",
+      "markets": {
+        "NVDA": {},
+        "TSLA": {},
+        "SPY": {}
+      }
+    },
+    {
+      "gammaMarketId": "691340",
+      "slug": "ai-industry-downturn-by-december-31-2026-857",
+      "question": "AI bubble burst in 2026?",
+      "rationale": "The AI trade: the chip supplier and the two leading labs.",
+      "markets": {
+        "NVDA": {},
+        "OPENAI": {},
+        "ANTHROPIC": {}
+      }
+    },
+    {
+      "gammaMarketId": "2413330",
+      "slug": "will-anthropic-ipo-by-december-31-2026-546-128-719",
+      "question": "Will Anthropic IPO by December 31, 2026?",
+      "rationale": "The IPO window for pre-IPO tokens: the issuer, its closest peer, Kalshi.",
+      "markets": {
+        "ANTHROPIC": {},
+        "OPENAI": {},
+        "KALSHI": {}
+      }
+    },
+    {
+      "gammaMarketId": "656312",
+      "slug": "will-openai-ipo-by-december-31-2026",
+      "question": "Will OpenAI IPO by December 31 2026?",
+      "rationale": "Will OpenAI IPO by December 31 2026?",
+      "markets": {
+        "OPENAI": {},
+        "ANTHROPIC": {},
+        "KALSHI": {}
+      }
+    },
+    {
+      "gammaMarketId": "2252540",
+      "slug": "tesla-and-spacex-merger-officially-announced-by-december-31",
+      "question": "Tesla and SpaceX merger officially announced by December 31?",
+      "rationale": "Both merger parties, and Nvidia as the GPU supplier to xAI and Tesla.",
+      "markets": {
+        "SPACEX": {},
+        "TSLA": {},
+        "NVDA": {}
+      }
+    },
+    {
+      "gammaMarketId": "1163699",
+      "slug": "clarity-act-signed-into-law-in-2026",
+      "question": "Clarity Act (H.R.3633) signed into law in 2026?",
+      "rationale": "US crypto market structure: SEC/CFTC jurisdiction over BTC, ETH and SOL.",
+      "markets": {
+        "BTC": {},
+        "ETH": {},
+        "SOL": {}
+      }
+    },
+    {
+      "gammaMarketId": "1343533",
+      "slug": "major-cex-insolvent-in-2026",
+      "question": "Major CEX insolvent in 2026?",
+      "rationale": "Exchange-failure contagion across the major crypto assets.",
+      "markets": {
+        "BTC": {},
+        "ETH": {},
+        "SOL": {}
+      }
+    },
+    {
+      "gammaMarketId": "680951",
+      "slug": "will-inflation-reach-more-than-5-in-2026-282-763",
+      "question": "Will inflation reach more than 5% in 2026?",
+      "rationale": "The inflation-hedge trade, equities, and Kalshi (the venue for CPI contracts).",
+      "markets": {
+        "BTC": {},
+        "SPY": {},
+        "KALSHI": {}
+      }
+    },
+    {
+      "gammaMarketId": "2382827",
+      "slug": "us-x-china-tariff-agreement-by-december-31",
+      "question": "US x China tariff agreement by December 31?",
+      "rationale": "Nvidia's China chip sales, Tesla's China factory and sales, trade-war risk appetite.",
+      "markets": {
+        "NVDA": {},
+        "TSLA": {},
+        "BTC": {}
+      }
+    },
+    {
+      "gammaMarketId": "1720308",
+      "slug": "law-banning-sports-prediction-markets-enacted-in-2026",
+      "question": "Law banning sports prediction markets enacted in 2026?",
+      "rationale": "Kalshi's core business; displaced volume moves to on-chain venues on Solana/Ethereum.",
+      "markets": {
+        "KALSHI": {},
+        "SOL": {},
+        "ETH": {}
+      }
+    },
+    {
+      "gammaMarketId": "1632674",
+      "slug": "sec-removes-quarterly-reporting-requirement",
+      "question": "SEC removes quarterly reporting requirement?",
+      "rationale": "Musk-backed semiannual reporting; a lighter burden eases the OpenAI and Anthropic IPOs.",
+      "markets": {
+        "TSLA": {},
+        "OPENAI": {},
+        "ANTHROPIC": {}
+      }
+    },
+    {
+      "gammaMarketId": "4622920",
+      "slug": "mu-quarterly-earnings-nongaap-eps-09-30-2026-32pt22",
+      "question": "Will Micron (MU) beat quarterly earnings?",
+      "rationale": "Micron's HBM feeds Nvidia GPUs: an AI-compute and S&P read-through.",
+      "markets": {
+        "NVDA": {},
+        "SPY": {},
+        "OPENAI": {}
+      }
+    },
+    {
+      "gammaMarketId": "4572598",
+      "slug": "tesla-roadster-delivered-by-december-31-2026",
+      "question": "Tesla Roadster delivered by December 31, 2026?",
+      "rationale": "Tesla execution, the Roadster's SpaceX option package, a top S&P weight.",
+      "markets": {
+        "TSLA": {},
+        "SPACEX": {},
+        "SPY": {}
+      }
+    }
+  ]
+}

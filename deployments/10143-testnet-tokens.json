@@ -1,0 +1,72 @@
+{
+  "chainId": 10143,
+  "deployer": "0x7c2e81c16dF690F0fEF9d472682f88f0b4Ad5f6D",
+  "tokens": {
+    "USDC": {
+      "address": "0x509E319A1bA0C429596A05294594D884F5610D73",
+      "name": "USD Coin (testnet)",
+      "decimals": 6,
+      "block": "69895540"
+    },
+    "NVDA": {
+      "address": "0x6Bba1dDD7173d207dAEb80cbc8F66eeF7B2d8ABb",
+      "name": "NVIDIA (testnet)",
+      "decimals": 18,
+      "block": "69895544"
+    },
+    "TSLA": {
+      "address": "0x1879c9161E56f274Fd107C6265bc5a80aA0B49B5",
+      "name": "Tesla (testnet)",
+      "decimals": 18,
+      "block": "69895548"
+    },
+    "SPY": {
+      "address": "0x3775baC90DAf126828f2eEc4d49F0EE7089C9685",
+      "name": "SPDR S&P 500 ETF Trust (testnet)",
+      "decimals": 18,
+      "block": "69895551"
+    },
+    "OPENAI": {
+      "address": "0x05ebC8a330e5dFbade8F7912286B5Ada4EcE618a",
+      "name": "OpenAI (testnet)",
+      "decimals": 18,
+      "block": "69895555"
+    },
+    "SPACEX": {
+      "address": "0x55b76717C9cC90f5044FA422ac496049b2491cfb",
+      "name": "SpaceX (testnet)",
+      "decimals": 18,
+      "block": "69895558"
+    },
+    "KALSHI": {
+      "address": "0x16cfe20B7a1a81F4210f3214144F36E0d45582F9",
+      "name": "Kalshi (testnet)",
+      "decimals": 18,
+      "block": "69895562"
+    },
+    "ANTHROPIC": {
+      "address": "0x35d12210008358b370a8250195ADF8dF4a5D16a4",
+      "name": "Anthropic (testnet)",
+      "decimals": 18,
+      "block": "69895565"
+    },
+    "BTC": {
+      "address": "0xf5187230dC7849d866e42C0011c29eF62c99238E",
+      "name": "Bitcoin (testnet)",
+      "decimals": 18,
+      "block": "69895569"
+    },
+    "ETH": {
+      "address": "0xEcEf1fA3C58C0DE7Ee141f78A6db0Ad400dE4cad",
+      "name": "Ethereum (testnet)",
+      "decimals": 18,
+      "block": "69895572"
+    },
+    "SOL": {
+      "address": "0x57C89817F52c33c2D3aC5f57bA7124dC48EB8F8B",
+      "name": "Solana (testnet)",
+      "decimals": 18,
+      "block": "69895575"
+    }
+  }
+}
