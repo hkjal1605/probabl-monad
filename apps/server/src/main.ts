@@ -101,6 +101,8 @@ const referralConfig = {
   months: whole("REFERRAL_MONTHS", 6, 120),
 };
 const codeQuota = whole("INVITE_CODES_PER_MEMBER", 5, 10_000);
+// INVITE_ONLY=0 lets every signed-in wallet trade without an invite (invites still join).
+const inviteOnly = process.env.INVITE_ONLY?.trim() !== "0";
 // Proxies in front of the API (each appending X-Forwarded-For): rate limits key on the client.
 const trustedHops = whole("TRUST_PROXY_HOPS", 0, 5);
 
@@ -166,6 +168,7 @@ const auth = mountAuthentication(app, {
   secureCookie: process.env.SESSION_COOKIE_INSECURE !== "1",
   trustedHops,
   codeQuota,
+  inviteOnly,
 });
 // A wallet's own portfolio, orders, trades and stream need its member session; the same reads
 // without an owner (books, market trades, the market stream) stay public.
@@ -338,7 +341,12 @@ mountInvites(app, {
     }
   },
 });
-logger.info("referrals.enabled", { ...referralConfig, codeQuota, payout: payout?.address ?? null });
+logger.info("referrals.enabled", {
+  ...referralConfig,
+  codeQuota,
+  inviteOnly,
+  payout: payout?.address ?? null,
+});
 
 const prune = setInterval(
   () => void db.pruneExpired().catch((error) => logger.error("prune.failed", { error })),

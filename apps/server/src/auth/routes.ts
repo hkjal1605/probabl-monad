@@ -47,8 +47,9 @@ export interface MemberView {
 export interface Auth {
   /** The signed-in wallet (`owner`, when the request reads one wallet's data), or 401. */
   session(c: Context, owner?: string | null): Promise<Session>;
-  /** A signed-in member (403 `invite-required` when not), and when `owner` is given, that very
-   * wallet (403 `wrong-wallet`): portfolio reads. A suspended member still sees its own. */
+  /** A signed-in member (403 `invite-required` when not; with invites off, any signed-in
+   * wallet), and when `owner` is given, that very wallet (403 `wrong-wallet`): portfolio reads.
+   * A suspended member still sees its own. */
   member(c: Context, owner?: string | null): Promise<Session & { member: MemberRecord }>;
   /** The same, and not suspended (403 `suspended`): anything that trades. Exits (withdrawals,
    * cancellations) only need `session`: a wallet's own funds are never held back. */
@@ -78,6 +79,15 @@ export const memberView = (m: MemberRecord): MemberView => ({
   referrer: m.referrer === null ? null : getAddress(m.referrer),
   codeQuota: m.codeQuota,
   suspended: m.suspendedAt !== null,
+});
+/** Access without an invite (invites off): no referrer, no codes to share, never stored. */
+export const openMember = (wallet: Address): MemberRecord => ({
+  wallet,
+  code: "",
+  referrer: null,
+  joinedAt: new Date(),
+  codeQuota: 0,
+  suspendedAt: null,
 });
 /** A 403 with a machine-readable code the app branches on. */
 export const forbidden = (message: string, code: string) =>
@@ -129,9 +139,12 @@ export function mountAuthentication(
     secureCookie: boolean;
     trustedHops: number;
     codeQuota: number;
+    /** False opens trading to every signed-in wallet (`openMember`); invites still join. */
+    inviteOnly: boolean;
   },
 ): Auth {
   const { db, client, deployment, domain, origins, secureCookie, trustedHops, codeQuota } = options;
+  const { inviteOnly } = options;
   const prefix = secureCookie ? ("host" as const) : undefined;
   const cookieName = (wallet: string) => `${SESSION_COOKIE}${wallet.slice(2).toLowerCase()}`;
   const sessionCookie = new RegExp(
@@ -239,9 +252,13 @@ export function mountAuthentication(
     members.set(key, member, 60_000);
     return member;
   };
+  /** The wallet's membership, or with invites off an unstored one for a wallet that has not
+   * joined: turning invites back on gates it again. */
+  const access = async (wallet: Address) =>
+    (await memberOf(wallet)) ?? (inviteOnly ? null : openMember(wallet));
   const member = async (c: Context, owner?: string | null) => {
     const s = await session(c, owner);
-    const m = await memberOf(s.owner);
+    const m = await access(s.owner);
     if (!m)
       throw forbidden(
         "An invite code is required to trade and view your portfolio.",
@@ -259,7 +276,7 @@ export function mountAuthentication(
   /** The session as the app sees it. `expiresInMs` lets it time the session by its own clock,
    * whatever that clock says. */
   const view = async (s: { owner: Address; expiresAtMs: number }) => {
-    const m = await memberOf(s.owner);
+    const m = await access(s.owner);
     return {
       wallet: s.owner,
       expiresAtMs: s.expiresAtMs,

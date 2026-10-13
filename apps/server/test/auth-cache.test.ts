@@ -46,6 +46,7 @@ const auth = mountAuthentication(app, {
   secureCookie: true,
   trustedHops: 0,
   codeQuota: 5,
+  inviteOnly: true,
 });
 app.on(["GET", "POST"], "/private", async (c) => c.json({ owner: (await auth.trader(c)).owner }));
 const request = (headers: Record<string, string>, method = "GET") =>
@@ -82,4 +83,49 @@ test("guessed tokens are remembered too, so they cannot hammer the database", as
       .status,
   ).toBe(401);
   expect(calls.session - before).toBe(1);
+});
+
+test("with invites off, a signed-in wallet that has not joined trades; one that has keeps its record", async () => {
+  const joined = { member: undefined as unknown };
+  const open = (inviteOnly: boolean) => {
+    const app = new Hono();
+    app.onError(
+      (error) =>
+        new Response(JSON.stringify({ error: { message: error.message } }), {
+          status: error instanceof HTTPException ? error.status : 500,
+        }),
+    );
+    const auth = mountAuthentication(app, {
+      db: { ...db, member: async () => joined.member } as unknown as Database,
+      client: {} as PublicClient,
+      deployment: { chainId: 31337, exchange: "0x00000000000000000000000000000000000000E1" },
+      domain: "test",
+      origins: ["https://probabl.trade"],
+      secureCookie: true,
+      trustedHops: 0,
+      codeQuota: 5,
+      inviteOnly,
+    });
+    app.get("/private", async (c) => c.json((await auth.trader(c)).member));
+    return { app, auth };
+  };
+  const read = (app: Hono) =>
+    app.request("/private", { headers: { authorization: `Bearer ${token}` } });
+  expect((await read(open(true).app)).status).toBe(403);
+  const { app, auth } = open(false);
+  const response = await read(app);
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({ referrer: null, codeQuota: 0, suspendedAt: null });
+  // Nothing is stored: the wallet still counts as not joined, so an invite can still join it.
+  expect(await auth.memberOf(wallet)).toBeNull();
+  // A suspended member stays suspended with invites off.
+  joined.member = {
+    wallet: wallet.toLowerCase(),
+    code: "BETA0001",
+    referrer: null,
+    joinedAt: new Date(),
+    codeQuota: 5,
+    suspendedAt: new Date(),
+  };
+  expect((await read(open(false).app)).status).toBe(403);
 });

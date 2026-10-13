@@ -79,8 +79,10 @@ UI on the API's site, checked once per browser) the session is that wallet's Htt
 against a remote API) it is a bearer token kept per wallet in browser storage. Scripts and the
 admin console use bearer tokens, and the API keeps only hashes. Owner-scoped reads check the
 session's wallet, and withdrawals and cancellations need only a session, so a wallet's funds are
-never held back. Members create invite codes within a quota; the market admin issues launch codes
-and suspends members (Admin → Invites & referrals, or `scripts/evm/invite-codes.ts`).
+never held back. `INVITE_ONLY=0` on the API switches the gate off: every signed-in wallet trades
+without an invite, and nothing is stored for it, so switching back gates it again (a code still
+joins, with its referrer). Members create invite codes within a quota; the market admin issues
+launch codes and suspends members (Admin → Invites & referrals, or `scripts/evm/invite-codes.ts`).
 
 **Referrals.** A code's owner earns 15% (`REFERRAL_SHARE_BPS`) of its referees' net fees (a taker
 fee less the maker rebate paid from it) for 6 months after each joins (`REFERRAL_MONTHS`), one
@@ -163,8 +165,8 @@ market maker and the vault keeper do not quote it.
    `TRADING_DELEGATE_ADDRESS`/`TRADING_DELEGATE_PRIVATE_KEY`, `POLYMARKET_INGESTOR_URL`/
    `POLYMARKET_INTERNAL_TOKEN`, `EVIDENCE_PUBLIC_BASE_URL`, `REDIS_URL`,
    `FAUCET_PRIVATE_KEY` (testnets only), `TRUST_PROXY_HOPS` (1 behind nginx), and the access and
-   referral settings `INVITE_CODES_PER_MEMBER`, `REFERRAL_SHARE_BPS`, `REFERRAL_MONTHS` and
-   `REFERRAL_PAYOUT_PRIVATE_KEY` (see `.env.example`). Serve the trading UI on the API's site
+   referral settings `INVITE_ONLY`, `INVITE_CODES_PER_MEMBER`, `REFERRAL_SHARE_BPS`,
+   `REFERRAL_MONTHS` and `REFERRAL_PAYOUT_PRIVATE_KEY` (see `.env.example`). Serve the trading UI on the API's site
    (e.g. `probabl.trade` and `api.probabl.trade`), so sessions are HttpOnly cookies, and over
    HTTP/2 (the markets feed holds a stream per market). Deploy the API before a UI that signs in
    this way: the UI needs its session routes.
