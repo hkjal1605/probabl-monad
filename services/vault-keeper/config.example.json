@@ -32,5 +32,12 @@
   "ttlSeconds": 300,
   "pollMs": 10000,
   "maxDrawdownBps": 300,
-  "reserveBps": 2000
+  "reserveBps": 2000,
+  "rfq": {
+    "enabled": false,
+    "quoteTtlSeconds": 10,
+    "maxReferenceAgeMs": 5000,
+    "spotPollMs": 2000,
+    "edgeBps": 0
+  }
 }

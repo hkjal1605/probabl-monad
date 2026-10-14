@@ -60,3 +60,32 @@ test("rejects shared keeper wallets, repeated vaults, incomplete overrides and u
   );
   expect(() => settings({ vaults: [] })).toThrow("vaults");
 });
+
+test("RFQ is off by default; on, the vault quotes only through it unless the book is kept", () => {
+  const vault = "0x0000000000000000000000000000000000000001";
+  const markets = [{ market: 1, anchorBps: 0, impactBps: 10, maxGapBps: 800, orderQuote: "1" }];
+  expect(settings({ vault, markets }).rfq).toEqual({
+    enabled: false,
+    bookQuotes: true,
+    quoteTtlSeconds: 10,
+    maxReferenceAgeMs: 5_000,
+    spotPollMs: 2_000,
+    edgeBps: 0,
+  });
+  expect(settings({ vault, markets, rfq: { enabled: true } }).rfq.bookQuotes).toBe(false);
+  expect(
+    settings({ vault, markets, rfq: { enabled: true, bookQuotes: true } }).rfq.bookQuotes,
+  ).toBe(true);
+  expect(() => settings({ vault, markets, rfq: { enabled: false, bookQuotes: false } })).toThrow(
+    "Quote through RFQ, the book or both",
+  );
+  for (const rfq of [{ quoteTtlSeconds: 4 }, { maxReferenceAgeMs: 100 }, { edgeBps: 2000 }])
+    expect(() => settings({ vault, markets, rfq: { enabled: true, ...rfq } })).toThrow(
+      "Invalid rfq.",
+    );
+  // The shipped example parses.
+  expect(
+    settings(JSON.parse(require("node:fs").readFileSync("config.example.json", "utf8"))).rfq
+      .enabled,
+  ).toBe(false);
+});

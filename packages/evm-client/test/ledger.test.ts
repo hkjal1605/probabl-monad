@@ -1,5 +1,13 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { type Address, encodeFunctionData, keccak256, stringToBytes, zeroAddress } from "viem";
+import {
+  type Address,
+  encodeFunctionData,
+  keccak256,
+  parseSignature,
+  signatureToCompactSignature,
+  stringToBytes,
+  zeroAddress,
+} from "viem";
 import { conditionalStocksAbi } from "../src/abi.ts";
 import { underlyingId } from "../src/identity.ts";
 import {
@@ -20,7 +28,10 @@ import {
   packMakers,
   packOrder,
   packPlan,
+  packQuoteTerms,
   parseOrderKey,
+  QUOTE_TYPES,
+  quoteDomain,
   resolutionHash,
 } from "../src/protocol.ts";
 import * as tx from "../src/transactions.ts";
@@ -104,6 +115,57 @@ async function place(
     value: "0",
   });
   return { receipt, seq };
+}
+
+/** A quote signed by account `index` for `taker`, filled up to `fill` by the placement. */
+async function signedQuote(
+  index: number,
+  taker: Address,
+  q: { branch: number; side: number; funding: number; ticks: bigint; qty: bigint },
+  nonce: bigint,
+  fill = q.qty,
+) {
+  const now = (await node.client.getBlock()).timestamp;
+  const terms = packQuoteTerms(
+    {
+      marketId: 1,
+      branch: q.branch,
+      side: q.side,
+      fundingKind: q.funding,
+      expiry: now + 60n,
+      priceRawX18: q.ticks * TICK,
+      quantity: q.qty,
+    },
+    TICK,
+  );
+  const signature = await accounts[index]!.signTypedData({
+    domain: quoteDomain(31337, protocol.exchange),
+    types: QUOTE_TYPES,
+    primaryType: "Quote",
+    message: { taker, terms, nonce },
+  });
+  const { r, yParityAndS } = signatureToCompactSignature(parseSignature(signature));
+  return { terms, nonce, fill, r, vs: yParityAndS };
+}
+
+/** An immediate-or-cancel order of account `index` taking `quotes` (and `makers` after them). */
+async function placeWithQuotes(
+  index: number,
+  o: ReturnType<typeof order>,
+  quotes: Awaited<ReturnType<typeof signedQuote>>[],
+  makers: bigint[] = [],
+) {
+  const seq = await nextSeq(o.branch);
+  const now = (await node.client.getBlock()).timestamp;
+  return send(index, {
+    to: protocol.exchange,
+    data: encodeFunctionData({
+      abi: conditionalStocksAbi,
+      functionName: "placeWithQuotes",
+      args: [o.maker, packOrder(o, TICK), packPlan(seq, now + 60n, 0n), packMakers(makers), quotes],
+    }),
+    value: "0",
+  });
 }
 
 beforeAll(async () => {
@@ -262,6 +324,46 @@ describe("ledger replica", () => {
         dave,
       ),
     );
+    // RFQ quotes (at the 25% rebate): Alice buys from Bob's claim-funded quote and Dave's
+    // credit-funded one, then sells claim-funded into Bob's credit-funded bid quote; a replayed
+    // quote fills nothing.
+    const bought = [
+      await signedQuote(
+        2,
+        alice,
+        { branch: 0, side: 1, funding: 1, ticks: 20_300n, qty: 2n * NVDA },
+        1n,
+      ),
+      await signedQuote(
+        4,
+        alice,
+        { branch: 0, side: 1, funding: 0, ticks: 20_400n, qty: 5n * NVDA },
+        1n,
+        NVDA,
+      ),
+    ];
+    await placeWithQuotes(
+      1,
+      order(alice, { branch: 0, side: 0, funding: 0, tif: 1, ticks: 20_500n, qty: 3n * NVDA }),
+      bought,
+    );
+    await placeWithQuotes(
+      1,
+      order(alice, { branch: 0, side: 0, funding: 0, tif: 1, ticks: 20_500n, qty: NVDA }),
+      [bought[0]!],
+    );
+    await placeWithQuotes(
+      1,
+      order(alice, { branch: 0, side: 1, funding: 1, tif: 1, ticks: 19_500n, qty: NVDA }),
+      [
+        await signedQuote(
+          2,
+          alice,
+          { branch: 0, side: 0, funding: 0, ticks: 19_800n, qty: NVDA },
+          2n,
+        ),
+      ],
+    );
     // Atomic requote: cancel and place in one transaction.
     const bid4 = await place(
       3,
@@ -388,6 +490,22 @@ describe("ledger replica", () => {
       expect(tradeDetails(state, e).makerRebate).toBe(String(e.args.makerRebate));
     }
     expect(trades.filter((e) => (e.args.makerRebate as bigint) > 0n).length).toBe(4);
+    // Quote fills name their maker and price; their rebates follow the same rate (25%).
+    const quoted = events.filter((e) => e.name === "QuoteFilled");
+    expect(quoted.map((e) => [tradeDetails(state, e).maker, tradeDetails(state, e).price])).toEqual(
+      [
+        [bob, (20_300n * TICK).toString()],
+        [dave, (20_400n * TICK).toString()],
+        [bob, (19_800n * TICK).toString()],
+      ],
+    );
+    for (const e of quoted) {
+      const fees = BigInt(e.args.fees as bigint);
+      const takerFee =
+        tradeDetails(state, e).takerSide === 0 ? fees & ((1n << 128n) - 1n) : fees >> 128n;
+      expect(e.args.makerRebate).toBe(makerRebate(takerFee, 2_500));
+      expect(e.args.makerRebate as bigint).toBeGreaterThan(0n);
+    }
     const book = await read("book", [1]);
     expect([market.openNotional, market.seq[0], market.seq[1]]).toEqual([
       BigInt(book.openNotional!),

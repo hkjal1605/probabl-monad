@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import { ConditionalStocksAdmin } from "../src/ConditionalStocksAdmin.sol";
 import { ConditionalStocksBase } from "../src/ConditionalStocksBase.sol";
 import { Base, Vm } from "./Base.t.sol";
 
@@ -156,7 +157,8 @@ contract FillFuzzTest is Base {
     /// remainder's escrow never exceed ceil(qty x limit price)).
     function _fundClaims(address who, bool sell, uint64 ticks, uint256 qty) internal {
         vm.prank(who);
-        cs.split(m2, sell ? 1 : 0, sell ? qty : _up(qty, _price(ticks)));
+        ConditionalStocksAdmin(address(cs))
+            .split(m2, sell ? 1 : 0, sell ? qty : _up(qty, _price(ticks)));
     }
 
     function _placeAs(
@@ -302,11 +304,11 @@ contract FillFuzzTest is Base {
             eq(uint256(y.notional) + n.notional, 0, "wallet notional released");
             if (y.quote != 0 || n.quote != 0) {
                 vm.prank(h);
-                cs.redeem(m2, 0, y.quote, n.quote);
+                ConditionalStocksAdmin(address(cs)).redeem(m2, 0, y.quote, n.quote);
             }
             if (y.base != 0 || n.base != 0) {
                 vm.prank(h);
-                cs.redeem(m2, 1, y.base, n.base);
+                ConditionalStocksAdmin(address(cs)).redeem(m2, 1, y.base, n.base);
             }
         }
         ConditionalStocksBase.Backing memory bk = view_.backing(m2);

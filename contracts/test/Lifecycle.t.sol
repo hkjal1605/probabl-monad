@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import { ConditionalStocksAdmin } from "../src/ConditionalStocksAdmin.sol";
 import { ConditionalStocksBase } from "../src/ConditionalStocksBase.sol";
 import { Base, Vm } from "./Base.t.sol";
 
@@ -88,7 +89,7 @@ contract LifecycleTest is Base {
 
     function _tradeYes() internal {
         vm.prank(bob);
-        cs.split(market, 1, 10 * NVDA);
+        ConditionalStocksAdmin(address(cs)).split(market, 1, 10 * NVDA);
         uint256 ask = rest(bob, YES, true, true, 20_000, 4 * NVDA);
         take(alice, YES, false, false, 20_000, 4 * NVDA, one(uint32(ask)));
     }
@@ -97,16 +98,16 @@ contract LifecycleTest is Base {
         _tradeYes();
         _resolve(1, 0);
         vm.prank(alice);
-        cs.redeem(market, 1, 4 * NVDA, 0);
+        ConditionalStocksAdmin(address(cs)).redeem(market, 1, 4 * NVDA, 0);
         eq(credit(alice, address(stock)), 10_000e18 + 4 * NVDA, "alice owns the stock");
         vm.prank(alice);
-        cs.redeem(market, 0, 0, 800e6); // Quote-if-NO pays nothing.
+        ConditionalStocksAdmin(address(cs)).redeem(market, 0, 0, 800e6); // Quote-if-NO pays nothing.
         eq(credit(alice, address(usdc)), 1_000_000e6 - 800e6, "paid the trade");
         vm.prank(bob);
-        cs.redeem(market, 0, 800e6, 0);
+        ConditionalStocksAdmin(address(cs)).redeem(market, 0, 800e6, 0);
         eq(credit(bob, address(usdc)), 1_000_000e6 + 800e6, "bob was paid");
         vm.prank(bob);
-        cs.redeem(market, 1, 6 * NVDA, 10 * NVDA);
+        ConditionalStocksAdmin(address(cs)).redeem(market, 1, 6 * NVDA, 10 * NVDA);
         eq(credit(bob, address(stock)), 10_000e18 - 4 * NVDA, "bob keeps his unsold stock");
         eq(view_.backing(market).base, 0, "base backing drained");
         eq(view_.backing(market).quote, 0, "quote backing drained");
@@ -116,13 +117,13 @@ contract LifecycleTest is Base {
         _tradeYes();
         _resolve(0, 1);
         vm.prank(alice);
-        cs.redeem(market, 0, 0, 800e6);
+        ConditionalStocksAdmin(address(cs)).redeem(market, 0, 0, 800e6);
         vm.prank(alice);
-        cs.redeem(market, 1, 4 * NVDA, 0);
+        ConditionalStocksAdmin(address(cs)).redeem(market, 1, 4 * NVDA, 0);
         vm.prank(bob);
-        cs.redeem(market, 1, 6 * NVDA, 10 * NVDA);
+        ConditionalStocksAdmin(address(cs)).redeem(market, 1, 6 * NVDA, 10 * NVDA);
         vm.prank(bob);
-        cs.redeem(market, 0, 800e6, 0);
+        ConditionalStocksAdmin(address(cs)).redeem(market, 0, 800e6, 0);
         eq(credit(alice, address(usdc)), 1_000_000e6, "alice refunded");
         eq(credit(bob, address(stock)), 10_000e18, "bob keeps all stock");
     }
@@ -132,12 +133,12 @@ contract LifecycleTest is Base {
         _resolve(1, 1);
         vm.expectRevert(ConditionalStocksBase.FractionalRedemption.selector);
         vm.prank(alice);
-        cs.redeem(market, 0, 0, 800e6 + 1);
+        ConditionalStocksAdmin(address(cs)).redeem(market, 0, 0, 800e6 + 1);
         vm.prank(alice);
-        cs.redeem(market, 1, 4 * NVDA, 0);
+        ConditionalStocksAdmin(address(cs)).redeem(market, 1, 4 * NVDA, 0);
         eq(credit(alice, address(stock)), 10_000e18 + 2 * NVDA, "half of the stock claims");
         vm.prank(alice);
-        cs.redeem(market, 0, 0, 800e6);
+        ConditionalStocksAdmin(address(cs)).redeem(market, 0, 0, 800e6);
         eq(credit(alice, address(usdc)), 1_000_000e6 - 400e6, "half of the quote claims");
     }
 
@@ -145,11 +146,11 @@ contract LifecycleTest is Base {
         _tradeYes();
         vm.expectRevert(ConditionalStocksBase.InvalidState.selector);
         vm.prank(bob);
-        cs.redeem(market, 1, NVDA, 0);
+        ConditionalStocksAdmin(address(cs)).redeem(market, 1, NVDA, 0);
         vm.prank(guardian);
         view_.lifecycle(market, 1, keccak256("halt"));
         vm.prank(bob);
-        cs.merge(market, 1, 6 * NVDA);
+        ConditionalStocksAdmin(address(cs)).merge(market, 1, 6 * NVDA);
         eq(credit(bob, address(stock)), 10_000e18 - 4 * NVDA, "merged");
     }
 

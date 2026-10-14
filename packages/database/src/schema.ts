@@ -1,7 +1,7 @@
 import type { Pool } from "pg";
 
 /** Bump with a migration step below when a table or its meaning changes. */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 /** The protocol's persistent state. Trading and custody reads are served from the in-memory
  * chain index; PostgreSQL keeps only what must survive a restart or is read historically:
@@ -150,6 +150,13 @@ const DDL = [
     PRIMARY KEY (domain, owner, client_id))`,
   `CREATE INDEX IF NOT EXISTS delegated_submissions_owner_day ON probabl.delegated_submissions
     (domain, owner, created_at)`,
+  // Market makers the market admin approved to quote over the RFQ stream. Only a SHA-256 of
+  // each API key is kept; the key is shown once, when created.
+  `CREATE TABLE IF NOT EXISTS probabl.rfq_makers (
+    id text PRIMARY KEY, domain text NOT NULL, label text NOT NULL, wallet bytea NOT NULL,
+    key_hash bytea NOT NULL UNIQUE, key_prefix text NOT NULL, created_by bytea NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(), revoked_at timestamptz)`,
+  `CREATE INDEX IF NOT EXISTS rfq_makers_domain ON probabl.rfq_makers (domain, created_at)`,
 ];
 
 const P96 = "79228162514264337593543950336";
@@ -213,7 +220,8 @@ export async function initializeStorage(pool: Pool) {
     for (const statement of DDL.slice(0, 2)) await tx.query(statement);
     const row = (await tx.query("SELECT version FROM probabl.schema_version WHERE id")).rows[0];
     const version: number | undefined = row?.version;
-    // Version 4 only adds tables (invites, members, referrals), which the DDL creates.
+    // Versions 4 and 5 only add tables (invites, members, referrals; RFQ makers), which the DDL
+    // creates.
     if (version !== undefined && (version < 1 || version > SCHEMA_VERSION))
       throw new Error("Database schema belongs to another release: provision a fresh schema");
     if (version === 1) for (const statement of FROM_V1_BEFORE) await tx.query(statement);

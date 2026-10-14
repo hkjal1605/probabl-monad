@@ -17,6 +17,7 @@ import {
   type ChainState,
   creditOf,
   encodeCheckpoint,
+  isFill,
   type OrderState,
 } from "@conditional-stocks/evm-client/ledger";
 import type { Context, Hono } from "hono";
@@ -250,6 +251,7 @@ export class IndexerService {
     for (const event of notice.events)
       switch (event.name) {
         case "Trade":
+        case "QuoteFilled":
           this.tail.push(
             tradeRecord(event, notice.trades.get(`${event.block}:${event.logIndex}`)!),
           );
@@ -283,7 +285,7 @@ export class IndexerService {
   private persist(notice: FinalizedNotice) {
     if (notice.events.length) this.changed = true;
     const trades = notice.events
-      .filter((e) => e.name === "Trade")
+      .filter((e) => isFill(e.name))
       .map((e) => tradeRecord(e, notice.trades.get(`${e.block}:${e.logIndex}`)!));
     for (const t of trades) this.volume.add(t.market, t.blockTime, t.quote);
     const orders = notice.closed.map((o) =>

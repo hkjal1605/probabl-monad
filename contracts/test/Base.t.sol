@@ -26,6 +26,11 @@ interface Vm {
     function chainId(uint256) external;
     function getBlockTimestamp() external view returns (uint256);
     function toString(uint256) external pure returns (string memory);
+    function addr(uint256 privateKey) external pure returns (address);
+    function sign(uint256 privateKey, bytes32 digest)
+        external
+        pure
+        returns (uint8 v, bytes32 r, bytes32 s);
 }
 
 contract MockToken {
@@ -264,6 +269,80 @@ abstract contract Base {
         uint256 seq = seqOf(market, branch);
         vm.prank(user);
         return cs.place(pack(o), plan(seq, now_() + 60, 0), m);
+    }
+
+    // ------------------------------------------------------------ RFQ quotes
+
+    /// @dev The EIP-712 digest a maker signs for `taker`.
+    function quoteDigest(address taker, uint256 terms, uint256 nonce)
+        internal
+        view
+        returns (bytes32)
+    {
+        bytes32 domain = keccak256(
+            abi.encode(
+                keccak256(
+                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+                ),
+                keccak256("Probabl"),
+                keccak256("1"),
+                block.chainid,
+                address(cs)
+            )
+        );
+        return keccak256(
+            abi.encodePacked(
+                hex"1901",
+                domain,
+                keccak256(
+                    abi.encode(
+                        keccak256("Quote(address taker,uint256 terms,uint256 nonce)"),
+                        taker,
+                        terms,
+                        nonce
+                    )
+                )
+            )
+        );
+    }
+
+    /// @dev A quote of `key`'s wallet for `taker`: it sells (`sell`) or buys up to `qty` on
+    ///      `branch` at `ticks`, from its claims (`claim`) or credit; the placement takes `fill`.
+    function signedQuote(
+        uint256 privateKey,
+        address taker,
+        uint8 branch,
+        bool sell,
+        bool claim,
+        uint64 ticks,
+        uint256 qty,
+        uint256 nonce,
+        uint256 fill
+    ) internal view returns (ConditionalStocksBase.Quote memory q) {
+        uint256 terms = pack(
+            O(market, branch, sell, claim, false, 0, uint40(now_() + 60), ticks, qty)
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, quoteDigest(taker, terms, nonce));
+        q = ConditionalStocksBase.Quote(
+            terms, nonce, fill, r, bytes32(uint256(s) | (v == 28 ? uint256(1) << 255 : 0))
+        );
+    }
+
+    /// @dev An immediate-or-cancel order of `user` taking `quotes`, then the makers `m`.
+    function takeQuotes(
+        address user,
+        uint8 branch,
+        bool sell,
+        bool claim,
+        uint64 ticks,
+        uint256 qty,
+        ConditionalStocksBase.Quote[] memory quotes,
+        uint256 m
+    ) internal returns (uint256) {
+        O memory o = O(market, branch, sell, claim, true, 1_000, uint40(T0 + 10 days), ticks, qty);
+        uint256 seq = seqOf(market, branch);
+        vm.prank(user);
+        return cs.placeWithQuotes(user, pack(o), plan(seq, now_() + 60, 0), m, quotes);
     }
 
     /// @dev block.timestamp is cached across vm.warp under via-ir; read the VM instead.

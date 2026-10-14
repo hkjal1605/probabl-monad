@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import { ConditionalStocksAdmin } from "../../src/ConditionalStocksAdmin.sol";
 import { DeltaVaultBase } from "../../src/vault/DeltaVaultBase.sol";
 import { IConditionalStocks } from "../../src/vault/interfaces/IConditionalStocks.sol";
 import { VaultBase } from "./VaultBase.t.sol";
@@ -36,7 +37,7 @@ abstract contract VaultAuditBase is VaultBase {
         internal
     {
         vm.startPrank(from);
-        cs.split(id, collateral, amount);
+        ConditionalStocksAdmin(address(cs)).split(id, collateral, amount);
         view_.transferClaim(id, branch, collateral, address(vault), amount);
         vm.stopPrank();
     }

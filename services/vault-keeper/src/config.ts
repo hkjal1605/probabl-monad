@@ -31,8 +31,25 @@ export interface VaultSettings {
   quotePriceMultiplier: string;
   markets: MarketOverride[];
 }
+/** Quoting market orders through the API's RFQ stream (docs/rfq.md): live mode, with one approved
+ * API key per vault in VK_RFQ_API_KEYS (vault order). */
+export interface RfqSettings {
+  enabled: boolean;
+  /** Keep the resting ladders on the book as well. Off (the default with RFQ on), the vault
+   * quotes only through RFQ and leaves no order resting. */
+  bookQuotes: boolean;
+  /** How long a signed quote stays fillable, seconds. */
+  quoteTtlSeconds: number;
+  /** The oldest live reference (stock price and probability) a quote may price from, ms. */
+  maxReferenceAgeMs: number;
+  /** Spot-price refresh, ms (the API caches Robinhood's prices for 2 s). */
+  spotPollMs: number;
+  /** Half-spread added on RFQ quotes for the option a firm quote gives while it lives, bps. */
+  edgeBps: number;
+}
 export interface Settings {
   vaults: VaultSettings[];
+  rfq: RfqSettings;
   /** Model of every registered market without a (complete) override. Without it, only
    * markets with a complete override are quoted. */
   model?: MarketModel;
@@ -188,8 +205,32 @@ export function settings(input: unknown): Settings {
     quotePriceMultiplier: _quote,
     vaults: _vaults,
     model: _model,
+    rfq: rawRfq,
     ...shared
   } = raw;
+  const rfqInput = (rawRfq ?? {}) as Partial<RfqSettings>;
+  const rfqEnabled = rfqInput.enabled ?? false;
+  const rfq: RfqSettings = {
+    enabled: rfqEnabled,
+    bookQuotes: rfqInput.bookQuotes ?? !rfqEnabled,
+    quoteTtlSeconds: rfqInput.quoteTtlSeconds ?? 10,
+    maxReferenceAgeMs: rfqInput.maxReferenceAgeMs ?? 5_000,
+    spotPollMs: rfqInput.spotPollMs ?? 2_000,
+    edgeBps: rfqInput.edgeBps ?? 0,
+  };
+  if (typeof rfq.enabled !== "boolean" || typeof rfq.bookQuotes !== "boolean")
+    throw new Error("Invalid rfq switches");
+  for (const [field, [low, high]] of Object.entries({
+    quoteTtlSeconds: [5, 300],
+    maxReferenceAgeMs: [500, 60_000],
+    spotPollMs: [500, 60_000],
+    edgeBps: [0, 1000],
+  } as Record<string, [number, number]>)) {
+    const value = rfq[field as keyof RfqSettings];
+    if (typeof value !== "number" || !Number.isInteger(value) || value < low || value > high)
+      throw new Error(`Invalid rfq.${field}`);
+  }
+  if (!rfq.enabled && !rfq.bookQuotes) throw new Error("Quote through RFQ, the book or both");
   const result: Settings = {
     allowStaleSpot: false,
     quoteLevels: 2,
@@ -221,6 +262,7 @@ export function settings(input: unknown): Settings {
     dailyGasBudgetWei: "10000000000000000",
     ...shared,
     vaults,
+    rfq,
     ...(model ? { model } : {}),
   };
   const ranges: Record<string, [number, number]> = {

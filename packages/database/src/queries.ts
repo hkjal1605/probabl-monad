@@ -123,6 +123,18 @@ export interface Checkpoint {
   hash: string;
   state: Buffer;
 }
+/** A market maker the market admin approved for the RFQ stream. Addresses are lowercase 0x hex. */
+export interface RfqMakerRecord {
+  id: string;
+  label: string;
+  /** The wallet its quotes trade for (through its grant to the API's trading delegate). */
+  wallet: string;
+  /** The API key's first characters, to tell keys apart; the key itself is never stored. */
+  keyPrefix: string;
+  createdBy: string;
+  createdAt: Date;
+  revokedAt: Date | null;
+}
 
 const bounded = (limit: number, max = 1000) => Math.min(Math.max(Math.trunc(limit), 1), max);
 // biome-ignore lint/suspicious/noExplicitAny: pg rows are untyped.
@@ -159,6 +171,18 @@ const payoutRecord = (r: any): ReferralPayoutRecord => ({
 });
 const PAYOUT = `id, status, encode(referrer, 'hex') AS referrer, encode(token, 'hex') AS token,
   amount::text, encode(tx, 'hex') AS tx, raw, created_at, settled_at`;
+// biome-ignore lint/suspicious/noExplicitAny: pg rows are untyped.
+const rfqMakerRecord = (r: any): RfqMakerRecord => ({
+  id: r.id,
+  label: r.label,
+  wallet: `0x${r.wallet}`,
+  keyPrefix: r.key_prefix,
+  createdBy: `0x${r.created_by}`,
+  createdAt: r.created_at,
+  revokedAt: r.revoked_at,
+});
+const RFQ_MAKER = `id, label, encode(wallet, 'hex') AS wallet, key_prefix,
+  encode(created_by, 'hex') AS created_by, created_at, revoked_at`;
 /** 0x hex to the bytea parameter form. */
 const hex = (value: string) => value.slice(2).toLowerCase();
 /** Resolved once per statement (an InitPlan), so every index below is probed directly. */
@@ -882,6 +906,71 @@ export function queries(db: Connection) {
         (domain, owner, client_id, order_terms_hash, delegate, tx_hash, raw) VALUES($1,$2,$3,$4,$5,$6,$7)`,
         [domain, owner, clientId, orderTermsHash, delegate, txHash, raw],
       );
+    },
+
+    // ---------------------------------------------------------------- RFQ makers
+
+    /** `keyHash` is the SHA-256 of the API key, as 64 hex characters. */
+    async createRfqMaker(
+      domain: string,
+      maker: {
+        id: string;
+        label: string;
+        wallet: string;
+        keyHash: string;
+        keyPrefix: string;
+        createdBy: string;
+      },
+    ): Promise<RfqMakerRecord> {
+      return rfqMakerRecord(
+        (
+          await db.query(
+            `INSERT INTO probabl.rfq_makers
+            (id, domain, label, wallet, key_hash, key_prefix, created_by)
+            VALUES ($1, $2, $3, decode($4, 'hex'), decode($5, 'hex'), $6, decode($7, 'hex'))
+            RETURNING ${RFQ_MAKER}`,
+            [
+              maker.id,
+              domain,
+              maker.label,
+              hex(maker.wallet),
+              maker.keyHash,
+              maker.keyPrefix,
+              hex(maker.createdBy),
+            ],
+          )
+        ).rows[0],
+      );
+    },
+    /** Every maker of the deployment, revoked ones included, newest first. */
+    async rfqMakers(domain: string, limit = 500): Promise<RfqMakerRecord[]> {
+      return (
+        await db.query(
+          `SELECT ${RFQ_MAKER} FROM probabl.rfq_makers WHERE domain = $1
+          ORDER BY created_at DESC LIMIT $2`,
+          [domain, bounded(limit)],
+        )
+      ).rows.map(rfqMakerRecord);
+    },
+    /** The approved maker holding the API key with this SHA-256, unless revoked. */
+    async rfqMakerByKey(domain: string, keyHash: string): Promise<RfqMakerRecord | undefined> {
+      const row = (
+        await db.query(
+          `SELECT ${RFQ_MAKER} FROM probabl.rfq_makers
+          WHERE key_hash = decode($2, 'hex') AND domain = $1 AND revoked_at IS NULL`,
+          [domain, keyHash],
+        )
+      ).rows[0];
+      return row ? rfqMakerRecord(row) : undefined;
+    },
+    async revokeRfqMaker(domain: string, id: string) {
+      return (
+        await db.query(
+          `UPDATE probabl.rfq_makers SET revoked_at = now()
+          WHERE id = $2 AND domain = $1 AND revoked_at IS NULL`,
+          [domain, id],
+        )
+      ).rowCount;
     },
   };
 }

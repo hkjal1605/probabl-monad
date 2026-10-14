@@ -11,6 +11,7 @@ import {
   Menu,
   Moon,
   PlusCircle,
+  RadioTower,
   Settings2,
   Sun,
   Vault,
@@ -47,6 +48,7 @@ const nav = [
   { href: "/resolutions", icon: Gavel, label: "Resolution" },
   { href: "/vaults", icon: Vault, label: "Vault controls" },
   { href: "/invites", icon: Gift, label: "Invites & referrals" },
+  { href: "/rfq", icon: RadioTower, label: "RFQ makers" },
   { href: "/system", icon: Activity, label: "System health" },
   { href: "/history", icon: History, label: "Audit history" },
 ];

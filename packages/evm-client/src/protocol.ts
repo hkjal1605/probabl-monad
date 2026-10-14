@@ -275,6 +275,82 @@ export function packMakers(sequences: readonly bigint[]): bigint {
   return word;
 }
 
+// ------------------------------------------------------------------ RFQ quotes
+
+/** The maker sequence a quote fill reports (`QuoteFilled`): never assigned to an order. */
+export const QUOTE_SEQ = U32_MAX;
+/** The EIP-712 struct a maker signs for each RFQ quote, under `quoteDomain`. */
+export const QUOTE_TYPES = {
+  Quote: [
+    { name: "taker", type: "address" },
+    { name: "terms", type: "uint256" },
+    { name: "nonce", type: "uint256" },
+  ],
+} as const;
+export const quoteDomain = (chainId: number, exchange: Address) =>
+  ({ name: "Probabl", version: "1", chainId, verifyingContract: exchange }) as const;
+
+/** What a maker quotes: the order its side would rest, which never rests. */
+export interface QuoteTerms {
+  marketId: string | number;
+  branch: number;
+  /** The maker's side: 1 sells to a buying taker, 0 buys from a selling one. */
+  side: number;
+  /** 0 the maker's underlying credit, 1 its claims on the branch. */
+  fundingKind: number;
+  /** Unix seconds: the quote fills only before it. */
+  expiry: bigint;
+  priceRawX18: bigint;
+  /** The most it fills, raw base units. */
+  quantity: bigint;
+}
+
+/** A quote's signed `terms` word: packed as an order word (fee-cap and IOC bits unused). */
+export function packQuoteTerms(q: QuoteTerms, tick: bigint): bigint {
+  if (tick <= 0n || q.priceRawX18 <= 0n || q.priceRawX18 % tick !== 0n)
+    throw new Error("Price is not a positive multiple of the market tick");
+  for (const field of [q.branch, q.side, q.fundingKind])
+    if (field !== 0 && field !== 1) throw new Error("Invalid quote enum");
+  const ticks = q.priceRawX18 / tick;
+  if (
+    ticks > U64_MAX ||
+    q.quantity <= 0n ||
+    q.quantity > U96_MAX ||
+    q.expiry <= 0n ||
+    q.expiry > U40_MAX
+  )
+    throw new Error("Quote terms are outside the supported range");
+  const flags = BigInt(q.branch) | (BigInt(q.side) << 1n) | (BigInt(q.fundingKind) << 2n);
+  return (
+    BigInt(marketNumber(q.marketId)) |
+    (flags << 32n) |
+    (q.expiry << 56n) |
+    (ticks << 96n) |
+    (q.quantity << 160n)
+  );
+}
+
+/** The nonce of a quote made by a contract (a Δ-vault): its address in the top 160 bits tells the
+ * exchange to ask the contract to accept the quote (`IQuoteMaker.acceptQuote`) instead of
+ * recovering a wallet; `counter` (below 2^96) keeps it unique. Wallets' nonces stay below 2^96. */
+export function contractQuoteNonce(maker: Address, counter: bigint) {
+  if (counter < 0n || counter > U96_MAX) throw new Error("Quote nonce counter out of range");
+  return (BigInt(getAddress(maker)) << 96n) | counter;
+}
+/** The maker contract a quote nonce names, or null for a wallet's nonce. */
+export const quoteNonceMaker = (nonce: bigint) =>
+  nonce >> 96n ? getAddress(`0x${(nonce >> 96n).toString(16).padStart(40, "0")}`) : null;
+
+/** A quote as a placement carries it: what the maker signed, how much this placement takes
+ * (`fill`, at most the signed quantity) and the maker's EIP-2098 signature. */
+export interface QuoteFill {
+  terms: string;
+  nonce: string;
+  fill: string;
+  r: Hex;
+  vs: Hex;
+}
+
 // ------------------------------------------------------------------ identities
 
 /** keccak256 of the exact metadata URI bytes (the on-chain `metadataHash`). */

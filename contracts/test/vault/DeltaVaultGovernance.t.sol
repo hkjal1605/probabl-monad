@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import { ConditionalStocksAdmin } from "../../src/ConditionalStocksAdmin.sol";
 import { ConditionalStocksBase } from "../../src/ConditionalStocksBase.sol";
 import { DeltaVault } from "../../src/vault/DeltaVault.sol";
 import { DeltaVaultAdmin } from "../../src/vault/DeltaVaultAdmin.sol";
@@ -316,7 +317,7 @@ contract DeltaVaultGovernanceTest is VaultBase {
         _position();
         // A one-unit claim donation makes the stock claims odd: 3 NVDA + 1 raw if YES, 15 if NO.
         vm.startPrank(alice);
-        cs.split(market, 1, 1);
+        ConditionalStocksAdmin(address(cs)).split(market, 1, 1);
         view_.transferClaim(market, YES, 1, address(vault), 1);
         vm.stopPrank();
         uint256 quoteBefore = credit(address(vault), address(usdc));

@@ -30,6 +30,7 @@ import {
   type DecodedEvent,
   decodeLog,
   emptyState,
+  isFill,
   type OrderState,
   restoreState,
   type Touched,
@@ -471,7 +472,7 @@ export class ChainFollower {
       for (const batch of transactions(list)) {
         applyTransaction(this.confirmed, batch, own);
         for (const e of batch)
-          if (e.name === "Trade") trades.set(tradeKey(e), tradeDetails(this.confirmed, e));
+          if (isFill(e.name)) trades.set(tradeKey(e), tradeDetails(this.confirmed, e));
       }
       merge(changes, own);
       this.pending.push({ ...block, events: list, changes: own });
@@ -558,7 +559,7 @@ export class ChainFollower {
       applyTransaction(this.base, batch, own);
       // Orders stay in the replica until evicted below, so both parties resolve.
       for (const e of batch)
-        if (e.name === "Trade") trades.set(tradeKey(e), tradeDetails(this.base, e));
+        if (isFill(e.name)) trades.set(tradeKey(e), tradeDetails(this.base, e));
     }
     merge(changes, own);
     this.base.block = tip.number;

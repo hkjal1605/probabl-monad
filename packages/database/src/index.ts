@@ -22,6 +22,7 @@ export type {
   RefereeTotal,
   ReferralPayoutRecord,
   ReferralTotal,
+  RfqMakerRecord,
   TradeRecord,
 } from "./queries.ts";
 export { InviteError, SignInCapacityError } from "./queries.ts";

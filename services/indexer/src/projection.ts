@@ -10,6 +10,7 @@ import {
   marketKey,
   marketSlug,
   publicMarketId,
+  QUOTE_SEQ,
   U32_MAX,
   underlyingSymbol,
 } from "@conditional-stocks/evm-client";
@@ -429,7 +430,10 @@ export function tradeView(
      * when it sold), in the same claims. */
     makerRebate: r.makerRebate.toString(),
     takerSide: r.takerSide,
-    makerOrderHash: orderKeyString(r.market, r.branch, r.makerSeq),
+    // A quote fill has no maker order.
+    ...(r.makerSeq === QUOTE_SEQ
+      ? {}
+      : { makerOrderHash: orderKeyString(r.market, r.branch, r.makerSeq) }),
     takerOrderHash: orderKeyString(r.market, r.branch, r.takerSeq),
     maker: checksum(r.maker),
     taker: checksum(r.taker),

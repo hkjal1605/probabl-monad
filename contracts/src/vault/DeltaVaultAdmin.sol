@@ -217,17 +217,72 @@ contract DeltaVaultAdmin is DeltaVaultBase {
 
     function exposure(uint32 id) external view nonReentrantView returns (Exposure memory) {
         if (!_markets[id].listed) revert UnknownMarket();
-        uint256[] memory keys = _orders[id];
-        Tally memory t = _newTally();
-        if (keys.length != 0) {
-            IConditionalStocks.Resting[] memory r = EXCHANGE.restingOrders(keys);
-            for (uint256 j; j < keys.length; ++j) {
-                if (r[j].remaining != 0) {
-                    _tally(t, (keys[j] >> 32) & 1, r[j].flags, r[j].remaining, r[j].ticks);
-                }
-            }
+        return _restingExposure(id);
+    }
+
+    // ---------------------------------------------------------------- RFQ quotes
+
+    /// @notice The exchange's check of an RFQ quote naming this vault as its maker
+    ///         (`IQuoteMaker`): signed by a keeper, while quoting is not paused, in a registered
+    ///         market, within the band around the oracle price, the lifetime and cutoff limits
+    ///         and the order cap, and leaving the worst-case YES-minus-NO stock within the cap
+    ///         after `fill`, as `update` requires of every order. Returns its selector to accept.
+    function acceptQuote(bytes32 digest, uint256 terms, uint256 fill, bytes32 r, bytes32 vs)
+        external
+        view
+        nonReentrantView
+        returns (bytes4)
+    {
+        address signer = ecrecover(
+            digest, uint8(uint256(vs) >> 255) + 27, r, vs & bytes32(type(uint256).max >> 1)
+        );
+        if (signer == address(0) || !hasRole(KEEPER_ROLE, signer)) revert QuoteSigner();
+        _requireNotPaused();
+        uint32 id = uint32(terms);
+        Market memory m = _markets[id];
+        if (!m.listed) revert UnknownMarket();
+        Limits memory l = _limits;
+        uint256 expiry = uint40(terms >> 56);
+        if (expiry > block.timestamp + l.maxTtl || expiry + m.risk.cutoffBuffer > m.cutoff) {
+            revert OrderExpiry();
         }
-        return _expose(id, t);
+        uint256 spot = _oraclePrice(l.maxOracleAge);
+        uint256 price = uint256(uint64(terms >> 96)) * m.tick;
+        uint256 band = Math.mulDiv(spot, m.risk.bandBps, BPS);
+        if (price + band < spot || price > spot + band) revert OrderPrice();
+        if (_quoteUp(terms >> 160, price) > m.risk.maxOrder) revert OrderSize();
+        Exposure memory e = _restingExposure(id);
+        // YES bids and NO asks raise YES-minus-NO stock; YES asks and NO bids lower it.
+        uint256 flags = uint8(terms >> 32);
+        int256 cap = int256(uint256(m.risk.maxImbalance));
+        if ((flags & SELL != 0) == (flags & 1 == 1)
+                ? e.high + int256(fill) > _max(cap, e.imbalance)
+                : e.low - int256(fill) < _min(-cap, e.imbalance)) revert ImbalanceCap();
+        return this.acceptQuote.selector;
+    }
+
+    /// @notice ERC-1271: a signature is the vault's when a keeper made it, so a venue can check a
+    ///         quote's signer before routing an order to it. Accepts 65-byte (r, s, v) and
+    ///         64-byte (r, vs) signatures.
+    function isValidSignature(bytes32 hash, bytes calldata signature)
+        external
+        view
+        returns (bytes4)
+    {
+        if (signature.length != 64 && signature.length != 65) return 0xffffffff;
+        bytes32 r = bytes32(signature[0:32]);
+        bytes32 s = bytes32(signature[32:64]);
+        uint8 v;
+        if (signature.length == 65) {
+            v = uint8(signature[64]);
+        } else {
+            v = uint8(uint256(s) >> 255) + 27;
+            s &= bytes32(type(uint256).max >> 1);
+        }
+        address signer = ecrecover(hash, v, r, s);
+        return signer != address(0) && hasRole(KEEPER_ROLE, signer)
+            ? bytes4(0x1626ba7e)
+            : bytes4(0xffffffff);
     }
 
     /// @notice Shares that may still leave in the current withdrawal window.
@@ -247,6 +302,21 @@ contract DeltaVaultAdmin is DeltaVaultBase {
     }
 
     // ---------------------------------------------------------------- internals
+
+    /// @dev The exposure of market `id` with its tracked resting orders.
+    function _restingExposure(uint32 id) internal view returns (Exposure memory) {
+        uint256[] memory keys = _orders[id];
+        Tally memory t = _newTally();
+        if (keys.length != 0) {
+            IConditionalStocks.Resting[] memory r = EXCHANGE.restingOrders(keys);
+            for (uint256 j; j < keys.length; ++j) {
+                if (r[j].remaining != 0) {
+                    _tally(t, (keys[j] >> 32) & 1, r[j].flags, r[j].remaining, r[j].ticks);
+                }
+            }
+        }
+        return _expose(id, t);
+    }
 
     function _validate(uint32 id, Market memory m, Limits memory l, uint256 spot, uint256 o)
         internal

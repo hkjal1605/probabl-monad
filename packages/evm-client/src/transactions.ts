@@ -42,6 +42,21 @@ const exchangeCall = (exchange: Address, functionName: string, args: readonly un
 export function placement(exchange: Address, order: OrderWire, plan: AtomicPlan, tick: bigint) {
   const o = parseOrder(order);
   const words = planWords(plan);
+  // With quotes, one entry serves both: the owner itself, or its delegate (the sender).
+  if (plan.quotes?.length)
+    return exchangeCall(exchange, "placeWithQuotes", [
+      o.maker,
+      packOrder(o, tick),
+      words.plan,
+      words.makers,
+      plan.quotes.map((q) => ({
+        terms: BigInt(q.terms),
+        nonce: BigInt(q.nonce),
+        fill: BigInt(q.fill),
+        r: q.r,
+        vs: q.vs,
+      })),
+    ]);
   if (o.delegate)
     return exchangeCall(exchange, "placeFor", [
       o.maker,

@@ -246,6 +246,7 @@ abstract contract DeltaVaultBase is
     error CrossedQuotes();
     error StaleOracle();
     error SequencerDown();
+    error QuoteSigner();
 
     constructor(Config memory c)
         ERC20(c.name, c.symbol)

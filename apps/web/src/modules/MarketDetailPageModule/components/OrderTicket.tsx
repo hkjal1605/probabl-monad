@@ -540,6 +540,12 @@ export function OrderTicket({ market }: { market: MarketView }) {
                       />
                     </>
                   )}
+                  {t.tif === "ioc" && Boolean(prepared.rfq?.makers) && (
+                    <Row
+                      label="RFQ"
+                      value={`${prepared.rfq?.makers} ${prepared.rfq?.makers === 1 ? "maker quotes" : "makers quote"} on submit`}
+                    />
+                  )}
                   <Row label="Trading fees" value={fees} />
                   {fillFee > 0n && (
                     <Row

@@ -95,6 +95,15 @@ twice. `scripts/evm/fund-referrals.ts` tops it up from the treasury by exactly w
 quote limits, fee cap, expiry); the API then submits orders for it without a wallet prompt. Retries
 with the same client id never place a second order.
 
+**RFQ** (`docs/rfq.md`). A delegated market order first goes out over the `/v1/rfq/stream`
+WebSocket to every maker the market admin approved (Admin → RFQ makers: one API key per maker
+wallet, kept as a hash), which have `RFQ_QUOTE_WINDOW_MS` (500 ms) to answer with an EIP-712 signed
+price; the request closes as soon as every maker online has answered, and with none online nothing
+waits. Quotes and resting orders are ranked together, best price first and the book first at equal
+prices, and the order's one transaction (`placeWithQuotes`) fills the winning quotes straight from
+the makers' balances (no maker order ever rests), then the book's orders. A quote fill costs about
+9k gas more than a resting-order fill (signature check and a nonce bit).
+
 **Index.** The API process follows the exchange's logs into an in-memory replica (no database read on
 the trading path), persists finalized trades and closed orders in coalesced transactions plus a
 compressed checkpoint when the replica changed (every other event lives in the checkpoint and on
@@ -116,7 +125,10 @@ a worst-case YES-minus-NO stock position above the market cap. The guardian paus
 quoting; withdrawals are never paused (the admin may rate-limit them to no less than 10% a day).
 
 Gas (Foundry, including test harness): resting bid 124k, resting claim-funded ask 119k, market buy
-filling one maker 85k (partial 93k), four makers 139k, eight makers 203k, cancel 34k.
+filling one maker 85k (partial 93k), four makers 139k, eight makers 203k, cancel 34k. Exchange call
+alone (`forge test --match-contract GasTest --isolate -vvvv`): a market buy filling one resting
+maker 87.9k, one RFQ quote 96.8k (113.9k on the first nonce of a new 256-nonce word), a quote and a
+resting maker 112.1k.
 
 ## Commands
 
@@ -186,7 +198,10 @@ market maker and the vault keeper do not quote it.
    `config.example.json`): its config lists the vaults, each with its own keeper wallet holding
    only `KEEPER_ROLE` (`VK_PRIVATE_KEYS`/`VK_WALLET_ADDRESSES`, comma-separated in the same
    order), and a default Δ-`model` for every market a vault registers, which the keeper reads
-   from the chain each round: markets the curator adds or that settle need no restart.
+   from the chain each round: markets the curator adds or that settle need no restart. With
+   `rfq.enabled` the vaults answer market orders over the RFQ stream instead of resting ladders
+   (`docs/delta-vault.md`, "RFQ quoting"): approve each vault's address as an RFQ maker (admin
+   console → RFQ makers) and list the keys in `VK_RFQ_API_KEYS`, in vault order.
 
 `ops/ec2` runs the ingestor, the API and (when `.env.market-maker` or `.env.vault-keeper` exists) the
 market maker and the vault keeper under PM2 behind nginx. A testnet host (x86_64 or Graviton) runs the

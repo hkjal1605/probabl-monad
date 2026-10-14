@@ -615,6 +615,76 @@ export function applyTransaction(
         }
         break;
       }
+      case "QuoteFilled": {
+        // A fill of a maker's signed quote: the maker rests no order, so its side moves here
+        // (base to a buying taker, quote to a selling one, from its credit or branch claims).
+        const m = r.market(num(a.market));
+        const fill = bi(a.fill),
+          amounts = bi(a.amounts),
+          fees = bi(a.fees);
+        const q = fill & ((1n << 96n) - 1n),
+          takerSeq = (fill >> 128n) & U32_MAX,
+          branch = Number((fill >> 160n) & 0xffn),
+          makerClaim = ((fill >> 168n) & 0xffn) !== 0n,
+          ticks = fill >> 176n,
+          quoteAmount = amounts & ((1n << 128n) - 1n),
+          improvement = amounts >> 128n,
+          buyerFee = fees & ((1n << 128n) - 1n),
+          sellerFee = fees >> 128n;
+        const maker = addr(a.maker);
+        const taker = r.order(orderKeyString(m.id, branch, takerSeq));
+        const takerBuys = taker.side === 0;
+        const takerPrice = priceOf(m, taker.ticks);
+        const reduction =
+          quote(taker.remaining, takerPrice, true) - quote(taker.remaining - q, takerPrice, true);
+        if (
+          q <= 0n ||
+          q > taker.remaining ||
+          quoteAmount !== (q * priceOf(m, ticks)) / WAD ||
+          improvement !== (takerBuys ? reduction - quoteAmount : 0n)
+        )
+          throw new Error(`Quote fill replay diverged in ${e.transactionHash}`);
+        const inactive = 1 - branch;
+        const delivered = takerBuys ? q : quoteAmount,
+          collateral = takerBuys ? 1 : 0;
+        if (makerClaim) r.claim(m.id, branch, collateral, maker, -delivered);
+        else {
+          r.credit(maker, r.token(m, collateral), -delivered);
+          r.claim(m.id, inactive, collateral, maker, delivered);
+          if (takerBuys) m.backing.base += q;
+          else m.backing.quote += quoteAmount;
+        }
+        // The taker's side comes out of its reservation, as in a Trade.
+        if (taker.fundingKind === 0) {
+          if (takerBuys) m.backing.quote += quoteAmount;
+          else m.backing.base += q;
+          r.claim(m.id, inactive, takerBuys ? 0 : 1, taker.owner, takerBuys ? quoteAmount : q);
+        }
+        const [buyer, seller] = takerBuys ? [taker.owner, maker] : [maker, taker.owner];
+        r.claim(m.id, branch, 1, buyer, q - buyerFee);
+        m.fees[branch]!.base += buyerFee;
+        r.claim(m.id, branch, 0, seller, quoteAmount - sellerFee);
+        m.fees[branch]!.quote += sellerFee;
+        const rebate = makerRebate(takerBuys ? buyerFee : sellerFee, m.rebateBps);
+        if (rebate !== 0n) {
+          r.claim(m.id, branch, takerBuys ? 1 : 0, maker, rebate);
+          if (takerBuys) m.fees[branch]!.base -= rebate;
+          else m.fees[branch]!.quote -= rebate;
+        }
+        a.makerRebate = rebate;
+        if (improvement !== 0n) {
+          if (taker.fundingKind === 0) r.credit(taker.owner, s.quote, improvement);
+          else r.claim(m.id, branch, 0, taker.owner, improvement);
+        }
+        r.account(m.id, branch, taker.owner, { notional: -reduction });
+        if (takerBuys) m.openNotional -= reduction;
+        taker.remaining -= q;
+        taker.filled += q;
+        taker.feesPaid += takerBuys ? buyerFee : sellerFee;
+        taker.updatedBlock = e.block;
+        if (taker.remaining === 0n) taker.status = "filled";
+        break;
+      }
       case "OrderCancelled": {
         const key = bi(a.key).toString();
         const o = r.order(key);
@@ -635,24 +705,30 @@ export function applyTransaction(
   return changes;
 }
 
-/** Execution details of a Trade, resolved against a replica that already applied it (both
- * orders remain in the replica until finalized eviction). */
+/** The events that record a fill: against a resting order, or against a signed RFQ quote. */
+export const isFill = (name: string) => name === "Trade" || name === "QuoteFilled";
+
+/** Execution details of a fill, resolved against a replica that already applied it (both
+ * orders remain in the replica until finalized eviction). A quote fill names its maker and
+ * price itself: no maker order exists. */
 export function tradeDetails(s: ChainState, e: DecodedEvent) {
   const fill = BigInt(e.args.fill as bigint);
   const market = Number(e.args.market);
   const branch = Number((fill >> 160n) & 0xffn);
   const makerKey = orderKeyString(market, branch, (fill >> 96n) & U32_MAX);
   const takerKey = orderKeyString(market, branch, (fill >> 128n) & U32_MAX);
-  const maker = s.orders.get(makerKey),
+  const quoted = e.name === "QuoteFilled";
+  const maker = quoted ? undefined : s.orders.get(makerKey),
     taker = s.orders.get(takerKey),
     m = s.markets.get(market);
+  const ticks = quoted ? fill >> 176n : maker?.ticks;
   return {
     makerKey,
     takerKey,
-    maker: maker?.owner ?? null,
+    maker: quoted ? getAddress(e.args.maker as string) : (maker?.owner ?? null),
     taker: taker?.owner ?? null,
     takerSide: taker?.side ?? null,
-    price: maker && m ? (maker.ticks * m.tick).toString() : null,
+    price: ticks !== undefined && m ? (ticks * m.tick).toString() : null,
     /** Paid to the maker by the replay (see `DecodedEvent`). */
     makerRebate: e.args.makerRebate === undefined ? null : String(e.args.makerRebate),
   };

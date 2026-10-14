@@ -40,6 +40,9 @@ interface Preparation {
   notional: string;
   plan: AtomicPlan;
   exchange: string;
+  /** Approved RFQ makers online for a market order: they quote it at submission, and the order
+   * fills from their quotes and the book together, best price first. */
+  rfq?: { makers: number };
   /** Idempotency key of the delegated submission: retries never place a second order. */
   clientId: string;
 }
@@ -204,6 +207,7 @@ export function useOrderTicket({ market }: { market: MarketView }) {
       notional: result.notional,
       plan: result.plan,
       exchange: result.exchange,
+      ...(result.rfq ? { rfq: result.rfq } : {}),
       clientId: crypto.randomUUID(),
       funding: {
         balanceSufficient: positions.isDataFresh && balance >= required,

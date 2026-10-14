@@ -41,6 +41,21 @@ abstract contract ConditionalStocksBase {
     uint8 internal constant S_CLAIM = 4;
     uint8 internal constant S_DELEGATED = 16;
 
+    /// @dev EIP-712 signing of RFQ quotes: domain "Probabl" version "1" on this chain and
+    ///      exchange, struct `Quote(address taker,uint256 terms,uint256 nonce)`.
+    bytes32 internal constant DOMAIN_TYPEHASH = keccak256(
+        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+    );
+    bytes32 internal constant NAME_HASH = keccak256("Probabl");
+    bytes32 internal constant VERSION_HASH = keccak256("1");
+    bytes32 internal constant QUOTE_TYPEHASH =
+        keccak256("Quote(address taker,uint256 terms,uint256 nonce)");
+    /// @dev The maker sequence a quote fill reports: never assigned to an order.
+    uint256 internal constant QUOTE_SEQ = type(uint32).max;
+    /// @dev Gas a maker contract's `IQuoteMaker.acceptQuote` may use; beyond it the quote is
+    ///      skipped.
+    uint256 internal constant QUOTE_CHECK_GAS = 150_000;
+
     // ---------------------------------------------------------------- errors
 
     error Unauthorized();
@@ -125,6 +140,14 @@ abstract contract ConditionalStocksBase {
     ///        maker gets the market's `rebateBps` share of the taker's fee (rounded down) back in
     ///        the same claims.
     event Trade(uint32 indexed market, uint256 fill, uint256 amounts, uint256 fees);
+    /// @notice A fill against a maker's signed RFQ quote, which rests no order.
+    /// @param fill As in `Trade`, with makerSeq 2^32 - 1, plus the quote's funding (1 claims, 0
+    ///        underlying credit) << 168 and its price in ticks << 176.
+    /// @param amounts quote(128) | taker (buyer) price improvement(128) << 128.
+    /// @param fees As in `Trade`; the maker's rebate likewise.
+    event QuoteFilled(
+        uint32 indexed market, address indexed maker, uint256 fill, uint256 amounts, uint256 fees
+    );
     event OrderCancelled(uint32 indexed market, uint256 key);
     /// @param module Zero proposes removal of the selector's extension.
     event ExtensionProposed(bytes4 indexed selector, address module, uint64 activatableAt);
@@ -213,6 +236,21 @@ abstract contract ConditionalStocksBase {
         uint96 quote;
         uint96 base;
         uint64 notional;
+    }
+
+    /// @dev A maker's signed RFQ quote as a taker's placement carries it. `terms` is packed as an
+    ///      order word (market, flags: branch, the maker's side and funding; expiry, price in
+    ///      ticks, the most it fills); its fee-cap bits are unused. `fill` (not signed) is what
+    ///      the placement takes from it. `r`/`vs` is the maker's EIP-2098 signature of
+    ///      Quote(taker, terms, nonce); each nonce fills once (bit `nonce & 255` of word
+    ///      `nonce >> 8`). A nonce of 2^96 or more names a maker contract in its top 160 bits,
+    ///      which `IQuoteMaker.acceptQuote` asks instead of recovering a wallet.
+    struct Quote {
+        uint256 terms;
+        uint256 nonce;
+        uint256 fill;
+        bytes32 r;
+        bytes32 vs;
     }
 
     /// @dev A resting order as the `order` view returns it.
@@ -359,6 +397,8 @@ abstract contract ConditionalStocksBase {
     mapping(uint32 market => bytes32) internal _eventKeys;
     mapping(address token => bytes32) internal _underlyings;
     mapping(uint32 market => FeeRates) internal _feeRates;
+    /// @dev Used RFQ quote nonces: 256 per word.
+    mapping(address maker => mapping(uint256 word => uint256 bits)) internal _quoteNonces;
 
     constructor(address quote_) {
         if (quote_.code.length == 0) revert InvalidAddress();

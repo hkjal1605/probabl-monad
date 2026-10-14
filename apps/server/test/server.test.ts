@@ -6,14 +6,33 @@ import { createDatabase, type Database } from "@conditional-stocks/db";
 import { localDatabase } from "@conditional-stocks/db/local";
 import { Pool } from "@conditional-stocks/db/testing";
 import * as tx from "@conditional-stocks/evm-client";
-import { type Address, encodeFunctionData, keccak256, stringToBytes, toHex, zeroHash } from "viem";
+import { ChainFollower, TokenReader } from "@conditional-stocks/indexer";
+import {
+  type Address,
+  createWalletClient,
+  encodeFunctionData,
+  http,
+  keccak256,
+  stringToBytes,
+  toHex,
+  zeroHash,
+} from "viem";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
+import { foundry } from "viem/chains";
 import {
   type Anvil,
   accounts,
+  deployDeltaVault,
   deployProtocol,
   startAnvil,
   tokenAbi,
 } from "../../../packages/evm-client/test/anvil.ts";
+import { settings as keeperSettings } from "../../../services/vault-keeper/src/config.ts";
+import { Keeper } from "../../../services/vault-keeper/src/engine.ts";
+import type { LiveReferences } from "../../../services/vault-keeper/src/live.ts";
+import { RfqMaker } from "../../../services/vault-keeper/src/rfq.ts";
+import { initialState } from "../../../services/vault-keeper/src/state.ts";
+import { Tick } from "../../../services/vault-keeper/src/tick.ts";
 
 const NOW = BigInt(Math.floor(Date.now() / 1000));
 const NVDA = 10n ** 18n;
@@ -552,6 +571,469 @@ test("custody, owner-signed and delegated trading", async () => {
   );
   await send(1, transactions[0]);
 }, 90_000);
+
+/** An RFQ maker: a fresh wallet with gas and exchange credit (quotes need no grant: the
+ * maker's signature authorizes each fill). */
+async function rfqMaker(shares: bigint) {
+  const account = privateKeyToAccount(generatePrivateKey());
+  await node.client.setBalance({ address: account.address, value: 10n ** 20n });
+  const wallet = createWalletClient({
+    account,
+    chain: { ...foundry, rpcUrls: { default: { http: [node.url] } } },
+    transport: http(node.url),
+  });
+  const { exchange, stock } = protocol;
+  await send(0, {
+    to: stock,
+    data: encodeFunctionData({
+      abi: tokenAbi,
+      functionName: "mint",
+      args: [account.address, shares * NVDA],
+    }),
+  });
+  for (const envelope of [
+    tx.approve(stock, exchange, shares * NVDA),
+    tx.deposit(exchange, stock, shares * NVDA),
+  ])
+    await submit(envelope);
+  async function submit(envelope: { to: Address; data: `0x${string}` }) {
+    const hash = await wallet.sendTransaction({ to: envelope.to, data: envelope.data } as never);
+    const receipt = await node.client.waitForTransactionReceipt({ hash });
+    if (receipt.status !== "success") throw new Error("maker transaction reverted");
+  }
+  /** A quote frame for `request`, signed by this maker: `shares` at `price` (raw), credit-funded. */
+  async function quote(request: Record<string, any>, price: bigint, shares: bigint, nonce: bigint) {
+    const expiry = BigInt(Math.floor(Date.now() / 1000) + 30);
+    const terms = tx.packQuoteTerms(
+      {
+        marketId: request.market.id,
+        branch: request.order.branch,
+        side: request.quoteSide,
+        fundingKind: 0,
+        expiry,
+        priceRawX18: price,
+        quantity: shares * NVDA,
+      },
+      BigInt(request.market.tick),
+    );
+    const signature = await account.signTypedData({
+      domain: request.signing.domain,
+      types: tx.QUOTE_TYPES,
+      primaryType: "Quote",
+      message: { taker: request.signing.taker, terms, nonce },
+    });
+    return {
+      type: "quote",
+      rfqId: request.id,
+      price: price.toString(),
+      quantity: (shares * NVDA).toString(),
+      expiry: expiry.toString(),
+      nonce: nonce.toString(),
+      signature,
+    };
+  }
+  return { address: account.address, submit, quote };
+}
+/** A maker bot on the RFQ stream: it answers every request with `answer`'s frames. */
+function rfqStream(
+  key: string | null,
+  answer: (request: Record<string, any>) => Promise<object[]> | object[] = () => [],
+) {
+  const messages: Record<string, any>[] = [];
+  const socket = new WebSocket(`${api.replace("http", "ws")}/v1/rfq/stream`, {
+    headers: key ? { authorization: `Bearer ${key}` } : {},
+  } as never);
+  socket.onmessage = (event) => {
+    const message = JSON.parse(String(event.data));
+    messages.push(message);
+    if (message.type === "rfq")
+      void Promise.resolve(answer(message)).then((replies) => {
+        for (const reply of replies) socket.send(JSON.stringify(reply));
+      });
+  };
+  const closed = new Promise<{ code: number; opened: boolean }>((resolve) => {
+    let opened = false;
+    socket.onopen = () => {
+      opened = true;
+    };
+    socket.onclose = (event) => resolve({ code: event.code, opened });
+  });
+  return {
+    socket,
+    messages,
+    closed,
+    of: (type: string) => messages.filter((m) => m.type === type),
+  };
+}
+
+test("RFQ: approved makers quote market orders over the stream; the best of book and quotes fills", async () => {
+  const { exchange, usdc } = protocol;
+  await signIn(0);
+  const adminToken = tokens[admin]!;
+  // The taker: a member of its own (no referrer, so referral accounting stays as it was), with
+  // USDC credit and a 1-click grant to the delegate.
+  const taker = accounts[7]!.address;
+  await db.createAdminInvites(["RFQTAKER"], { maxUses: 1, expiresAt: null, note: "rfq" });
+  await signIn(7, "RFQTAKER");
+  const takerToken = tokens[taker]!;
+  await send(0, {
+    to: usdc,
+    data: encodeFunctionData({ abi: tokenAbi, functionName: "mint", args: [taker, 10n ** 10n] }),
+  });
+  for (const envelope of [
+    tx.approve(usdc, exchange, 10n ** 10n),
+    tx.deposit(exchange, usdc, 10n ** 10n),
+    tx.approveDelegate(exchange, delegate, {
+      market: 0,
+      expiresAt: NOW + 7n * 86_400n,
+      maxOrderQuote: 10n ** 9n,
+      totalQuote: 10n ** 10n,
+      maxOrderBase: 10n * NVDA,
+      totalBase: 100n * NVDA,
+      maxFeeBps: 1000,
+      permissions: tx.DELEGATE_TRADE | tx.DELEGATE_CANCEL,
+    }),
+  ])
+    await send(7, envelope);
+  await settle(
+    async () =>
+      (await call(`/v1/trading/permission?owner=${taker}`, undefined, takerToken)).active === true,
+  );
+
+  // Only the market admin approves makers; each key is shown once.
+  const [maker1, maker2] = [await rfqMaker(20n), await rfqMaker(20n)];
+  const [m1, m2] = [maker1.address, maker2.address];
+  expect(
+    (await refused("/v1/admin/rfq/makers", { label: "Desk", wallet: m1 }, takerToken)).code,
+  ).toBe("operator");
+  const one = await call("/v1/admin/rfq/makers", { label: "Desk one", wallet: m1 }, adminToken);
+  const two = await call("/v1/admin/rfq/makers", { label: "Desk two", wallet: m2 }, adminToken);
+  expect(one.apiKey).toMatch(/^pbl_rfq_[A-Za-z0-9_-]{43}$/);
+  expect(one.maker).toMatchObject({
+    label: "Desk one",
+    wallet: m1,
+    status: "active",
+    connections: 0,
+  });
+  const listed = await call("/v1/admin/rfq/makers", undefined, adminToken);
+  expect(listed.makers.map((m: any) => m.label)).toEqual(["Desk two", "Desk one"]);
+  expect(JSON.stringify(listed)).not.toContain(one.apiKey);
+
+  // The stream takes approved keys only.
+  for (const key of [null, "pbl_rfq_not-a-key", `pbl_rfq_${"A".repeat(43)}`]) {
+    const attempt = rfqStream(key);
+    expect((await attempt.closed).opened).toBe(false);
+  }
+  expect((await call("/v1/rfq/status")).makers).toBe(0);
+
+  // A plain book maker rests 2 NVDA-YES at $101 (its own transaction, matching nothing).
+  const book = await rfqMaker(20n);
+  const ask = order(book.address, 1, 2n * NVDA, { limitPriceRawX18: "101000000" });
+  const restPlan = {
+    nextSequence: "0",
+    deadline: String(NOW + 3_600n),
+    minFill: "0",
+    sequences: [],
+  };
+  await book.submit(tx.placement(exchange, ask, restPlan as never, 10_000n));
+  await settle(async () => (await call("/orderbook/1")).orders.length === 1);
+
+  // Desk one first quotes off the tick, then signs 1 share at $100.50; desk two signs 3 shares
+  // at $101.50.
+  const desk1 = rfqStream(one.apiKey, async (r) => [
+    { ...(await maker1.quote(r, 100_500_000n, 1n, 1n)), price: "100505000" },
+    await maker1.quote(r, 100_500_000n, 1n, 1n),
+  ]);
+  const desk2 = rfqStream(two.apiKey, async (r) => [await maker2.quote(r, 101_500_000n, 3n, 1n)]);
+  await settle(async () => desk1.of("welcome").length === 1 && desk2.of("welcome").length === 1);
+  expect(desk1.of("welcome")[0]).toMatchObject({
+    version: 1,
+    maker: { label: "Desk one", wallet: m1 },
+    quoteWindowMs: 500,
+    chainId: 31337,
+    exchange,
+    signing: {
+      domain: { name: "Probabl", version: "1", chainId: 31337, verifyingContract: exchange },
+    },
+    minQuoteSeconds: 3,
+  });
+  expect((await call("/v1/rfq/status")).makers).toBe(2);
+
+  // The taker buys 4 at up to $102. The review covers the book (2 shares) and counts the makers.
+  const buy = order(taker, 0, 4n * NVDA, {
+    delegate,
+    tif: 1,
+    maxFeeBps: 50,
+    limitPriceRawX18: (102n * 1_000_000n).toString(),
+  });
+  const review = await call("/v1/orders/prepare", { order: buy }, takerToken);
+  expect(review.plan.filledQuantity).toBe((2n * NVDA).toString());
+  expect(review.rfq).toEqual({ makers: 2 });
+  const started = Date.now();
+  const submitted = await call(
+    "/v1/trading/submit",
+    { order: buy, clientId: "rfq-request-1" },
+    takerToken,
+  );
+  const elapsed = Date.now() - started;
+  expect(submitted.rfq).toMatchObject({
+    quotes: 2,
+    awards: [
+      { price: "100500000", quantity: NVDA.toString() },
+      { price: "101500000", quantity: NVDA.toString() },
+    ],
+  });
+
+  // Each desk saw the whole order and heard about its quotes.
+  const request = desk1.of("rfq")[0]!;
+  expect(request).toMatchObject({
+    chainId: 31337,
+    exchange,
+    market: {
+      id: "1",
+      tick: "10000",
+      step: (10n ** 15n).toString(),
+      makerFeeBps: 20,
+      takerFeeBps: 50,
+    },
+    order: {
+      taker,
+      branch: 0,
+      side: 0,
+      quantity: (4n * NVDA).toString(),
+      limitPriceRawX18: "102000000",
+      tif: 1,
+    },
+    quoteSide: 1,
+    book: { bestBid: null, bestAsk: "101000000" },
+    signing: { primaryType: "Quote", taker },
+  });
+  expect(request.quoteDeadline - request.sentAt).toBe(500);
+  expect(desk1.of("quote.rejected")[0]).toMatchObject({
+    reason: "Price must be a positive multiple of the market tick",
+  });
+  expect(desk1.of("quote.accepted")).toHaveLength(1);
+  expect(desk2.of("quote.accepted")).toHaveLength(1);
+
+  // One transaction filled best price first: desk one's $100.50, the book's $101 (2), then desk
+  // two's $101.50.
+  await settle(
+    async () =>
+      (await call(`/trades?owner=${taker}`, undefined, takerToken)).trades.filter(
+        (t: any) => t.transactionHash === submitted.transactionHash,
+      ).length === 3,
+  );
+  const fills = (await call(`/trades?owner=${taker}`, undefined, takerToken)).trades
+    .filter((t: any) => t.transactionHash === submitted.transactionHash)
+    .map((t: any) => [t.maker, t.fillQuantity, t.executionPriceRawX18])
+    .sort((a: string[], b: string[]) => Number(BigInt(a[2]!) - BigInt(b[2]!)));
+  expect(fills).toEqual([
+    [m1, NVDA.toString(), "100500000"],
+    [book.address, (2n * NVDA).toString(), "101000000"],
+    [m2, NVDA.toString(), "101500000"],
+  ]);
+  for (const desk of [desk1, desk2]) await settle(async () => desk.of("rfq.result").length === 1);
+  expect(desk1.of("rfq.result")[0]).toMatchObject({
+    outcome: "filled",
+    awarded: NVDA.toString(),
+    filled: NVDA.toString(),
+    transaction: submitted.transactionHash,
+  });
+  expect(desk2.of("rfq.result")[0]).toMatchObject({ outcome: "filled", filled: NVDA.toString() });
+  // Both desks answered, so the request closed before its window, and one transaction settled
+  // everything: no order of the makers ever rested, and the book's ask is gone.
+  expect(elapsed).toBeLessThan(5_000);
+  await settle(async () => (await call("/orderbook/1")).orders.length === 0);
+  const quoteFills = (await call(`/trades?owner=${taker}`, undefined, takerToken)).trades.filter(
+    (t: any) => t.transactionHash === submitted.transactionHash && t.maker !== book.address,
+  );
+  expect(quoteFills.map((t: any) => t.makerOrderHash)).toEqual([undefined, undefined]);
+
+  // Revoking a key closes its stream at once and the key no longer connects.
+  const revoked = await call(`/v1/admin/rfq/makers/${two.maker.id}/revoke`, {}, adminToken);
+  expect(revoked).toEqual({ revoked: true });
+  expect((await desk2.closed).code).toBe(4001);
+  expect((await rfqStream(two.apiKey).closed).opened).toBe(false);
+  const after = await call("/v1/admin/rfq/makers", undefined, adminToken);
+  expect(after.makers.find((m: any) => m.id === two.maker.id)).toMatchObject({
+    status: "revoked",
+    connections: 0,
+  });
+  expect(after.makers.find((m: any) => m.id === one.maker.id)).toMatchObject({
+    status: "active",
+    connections: 1,
+    quotes: 1,
+    rejections: 1,
+    awards: 1,
+  });
+  desk1.socket.close();
+  await desk1.closed;
+}, 120_000);
+
+test("RFQ: the Δ-vault quotes a member's market order over the stream and fills it from its holdings", async () => {
+  const { exchange, usdc, stock } = protocol;
+  const adminToken = tokens[admin]!;
+  const taker = accounts[7]!.address;
+  const takerToken = tokens[taker]!;
+  const USDC = 10n ** 6n;
+  // A vault of stock and USDC, its keeper a fresh key that never sends a transaction.
+  const keeperKey = privateKeyToAccount(generatePrivateKey());
+  const { vault } = await deployDeltaVault(node, protocol, BigInt(Math.floor(Date.now() / 1000)));
+  for (const envelope of [
+    tx.deltaVaultGrantRole(vault, "curator", admin),
+    tx.deltaVaultGrantRole(vault, "keeper", keeperKey.address),
+    tx.deltaVaultSetCaps(vault, 10n ** 13n, 10n ** 24n),
+    tx.deltaVaultSetLimits(vault, { maxTtl: 600, maxOracleAge: 86_400, maxFeeBps: 100 }),
+    tx.deltaVaultAddMarket(vault, 1, {
+      bandBps: 1000,
+      cutoffBuffer: 3600,
+      maxOrder: 50_000n * USDC,
+      maxResting: 200_000n * USDC,
+      maxImbalance: 200n * NVDA,
+    }),
+  ])
+    await send(0, envelope);
+  for (const [token, amount] of [
+    [usdc, 100_000n * USDC],
+    [stock, 1000n * NVDA],
+  ] as const) {
+    await send(0, {
+      to: token,
+      data: encodeFunctionData({ abi: tokenAbi, functionName: "mint", args: [admin, amount] }),
+    });
+    await send(0, tx.approve(token, vault, amount));
+  }
+  await send(0, tx.deltaVaultDeposit(vault, 100_000n * USDC, 1000n * NVDA, 0n, admin));
+
+  // The market admin approves the vault as an RFQ maker.
+  const approved = await call(
+    "/v1/admin/rfq/makers",
+    { label: "Δ-vault NVDA", wallet: vault },
+    adminToken,
+  );
+
+  // The keeper: its own replica, one round for the vault view, then the stream with its key.
+  const follower = new ChainFollower({
+    client: node.client as never,
+    exchange,
+    quote: usdc,
+    deploymentBlock: 1n,
+    domain: "keeper",
+    pollMs: 100,
+  });
+  await follower.start();
+  const tokenReader = new TokenReader(node.client as never);
+  const config = keeperSettings({
+    vault,
+    markets: [{ market: 1, anchorBps: 300, impactBps: 50, maxGapBps: 800, orderQuote: "20000" }],
+    rfq: { enabled: true },
+  });
+  const now = Date.now();
+  const reference = {
+    spot: 100n * USDC,
+    probability: 400_000n,
+    spread: 10_000n,
+    observedAt: now,
+    spotAt: now,
+    probabilityAt: now,
+  };
+  const journal = initialState(`e2e:${vault}`);
+  const keeper = new Keeper(
+    follower,
+    tokenReader,
+    node.client as never,
+    31337,
+    config,
+    config.vaults[0]!,
+    { address: vault, exchange, quote: usdc, base: stock },
+    journal,
+    () => {},
+    undefined,
+    async () => ({ ...reference, observedAt: Date.now() }),
+  );
+  keeper.live = {
+    reference: () => ({
+      ...reference,
+      observedAt: Date.now(),
+      spotAt: Date.now(),
+      probabilityAt: Date.now(),
+    }),
+    track: () => {},
+  } as unknown as LiveReferences;
+  await keeper.cycle(
+    new Tick({
+      origin: api,
+      client: node.client as never,
+      tokens: tokenReader,
+      quote: usdc,
+      bases: [stock],
+      spotPrices: async () => ({ prices: [] }) as never,
+      polymarket: async () => ({}),
+    }),
+  );
+  const maker = new RfqMaker({
+    keeper,
+    url: `${api.replace("http", "ws")}/v1/rfq/stream`,
+    apiKey: approved.apiKey,
+    account: keeperKey,
+  });
+  maker.start();
+  await settle(async () => (await call("/v1/rfq/status")).makers === 1);
+
+  // The member buys 3 NVDA-YES at up to $105: only the vault quotes, and its quote fills.
+  const buy = order(taker, 0, 3n * NVDA, {
+    delegate,
+    tif: 1,
+    maxFeeBps: 50,
+    limitPriceRawX18: (105n * USDC).toString(),
+  });
+  const before = (await node.client.readContract({
+    address: exchange,
+    abi: tx.conditionalStocksAbi,
+    functionName: "account",
+    args: [1, 1, vault],
+  })) as { base: bigint };
+  const started = Date.now();
+  const submitted = await call(
+    "/v1/trading/submit",
+    { order: buy, clientId: "rfq-vault-1" },
+    takerToken,
+  );
+  const elapsed = Date.now() - started;
+  expect(submitted.rfq.quotes).toBe(1);
+  expect(submitted.rfq.awards).toHaveLength(1);
+  const [award] = submitted.rfq.awards;
+  expect(BigInt(award.quantity)).toBe(3n * NVDA);
+  // δ₀ 3% at p 0.4: fair YES about $101.80, quoted with the spread inside the $105 limit.
+  expect(BigInt(award.price)).toBeGreaterThan(101n * USDC);
+  expect(BigInt(award.price)).toBeLessThan(103n * USDC);
+  await settle(async () =>
+    (await call(`/trades?owner=${taker}`, undefined, takerToken)).trades.some(
+      (t: any) => t.transactionHash === submitted.transactionHash && t.maker === vault,
+    ),
+  );
+  const fill = (await call(`/trades?owner=${taker}`, undefined, takerToken)).trades.find(
+    (t: any) => t.transactionHash === submitted.transactionHash,
+  );
+  expect(fill).toMatchObject({
+    maker: vault,
+    fillQuantity: (3n * NVDA).toString(),
+    executionPriceRawX18: award.price,
+  });
+  // The vault sold YES from its stock credit, so it now holds the NO side of those shares.
+  const after = (await node.client.readContract({
+    address: exchange,
+    abi: tx.conditionalStocksAbi,
+    functionName: "account",
+    args: [1, 1, vault],
+  })) as { base: bigint };
+  expect(after.base - before.base).toBe(3n * NVDA);
+  // The window closed as soon as the vault answered.
+  expect(elapsed).toBeLessThan(5_000);
+  maker.stop();
+  follower.stop();
+  await settle(async () => (await call("/v1/rfq/status")).makers === 0);
+}, 120_000);
 
 test("testnet faucet delivers once per wallet", async () => {
   const token = tokens[carol]!;
