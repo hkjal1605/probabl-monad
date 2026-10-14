@@ -5,31 +5,19 @@ import { ClaimTable } from "@/components/portfolio/ClaimTable";
 import { PositionTable } from "@/components/portfolio/PositionTable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LineTabsList, LineTabsTrigger } from "@/components/ui/line-tabs";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { marketPath } from "@/lib/markets/identity";
-import { OrdersClient } from "@/modules/OrdersPageModule/components/OrdersClient";
-import { positionHasClaims } from "@/services/index-stream";
-import type { IndexedOrder, MarketView, PositionView } from "@/types/api";
+import type { MarketView } from "@/types/api";
 
-const hasClaims = positionHasClaims;
-
+/** One event's positions or claims on the portfolio page. */
 export function PortfolioEventCard({
   markets,
-  orders,
-  positions,
+  view,
 }: {
   markets: MarketView[];
-  orders: IndexedOrder[];
-  positions: PositionView[];
+  view: "positions" | "claims";
 }) {
   const market = markets[0];
   if (!market) return null;
-  const ids = new Set(markets.map((item) => item.id));
-  const eventOrders = orders.filter((order) => ids.has(order.marketId));
-  const openOrders = eventOrders.filter((order) => order.status === "open");
-  const eventPositions = positions.filter((position) => ids.has(position.marketId));
-  const claimCount = eventPositions.filter(hasClaims).length;
   const tradeMarket = markets.find((item) => item.lifecycle === "open");
 
   return (
@@ -53,28 +41,12 @@ export function PortfolioEventCard({
           </Button>
         )}
       </CardHeader>
-      <CardContent className="px-0 pb-0">
-        <Tabs defaultValue="positions" className="gap-0">
-          <LineTabsList className="px-4">
-            <LineTabsTrigger value="positions">Positions</LineTabsTrigger>
-            <LineTabsTrigger value="orders">Open orders {openOrders.length || ""}</LineTabsTrigger>
-            <LineTabsTrigger value="claims">Claims {claimCount || ""}</LineTabsTrigger>
-          </LineTabsList>
-          <TabsContent value="positions" className="min-w-0 overflow-x-auto px-2.5 pt-1">
-            <PositionTable markets={markets} softClose />
-          </TabsContent>
-          <TabsContent value="orders" className="min-w-0 overflow-x-auto px-2.5 pt-1">
-            <OrdersClient
-              markets={markets}
-              marketIds={markets.map((item) => item.id)}
-              embedded
-              fixedView="Open orders"
-            />
-          </TabsContent>
-          <TabsContent value="claims" className="min-w-0 overflow-x-auto px-2.5 pt-1">
-            <ClaimTable markets={markets} />
-          </TabsContent>
-        </Tabs>
+      <CardContent className="min-w-0 overflow-x-auto px-2.5 pb-0">
+        {view === "positions" ? (
+          <PositionTable markets={markets} softClose />
+        ) : (
+          <ClaimTable markets={markets} />
+        )}
       </CardContent>
     </Card>
   );

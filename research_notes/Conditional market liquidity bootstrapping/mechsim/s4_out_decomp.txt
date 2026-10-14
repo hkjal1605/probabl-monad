@@ -1,0 +1,9 @@
+S4 Monte Carlo, 200 paths per scenario; LP alpha per event in today's $ (mean +- s.e.)
+Equal depth: $10k single-leg buy costs 1% all-in at t=0 in every mechanism.
+scenario                                                           A: CPMM pair              B: s-anchored             C: delta-curve
+no noise, no gaps (all variance intraday)               -1,361+-7    (p5  -1,532)      -132+-11   (p5    -426)       -39+-4    (p5    -137)
+   split: noise edge / arbitrage edge                           0 /    -1,361              0 /      -132              0 /       -39  
+   max |claims inventory| B, C (shares)                                                                754                        416
+no noise, no delta moves/jumps/start error              -2,291+-37   (p5  -3,272)       -70+-5    (p5    -224)         0+-0    (p5       0)
+   split: noise edge / arbitrage edge                           0 /    -2,291              0 /       -70              0 /         0  
+   max |claims inventory| B, C (shares)                                                                159                          0

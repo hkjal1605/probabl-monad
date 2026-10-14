@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
+import { LineTabsList, LineTabsTrigger } from "@/components/ui/line-tabs";
 import { DataError, EmptyState, LoadingState } from "@/components/ui/page";
 import { Progress } from "@/components/ui/progress";
 import { Segmented } from "@/components/ui/segmented";
@@ -19,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs } from "@/components/ui/tabs";
 import { AccountStepEmpty } from "@/components/wallet/AccountGate";
 import { useOrderRecovery } from "@/hooks/useOrderRecovery";
 import {
@@ -32,20 +34,26 @@ import { marketPath } from "@/lib/markets/identity";
 import { cn } from "@/lib/utils";
 import type { MarketView } from "@/types/api";
 
+const VIEWS = ["Open orders", "History", "All"] as const;
+type View = (typeof VIEWS)[number];
+
 export function OrdersClient({
   markets,
   marketIds,
   embedded = false,
+  plain = false,
   fixedView,
 }: {
   markets: MarketView[];
   marketIds?: string[];
   embedded?: boolean;
-  fixedView?: "Open orders" | "History" | "All";
+  /** No container or count: line tabs for the status, as under a market's chart. */
+  plain?: boolean;
+  fixedView?: View;
 }) {
   const wallet = useWallet(),
     query = useOrderRecovery();
-  const [view, setView] = useState<"Open orders" | "History" | "All">("Open orders");
+  const [view, setView] = useState<View>("Open orders");
   if (wallet.access !== "member" && wallet.access !== "suspended")
     return <AccountStepEmpty>Connect to see canonical orders.</AccountStepEmpty>;
   const selectedView = fixedView ?? view;
@@ -55,25 +63,8 @@ export function OrdersClient({
       (selectedView === "All" ||
         (selectedView === "Open orders" ? o.status === "open" : o.status !== "open")),
   );
-  return (
-    <Card
-      variant="panel"
-      className={embedded ? "min-w-0 data-[variant=panel]:bg-transparent" : "border"}
-      aria-label="Orders"
-    >
-      {!fixedView && (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b px-3 py-2">
-          <span className="text-xs font-medium text-muted-foreground">
-            {orders.length} {selectedView.toLowerCase()}
-          </span>
-          <Segmented
-            label="Order status"
-            value={selectedView}
-            options={["Open orders", "History", "All"]}
-            onChange={setView}
-          />
-        </div>
-      )}
+  const body = (
+    <>
       {(query.data?.truncated || query.data?.openTruncated) && (
         <p role="status" className="border-b px-3 py-2 text-xs font-medium text-warning">
           {query.data.openTruncated
@@ -225,6 +216,46 @@ export function OrdersClient({
           </TableBody>
         </Table>
       )}
+    </>
+  );
+  if (plain)
+    return (
+      <Tabs
+        value={selectedView}
+        onValueChange={(next) => {
+          const option = VIEWS.find((item) => item === next);
+          if (option) setView(option);
+        }}
+        className="min-w-0 gap-0"
+        aria-label="Orders"
+      >
+        {!fixedView && (
+          <LineTabsList aria-label="Order status">
+            {VIEWS.map((option) => (
+              <LineTabsTrigger key={option} value={option}>
+                {option}
+              </LineTabsTrigger>
+            ))}
+          </LineTabsList>
+        )}
+        {body}
+      </Tabs>
+    );
+  return (
+    <Card
+      variant="panel"
+      className={embedded ? "min-w-0 data-[variant=panel]:bg-transparent" : "border"}
+      aria-label="Orders"
+    >
+      {!fixedView && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b px-3 py-2">
+          <span className="text-xs font-medium text-muted-foreground">
+            {orders.length} {selectedView.toLowerCase()}
+          </span>
+          <Segmented label="Order status" value={selectedView} options={VIEWS} onChange={setView} />
+        </div>
+      )}
+      {body}
     </Card>
   );
 }

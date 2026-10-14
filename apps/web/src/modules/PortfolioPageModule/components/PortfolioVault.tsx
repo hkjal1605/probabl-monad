@@ -1,9 +1,8 @@
 "use client";
 
-import { formatTokenAmount } from "@conditional-stocks/domain";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -15,11 +14,26 @@ import { Field, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useVaultTransfer } from "@/hooks/useVaultTransfer";
 import type { assetsForMarkets, useWalletAssets } from "@/hooks/useWalletAssets";
+import { formatCompactNumber } from "@/lib/format/display";
 
 type Asset = ReturnType<typeof assetsForMarkets>[number];
 type Balance = ReturnType<typeof useWalletAssets>["balances"][number];
+
+/** A balance in compact form (1.23K, 4.5M), cut to cents first so small ones never round up. */
+const compactBalance = (raw: string, decimals: number) => {
+  const cents = decimals >= 2 ? BigInt(raw) / 10n ** BigInt(decimals - 2) : BigInt(raw) * 100n;
+  return formatCompactNumber(Number(cents) / 100);
+};
 
 export function PortfolioVault({
   assets,
@@ -53,66 +67,86 @@ export function PortfolioVault({
     },
   });
   const chosen = selected && balances.find((row) => row.token === selected.asset.token);
+  // Wallet balances can go stale while the page idles (a bearer session's stream does not carry
+  // them), so an open dialog rereads them once: on opening and whenever they age out again.
+  const refreshRef = useRef(refresh);
+  refreshRef.current = refresh;
+  useEffect(() => {
+    if (selected && !fresh) void refreshRef.current();
+  }, [selected, fresh]);
   return (
-    <Card className="flex h-[28rem] flex-col rounded-xl bg-card">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Trading vault</CardTitle>
-        <span className="text-sm font-medium text-muted-foreground">
-          Deposited funds are available across markets
-        </span>
-      </CardHeader>
-      {/* Fixed-height vault: the asset list scrolls inside the card. */}
-      <CardContent className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain">
-        {!fresh && balances.length === 0 ? (
-          <Skeleton className="h-20 w-full" aria-label="Loading vault balances" />
-        ) : assets.length === 0 ? (
-          <p className="text-sm font-medium text-muted-foreground">
-            Assets appear here when a market is available.
-          </p>
-        ) : (
-          assets.map((asset) => {
-            const row = balances.find((value) => value.token === asset.token);
-            const b = row?.balance;
-            return (
-              <div key={asset.token} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2">
-                <div className="min-w-20 font-medium">{asset.symbol}</div>
-                <div className="grid flex-1 grid-cols-3 gap-3 tabular-nums">
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground">Available</p>
-                    <p>{b ? formatTokenAmount(BigInt(b.vaultAvailable), asset.decimals) : "—"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground">In orders</p>
-                    <p>{b ? formatTokenAmount(BigInt(b.reserved), asset.decimals) : "—"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground">Wallet</p>
-                    <p>{b ? formatTokenAmount(BigInt(b.canonicalBalance), asset.decimals) : "—"}</p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={!fresh || !b}
-                    onClick={() => open(asset, "deposit")}
-                  >
-                    Deposit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    disabled={!fresh || !b || BigInt(b.vaultAvailable) === 0n}
-                    onClick={() => open(asset, "withdraw")}
-                  >
-                    Withdraw
-                  </Button>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </CardContent>
+    <div className="flex min-w-0 flex-col gap-2">
+      {!fresh && balances.length === 0 ? (
+        <Skeleton className="h-20 w-full" aria-label="Loading vault balances" />
+      ) : assets.length === 0 ? (
+        <p className="text-sm font-medium text-muted-foreground">
+          Assets appear here when a market is available.
+        </p>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Token</TableHead>
+              <TableHead>Available</TableHead>
+              <TableHead>In orders</TableHead>
+              <TableHead>Wallet</TableHead>
+              <TableHead>
+                <span className="sr-only">Actions</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody className="[&_tr]:border-0">
+            {assets.map((asset) => {
+              const row = balances.find((value) => value.token === asset.token);
+              const b = row?.balance;
+              return (
+                <TableRow key={asset.token}>
+                  <TableCell>
+                    <span className="flex items-center gap-2 font-medium">
+                      <Avatar size="sm">
+                        {asset.metadata?.image && <AvatarImage src={asset.metadata.image} alt="" />}
+                        <AvatarFallback className="text-[9px]">
+                          {asset.symbol.slice(0, 2)}
+                        </AvatarFallback>
+                      </Avatar>
+                      {asset.symbol}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    {b ? compactBalance(b.vaultAvailable, asset.decimals) : "—"}
+                  </TableCell>
+                  <TableCell>{b ? compactBalance(b.reserved, asset.decimals) : "—"}</TableCell>
+                  <TableCell>
+                    {b ? compactBalance(b.canonicalBalance, asset.decimals) : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="text-base text-foreground"
+                        disabled={!b}
+                        onClick={() => open(asset, "deposit")}
+                      >
+                        Deposit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-base"
+                        disabled={!b || BigInt(b.vaultAvailable) === 0n}
+                        onClick={() => open(asset, "withdraw")}
+                      >
+                        Withdraw
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      )}
       <Dialog
         open={selected !== null}
         onOpenChange={(value, details) => {
@@ -122,15 +156,16 @@ export function PortfolioVault({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {selected?.action === "deposit" ? "Deposit to vault" : "Withdraw from vault"}
-            </DialogTitle>
-            <DialogDescription>
-              {selected?.asset.symbol} ·{" "}
+            <DialogTitle className="text-xl">
               {selected?.action === "deposit"
-                ? "Deposit once, then use the balance in any supported market."
-                : "Only funds not reserved by open orders can be withdrawn."}
-            </DialogDescription>
+                ? "Deposit into Trading Account"
+                : "Withdraw from vault"}
+            </DialogTitle>
+            {selected?.action === "withdraw" && (
+              <DialogDescription>
+                {selected.asset.symbol} · Only funds not reserved by open orders can be withdrawn.
+              </DialogDescription>
+            )}
           </DialogHeader>
           <FieldSet disabled={transfer.busy}>
             <FieldGroup>
@@ -144,15 +179,28 @@ export function PortfolioVault({
                   placeholder="0"
                 />
               </Field>
-              <Button
-                size="sm"
-                variant="link"
-                className="self-start"
-                disabled={!chosen || !fresh}
-                onClick={() => setAmount(chosen ? transfer.maxAmount() : "")}
-              >
-                Max available
-              </Button>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span className="font-medium tabular-nums">
+                  Balance:{" "}
+                  {chosen && selected
+                    ? `${compactBalance(
+                        selected.action === "deposit"
+                          ? chosen.balance.canonicalBalance
+                          : chosen.balance.vaultAvailable,
+                        selected.asset.decimals,
+                      )} ${selected.asset.symbol}`
+                    : "—"}
+                </span>
+                <Button
+                  size="sm"
+                  variant="link"
+                  className="h-auto px-0"
+                  disabled={!chosen || !fresh}
+                  onClick={() => setAmount(chosen ? transfer.maxAmount() : "")}
+                >
+                  Max
+                </Button>
+              </div>
             </FieldGroup>
           </FieldSet>
           <Button
@@ -163,6 +211,6 @@ export function PortfolioVault({
           </Button>
         </DialogContent>
       </Dialog>
-    </Card>
+    </div>
   );
 }
