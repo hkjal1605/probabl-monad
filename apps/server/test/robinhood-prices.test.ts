@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { CoinbaseCryptoPrices } from "../src/market-data/coinbase.ts";
 import { RobinhoodSpotPrices } from "../src/market-data/robinhood.ts";
 
 const token = (n: number) => `0x${n.toString(16).padStart(40, "0")}`;
@@ -90,4 +91,43 @@ test("rejects malformed quotes and never reports a price from the future", async
   expect(amzn!.status).toBe("available");
   // An ask below the bid is not a quote.
   expect(aapl).toMatchObject({ status: "unavailable", priceUsd: null });
+});
+
+test("prices crypto at Coinbase's bid/ask midpoint, once per asset, wrapped tokens included", async () => {
+  const requested: string[] = [];
+  const coinbase = new CoinbaseCryptoPrices("https://cb.example", async (url) => {
+    requested.push(url);
+    if (url.endsWith("/ETH-USD/ticker"))
+      return Response.json({ bid: "2431.67", ask: "2431.74", time: new Date().toISOString() });
+    return new Response("{}", { status: 404 });
+  });
+  const prices = new RobinhoodSpotPrices(
+    46630,
+    "https://rh.example/rhj",
+    async () => new Response("{}", { status: 404 }),
+    undefined,
+    coinbase,
+  );
+  const response = await prices.getPrices([
+    { token: token(1), symbol: "WETH" },
+    { token: token(2), symbol: "ETH" },
+    { token: token(3), symbol: "cbBTC" },
+  ]);
+  const [weth, eth, cbbtc] = response.prices;
+  expect(weth).toMatchObject({
+    status: "available",
+    priceUsd: 2431.705,
+    source: "coinbase:ETH-USD",
+  });
+  expect(eth).toMatchObject({ status: "available", priceUsd: 2431.705 });
+  // A failed read is never priced.
+  expect(cbbtc).toMatchObject({
+    status: "unavailable",
+    priceUsd: null,
+    source: "coinbase:BTC-USD",
+  });
+  expect(requested.sort()).toEqual([
+    "https://cb.example/products/BTC-USD/ticker",
+    "https://cb.example/products/ETH-USD/ticker",
+  ]);
 });

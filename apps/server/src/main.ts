@@ -27,6 +27,7 @@ import { mountDeltaVaults } from "./delta-vaults/routes.ts";
 import { mountFaucet } from "./faucet.ts";
 import { EventMarketsClient } from "./integrations/event-markets.ts";
 import { mountInvites } from "./invites/routes.ts";
+import { CoinbaseCryptoPrices } from "./market-data/coinbase.ts";
 import { PriceRecorder } from "./market-data/history.ts";
 import { RobinhoodSpotPrices } from "./market-data/robinhood.ts";
 import { CachedProbability, mountMarketData } from "./market-data/routes.ts";
@@ -278,7 +279,13 @@ const probabilityCache = new RedisCache(
 const probabilities = new CachedProbability(probabilityCache, (condition) =>
   events().probability(condition),
 );
-const prices = new RobinhoodSpotPrices(chainId, process.env.ROBINHOOD_PRICES_URL || undefined);
+const prices = new RobinhoodSpotPrices(
+  chainId,
+  process.env.ROBINHOOD_PRICES_URL || undefined,
+  fetch,
+  undefined,
+  new CoinbaseCryptoPrices(),
+);
 mountMarketData(app, { indexer, prices, probabilities, events, db });
 const recorder = new PriceRecorder({
   indexer,

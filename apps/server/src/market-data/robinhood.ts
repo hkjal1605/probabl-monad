@@ -3,8 +3,9 @@
  * Stocks and ETFs: the midpoint of Robinhood's live bid and ask for the underlying share
  * (`/prices/{symbol}`, which Robinhood caches for 15 s), per economic share; the token's UI
  * multiplier is applied downstream. A trading halt makes a price unavailable. USD stablecoins
- * are their peg. Other assets have no reference. Every symbol is read at most once per
- * `ttlMs`, however many callers ask, and concurrent callers share one request. */
+ * are their peg; crypto is priced by `crypto` (Coinbase's books) when given. Other assets have
+ * no reference. Every symbol is read at most once per `ttlMs`, however many callers ask, and
+ * concurrent callers share one request. */
 import { ReadCache } from "@conditional-stocks/shared/read-cache";
 import {
   expireSpotPrice,
@@ -13,6 +14,8 @@ import {
   type SpotPricesResponse,
 } from "@conditional-stocks/shared/spot-prices";
 import { catalogAsset } from "@conditional-stocks/shared/token-catalog";
+import type { CoinbaseCryptoPrices } from "./coinbase.ts";
+import { midpoint, scaled } from "./decimal-price.ts";
 
 type Fetch = (url: string, init?: RequestInit) => Promise<Response>;
 
@@ -33,18 +36,6 @@ interface Quote {
 }
 
 export const ROBINHOOD_PRICES_URL = "https://api.robinhood.com/rhj";
-const SCALE = 10n ** 18n;
-/** A decimal price string in 1e-18 units, or null when it is not one. */
-const scaled = (value: unknown) => {
-  if (typeof value !== "string" || !/^[0-9]{1,12}(\.[0-9]{1,18})?$/.test(value)) return null;
-  const [whole = "0", fraction = ""] = value.split(".");
-  return BigInt(whole) * SCALE + BigInt(fraction.padEnd(18, "0"));
-};
-/** The exact midpoint of two scaled prices, as the shortest decimal number. */
-const midpoint = (bid: bigint, ask: bigint) => {
-  const mid = (bid + ask) / 2n;
-  return Number(`${mid / SCALE}.${(mid % SCALE).toString().padStart(18, "0")}`);
-};
 
 export class RobinhoodSpotPrices implements SpotPriceSource {
   private quotes: ReadCache;
@@ -54,6 +45,7 @@ export class RobinhoodSpotPrices implements SpotPriceSource {
     private readonly base = ROBINHOOD_PRICES_URL,
     private readonly fetcher: Fetch = fetch,
     ttlMs = 2_000,
+    private readonly crypto?: Pick<CoinbaseCryptoPrices, "quote">,
   ) {
     this.quotes = new ReadCache(ttlMs, 256);
   }
@@ -99,13 +91,26 @@ export class RobinhoodSpotPrices implements SpotPriceSource {
         ),
       ),
     ];
-    const quotes = new Map(
-      await Promise.all(
+    /** Crypto assets by their underlying's ticker ("CRYPTO:ETH" for WETH and ETH). */
+    const cryptoOf = (asset: (typeof assets)[number]["asset"]) =>
+      asset?.kind === "crypto" && asset.underlying?.startsWith("CRYPTO:")
+        ? asset.underlying.slice("CRYPTO:".length)
+        : null;
+    const coins = this.crypto
+      ? [...new Set(assets.flatMap(({ asset }) => cryptoOf(asset) ?? []))]
+      : [];
+    const [quotes, coinQuotes] = await Promise.all([
+      Promise.all(
         symbols.map(
           async (symbol) => [symbol, await this.quote(symbol).catch(() => undefined)] as const,
         ),
-      ),
-    );
+      ).then((entries) => new Map(entries)),
+      Promise.all(
+        coins.map(
+          async (coin) => [coin, await this.crypto?.quote(coin).catch(() => undefined)] as const,
+        ),
+      ).then((entries) => new Map(entries)),
+    ]);
     const prices = assets.map(({ token, symbol, asset }): SpotPrice => {
       const kind = asset?.kind ?? null;
       const valuationCompatible = kind === "stablecoin" || kind === "crypto";
@@ -128,7 +133,20 @@ export class RobinhoodSpotPrices implements SpotPriceSource {
           priceTimestamp: fetchedAt,
           fetchedAt,
         };
-      if (kind === "crypto") return none("unavailable", null);
+      if (kind === "crypto") {
+        const coin = this.crypto ? cryptoOf(asset) : null;
+        const quote = coin ? coinQuotes.get(coin) : undefined;
+        if (!coin || !quote) return none("unavailable", coin ? `coinbase:${coin}-USD` : null);
+        return expireSpotPrice(
+          {
+            ...none("available", `coinbase:${coin}-USD`),
+            priceUsd: quote.price,
+            priceTimestamp: Math.min(quote.at, fetchedAt),
+            fetchedAt,
+          },
+          now,
+        );
+      }
       const source = `robinhood:${asset.symbol}`;
       const quote = quotes.get(asset.symbol);
       if (!quote || quote.halted) return none("unavailable", source);
