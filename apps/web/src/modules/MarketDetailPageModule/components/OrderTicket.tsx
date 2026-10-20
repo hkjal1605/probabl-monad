@@ -43,7 +43,13 @@ import { useOrderTicket } from "@/hooks/useOrderTicket";
 import { usePositions } from "@/hooks/useProtocolData";
 import { formatCompactNumber, formatNumber, formatUsd } from "@/lib/format/display";
 import { stepQuantity } from "@/lib/markets/base";
-import { bestPriceFor, marketPriceBound, quantityForSpend } from "@/lib/trading/entry";
+import {
+  bestPriceFor,
+  marketPriceBasis,
+  marketPriceBound,
+  quantityForSpend,
+  REFERENCE_BOUND_BPS,
+} from "@/lib/trading/entry";
 import { takerFee } from "@/lib/trading/order";
 import type { MarketView } from "@/types/api";
 
@@ -314,7 +320,11 @@ export function OrderTicket({ market }: { market: MarketView }) {
                       <Field className="trade-entry-field">
                         <div className="trade-entry-heading">
                           <Label htmlFor="ticket-price">
-                            {kind === "Market" ? "Worst price · 1% bound" : "Limit price"}
+                            {kind === "Market"
+                              ? marketPriceBasis(market, t.branch, t.side) === "reference"
+                                ? `Worst price · ${REFERENCE_BOUND_BPS / 100}% from spot`
+                                : "Worst price · 1% bound"
+                              : "Limit price"}
                           </Label>
                           <Segmented
                             variant="chart"

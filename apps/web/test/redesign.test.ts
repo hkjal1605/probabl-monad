@@ -34,7 +34,7 @@ import {
   wholeReserved,
 } from "../src/lib/portfolio/presentation";
 import { createActionScope } from "../src/lib/trading/action-scope";
-import { marketPriceBound, quantityForSpend } from "../src/lib/trading/entry";
+import { marketPriceBasis, marketPriceBound, quantityForSpend } from "../src/lib/trading/entry";
 import { previewOrder } from "../src/lib/trading/order";
 import { MarketDetailPageSkeleton } from "../src/modules/MarketDetailPageModule/components/MarketDetailPageSkeleton";
 import { MarketsPageSkeleton } from "../src/modules/MarketsPageModule/components/MarketsPageSkeleton";
@@ -216,6 +216,35 @@ describe("token amount entry", () => {
     ).toThrow();
     for (const bps of [-1, 1.1, 10000, Number.NaN])
       expect(() => marketPriceBound(market, "YES", "buy", bps)).toThrow();
+  });
+  test("with no book on its side, a market order is bounded 5% off the token's reference price", () => {
+    const now = Math.floor(Date.now() / 1000);
+    const empty = { ...market.yes, bestAskExact: null, bestBidExact: null };
+    const m = {
+      ...market,
+      priceTickRawX18: "10000",
+      yes: empty,
+      spotReference: {
+        token: market.base.token,
+        symbol: market.ticker,
+        source: "robinhood:TEST",
+        kind: "stock" as const,
+        status: "available" as const,
+        priceUsd: 100,
+        priceTimestamp: now,
+        fetchedAt: now,
+        valuationCompatible: false,
+      },
+    };
+    expect(marketPriceBasis(m, "YES", "buy")).toBe("reference");
+    expect(marketPriceBasis(market, "YES", "buy")).toBe("book");
+    expect(marketPriceBasis({ ...m, spotReference: undefined }, "YES", "buy")).toBeNull();
+    const reference = parsePriceRawX18("100", m);
+    const buy = parsePriceRawX18(marketPriceBound(m, "YES", "buy"), m);
+    const sell = parsePriceRawX18(marketPriceBound(m, "YES", "sell"), m);
+    expect(buy % 10000n).toBe(0n);
+    expect(buy * 10000n <= reference * 10500n && buy * 10000n > reference * 10400n).toBe(true);
+    expect(sell * 10000n >= reference * 9500n && sell * 10000n < reference * 9600n).toBe(true);
   });
 });
 describe("wallet action scoping", () => {
