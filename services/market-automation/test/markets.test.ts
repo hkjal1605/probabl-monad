@@ -327,7 +327,7 @@ describe("resolve-markets job", () => {
       // On chain, 7 is already awaiting its resolution.
       chainStates: [AWAITING, OPEN],
     });
-    await resolveMarkets.run({ admin, polygon, execute: true, logger });
+    await resolveMarkets.run({ admin, polygon, vaults: [], execute: true, logger });
     expect(names()).toEqual(["markets", "chainStates", "lifecycle"]);
     expect(calls.at(-1)?.slice(0, 3)).toEqual(["lifecycle", "8", 1]);
   });
@@ -338,7 +338,7 @@ describe("resolve-markets job", () => {
       event: kalshiSnapshot("finalized", "no"),
       chainStates: [OPEN, OPEN],
     });
-    await resolveMarkets.run({ admin, polygon, execute: true, logger });
+    await resolveMarkets.run({ admin, polygon, vaults: [], execute: true, logger });
     const frozen = calls.filter(([name]) => name === "lifecycle").map(([, id]) => id);
     expect(frozen.sort()).toEqual(["5", "8"]);
   });

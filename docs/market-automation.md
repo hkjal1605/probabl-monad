@@ -19,7 +19,9 @@ Every transaction the API previews is rebuilt locally from the approved evidence
 - **`--execute`** signs transactions.
 - **`--once`** runs each job once and exits.
 
-There is one job today, **`resolve-markets`**, which runs every minute. For each open, frozen or awaiting market, it reads the final result of the market's event from its venue (`eventSource` in the indexer's market view):
+There are two jobs today: `resolve-markets`, below, and `curate-vaults` (see "Curating Δ-vaults").
+
+**`resolve-markets`** runs every minute. For each open, frozen or awaiting market, it reads the final result of the market's event from its venue (`eventSource` in the indexer's market view):
 
 - **Polymarket:** the payout reported to Gnosis Conditional Tokens on Polygon, read at the finalized block (`src/venues/polymarket.ts`).
 - **Kalshi:** the result of a `finalized` market, from the ingestor's latest snapshot, which it refreshes every minute (`src/venues/kalshi.ts`).
@@ -73,6 +75,31 @@ Two kinds of outcome change meaning after listing, so they are refused:
 
 A market inside a multi-market event links to its own page, `polymarket.com/event/<event>/<market>`.
 
+## Curating Δ-vaults
+
+**`curate-vaults`** runs every minute and registers new markets in the Δ-vaults listed in the vault config (`AUTOMATION_VAULTS_PATH`, see `services/market-automation/vaults.example.json`). The vault's keeper then quotes them over RFQ.
+
+A market is registered in a vault when all of these hold:
+- it is on the vault's stock (`BASE`),
+- it is scheduled or open,
+- it is not registered yet,
+- it has at least five minutes of quoting left before its cutoff buffer.
+
+Markets go in nearest cutoff first, up to the vault's 48-market cap. A full vault logs `curate.vault-full` once and takes the next markets as soon as settled ones free their slots. Once a market resolves, the keeper settles it within a round; anyone can settle it.
+
+Each vault gets a risk template, in whole tokens:
+
+| Field | |
+|---|---|
+| `bandBps` | Largest distance of a quote from the vault's oracle price. |
+| `cutoffBufferSeconds` | Quoting stops this long before the cutoff. A market with less than ten times this left gets a tenth of its remaining life, at least a minute. |
+| `maxOrderQuote`, `maxRestingQuote` | Largest notional of one quote, and of all resting quotes in the market, in the quote token. |
+| `maxImbalanceBase` | Largest YES-minus-NO stock position, in the stock token. |
+
+The curator can still change a market's risk with `updateRisk`, or remove it while the vault holds no position in it.
+
+The job signs as the vault's curator: `CURATOR_PRIVATE_KEY`, or the market admin's key when that wallet is also the curator. At startup it reads each vault and refuses to run if the key lacks `CURATOR_ROLE`. The curator key must not be the keeper's (the keeper refuses to run a key holding curator rights).
+
 ## Configuration
 
 | Variable | |
@@ -83,5 +110,7 @@ A market inside a multi-market event links to its own page, `polymarket.com/even
 | `POLYGON_RPC_URL` | A Polygon RPC that serves the `finalized` block tag. |
 | `AUTOMATION_API_URL` | Default `http://127.0.0.1:3000`. |
 | `AUTOMATION_AUTH_ORIGIN` | A sign-in origin in the API's `API_AUTH_ORIGINS`. Default `http://localhost:3002`. |
+| `AUTOMATION_VAULTS_PATH` | The vault curation config. Default `.local/market-automation/vaults.json`; without the file, no vaults are curated. |
+| `CURATOR_PRIVATE_KEY` | Optional. The vaults' curator, when it is not the market admin. |
 
 On the backend host, put the keys in `.env.market-automation` (mode 600). PM2 then runs the service with `--execute` (`ops/ec2/ecosystem.config.cjs`).

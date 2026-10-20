@@ -1,7 +1,8 @@
 /** Market automation: runs every job in ./jobs on its own interval against the API and the
  * exchange, signing as the market admin, and as the resolution admin when that is the same
  * wallet or RESOLUTION_ADMIN_PRIVATE_KEY is set. Dry run by default: --execute signs, --once runs
- * each job once.
+ * each job once. Vault curation reads AUTOMATION_VAULTS_PATH (vaults.example.json) and signs with
+ * CURATOR_PRIVATE_KEY, else the market admin's key.
  *
  *   CHAIN_ID=… RPC_URL=… EXCHANGE_ADDRESS=… MARKET_ADMIN_PRIVATE_KEY=… POLYGON_RPC_URL=…
  *   [RESOLUTION_ADMIN_PRIVATE_KEY=…] [AUTOMATION_API_URL=http://127.0.0.1:3000]
@@ -22,6 +23,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { polygon as polygonChain } from "viem/chains";
 import { Admin } from "./admin.ts";
 import { JOBS } from "./jobs/index.ts";
+import { CuratedVault, type VaultCurationConfig } from "./vaults.ts";
 
 const env = process.env;
 const required = (name: string) => {
@@ -73,20 +75,34 @@ if (marketAdmin.address !== roles[0])
 if (resolutionAdmin && resolutionAdmin.address !== roles[2])
   throw new Error(`RESOLUTION_ADMIN_PRIVATE_KEY is not the resolution admin ${roles[2]}`);
 
+const wallet = createWalletClient({ chain, transport });
 const admin = new Admin({
   api: apiOrigin(env.AUTOMATION_API_URL?.trim() || "http://127.0.0.1:3000"),
   origin: env.AUTOMATION_AUTH_ORIGIN?.trim() || "http://localhost:3002",
   client,
-  wallet: createWalletClient({ chain, transport }),
+  wallet,
   exchange: getAddress(required("EXCHANGE_ADDRESS")),
   marketAdmin,
   ...(resolutionAdmin ? { resolutionAdmin } : {}),
 });
+// Vaults to curate: none without the config file.
+const curation = Bun.file(
+  env.AUTOMATION_VAULTS_PATH?.trim() || ".local/market-automation/vaults.json",
+);
+const curator = env.CURATOR_PRIVATE_KEY?.trim() ? key("CURATOR_PRIVATE_KEY") : marketAdmin;
+const vaults = (await curation.exists())
+  ? await Promise.all(
+      ((await curation.json()) as VaultCurationConfig).vaults.map((config) =>
+        CuratedVault.load(client, wallet, curator, config),
+      ),
+    )
+  : [];
 logger.info("automation.started", {
   execute,
   jobs: JOBS.map((job) => job.name),
   marketAdmin: marketAdmin.address,
   resolves: Boolean(resolutionAdmin),
+  vaults: vaults.map((vault) => vault.address),
 });
 
 const stopping = new AbortController();
@@ -103,7 +119,7 @@ const pause = (ms: number) =>
 // Each job loops on its own interval; a run in progress finishes before shutdown.
 await Promise.all(
   JOBS.map(async (job) => {
-    const context = { admin, polygon, execute, logger: logger.child({ job: job.name }) };
+    const context = { admin, polygon, vaults, execute, logger: logger.child({ job: job.name }) };
     while (!stopping.signal.aborted) {
       try {
         await job.run(context);

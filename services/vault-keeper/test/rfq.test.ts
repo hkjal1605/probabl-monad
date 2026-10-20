@@ -6,7 +6,14 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import * as tx from "@conditional-stocks/evm-client";
 import { ChainFollower, TokenReader } from "@conditional-stocks/indexer";
 import { Executor, type Reference } from "@conditional-stocks/operator";
-import { decodeEventLog, encodeFunctionData, parseAbi, toHex } from "viem";
+import {
+  decodeEventLog,
+  encodeFunctionData,
+  keccak256,
+  parseAbi,
+  stringToBytes,
+  toHex,
+} from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { quoteDigest, quoteFill } from "../../../apps/server/src/rfq/auction.ts";
 import { type MakerQuote, rfqRequest } from "../../../apps/server/src/rfq/protocol.ts";
@@ -369,6 +376,24 @@ describe("RFQ quoting", () => {
     fresh(105n * USDC);
     deliver(request("30000000-0000-4000-8000-000000000004", 0, NVDA, 120n * USDC));
     expect((await reply(sent, "30000000-0000-4000-8000-000000000004")).type).toBe("decline");
+  });
+
+  test("an exchange the guardian paused gets no quotes until it resumes", async () => {
+    const { sent, deliver } = connect();
+    // The previous test's jump left a cooldown: clear it, so the pause is the only difference.
+    const record = keeper.state.markets[1];
+    if (record) record.cooldownUntil = 0;
+    const reason = keccak256(stringToBytes("incident"));
+    await send(node, 0, tx.pause(protocol.exchange, true, reason));
+    await synced();
+    fresh();
+    deliver(request("40000000-0000-4000-8000-000000000001", 0, NVDA, 110n * USDC));
+    expect((await reply(sent, "40000000-0000-4000-8000-000000000001")).type).toBe("decline");
+    await send(node, 0, tx.pause(protocol.exchange, false, reason));
+    await synced();
+    fresh();
+    deliver(request("40000000-0000-4000-8000-000000000002", 0, NVDA, 110n * USDC));
+    expect((await reply(sent, "40000000-0000-4000-8000-000000000002")).type).toBe("quote");
   });
 });
 

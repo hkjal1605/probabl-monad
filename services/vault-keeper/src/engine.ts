@@ -516,6 +516,8 @@ export class Keeper {
       now = seconds(),
       set = this.settings;
     if (v.paused) throw new Error("Vault paused");
+    // The guardian's exchange pause halts every placement: quotes would only fail.
+    if (s.config.paused) throw new Error("Exchange paused");
     if (m.state !== OPEN || m.open > now) throw new Error("Market not open");
     // Orders must expire before the vault's cutoff buffer and within its lifetime limit, which
     // the vault measures from the block's timestamp: the latest block seen bounds it, as this
@@ -751,6 +753,7 @@ export class Keeper {
     if (!this.follower.health().healthy) return decline("Chain view unavailable");
     const s = this.follower.confirmed,
       m = s.markets.get(market);
+    if (s.config.paused) return decline("Exchange paused");
     if (!m || m.state !== OPEN || m.open > now) return decline("Market not open");
     if (v.oraclePrice === null) return decline("Vault oracle unavailable");
     let u: Units, r: Reference;

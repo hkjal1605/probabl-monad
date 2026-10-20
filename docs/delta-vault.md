@@ -214,7 +214,7 @@ Everything else is permissionless or held by a separate role:
 - Anyone can **settle** a resolved market: its orders are released, its claims redeemed, and it is dropped from the vault.
 - The **guardian** pauses deposits and quoting. The pause also invalidates every resting vault order at once.
 - **Withdrawals are never paused.** The admin may rate-limit net outflow per day, but never below 10% of supply.
-- A vault holds at most 8 markets and 48 orders, so every loop is bounded.
+- A vault holds at most 48 markets and 48 orders, so every loop is bounded. Deposits and withdrawals move claims in every market, so the market cap bounds their gas: with all 48 markets holding claims, a withdrawal costs about 4.3M gas and a deposit about 5.3M (`VaultMarketLimit.t.sol` keeps both under 8M).
 
 **What the keeper is trusted with.** Within those bounds the keeper chooses prices. A compromised keeper key could trade against an accomplice at the edges of the band, up to the caps, until the guardian pauses. The defenses:
 - keep bands tight,
@@ -249,11 +249,14 @@ The market's quotes are pulled when any of these holds:
 - the issuer paused the token,
 - the market is near cutoff or closed,
 - the vault is paused,
+- the guardian paused the exchange,
 - the **consistency breaker** fires: other traders' books imply a probability far from Polymarket's, where p = (s − N) ⁄ (Y − N) from their branch mid-prices.
 
 A vault-wide **drawdown latch** halts all quoting until an operator clears it. It compares the vault's holdings per share with a daily checkpoint, **both marked at the same current prices**, so stock moves, deposits and withdrawals never count; only trading losses do.
 
 Resolved markets are settled promptly. Paired claims are merged back into credit.
+
+**New markets.** The keeper quotes every market its vault registers, with the config's default `model` unless a market overrides it. Market automation's `curate-vaults` job registers new markets on the vault's stock as they are created (`docs/market-automation.md`), and settlement frees their slots once they resolve.
 
 ### RFQ quoting
 
