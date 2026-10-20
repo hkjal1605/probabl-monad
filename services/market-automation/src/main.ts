@@ -2,7 +2,8 @@
  * exchange, signing as the market admin, and as the resolution admin when that is the same
  * wallet or RESOLUTION_ADMIN_PRIVATE_KEY is set. Dry run by default: --execute signs, --once runs
  * each job once. Vault curation reads AUTOMATION_VAULTS_PATH (vaults.example.json) and signs with
- * CURATOR_PRIVATE_KEY, else the market admin's key.
+ * CURATOR_PRIVATE_KEY, else the market admin's key. The daily and weekly ladders are read from
+ * AUTOMATION_LADDERS_PATH (ladders.example.json), their strikes from KALSHI_API_URL.
  *
  *   CHAIN_ID=… RPC_URL=… EXCHANGE_ADDRESS=… MARKET_ADMIN_PRIVATE_KEY=… POLYGON_RPC_URL=…
  *   [RESOLUTION_ADMIN_PRIVATE_KEY=…] [AUTOMATION_API_URL=http://127.0.0.1:3000]
@@ -23,7 +24,9 @@ import { privateKeyToAccount } from "viem/accounts";
 import { polygon as polygonChain } from "viem/chains";
 import { Admin } from "./admin.ts";
 import { JOBS } from "./jobs/index.ts";
+import { type Ladder, type LadderConfig, loadLadders } from "./ladders.ts";
 import { CuratedVault, type VaultCurationConfig } from "./vaults.ts";
+import { KalshiApi } from "./venues/kalshi-api.ts";
 
 const env = process.env;
 const required = (name: string) => {
@@ -97,12 +100,26 @@ const vaults = (await curation.exists())
       ),
     )
   : [];
+// Ladders to create: none without the config file.
+const ladderFile = Bun.file(
+  env.AUTOMATION_LADDERS_PATH?.trim() || ".local/market-automation/ladders.json",
+);
+const ladders: LadderConfig = (await ladderFile.exists())
+  ? await loadLadders(client, await ladderFile.json())
+  : { daily: [], weekly: [] };
+const kalshi = new KalshiApi(
+  env.KALSHI_API_URL?.trim() || "https://api.elections.kalshi.com/trade-api/v2",
+);
+/** Markets a fixing of these ladders creates. */
+const markets = (list: Ladder[]) =>
+  list.reduce((n, ladder) => n + ladder.tokens.reduce((m, token) => m + token.rungs, 0), 0);
 logger.info("automation.started", {
   execute,
   jobs: JOBS.map((job) => job.name),
   marketAdmin: marketAdmin.address,
   resolves: Boolean(resolutionAdmin),
   vaults: vaults.map((vault) => vault.address),
+  ladders: { daily: markets(ladders.daily), weekly: markets(ladders.weekly) },
 });
 
 const stopping = new AbortController();
@@ -119,7 +136,15 @@ const pause = (ms: number) =>
 // Each job loops on its own interval; a run in progress finishes before shutdown.
 await Promise.all(
   JOBS.map(async (job) => {
-    const context = { admin, polygon, vaults, execute, logger: logger.child({ job: job.name }) };
+    const context = {
+      admin,
+      polygon,
+      vaults,
+      ladders,
+      kalshi,
+      execute,
+      logger: logger.child({ job: job.name }),
+    };
     while (!stopping.signal.aborted) {
       try {
         await job.run(context);

@@ -28,13 +28,17 @@ class FakeKalshiSource implements KalshiSource {
     orderbook_fp: { yes_dollars: [["0.7700", "400.00"]], no_dollars: [["0.2100", "400.00"]] },
   };
   failBook = false;
+  marketReads = 0;
+  bookReads = 0;
   async getMarket() {
+    this.marketReads++;
     return {
       market: this.market,
       event: { event_ticker: "KXFEDDECISION-26DEC", series_ticker: "KXFEDDECISION" },
     };
   }
   async getOrderbook() {
+    this.bookReads++;
     if (this.failBook) throw new Error("Kalshi unreachable");
     return this.book;
   }
@@ -124,5 +128,33 @@ describe("Kalshi ingestion", () => {
     expect((await store.alerts()).map((alert) => alert.code)).toEqual(
       expect.arrayContaining(["REST_RECONCILIATION_FAILED", "MANUAL_LIFECYCLE_REVIEW_REQUIRED"]),
     );
+  });
+
+  test("polls a book while its market trades and metadata until its result is final", async () => {
+    const { internal, kalshi, source } = await setup();
+    const snapshot = (await (
+      await internal("/internal/kalshi/metadata/fetch", { ticker })
+    ).json()) as { snapshotId: string };
+    await kalshi.track(snapshot.snapshotId);
+    const reads = () => ({ market: source.marketReads, book: source.bookReads });
+    let before = reads();
+    await kalshi.refreshBooks();
+    await kalshi.refreshMetadata();
+    expect(reads()).toEqual({ market: before.market + 1, book: before.book + 1 });
+    // Closed: the book is final, the result is not yet.
+    source.market = { ...source.market, status: "closed" };
+    await kalshi.refreshMetadata();
+    before = reads();
+    await kalshi.refreshBooks();
+    await kalshi.refreshMetadata();
+    expect(reads()).toEqual({ market: before.market + 1, book: before.book });
+    // Finalized: nothing more to read, and the last odds are still served.
+    source.market = { ...source.market, status: "finalized", result: "no" };
+    await kalshi.refreshMetadata();
+    before = reads();
+    await kalshi.refreshBooks();
+    await kalshi.refreshMetadata();
+    expect(reads()).toEqual(before);
+    expect(kalshi.probability(conditionId).midpointX6).toBe("780000");
   });
 });

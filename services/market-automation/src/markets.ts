@@ -55,12 +55,18 @@ export type Created = { spec: MarketSpec } & (
 );
 
 /** Creates and opens the market of each spec, unless it exists already. One spec failing does
- * not stop the others. */
-export async function createMarkets(admin: Admin, specs: MarketSpec[]): Promise<Created[]> {
+ * not stop the others. `known` is a caller's fresh evidence and market lists, read otherwise. */
+export async function createMarkets(
+  admin: Admin,
+  specs: MarketSpec[],
+  known?: { evidence: Evidence[]; markets: Market[] },
+): Promise<Created[]> {
   const unique = [
     ...new Map(specs.map((s) => [`${s.source}:${s.marketId}:${getAddress(s.base)}`, s])).values(),
   ];
-  const [evidence, markets] = await Promise.all([admin.evidence(), admin.markets()]);
+  const [evidence, markets] = known
+    ? [known.evidence, known.markets]
+    : await Promise.all([admin.evidence(), admin.markets()]);
   const results: Created[] = [];
   for (const spec of unique) {
     try {

@@ -51,6 +51,8 @@ export const SCHEDULED = 1,
 export interface Market extends EventCondition {
   venue: { marketId: string };
   state: number;
+  /** Unix seconds, as decimal strings. */
+  tradingOpen: string;
   tradingCutoff: string;
   /** The venue of the market's event. */
   eventSource: EventSource;

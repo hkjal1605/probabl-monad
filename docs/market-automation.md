@@ -19,7 +19,7 @@ Every transaction the API previews is rebuilt locally from the approved evidence
 - **`--execute`** signs transactions.
 - **`--once`** runs each job once and exits.
 
-There are two jobs today: `resolve-markets`, below, and `curate-vaults` (see "Curating Δ-vaults").
+There are four jobs today: `resolve-markets`, below, `daily-ladders` and `weekly-ladders` (see "Daily and weekly ladders") and `curate-vaults` (see "Curating Δ-vaults").
 
 **`resolve-markets`** runs every minute. For each open, frozen or awaiting market, it reads the final result of the market's event from its venue (`eventSource` in the indexer's market view):
 
@@ -48,7 +48,7 @@ It is idempotent, so a job can pass the same specs on every run:
 
 `scripts/evm/create-markets.ts` uses the same function for planned markets (each planned event names a `gammaMarketId` or a `kalshiTicker`).
 
-A daily ladder job looks like this:
+A job that creates markets looks like this (the ladder jobs in `src/jobs/ladders.ts` are the full version):
 
 ```ts
 export const dailyLadders: Job = {
@@ -74,6 +74,36 @@ Two kinds of outcome change meaning after listing, so they are refused:
 - **Inactive markets,** such as unnamed placeholders like "Person X". Market creation refuses them.
 
 A market inside a multi-market event links to its own page, `polymarket.com/event/<event>/<market>`.
+
+## Daily and weekly ladders
+
+**`daily-ladders`** (every 10 minutes) and **`weekly-ladders`** (every 30 minutes) create cross-asset markets on Kalshi's "above $K at a fixing" strikes, e.g. "MSTR if Bitcoin ≥ $81,750 at 5 pm ET today". The ladder config (`AUTOMATION_LADDERS_PATH`) lists, per cadence, a Kalshi series, its New York fixing time and the tokens, each with 1 to 3 rungs. `services/market-automation/ladders.example.json` is the Robinhood testnet slate:
+
+| Cadence | Series (fixing, New York time) | Tokens × rungs |
+|---|---|---|
+| Daily, 16 markets | `KXBTCD` Bitcoin (5 pm) | MSTR × 3, COIN × 3, WETH × 3 |
+| | `KXETHD` Ether (5 pm) | COIN × 1 |
+| | `KXGOLDD` gold (5 pm) | SLV × 2 |
+| | `KXNASDAQ100U` Nasdaq-100 close (4 pm) | NVDA × 2 |
+| | `KXWTI` WTI settlement (2:30 pm) | XOM × 1, CCL × 1 |
+| Weekly, 8 markets | `KXBTCD` Bitcoin (Friday 5 pm) | MSTR × 2, COIN × 2, WETH × 2 |
+| | `KXGOLDW` gold (Friday 5 pm) | SLV × 2 |
+
+Each pair is cross-asset: a token on its own asset's ladder (WETH on Ether, SLV on silver) is a disguised up/down bet, so none is listed.
+
+**When markets are created:**
+- **Daily:** for the next weekday fixing within 26 hours. Kalshi lists most daily events a few hours to a day ahead.
+- **Weekly:** for a Friday fixing two to seven days ahead.
+- Both need at least an hour of trading. Trading stops 30 minutes before the fixing, when the result is all but known.
+- Bitcoin's Friday 5 pm event serves both cadences. Each owns the markets opened on its side of 48 hours before the fixing, so neither counts or reuses the other's strikes.
+
+**Which strikes:** the "above" strikes nearest even odds, so both branches get traders:
+- 1 rung aims at 50%, 2 rungs at 40% and 60%, 3 rungs at 50%, 30% and 70%.
+- Only active strikes quoted on both sides within 10¢ and priced 20–80% qualify; ties go to the larger open interest.
+- A token's existing markets on the fixing, including an unfinished packet, count toward its rungs. An interrupted run is resumed, never repeated.
+- A token short of eligible strikes is logged (`ladders.short`) and retried on the next run.
+
+Once a fixing has all its markets, the job doesn't read Kalshi or the API for that ladder again until the next fixing is due. `resolve-markets` freezes each market at its cutoff and settles it from Kalshi's final result. All tokens must have 18 decimals, which the default limits assume; the config is checked at startup.
 
 ## Curating Δ-vaults
 
@@ -110,6 +140,8 @@ The job signs as the vault's curator: `CURATOR_PRIVATE_KEY`, or the market admin
 | `POLYGON_RPC_URL` | A Polygon RPC that serves the `finalized` block tag. |
 | `AUTOMATION_API_URL` | Default `http://127.0.0.1:3000`. |
 | `AUTOMATION_AUTH_ORIGIN` | A sign-in origin in the API's `API_AUTH_ORIGINS`. Default `http://localhost:3002`. |
+| `AUTOMATION_LADDERS_PATH` | The ladder config. Default `.local/market-automation/ladders.json`; without the file, no ladders are created. |
+| `KALSHI_API_URL` | Kalshi's public API, which lists the ladders' strikes. Default `https://api.elections.kalshi.com/trade-api/v2`. |
 | `AUTOMATION_VAULTS_PATH` | The vault curation config. Default `.local/market-automation/vaults.json`; without the file, no vaults are curated. |
 | `CURATOR_PRIVATE_KEY` | Optional. The vaults' curator, when it is not the market admin. |
 

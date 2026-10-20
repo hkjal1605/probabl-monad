@@ -7,6 +7,7 @@ import {
   canonicalStringify,
   type Hex,
   KalshiYesBook,
+  kalshiPayout,
   MarketDataError,
   normalizeKalshiMarket,
   type ProbabilityPolicy,
@@ -30,7 +31,9 @@ const REPEAT_WINDOW_MS = 600_000;
 
 /** Kalshi markets the ingestor follows: metadata snapshots, which evidence refers to, and each
  * market's YES book, polled over REST (Kalshi's WebSocket needs an API key). Probabilities are
- * served from the books in memory, keyed by the market's derived condition id. */
+ * served from the books in memory, keyed by the market's derived condition id. A book is polled
+ * while its market trades and metadata until the result is final, so the calls to Kalshi track
+ * the live markets, not every market ever followed (daily ladders add several a day). */
 export class KalshiIngestor {
   readonly #books = new Map<Hex, KalshiYesBook>();
   readonly #subscriptions = new Map<Hex, KalshiSubscription>();
@@ -149,16 +152,19 @@ export class KalshiIngestor {
   }
 
   async start(): Promise<void> {
-    for (const record of await this.store.subscriptions()) this.#follow(record);
-    await this.#refreshAll();
+    const records = await this.store.subscriptions();
+    for (const record of records) this.#follow(record);
+    // The stored status decides which markets still need polling.
+    await Promise.all(records.map((record) => this.latestMetadata(record.conditionId)));
+    await this.refreshBooks();
     this.#timers = [
       setInterval(() => {
-        this.#bookPass ??= this.#refreshAll().finally(() => {
+        this.#bookPass ??= this.refreshBooks().finally(() => {
           this.#bookPass = null;
         });
       }, this.environment.bookPollMs),
       setInterval(() => {
-        this.#metadataPass ??= this.#refreshMetadata().finally(() => {
+        this.#metadataPass ??= this.refreshMetadata().finally(() => {
           this.#metadataPass = null;
         });
       }, this.environment.metadataPollMs),
@@ -178,22 +184,32 @@ export class KalshiIngestor {
       this.#books.set(key, new KalshiYesBook(key, `${record.ticker}:yes`, this.policy));
   }
 
-  async #refreshAll() {
+  /** Reads the book of every followed market that still trades; a closed market's last tick
+   * stays served. */
+  async refreshBooks() {
     await Promise.allSettled(
-      [...this.#subscriptions.keys()].map((conditionId) => this.refresh(conditionId)),
+      [...this.#subscriptions.keys()]
+        .filter((conditionId) => !this.#latest.get(conditionId)?.normalized.closed)
+        .map((conditionId) => this.refresh(conditionId)),
     );
   }
 
-  async #refreshMetadata() {
+  /** Re-reads the metadata of every followed market whose result is not final yet. */
+  async refreshMetadata() {
     await Promise.all(
-      [...this.#subscriptions.values()].map(async (record) => {
-        try {
-          await this.fetchMetadata(record.ticker, "changes");
-          this.#alerted.delete(`METADATA_RECONCILIATION_FAILED:${record.conditionId}`);
-        } catch (error) {
-          await this.#alertOnce("METADATA_RECONCILIATION_FAILED", record.conditionId, error);
-        }
-      }),
+      [...this.#subscriptions.values()]
+        .filter((record) => {
+          const latest = this.#latest.get(record.conditionId.toLowerCase() as Hex);
+          return !latest || !kalshiPayout(latest.normalized);
+        })
+        .map(async (record) => {
+          try {
+            await this.fetchMetadata(record.ticker, "changes");
+            this.#alerted.delete(`METADATA_RECONCILIATION_FAILED:${record.conditionId}`);
+          } catch (error) {
+            await this.#alertOnce("METADATA_RECONCILIATION_FAILED", record.conditionId, error);
+          }
+        }),
     );
   }
 

@@ -21,6 +21,7 @@ import {
 import { type Admin, FROZEN, type Market, OPEN, SCHEDULED } from "../src/admin.ts";
 import { curateVaults } from "../src/jobs/curate-vaults.ts";
 import { CuratedVault, type RiskTemplate } from "../src/vaults.ts";
+import type { KalshiApi } from "../src/venues/kalshi-api.ts";
 
 const VAULT = getAddress("0x00000000000000000000000000000000000000a1");
 const NVDA = getAddress("0x00000000000000000000000000000000000000b1");
@@ -71,6 +72,7 @@ const market = (id: number, overrides: Partial<Market> = {}): Market =>
   ({
     venue: { marketId: String(id) },
     state: OPEN,
+    tradingOpen: String(now() - 60),
     tradingCutoff: String(now() + 86_400),
     baseToken: NVDA,
     ...overrides,
@@ -81,6 +83,8 @@ const run = (markets: Market[], vault: CuratedVault, execute = true) =>
     admin: adminOf(markets),
     polygon: {} as PublicClient,
     vaults: [vault],
+    ladders: { daily: [], weekly: [] },
+    kalshi: {} as KalshiApi,
     execute,
     logger,
   });

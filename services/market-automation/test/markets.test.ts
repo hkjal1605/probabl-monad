@@ -6,6 +6,7 @@ import { type Admin, AWAITING, type Evidence, FROZEN, type Market, OPEN } from "
 import { resolveMarkets } from "../src/jobs/resolve-markets.ts";
 import { createMarkets, type MarketSpec, settleMarket } from "../src/markets.ts";
 import { kalshiSettlements } from "../src/venues/kalshi.ts";
+import type { KalshiApi } from "../src/venues/kalshi-api.ts";
 import { payoutOf, polymarketSettlements } from "../src/venues/polymarket.ts";
 
 const YES: PayoutVector = { denominator: "1", no: "0", yes: "1" };
@@ -19,6 +20,7 @@ const now = () => Math.floor(Date.now() / 1000);
 const market = (overrides: Partial<Market> = {}): Market => ({
   venue: { marketId: "7" },
   state: OPEN,
+  tradingOpen: String(now() - 3600),
   tradingCutoff: String(now() + 3600),
   eventSource: "polymarket",
   eventConditionId: CONDITION,
@@ -73,6 +75,7 @@ const kalshiSnapshot = (status: string, result: string | null) => ({
   },
 });
 const logger = new Logger({ service: "test", level: "silent" });
+const noLadders = { ladders: { daily: [], weekly: [] }, kalshi: {} as KalshiApi };
 
 /** Records every call an operation makes; answers from `overrides` or with defaults. */
 function fakeAdmin(overrides: Record<string, unknown> = {}) {
@@ -327,7 +330,7 @@ describe("resolve-markets job", () => {
       // On chain, 7 is already awaiting its resolution.
       chainStates: [AWAITING, OPEN],
     });
-    await resolveMarkets.run({ admin, polygon, vaults: [], execute: true, logger });
+    await resolveMarkets.run({ admin, polygon, vaults: [], ...noLadders, execute: true, logger });
     expect(names()).toEqual(["markets", "chainStates", "lifecycle"]);
     expect(calls.at(-1)?.slice(0, 3)).toEqual(["lifecycle", "8", 1]);
   });
@@ -338,7 +341,7 @@ describe("resolve-markets job", () => {
       event: kalshiSnapshot("finalized", "no"),
       chainStates: [OPEN, OPEN],
     });
-    await resolveMarkets.run({ admin, polygon, vaults: [], execute: true, logger });
+    await resolveMarkets.run({ admin, polygon, vaults: [], ...noLadders, execute: true, logger });
     const frozen = calls.filter(([name]) => name === "lifecycle").map(([, id]) => id);
     expect(frozen.sort()).toEqual(["5", "8"]);
   });
