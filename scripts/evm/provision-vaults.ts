@@ -1,17 +1,22 @@
 /** Testnet only: deploys and provisions the Δ-vaults planned in
  * deployments/<chainId>-vault-plan.json, end to end and resumably (progress is written back).
  * For each planned stock:
+ * - the admin (the exchange's market admin) lists the stock's pool when no market has yet, with
+ *   its underlying from the token catalog: a vault needs its base's pool;
  * - the vault is deployed (the deployer key pays) over the stock's price feed;
  * - the vault admin, also its curator (MARKET_ADMIN_PRIVATE_KEY), grants the curator, guardian
- *   and keeper roles, sets the deposit caps and order limits and registers every planned market;
+ *   and keeper roles, sets the deposit caps and order limits and registers any planned market
+ *   (market automation's curate-vaults job registers new ones);
  * - the admin makes the seed deposit, which sets the vault's quote/stock ratio, and the deployer
- *   then deposits in kind. Stock tokens come from the deployer's wallet; mock USDG is minted.
+ *   then deposits in kind when the plan says so. The admin's own tokens fund its seed, topped up
+ *   from the deployer's when short; mock USDG is minted.
  *
  *   DEPLOYER_PRIVATE_KEY=… MARKET_ADMIN_PRIVATE_KEY=… RPC_URL=… CHAIN_ID=46630
  *   bun scripts/evm/provision-vaults.ts */
 import { resolve } from "node:path";
 import {
   approve,
+  conditionalStocksAbi,
   DELTA_VAULT_ROLES,
   type DeltaVaultLimits,
   type DeltaVaultRisk,
@@ -21,7 +26,10 @@ import {
   deltaVaultGrantRole,
   deltaVaultSetCaps,
   deltaVaultSetLimits,
+  listPool,
+  underlyingId,
 } from "@conditional-stocks/evm-client";
+import { catalogUnderlying } from "@conditional-stocks/shared/token-catalog";
 import {
   type Address,
   createPublicClient,
@@ -50,10 +58,10 @@ interface PlannedVault {
   keeper: Address;
   /** Deposit caps, whole tokens. */
   caps: { quote: string; base: string };
-  /** The admin's first deposit and the deployer's, whole tokens. */
+  /** The admin's first deposit and, optionally, the deployer's, whole tokens. */
   seed: { quote: string; base: string };
-  deposit: { quote: string; base: string };
-  markets: { market: number; risk: Record<keyof DeltaVaultRisk, string | number> }[];
+  deposit?: { quote: string; base: string };
+  markets?: { market: number; risk: Record<keyof DeltaVaultRisk, string | number> }[];
   // Progress.
   vault?: Address;
   deploymentBlock?: string;
@@ -138,6 +146,19 @@ for (const v of plan.vaults) {
   const quoteUnits = (value: string) => parseUnits(value, quoteDecimals);
   const baseUnits = (value: string) => parseUnits(value, baseDecimals);
 
+  const pool = (await client.readContract({
+    address: plan.exchange,
+    abi: conditionalStocksAbi,
+    functionName: "pool",
+    args: [v.token],
+  })) as { listed: boolean };
+  if (!pool.listed) {
+    const underlying = catalogUnderlying(symbol);
+    if (!underlying) throw new Error(`${v.symbol} has no underlying in the token catalog`);
+    const call = listPool(plan.exchange, v.token, underlyingId(underlying));
+    await send(admin, call.to, call.data);
+    console.info(`${v.symbol}: pool listed as ${underlying}`);
+  }
   if (!v.vault) {
     const wallet = createWalletClient({ account: deployer, chain, transport });
     const hash = await wallet.deployContract({
@@ -193,7 +214,7 @@ for (const v of plan.vaults) {
     await send(admin, call.to, call.data);
   }
   const listed = await read<readonly number[]>(vault, "markets");
-  for (const m of v.markets) {
+  for (const m of v.markets ?? []) {
     if (listed.includes(m.market)) continue;
     const call = deltaVaultAddMarket(vault, m.market, {
       bandBps: Number(m.risk.bandBps),
@@ -206,18 +227,25 @@ for (const v of plan.vaults) {
   }
 
   // Deposits: the admin's seed sets the ratio, then the deployer deposits in kind.
-  const deposit = async (
-    who: PrivateKeyAccount,
-    amounts: { quote: string; base: string },
-    fund: boolean,
-  ) => {
+  const deposit = async (who: PrivateKeyAccount, amounts: { quote: string; base: string }) => {
     const quote = quoteUnits(amounts.quote),
       base = baseUnits(amounts.base);
-    if (fund) {
+    const held = await client.readContract({
+      address: v.token,
+      abi: erc20Abi,
+      functionName: "balanceOf",
+      args: [who.address],
+    });
+    if (held < base) {
+      if (who.address === deployer.address) throw new Error(`The deployer lacks ${v.symbol}`);
       await send(
         deployer,
         v.token,
-        encodeFunctionData({ abi: erc20Abi, functionName: "transfer", args: [who.address, base] }),
+        encodeFunctionData({
+          abi: erc20Abi,
+          functionName: "transfer",
+          args: [who.address, base - held],
+        }),
       );
     }
     await send(
@@ -236,14 +264,14 @@ for (const v of plan.vaults) {
     await send(who, call.to, call.data);
   };
   if (!v.seeded) {
-    if ((await read<bigint>(vault, "totalSupply")) === 0n) await deposit(admin, v.seed, true);
+    if ((await read<bigint>(vault, "totalSupply")) === 0n) await deposit(admin, v.seed);
     v.seeded = true;
     await save();
   }
-  if (!v.deposited) {
-    await deposit(deployer, v.deposit, false);
+  if (v.deposit && !v.deposited) {
+    await deposit(deployer, v.deposit);
     v.deposited = true;
     await save();
   }
-  console.info(`${v.symbol}: vault ${vault} provisioned with ${v.markets.length} market(s)`);
+  console.info(`${v.symbol}: vault ${vault} provisioned with ${v.markets?.length ?? 0} market(s)`);
 }
