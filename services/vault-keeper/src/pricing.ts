@@ -19,7 +19,14 @@ import { quote as notional } from "@conditional-stocks/evm-client";
 import type { MarketState } from "@conditional-stocks/evm-client/ledger";
 import { abs, BPS, ceil, max, min, type Reference } from "@conditional-stocks/operator";
 import type { MarketModel, Settings } from "./config.ts";
-import { conditionalGap, type Funds, fairPrices, halfSpread, widening } from "./model.ts";
+import {
+  anchorBps,
+  conditionalGap,
+  type Funds,
+  fairPrices,
+  halfSpread,
+  widening,
+} from "./model.ts";
 
 const WAD = 10n ** 18n;
 
@@ -125,7 +132,7 @@ export function priceRfq(i: PricingInput): Pricing {
   const priceAt = (q: bigint) => {
     const half = q / 2n;
     const gapPpm = conditionalGap({
-      anchorBps: i.model.anchorBps,
+      anchorBps: anchorBps(i.model, r.probability, i.now),
       impactBps: i.model.impactBps,
       maxGapBps: i.model.maxGapBps,
       imbalance: pos.expected + (raises ? half : -half),

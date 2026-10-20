@@ -89,3 +89,25 @@ test("RFQ is off by default; on, the vault quotes only through it unless the boo
       .enabled,
   ).toBe(false);
 });
+
+test("ladder drivers name a series' daily volatility, each vault its stock's betas to them", () => {
+  const s = settings({
+    vaults: [{ vault: A, keeper: K1, markets: [], betas: { KXBTCD: 1.54, KXWTI: -0.57 } }],
+    model,
+    drivers: { KXBTCD: { dailyVolBps: 281 }, KXWTI: { dailyVolBps: 311 } },
+  });
+  expect(s.drivers).toEqual({ KXBTCD: { dailyVolBps: 281 }, KXWTI: { dailyVolBps: 311 } });
+  expect(s.vaults[0]?.betas).toEqual({ KXBTCD: 1.54, KXWTI: -0.57 });
+  for (const bad of [
+    { betas: { KXBTCD: 11 } },
+    { betas: { kxbtcd: 1 } },
+    { betas: { KXBTCD: "1.5" } },
+  ])
+    expect(() => settings({ vaults: [{ vault: A, markets: [], ...bad }], model })).toThrow();
+  for (const drivers of [
+    { KXBTCD: { dailyVolBps: 0 } },
+    { KXBTCD: { dailyVolBps: 2.5 } },
+    { "bad series": { dailyVolBps: 100 } },
+  ])
+    expect(() => settings({ vaults: [{ vault: A, markets: [] }], model, drivers })).toThrow();
+});

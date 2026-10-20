@@ -635,3 +635,57 @@ describe("several vaults in one process", () => {
     expect(vaultOrders(s, vault, 2).length > 0).toBe(true);
   }, 60_000);
 });
+
+describe("ladder markets", () => {
+  test("a Kalshi ladder the vault's stock has a beta to quotes YES above spot and NO below", async () => {
+    const config = settings({
+      vaults: [{ vault, keeper: keeperAccount.address, betas: { KXBTCD: 1.54 } }],
+      model: { anchorBps: 0, impactBps: 0, maxGapBps: 1200, orderQuote: "5000" },
+      drivers: { KXBTCD: { dailyVolBps: 281 } },
+      quoteLevels: 1,
+      pollMs: 1000,
+      ttlSeconds: 300,
+    });
+    const fixing = Number(NOW) + 86_400;
+    const ladderRound = () =>
+      new Tick({
+        origin: "http://127.0.0.1",
+        client: node.publicClient,
+        tokens,
+        quote: protocol.usdc,
+        bases: [protocol.stock],
+        spotPrices: async () =>
+          ({
+            source: "robinhood",
+            displayOnly: true,
+            chainId: 31337,
+            asOf: 0,
+            prices: [],
+          }) as never,
+        event: async () => ({
+          metadata: {
+            normalized: {
+              source: "kalshi",
+              seriesTicker: "KXBTCD",
+              endTime: new Date(fixing * 1000).toISOString(),
+            },
+          },
+        }),
+      });
+    const k = keeperOf(vault, keeperAccount, config);
+    await synced();
+    // The vault's first market (earlier tests settle market 1).
+    const market = (await state()).markets[0]!.market;
+    setReference(100n * USDC, 400_000n);
+    expect(k.model(market)?.driver).toBeUndefined();
+    await k.cycle(ladderRound());
+    expect(k.model(market)?.driver).toEqual({ beta: 1.54, dailyVolBps: 281, fixing });
+    // About a day out at p 0.4: δ₀ = 7%, so Y = $104.2 and N = $97.2 around the $100 spot.
+    const orders = vaultOrders(await synced(), vault, market);
+    const prices = (branch: number) =>
+      orders.filter((o) => o.branch === branch).map((o) => o.ticks * 10_000n);
+    expect(prices(0).length > 0 && prices(1).length > 0).toBe(true);
+    expect(prices(0).every((p) => p > 102_000_000n)).toBe(true);
+    expect(prices(1).every((p) => p < 99_000_000n)).toBe(true);
+  }, 60_000);
+});

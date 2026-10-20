@@ -256,6 +256,11 @@ A vault-wide **drawdown latch** halts all quoting until an operator clears it. I
 
 Resolved markets are settled promptly. Paired claims are merged back into credit.
 
+**Ladder markets.** A Kalshi "above $K at a fixing" market on another asset (e.g. MSTR if Bitcoin closes above $K at 5 pm) takes its anchor from the driver, not from the config.
+- **The formula.** δ₀ = β·σ·√τ·φ(Φ⁻¹(p)) / (p(1−p)), the stock's expected price if the driver closes above the strike minus if it closes below. Here β is the stock's beta to the driver, σ the driver's daily volatility, τ the days left to the fixing and p the event's probability.
+- **How it moves.** At even odds the gap is 1.6·β·σ·√τ. It reprices with p and shrinks to zero at the fixing, so YES quotes sit above spot and NO quotes below (the other way round for a negative β).
+- **Configuration.** `drivers` gives each series' σ (e.g. `"KXBTCD": { "dailyVolBps": 281 }`) and each vault's `betas` its stock's β per series (`"KXBTCD": 1.54` for MSTR). A market whose override sets `anchorBps` keeps it, and `maxGapBps` bounds both.
+
 **New markets.** The keeper quotes every market its vault registers, with the config's default `model` unless a market overrides it. Market automation's `curate-vaults` job registers new markets on the vault's stock as they are created (`docs/market-automation.md`), and settlement frees their slots once they resolve.
 
 ### RFQ quoting

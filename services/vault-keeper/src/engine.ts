@@ -46,6 +46,7 @@ import {
 } from "./config.ts";
 import type { LiveReferences } from "./live.ts";
 import {
+  anchorBps,
   type Book,
   conditionalGap,
   type Funds,
@@ -230,6 +231,8 @@ export class Keeper {
   /** Markets the vault registered at the last read: the next read fetches their terms along. */
   private known: number[] = [];
   private readonly overrides: Map<number, MarketOverride>;
+  /** Each Kalshi ladder market's series and fixing, from the rounds' event reads. */
+  private readonly ladders = new Map<number, { series: string; fixing: number }>();
 
   constructor(
     readonly follower: ChainFollower,
@@ -255,9 +258,18 @@ export class Keeper {
     log(event, { vault: this.vault, ...detail });
   }
 
-  /** The Δ-model of a registered market; undefined when it is not to be quoted. */
+  /** The Δ-model of a registered market; undefined when it is not to be quoted. A ladder market
+   * whose series has a driver and a beta for this vault's stock takes δ₀ from them, unless its
+   * override sets `anchorBps`. */
   model(market: number): MarketModel | undefined {
-    return marketModel(this.settings.model, this.overrides.get(market));
+    const override = this.overrides.get(market),
+      model = marketModel(this.settings.model, override),
+      ladder = this.ladders.get(market);
+    const beta = ladder && this.config.betas?.[ladder.series],
+      dailyVolBps = ladder && this.settings.drivers?.[ladder.series]?.dailyVolBps;
+    if (!model || override?.anchorBps !== undefined || beta === undefined || !dailyVolBps)
+      return model;
+    return { ...model, driver: { beta, dailyVolBps, fixing: ladder.fixing } };
   }
 
   /** The replica, never older than the keeper's last included transaction, and the vault. */
@@ -381,12 +393,18 @@ export class Keeper {
           }
         }),
     );
-    // RFQ quotes price from live references, validated against each event's metadata.
-    if (this.live)
-      for (const market of references.keys()) {
-        const m = s.markets.get(market)!;
-        this.live.track(m, await tick.event(market, m.condition).catch(() => undefined));
-      }
+    // Each event's ladder series and fixing; RFQ quotes price from live references, validated
+    // against each event's metadata.
+    for (const market of references.keys()) {
+      const m = s.markets.get(market)!;
+      const event = await tick.event(market, m.condition).catch(() => undefined);
+      const n = (event as { metadata?: { normalized?: Record<string, unknown> } } | undefined)
+        ?.metadata?.normalized;
+      const fixing = Date.parse(String(n?.endTime ?? "")) / 1000;
+      if (n?.source === "kalshi" && typeof n.seriesTicker === "string" && Number.isFinite(fixing))
+        this.ladders.set(market, { series: n.seriesTicker, fixing });
+      this.live?.track(m, event);
+    }
     if (this.drawdown(v, references)) {
       // The latch is durable before anything else happens.
       await this.save();
@@ -450,11 +468,18 @@ export class Keeper {
     };
   }
 
-  /** Δ̂ of a market at the vault's current exposure. */
-  private gap(model: MarketModel, v: VaultView, market: number, widen: bigint) {
+  /** Δ̂ of a market at the vault's current exposure, for probability `p` at `now` (seconds). */
+  private gap(
+    model: MarketModel,
+    v: VaultView,
+    market: number,
+    widen: bigint,
+    p: bigint,
+    now: bigint,
+  ) {
     const vm = v.markets.find((m) => m.market === market)!;
     return conditionalGap({
-      anchorBps: model.anchorBps,
+      anchorBps: anchorBps(model, p, now),
       impactBps: model.impactBps,
       maxGapBps: model.maxGapBps,
       imbalance: vm.exposure.imbalance,
@@ -480,7 +505,7 @@ export class Keeper {
       const probability = r?.probability ?? (stored ? BigInt(stored) : PROB / 2n);
       const gapPpm =
         model && v.markets.some((m) => m.market === market)
-          ? this.gap(model, v as VaultView, market, BPS)
+          ? this.gap(model, v as VaultView, market, BPS, probability, seconds())
           : 0n;
       return { probability, gapPpm };
     };
@@ -562,7 +587,7 @@ export class Keeper {
     if (nowMs < (record.cooldownUntil ?? 0)) throw new Error("Cooling down after a jump");
 
     const widen = widening(stopAt - now, set.wideningSeconds, set.wideningFactor);
-    const gap = this.gap(model, v, market, widen);
+    const gap = this.gap(model, v, market, widen, r.probability, now);
     const fair = fairPrices(r.spot, r.probability, gap);
     const half = halfSpread({
       minBps: set.halfSpreadBps,

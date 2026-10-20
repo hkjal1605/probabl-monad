@@ -150,6 +150,24 @@ describe("the price", () => {
   });
 });
 
+describe("ladder markets", () => {
+  test("a driver splits the branches: YES above spot, NO below, by β·σ·√τ at the event's odds", () => {
+    const driver = { beta: 1.54, dailyVolBps: 281, fixing: Number(NOW) + 86_400 };
+    const ladder = { ...model, anchorBps: 0, maxGapBps: 1200, driver };
+    const yes = priced(input({}, { model: ladder }));
+    const no = priced(input({ branch: 1 }, { model: ladder }));
+    // p 0.4: δ₀ = 1.54 x 2.81% x φ(-0.253) / 0.24 = 6.97%, so Y = $100 x (1 + 0.6δ) and
+    // N = $100 x (1 - 0.4δ) (plus a sliver of impact).
+    expect(yes.fair).toBeGreaterThan(104_100_000n);
+    expect(yes.fair).toBeLessThan(104_300_000n);
+    expect(no.fair).toBeGreaterThan(97_100_000n);
+    expect(no.fair).toBeLessThan(97_300_000n);
+    // Without a driver both branches price at spot.
+    const flat = { ...model, anchorBps: 0 };
+    expect(priced(input({}, { model: flat })).fair).toBeLessThan(100_100_000n);
+  });
+});
+
 describe("the size", () => {
   test("stays within the imbalance cap, counting resting orders and outstanding quotes", () => {
     // Selling YES lowers the imbalance: from -150 with 30 more already committed, 20 remain.
