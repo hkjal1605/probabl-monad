@@ -429,10 +429,16 @@ export function deltaVaultValue(
     PROB = 1_000_000n;
   let value = h.quote + (h.base * spot) / WAD;
   for (const m of h.markets) {
-    const p = probability(m.market);
-    if (p === null || p < 0n || p > PROB) return null;
     const yes = m.claims.yesQuote + (m.claims.yesBase * spot) / WAD,
       no = m.claims.noQuote + (m.claims.noBase * spot) / WAD;
+    // Equal (or no) claims on both branches are worth the same whatever the odds: a market the
+    // vault holds nothing unpaired in needs no probability.
+    if (yes === no) {
+      value += yes;
+      continue;
+    }
+    const p = probability(m.market);
+    if (p === null || p < 0n || p > PROB) return null;
     value += (yes * p + no * (PROB - p)) / PROB;
   }
   return value;
