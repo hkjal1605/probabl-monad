@@ -12,9 +12,9 @@ const indexed = (m = fixtureMarkets[0]!, patch: Record<string, unknown> = {}) =>
   venue: m.venue,
   createdAt: m.createdAt ?? "2026-09-14T00:00:00.000Z",
   conditionId: m.venue.marketId,
-  polymarketConditionId: m.mapping.conditionId,
-  polymarketYesIndex: m.mapping.yesIndex,
-  polymarketNoIndex: m.mapping.noIndex,
+  eventConditionId: m.mapping.conditionId,
+  eventYesIndex: m.mapping.yesIndex,
+  eventNoIndex: m.mapping.noIndex,
   state: 2,
   tradingOpen: String(Date.parse(m.tradingOpen) / 1000),
   tradingCutoff: String(Date.parse(m.cutoff) / 1000),
@@ -86,7 +86,7 @@ test("catalogue reads all books in one indexed batch and keeps one-sided executa
           ),
         });
       }
-      if (path.endsWith("/polymarket"))
+      if (path.endsWith("/event"))
         return Response.json({
           metadata: {
             fetchedAtMs: String(Date.UTC(2026, 8, 14)),
@@ -104,7 +104,7 @@ test("catalogue reads all books in one indexed batch and keeps one-sided executa
     expect(read.map((m) => m.createdAt)).toEqual(markets.map((m) => m.createdAt));
     expect(paths.filter((path) => path === "/orderbooks")).toHaveLength(1);
     expect(orderbookView.value).toBe("levels");
-    expect(paths.filter((path) => path.endsWith("/polymarket"))).toHaveLength(1);
+    expect(paths.filter((path) => path.endsWith("/event"))).toHaveLength(1);
     expect(paths.some((path) => path.startsWith("/orderbook/"))).toBe(false);
     expect(read.every((market) => market.probability.value === 0.42)).toBe(true);
     // The indexer serves each market's 24-hour volume: no trade history is read for it.
@@ -179,7 +179,7 @@ async function readOne(market: unknown) {
       const url = new URL(input instanceof Request ? input.url : String(input));
       if (url.pathname === "/markets") return Response.json({ markets: [market] });
       if (url.pathname === "/orderbooks") return Response.json({ books: {} });
-      if (url.pathname.endsWith("/polymarket")) return Response.json({});
+      if (url.pathname.endsWith("/event")) return Response.json({});
       throw new Error(`Unexpected request: ${url.pathname}`);
     }) as typeof fetch;
     return await marketsApi.liveMarkets();

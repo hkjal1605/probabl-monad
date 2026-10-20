@@ -269,7 +269,7 @@ beforeAll(async () => {
       quote: protocol.usdc,
       bases: [protocol.stock],
       spotPrices: async () => ({ prices: [] }) as never,
-      polymarket: async () => ({}),
+      event: async () => ({}),
     }),
   );
 }, 120_000);

@@ -1,6 +1,6 @@
 /** Chain-independent market identity.
  *
- * A market is one event (a Polymarket condition and the outcome that counts as YES) on one
+ * A market is one event (a Polymarket or Kalshi market and the outcome that counts as YES) on one
  * underlying asset. Each on-chain market is a venue of it; venues on other deployments or other
  * issuers' tokens of the same asset share its key. These match `ConditionalStocksAdmin`'s
  * `eventKey`, `underlying` and `marketKey`. */

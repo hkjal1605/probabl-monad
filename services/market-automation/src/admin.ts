@@ -13,10 +13,11 @@ import {
   type PacketEnvelope,
   preflightAdmin,
 } from "@conditional-stocks/evm-client/admin";
-import type { NormalizedPolymarketMarket } from "@conditional-stocks/market-data";
+import type { EventMarket, EventSource } from "@conditional-stocks/market-data";
 import { catalogUnderlying } from "@conditional-stocks/shared/token-catalog";
 import { type Address, erc20Abi, type Hex, type PublicClient, type WalletClient } from "viem";
 import type { PrivateKeyAccount } from "viem/accounts";
+import type { EventCondition } from "./settlement.ts";
 
 /** The API's review checklists (apps/server/src/admin/routes.ts): automation confirms each item
  * by construction. */
@@ -47,20 +48,20 @@ export const SCHEDULED = 1,
   AWAITING = 4;
 
 /** An on-chain market as the API's indexer lists it. */
-export interface Market {
+export interface Market extends EventCondition {
   venue: { marketId: string };
   state: number;
   tradingCutoff: string;
-  polymarketConditionId: Hex;
-  polymarketYesIndex: string;
-  polymarketNoIndex: string;
+  /** The venue of the market's event. */
+  eventSource: EventSource;
   baseToken: Address;
   makerRebateBps: number;
 }
+/** A stored venue snapshot (Polymarket or Kalshi), which evidence refers to by id. */
 export interface Snapshot {
   snapshotId: string;
   rawHash: Hex;
-  normalized: NormalizedPolymarketMarket;
+  normalized: EventMarket;
 }
 export interface Evidence {
   envelope: PacketEnvelope;
@@ -122,14 +123,16 @@ export class Admin {
     });
     return this.quoteToken;
   }
-  /** The Polymarket metadata the API holds for a market's condition. */
-  async polymarket(marketId: string) {
-    return (await this.request<{ metadata: Snapshot }>(`/v1/markets/${marketId}/polymarket`))
-      .metadata;
+  /** The latest venue snapshot the API holds for a market's event. */
+  async event(marketId: string) {
+    return (await this.request<{ metadata: Snapshot }>(`/v1/markets/${marketId}/event`)).metadata;
   }
-  /** Stores and returns a fresh Gamma snapshot, which evidence refers to by id. */
-  fetchMetadata(gammaMarketId: string) {
-    return this.request<Snapshot>("/v1/admin/polymarket/metadata/fetch", { gammaMarketId });
+  /** Stores and returns a fresh snapshot of a Polymarket (Gamma id) or Kalshi (ticker) market,
+   * which evidence refers to by id. */
+  fetchMetadata(source: EventSource, marketId: string) {
+    return source === "kalshi"
+      ? this.request<Snapshot>("/v1/admin/kalshi/metadata/fetch", { ticker: marketId })
+      : this.request<Snapshot>("/v1/admin/polymarket/metadata/fetch", { gammaMarketId: marketId });
   }
   /** The most recent evidence packets (the API returns 200). */
   async evidence() {

@@ -6,7 +6,7 @@
  *   walks I by q, and the price walks with it linearly, so the fill's average price is the price
  *   at the walk's midpoint: δ̂(I ± q/2), with Y = s(1 + (1−p)δ̂) and N = s(1 − pδ̂). A large order
  *   pays its own impact; offsetting flow is priced better, which pulls I back to zero.
- * - Spread. The book's half-spread (fee edge, adverse selection, recent movement, Polymarket's
+ * - Spread. The book's half-spread (fee edge, adverse selection, recent movement, the event market's
  *   spread times |δ̂|, widening before the cutoff) plus `edgeBps` for the firm quote's lifetime.
  * - Size. At most what the imbalance cap leaves once every resting order and outstanding quote is
  *   counted as filled, the per-quote notional cap, and what the vault can deliver from one

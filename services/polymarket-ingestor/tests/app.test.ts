@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { createPolymarketQueries, type PolymarketQueries } from "@conditional-stocks/db/polymarket";
 import { testDatabase } from "@conditional-stocks/db/polymarket/testing";
-import { createPolymarketApp } from "../src/app.ts";
+import { createIngestorApp } from "../src/app.ts";
+import { EventMarkets } from "../src/event-markets.ts";
 import { PolymarketIngestor } from "../src/service.ts";
 import { environment, FakeSource } from "./helpers.ts";
 
@@ -15,7 +16,7 @@ describe("Polymarket ingestor API", () => {
     const store = createPolymarketQueries((await testDatabase()).database);
     stores.push(store);
     const service = new PolymarketIngestor(environment, store, new FakeSource());
-    const app = createPolymarketApp(service, store, environment);
+    const app = createIngestorApp(new EventMarkets(service), store, environment);
     expect(await (await app.request("/health")).json()).toMatchObject({
       automatedMarketCreation: false,
       automatedResolution: false,

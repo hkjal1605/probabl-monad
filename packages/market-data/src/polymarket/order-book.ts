@@ -1,39 +1,6 @@
-import type { Hex } from "./canonical.ts";
-
-import { hashCanonical, MarketDataError, object, requiredString } from "./canonical.ts";
-
-export const POLYMARKET_SCALE = 1_000_000n;
-
-export type ProbabilityQuality =
-  | "crossed"
-  | "disconnected"
-  | "empty"
-  | "low-depth"
-  | "one-sided"
-  | "stale"
-  | "valid";
-
-export interface ProbabilityPolicy {
-  staleAfterMs: bigint;
-  standardNotionalX6: bigint;
-}
-
-export interface ProbabilityTick {
-  askDepthQuoteX6: string;
-  bestAskX6: string | null;
-  bestBidX6: string | null;
-  bidDepthQuoteX6: string;
-  conditionId: Hex;
-  isStale: boolean;
-  midpointX6: string | null;
-  observedAtMs: string;
-  quality: ProbabilityQuality;
-  schemaVersion: 1;
-  sourceHash: string;
-  spreadX6: string | null;
-  standardNotionalX6: string;
-  yesTokenId: string;
-}
+import type { Hex } from "../canonical.ts";
+import { hashCanonical, MarketDataError, object, requiredString } from "../canonical.ts";
+import { PROBABILITY_SCALE, type ProbabilityTick, parseX6, YesBook } from "../probability.ts";
 
 export interface ApplyResult {
   applied: boolean;
@@ -42,25 +9,13 @@ export interface ApplyResult {
   tick: ProbabilityTick | null;
 }
 
-const fixed = (value: unknown, name: string): bigint => {
-  if (
-    typeof value !== "string" ||
-    value.length > 85 ||
-    !/^(0|[1-9][0-9]*)(\.[0-9]{1,6})?$/.test(value)
-  ) {
-    throw new MarketDataError("INVALID_BOOK", `${name} must have at most six decimals`);
-  }
-  const [whole = "0", fraction = ""] = value.split(".");
-  return BigInt(whole) * POLYMARKET_SCALE + BigInt(fraction.padEnd(6, "0"));
-};
-
 const timestamp = (value: unknown, name: string): bigint => {
-  const parsed = fixed(requiredString(value, name, 32), name);
-  // A timestamp is an integer; fixed() is reused only for strict decimal parsing.
-  if (parsed % POLYMARKET_SCALE !== 0n) {
+  const parsed = parseX6(requiredString(value, name, 32), name);
+  // A timestamp is an integer; parseX6() is reused only for strict decimal parsing.
+  if (parsed % PROBABILITY_SCALE !== 0n) {
     throw new MarketDataError("INVALID_BOOK", `${name} must be an integer`);
   }
-  const raw = parsed / POLYMARKET_SCALE;
+  const raw = parsed / PROBABILITY_SCALE;
   return raw < 10_000_000_000n ? raw * 1_000n : raw;
 };
 
@@ -76,43 +31,20 @@ const levels = (value: unknown, name: string): Array<[bigint, bigint]> => {
   if (!Array.isArray(value)) throw new MarketDataError("INVALID_BOOK", `${name} must be an array`);
   return value.map((item, index) => {
     const level = object(item, `${name}[${index}]`);
-    const price = fixed(level.price, `${name}[${index}].price`);
-    const size = fixed(level.size, `${name}[${index}].size`);
-    if (price <= 0n || price >= POLYMARKET_SCALE || size < 0n) {
+    const price = parseX6(level.price, `${name}[${index}].price`);
+    const size = parseX6(level.size, `${name}[${index}].size`);
+    if (price <= 0n || price >= PROBABILITY_SCALE || size < 0n) {
       throw new MarketDataError("INVALID_BOOK", `${name}[${index}] is outside valid bounds`);
     }
     return [price, size];
   });
 };
 
-const quoteDepth = (book: Map<bigint, bigint>, cap: bigint): bigint => {
-  let total = 0n;
-  for (const [price, size] of book) {
-    total += (price * size) / POLYMARKET_SCALE;
-    if (total >= cap) return cap;
-  }
-  return total;
-};
-
-export class PolymarketYesBook {
-  readonly #asks = new Map<bigint, bigint>();
-  readonly #bids = new Map<bigint, bigint>();
+/** Polymarket's YES token book, from REST snapshots and the market WebSocket. */
+export class PolymarketYesBook extends YesBook {
   readonly #seen = new Set<Hex>();
-  #connected = true;
   #lastSequence: bigint | null = null;
-  #observedAtMs = 0n;
   #sourceAtMs = 0n;
-  #sourceHash = "";
-
-  constructor(
-    readonly conditionId: Hex,
-    readonly yesTokenId: string,
-    readonly policy: ProbabilityPolicy,
-  ) {
-    if (policy.staleAfterMs <= 0n || policy.standardNotionalX6 <= 0n) {
-      throw new MarketDataError("INVALID_POLICY", "probability policy values must be positive");
-    }
-  }
 
   applySnapshot(input: unknown, nowMs = BigInt(Date.now())): ApplyResult {
     const raw = object(input, "snapshot");
@@ -129,16 +61,16 @@ export class PolymarketYesBook {
     const asks = levels(raw.asks, "asks");
     const sourceHash = requiredString(raw.hash, "hash", 512);
     const nextSequence = sequence(raw.sequence);
-    this.#replace(this.#bids, bids);
-    this.#replace(this.#asks, asks);
+    this.replace(this.bids, bids);
+    this.replace(this.asks, asks);
     this.#sourceAtMs = sourceAtMs;
     // A successful REST read proves that this unchanged book is still the
     // authoritative current snapshot. Keep the source-change timestamp only
     // for ordering; freshness is based on when we actually observed it.
-    this.#observedAtMs = nowMs;
-    this.#sourceHash = sourceHash;
+    this.observedAtMs = nowMs;
+    this.sourceHash = sourceHash;
     this.#lastSequence = nextSequence;
-    this.#connected = true;
+    this.connected = true;
     if (!duplicate) this.#remember(eventDigest);
     return { applied: !duplicate, duplicate, requiresSnapshot: false, tick: this.tick(nowMs) };
   }
@@ -173,13 +105,13 @@ export class PolymarketYesBook {
     for (const [index, inputChange] of raw.price_changes.entries()) {
       const change = object(inputChange, `price_changes[${index}]`);
       if (requiredString(change.asset_id, "asset_id", 128) !== this.yesTokenId) continue;
-      const price = fixed(change.price, "price");
-      const size = fixed(change.size, "size");
-      if (price <= 0n || price >= POLYMARKET_SCALE || size < 0n) {
+      const price = parseX6(change.price, "price");
+      const size = parseX6(change.size, "size");
+      if (price <= 0n || price >= PROBABILITY_SCALE || size < 0n) {
         throw new MarketDataError("INVALID_BOOK", "price change is outside valid bounds");
       }
       const side = requiredString(change.side, "side", 8);
-      const target = side === "BUY" ? this.#bids : side === "SELL" ? this.#asks : null;
+      const target = side === "BUY" ? this.bids : side === "SELL" ? this.asks : null;
       if (!target) throw new MarketDataError("INVALID_BOOK", "side must be BUY or SELL");
       changes.push({ target, price, size });
     }
@@ -188,63 +120,13 @@ export class PolymarketYesBook {
       if (size === 0n) target.delete(price);
       else target.set(price, size);
     }
-    this.#observedAtMs = observedAtMs;
+    this.observedAtMs = observedAtMs;
     this.#sourceAtMs = observedAtMs;
-    this.#sourceHash = eventDigest;
+    this.sourceHash = eventDigest;
     this.#lastSequence = nextSequence ?? this.#lastSequence;
-    this.#connected = true;
+    this.connected = true;
     this.#remember(eventDigest);
     return this.#result(true, false, false, nowMs);
-  }
-
-  disconnect(nowMs = BigInt(Date.now())): ProbabilityTick {
-    this.#connected = false;
-    return this.tick(nowMs);
-  }
-
-  tick(nowMs = BigInt(Date.now())): ProbabilityTick {
-    const bids = [...this.#bids.keys()].sort((a, b) => (a > b ? -1 : a < b ? 1 : 0));
-    const asks = [...this.#asks.keys()].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
-    const bestBid = bids[0] ?? null;
-    const bestAsk = asks[0] ?? null;
-    const stale =
-      this.#observedAtMs === 0n ||
-      this.#observedAtMs > nowMs + 5_000n ||
-      nowMs - this.#observedAtMs > this.policy.staleAfterMs;
-    const bidDepth = quoteDepth(this.#bids, this.policy.standardNotionalX6);
-    const askDepth = quoteDepth(this.#asks, this.policy.standardNotionalX6);
-    let quality: ProbabilityQuality = "valid";
-    if (!this.#connected) quality = "disconnected";
-    else if (stale) quality = "stale";
-    else if (bestBid === null && bestAsk === null) quality = "empty";
-    else if (bestBid === null || bestAsk === null) quality = "one-sided";
-    else if (bestBid >= bestAsk) quality = "crossed";
-    else if (
-      bidDepth < this.policy.standardNotionalX6 ||
-      askDepth < this.policy.standardNotionalX6
-    ) {
-      quality = "low-depth";
-    }
-    const usable = quality === "valid" && bestBid !== null && bestAsk !== null;
-    return {
-      askDepthQuoteX6: askDepth.toString(),
-      bestAskX6: bestAsk?.toString() ?? null,
-      bestBidX6: bestBid?.toString() ?? null,
-      bidDepthQuoteX6: bidDepth.toString(),
-      conditionId: this.conditionId,
-      isStale: stale,
-      midpointX6: usable ? ((bestBid + bestAsk) / 2n).toString() : null,
-      observedAtMs: this.#observedAtMs.toString(),
-      quality,
-      schemaVersion: 1,
-      sourceHash: this.#sourceHash,
-      spreadX6:
-        bestBid !== null && bestAsk !== null && bestAsk >= bestBid
-          ? (bestAsk - bestBid).toString()
-          : null,
-      standardNotionalX6: this.policy.standardNotionalX6.toString(),
-      yesTokenId: this.yesTokenId,
-    };
   }
 
   #assertIdentity(raw: Record<string, unknown>): void {
@@ -265,11 +147,6 @@ export class PolymarketYesBook {
       const oldest = this.#seen.values().next().value;
       if (oldest) this.#seen.delete(oldest);
     }
-  }
-
-  #replace(target: Map<bigint, bigint>, next: Array<[bigint, bigint]>): void {
-    target.clear();
-    for (const [price, size] of next) if (size > 0n) target.set(price, size);
   }
 
   #result(

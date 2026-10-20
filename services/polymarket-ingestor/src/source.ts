@@ -1,4 +1,5 @@
 import { MarketDataError } from "@conditional-stocks/market-data";
+import { fetchJson } from "./fetch-json.ts";
 import { logger } from "./logger.ts";
 
 export interface PolymarketSocket {
@@ -16,8 +17,6 @@ export interface PolymarketSource {
 }
 
 export class OfficialPolymarketSource implements PolymarketSource {
-  static readonly maximumResponseBytes = 5 * 1024 * 1024;
-
   constructor(
     readonly gammaUrl: string,
     readonly clobUrl: string,
@@ -100,53 +99,7 @@ export class OfficialPolymarketSource implements PolymarketSource {
     };
   }
 
-  async #json(url: string): Promise<unknown> {
-    try {
-      const response = await fetch(url, {
-        headers: { accept: "application/json" },
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!response.ok) {
-        throw new MarketDataError(
-          "SOURCE_UNAVAILABLE",
-          `Polymarket source returned ${response.status}`,
-          503,
-        );
-      }
-      const declaredLength = Number(response.headers.get("content-length") ?? "0");
-      if (declaredLength > OfficialPolymarketSource.maximumResponseBytes) {
-        throw new MarketDataError("SOURCE_UNAVAILABLE", "Polymarket response is too large", 503);
-      }
-      if (!response.body) {
-        throw new MarketDataError("SOURCE_UNAVAILABLE", "Polymarket response has no body", 503);
-      }
-      const reader = response.body.getReader();
-      const chunks: Uint8Array[] = [];
-      let total = 0;
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        total += value.byteLength;
-        if (total > OfficialPolymarketSource.maximumResponseBytes) {
-          await reader.cancel();
-          throw new MarketDataError("SOURCE_UNAVAILABLE", "Polymarket response is too large", 503);
-        }
-        chunks.push(value);
-      }
-      const bytes = new Uint8Array(total);
-      let offset = 0;
-      for (const chunk of chunks) {
-        bytes.set(chunk, offset);
-        offset += chunk.byteLength;
-      }
-      return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) as unknown;
-    } catch (error) {
-      if (error instanceof MarketDataError) throw error;
-      throw new MarketDataError(
-        "SOURCE_UNAVAILABLE",
-        error instanceof Error ? error.message : String(error),
-        503,
-      );
-    }
+  #json(url: string): Promise<unknown> {
+    return fetchJson(url, "Polymarket");
   }
 }

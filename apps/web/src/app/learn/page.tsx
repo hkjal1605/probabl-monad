@@ -22,8 +22,8 @@ export default function LearnPage() {
           <p>
             Each event has a YES stock book and a NO stock book. Their prices represent the asset
             inside those different outcomes. Impact compares their midpoints, relative to the NO
-            price. Polymarket probability is an informational reference, not the stock’s execution
-            price or the local settlement authority.
+            price. The Polymarket or Kalshi probability is an informational reference, not the
+            stock’s execution price or the local settlement authority.
           </p>
         </section>
         <section>

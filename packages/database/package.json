@@ -9,7 +9,8 @@
     "./local": "./src/local.ts",
     "./postgres-url": "./src/postgres-url.ts",
     "./polymarket": "./src/polymarket/queries.ts",
-    "./polymarket/testing": "./src/polymarket/testing.ts"
+    "./polymarket/testing": "./src/polymarket/testing.ts",
+    "./kalshi": "./src/kalshi/queries.ts"
   },
   "scripts": {
     "migrate": "bun scripts/migrate.ts",

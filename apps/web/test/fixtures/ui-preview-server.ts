@@ -33,9 +33,9 @@ Bun.serve({
           state: 2,
           tradingCutoff: String(Date.parse(m.cutoff) / 1000),
           tradingOpen: String(Date.parse(m.tradingOpen) / 1000),
-          polymarketConditionId: m.mapping.conditionId,
-          polymarketYesIndex: "1",
-          polymarketNoIndex: "2",
+          eventConditionId: m.mapping.conditionId,
+          eventYesIndex: "1",
+          eventNoIndex: "2",
           quoteSymbol: "USDC",
           quoteName: "USD Coin",
         })),
@@ -56,7 +56,7 @@ Bun.serve({
         ),
         truncated: false,
       });
-    if (path.endsWith("/polymarket") && market)
+    if (path.endsWith("/event") && market)
       return json({
         metadata: {
           normalized: {

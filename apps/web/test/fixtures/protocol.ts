@@ -59,7 +59,8 @@ export const fixtureMarkets: MarketView[] = [
     mapping: {
       conditionId: "0x0000000000000000000000000000000000000000000000000000000000beef01",
       noIndex: "2",
-      polymarketUrl: "/resolution?market=1#evidence-1",
+      source: "polymarket",
+      sourceUrl: "/resolution?market=1#evidence-1",
       yesIndex: "1",
     },
     no: {

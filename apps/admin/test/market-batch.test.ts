@@ -211,9 +211,7 @@ test("plans bind one Polymarket condition to each stock token and require the ma
   expect(first!.envelope.packet.config).toMatchObject({ makerFeeBps: "5", takerFeeBps: "20" });
   expect(second!.envelope.packet.config).toMatchObject({ makerFeeBps: "0", takerFeeBps: "50" });
   expect(first!.body.config).toMatchObject({ makerFeeBps: "5", takerFeeBps: "20" });
-  expect(first!.envelope.packet.polymarket.conditionId).toBe(
-    second!.envelope.packet.polymarket.conditionId,
-  );
+  expect(first!.envelope.packet.event.conditionId).toBe(second!.envelope.packet.event.conditionId);
   expect(first!.body.metadataSnapshotId).toBe("snapshot");
   expect(() =>
     buildBatchPlans({

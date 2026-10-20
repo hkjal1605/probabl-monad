@@ -1,7 +1,8 @@
 import { expect, test } from "bun:test";
 import { createPolymarketQueries } from "@conditional-stocks/db/polymarket";
 import { testDatabase } from "@conditional-stocks/db/polymarket/testing";
-import { createPolymarketApp } from "../src/app.ts";
+import { createIngestorApp } from "../src/app.ts";
+import { EventMarkets } from "../src/event-markets.ts";
 import { startPolymarketServer } from "../src/server.ts";
 import { PolymarketIngestor } from "../src/service.ts";
 import { conditionId, environment, FakeSource } from "./helpers.ts";
@@ -12,10 +13,13 @@ test("real Bun entrypoint upgrades WebSocket and publishes quiet-book staleness"
   const service = new PolymarketIngestor(config, store, new FakeSource());
   const metadata = await service.fetchMetadata("42");
   await service.track(metadata.snapshotId);
-  const server = startPolymarketServer(createPolymarketApp(service, store, config), {
-    host: "127.0.0.1",
-    port: 0,
-  });
+  const server = startPolymarketServer(
+    createIngestorApp(new EventMarkets(service), store, config),
+    {
+      host: "127.0.0.1",
+      port: 0,
+    },
+  );
   let socket: WebSocket | undefined;
   try {
     const qualities: string[] = [];

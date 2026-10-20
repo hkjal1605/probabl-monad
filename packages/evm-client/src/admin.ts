@@ -61,9 +61,9 @@ export function creationParams(c: CreationEvidencePacket["config"]) {
     throw new Error(`Fee rates must be whole bps from 0 to ${MAX_FEE_BPS}`);
   return {
     base: getAddress(c.baseToken),
-    condition: c.polymarketConditionId as Hex,
-    yesIndex: Number(c.polymarketYesIndex),
-    noIndex: Number(c.polymarketNoIndex),
+    condition: c.eventConditionId as Hex,
+    yesIndex: Number(c.eventYesIndex),
+    noIndex: Number(c.eventNoIndex),
     rulesHash: c.rulesHash as Hex,
     metadataHash: c.metadataHash as Hex,
     open: BigInt(c.tradingOpen),

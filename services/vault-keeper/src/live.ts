@@ -1,8 +1,8 @@
 /** Live references for RFQ quotes, held in memory so a request prices without a read.
  *
- * Each event's Polymarket probability arrives over the ingestor's stream (pushed on every book
+ * Each event's probability (Polymarket or Kalshi) arrives over the ingestor's stream (pushed on every book
  * change), and the spot prices are polled every `spotPollMs` (the API caches them for 2 s). The
- * rounds hand over each market's Polymarket metadata, which `reference` validates the
+ * rounds hand over each market's event metadata, which `reference` validates the
  * probability against, as it does every round's. */
 import type { MarketState } from "@conditional-stocks/evm-client/ledger";
 import {
@@ -74,7 +74,7 @@ export class LiveReferences {
     this.streams.clear();
   }
 
-  /** Records a round's Polymarket read of `market` (metadata and a probability tick) and keeps
+  /** Records a round's event read of `market` (metadata and a probability tick) and keeps
    * its event's probability streaming from then on. */
   track(market: MarketState, source: unknown) {
     const s = source as { metadata?: unknown; probability?: Tick } | undefined;
@@ -88,7 +88,7 @@ export class LiveReferences {
   private open(condition: string) {
     const entry = this.streams.get(condition) ?? { retryMs: 1_000 };
     this.streams.set(condition, entry);
-    const url = `${this.options.origin.replace(/^http/, "ws")}/v1/polymarket/conditions/${condition}/stream`;
+    const url = `${this.options.origin.replace(/^http/, "ws")}/v1/conditions/${condition}/stream`;
     let socket: StreamSocket;
     try {
       socket = this.options.connect?.(url) ?? (new WebSocket(url) as unknown as StreamSocket);

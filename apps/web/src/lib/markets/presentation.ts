@@ -65,7 +65,7 @@ export function impactPercent(market: MarketView, branch: "YES" | "NO" = "YES"):
   return reference > 0 ? ((branch === "YES" ? yes - no : no - yes) / reference) * 100 : null;
 }
 export function eventKey(market: MarketView) {
-  // A Polymarket condition plus its outcome orientation is the immutable event
+  // An event market's condition (Polymarket or Kalshi) plus its outcome orientation is the immutable event
   // identity. Local trading windows and lifecycle state belong to each asset
   // market and must not split one external event into multiple cards.
   return [

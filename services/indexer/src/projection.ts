@@ -26,6 +26,7 @@ import {
   type TradeDetails,
   traderOf,
 } from "@conditional-stocks/evm-client/ledger";
+import { eventSourceOf } from "@conditional-stocks/market-data";
 import { type Address, getAddress, type Hex, zeroHash } from "viem";
 
 export const PROTOCOL_VERSION = 4;
@@ -129,9 +130,12 @@ export function marketView(
     venue: venueOf(deployment, m.id),
     createdAt: new Date(Number(m.createdAt) * 1000).toISOString(),
     conditionId: String(m.id),
-    polymarketConditionId: m.condition,
-    polymarketYesIndex: String(m.yesIndex),
-    polymarketNoIndex: String(m.noIndex),
+    /** The event market (Polymarket or Kalshi) the market is conditioned on: its venue, its
+     * on-chain id and the index sets of the outcomes the YES and NO branches follow. */
+    eventSource: eventSourceOf(m.metadataUri),
+    eventConditionId: m.condition,
+    eventYesIndex: String(m.yesIndex),
+    eventNoIndex: String(m.noIndex),
     rulesHash: m.rulesHash,
     metadataHash: m.metadataHash,
     metadataUri: m.metadataUri,

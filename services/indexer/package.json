@@ -15,6 +15,7 @@
   "dependencies": {
     "@conditional-stocks/db": "workspace:*",
     "@conditional-stocks/evm-client": "workspace:*",
+    "@conditional-stocks/market-data": "workspace:*",
     "hono": "4.13.5",
     "viem": "2.56.3"
   }

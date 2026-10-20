@@ -1,37 +1,32 @@
-import type { Hex } from "@conditional-stocks/market-data";
-import { MarketDataError, type NormalizedPolymarketMarket } from "@conditional-stocks/market-data";
+import type { EventMarket, Hex } from "@conditional-stocks/market-data";
+import { MarketDataError } from "@conditional-stocks/market-data";
 
+/** A stored venue snapshot (Polymarket or Kalshi); evidence refers to it by `snapshotId`. */
 export interface MetadataSnapshot {
   fetchedAtMs: string;
-  normalized: NormalizedPolymarketMarket;
+  normalized: EventMarket;
   rawHash: Hex;
   rawPayload: unknown;
   snapshotId: string;
 }
 
-export interface SubscriptionRecord {
-  conditionId: Hex;
-  gammaMarketId: string;
-  metadataSnapshotId: string;
-  yesTokenId: string;
-}
-
-export class PolymarketIngestorClient {
+/** The ingestor (services/polymarket-ingestor), which follows Polymarket and Kalshi markets. */
+export class EventMarketsClient {
   constructor(
     readonly baseUrl: string,
     readonly token: string,
   ) {}
 
-  fetchMetadata(gammaMarketId: string): Promise<MetadataSnapshot> {
-    return this.#internal<MetadataSnapshot>("/internal/metadata/fetch", {
-      gammaMarketId,
-    });
+  /** Stores and returns a fresh snapshot of a Polymarket (Gamma id) or Kalshi (ticker) market. */
+  fetchMetadata(source: EventMarket["source"], marketId: string): Promise<MetadataSnapshot> {
+    return source === "kalshi"
+      ? this.#internal<MetadataSnapshot>("/internal/kalshi/metadata/fetch", { ticker: marketId })
+      : this.#internal<MetadataSnapshot>("/internal/metadata/fetch", { gammaMarketId: marketId });
   }
 
-  track(metadataSnapshotId: string): Promise<SubscriptionRecord> {
-    return this.#internal<SubscriptionRecord>("/internal/subscriptions", {
-      metadataSnapshotId,
-    });
+  /** Starts following the market of a stored snapshot (its odds feed). */
+  track(metadataSnapshotId: string): Promise<{ conditionId: Hex }> {
+    return this.#internal("/internal/subscriptions", { metadataSnapshotId });
   }
 
   async snapshot(snapshotId: string): Promise<MetadataSnapshot> {
@@ -42,11 +37,11 @@ export class PolymarketIngestorClient {
   }
 
   probability(conditionId: Hex): Promise<unknown> {
-    return this.#get(`/v1/polymarket/conditions/${conditionId}/probability`, false);
+    return this.#get(`/v1/conditions/${conditionId}/probability`, false);
   }
 
   metadata(conditionId: Hex): Promise<MetadataSnapshot> {
-    return this.#get(`/v1/polymarket/conditions/${conditionId}/metadata`, false);
+    return this.#get(`/v1/conditions/${conditionId}/metadata`, false);
   }
 
   async #internal<T>(path: string, body: unknown): Promise<T> {
@@ -61,7 +56,7 @@ export class PolymarketIngestorClient {
       });
     } catch (error) {
       throw new MarketDataError(
-        "POLYMARKET_INGESTOR_UNAVAILABLE",
+        "INGESTOR_UNAVAILABLE",
         error instanceof Error ? error.message : String(error),
         503,
       );
@@ -79,7 +74,7 @@ export class PolymarketIngestorClient {
       });
     } catch (error) {
       throw new MarketDataError(
-        "POLYMARKET_INGESTOR_UNAVAILABLE",
+        "INGESTOR_UNAVAILABLE",
         error instanceof Error ? error.message : String(error),
         503,
       );
@@ -91,7 +86,7 @@ export class PolymarketIngestorClient {
     const body = (await response.json()) as T & { error?: { message?: string } };
     if (!response.ok) {
       throw new MarketDataError(
-        "POLYMARKET_INGESTOR_ERROR",
+        "INGESTOR_ERROR",
         body.error?.message ?? `ingestor returned ${response.status}`,
         response.status >= 500 ? 503 : response.status,
       );

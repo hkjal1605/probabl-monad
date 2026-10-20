@@ -207,7 +207,7 @@ export type ReferenceReader = (
 /** The round's shared reads of the market's event and of the spot prices. */
 export const tickReference: ReferenceReader = async (tick, market, policy, limits, u) => {
   const [source, prices] = await Promise.all([
-    tick.polymarket(market.id, market.condition),
+    tick.event(market.id, market.condition),
     tick.spotPrices(),
   ]);
   return reference(source, spotPair(prices, u.quote, policy.base), market, policy, limits, u);
@@ -381,7 +381,7 @@ export class Keeper {
     if (this.live)
       for (const market of references.keys()) {
         const m = s.markets.get(market)!;
-        this.live.track(m, await tick.polymarket(market, m.condition).catch(() => undefined));
+        this.live.track(m, await tick.event(market, m.condition).catch(() => undefined));
       }
     if (this.drawdown(v, references)) {
       // The latch is durable before anything else happens.
@@ -569,7 +569,7 @@ export class Keeper {
       gapPpm: gap,
       widen,
     });
-    // A liquid book implying another probability means Polymarket's p or our flow is off.
+    // A liquid book implying another probability means the event's p or our flow is off.
     const best = foreignBook(s, this.vault, m);
     const implied = impliedProbability(best, r.spot);
     if (implied !== null && abs(implied - r.probability) > BigInt(set.maxProbabilityDriftX6))

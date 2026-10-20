@@ -1,5 +1,6 @@
 import type { ShareUnits } from "@conditional-stocks/domain";
 import type { FeeRates } from "@conditional-stocks/evm-client";
+import type { EventSource } from "@conditional-stocks/market-data";
 import type { SpotPrice } from "@conditional-stocks/shared/spot-prices";
 import type { TokenDisplayMetadata } from "../lib/tokens/catalog";
 
@@ -96,7 +97,14 @@ export interface MarketView extends ShareUnits {
   /** Where this market trades: transactions use `venue.marketId`, never `id`. */
   venue: VenueView;
   lifecycle: MarketLifecycle;
-  mapping: { conditionId: string; noIndex: string; polymarketUrl: string; yesIndex: string };
+  /** The venue market (Polymarket or Kalshi) the market is conditioned on. */
+  mapping: {
+    conditionId: string;
+    noIndex: string;
+    source: EventSource;
+    sourceUrl: string;
+    yesIndex: string;
+  };
   no: BranchBook;
   ordinaryReference: number | null;
   spotReference?: SpotPrice;

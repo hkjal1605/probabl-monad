@@ -4,7 +4,7 @@ import {
   assertEvidenceIntegrity,
   buildCreationEvidence,
   canonicalStringify,
-  type NormalizedPolymarketMarket,
+  type EventMarket,
 } from "@conditional-stocks/market-data";
 import { catalogUnderlying } from "@conditional-stocks/shared/token-catalog";
 import { getAddress, isAddress } from "viem";
@@ -12,7 +12,7 @@ import type { EvidenceView } from "./admin-api";
 import { inspectToken, readDeployment, type TokenCheck, type TokenInfo } from "./chain";
 
 export type { TokenInfo } from "./chain";
-/** Asset markets per batch (e.g. NVDA and TSLA of one Polymarket event). */
+/** Asset markets per batch (e.g. NVDA and TSLA of one Polymarket or Kalshi event). */
 export const MAX_BATCH_MARKETS = 20;
 const U32 = (1n << 32n) - 1n,
   U64 = (1n << 64n) - 1n,
@@ -43,8 +43,9 @@ export interface MarketRow {
   caps: MarketCaps;
   fees: MarketFees;
 }
+/** A stored venue snapshot (Polymarket or Kalshi) the batch's markets share. */
 export interface MarketSource {
-  normalized: NormalizedPolymarketMarket;
+  normalized: EventMarket;
   rawHash: `0x${string}`;
   snapshotId: string;
 }
@@ -316,7 +317,7 @@ export function assertBatchPacket(plan: BatchPlan, packet: EvidenceView) {
     actual.kind !== "market-creation" ||
     canonicalStringify(actual.config) !== canonicalStringify(expected.config) ||
     canonicalStringify(actual.deployment) !== canonicalStringify(expected.deployment) ||
-    canonicalStringify(actual.polymarket) !== canonicalStringify(expected.polymarket) ||
+    canonicalStringify(actual.event) !== canonicalStringify(expected.event) ||
     canonicalStringify(actual.sourceUrls) !== canonicalStringify(expected.sourceUrls) ||
     canonicalStringify(actual.attachments) !== canonicalStringify(expected.attachments) ||
     actual.preparer !== expected.preparer

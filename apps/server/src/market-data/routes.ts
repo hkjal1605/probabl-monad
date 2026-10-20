@@ -12,7 +12,7 @@ import type { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { streamSSE } from "hono/streaming";
 import { type Address, getAddress } from "viem";
-import type { PolymarketIngestorClient } from "../integrations/polymarket.ts";
+import type { EventMarketsClient } from "../integrations/event-markets.ts";
 import { HISTORY_RANGES, type HistoryRange, priceHistory } from "./history.ts";
 import type { SpotPriceSource } from "./robinhood.ts";
 
@@ -53,7 +53,7 @@ export function mountMarketData(
     indexer: IndexerService;
     prices: SpotPriceSource;
     probabilities: CachedProbability;
-    polymarket: () => PolymarketIngestorClient;
+    events: () => EventMarketsClient;
     db: Pick<Database, "priceHistory" | "firstPriceMinute">;
   },
 ) {
@@ -141,27 +141,31 @@ export function mountMarketData(
   // Metadata changes at most once per ingestor poll (minutes); every market list refresh reads
   // it for every condition, so one read per condition serves all of them for a while.
   const metadataReads = new ReadCache(30_000, 1_024);
-  app.get("/v1/markets/:id/polymarket", async (c) => {
-    const m = marketCondition(c.req.param("id"));
-    const metadata = await metadataReads.get(m.condition.toLowerCase(), () =>
-      options.polymarket().metadata(m.condition),
-    );
-    if (
-      metadata.normalized.conditionId.toLowerCase() !== m.condition.toLowerCase() ||
-      yesOutcome(metadata.normalized).indexSet !== String(m.yesIndex) ||
-      noOutcome(metadata.normalized).indexSet !== String(m.noIndex)
-    )
-      throw new HTTPException(409, {
-        message: "External snapshot does not match immutable market orientation",
+  // A market's event (Polymarket or Kalshi): its metadata and latest probability. The
+  // `/polymarket` path predates Kalshi.
+  for (const path of ["/v1/markets/:id/event", "/v1/markets/:id/polymarket"])
+    app.get(path, async (c) => {
+      const m = marketCondition(c.req.param("id") ?? "");
+      const metadata = await metadataReads.get(m.condition.toLowerCase(), () =>
+        options.events().metadata(m.condition),
+      );
+      if (
+        metadata.normalized.conditionId.toLowerCase() !== m.condition.toLowerCase() ||
+        yesOutcome(metadata.normalized).indexSet !== String(m.yesIndex) ||
+        noOutcome(metadata.normalized).indexSet !== String(m.noIndex)
+      )
+        throw new HTTPException(409, {
+          message: "External snapshot does not match immutable market orientation",
+        });
+      return c.json({
+        informationalOnly: true,
+        localMarketId: String(m.id),
+        source: metadata.normalized.source,
+        metadata,
+        probability: await probabilities.get(m.condition).catch(() => null),
+        settlementAuthority: "manual-admin-only",
       });
-    return c.json({
-      informationalOnly: true,
-      localMarketId: String(m.id),
-      metadata,
-      probability: await probabilities.get(m.condition).catch(() => null),
-      settlementAuthority: "manual-admin-only",
     });
-  });
   app.get("/v1/markets/:id/probability", async (c) => {
     const m = marketCondition(c.req.param("id"));
     return c.json({

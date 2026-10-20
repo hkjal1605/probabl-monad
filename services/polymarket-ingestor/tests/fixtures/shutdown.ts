@@ -3,7 +3,8 @@ import {
   createPolymarketDatabase,
   createPolymarketQueries,
 } from "@conditional-stocks/db/polymarket";
-import { createPolymarketApp } from "../../src/app.ts";
+import { createIngestorApp } from "../../src/app.ts";
+import { EventMarkets } from "../../src/event-markets.ts";
 import { startPolymarketServer } from "../../src/server.ts";
 import { PolymarketIngestor } from "../../src/service.ts";
 import { environment, FakeSource } from "../helpers.ts";
@@ -20,10 +21,13 @@ const store = createPolymarketQueries(database);
 const service = new PolymarketIngestor(environment, store, new FakeSource());
 await service.track((await service.fetchMetadata("42")).snapshotId);
 await service.start();
-const server = startPolymarketServer(createPolymarketApp(service, store, environment), {
-  host: "127.0.0.1",
-  port: 0,
-});
+const server = startPolymarketServer(
+  createIngestorApp(new EventMarkets(service), store, environment),
+  {
+    host: "127.0.0.1",
+    port: 0,
+  },
+);
 console.log(JSON.stringify({ port: server.port }));
 process.once("SIGTERM", async () => {
   await server.stop(true);

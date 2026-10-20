@@ -5,7 +5,7 @@ import { resolveMarkets } from "./resolve-markets.ts";
 
 export interface JobContext {
   admin: Admin;
-  /** Reads Polygon, where Polymarket settles. */
+  /** Reads Polygon, where Polymarket settles (Kalshi results come through the API). */
   polygon: PublicClient;
   /** False in a dry run: jobs log what they would do and change nothing. */
   execute: boolean;

@@ -968,7 +968,7 @@ test("RFQ: the Δ-vault quotes a member's market order over the stream and fills
       quote: usdc,
       bases: [stock],
       spotPrices: async () => ({ prices: [] }) as never,
-      polymarket: async () => ({}),
+      event: async () => ({}),
     }),
   );
   const maker = new RfqMaker({

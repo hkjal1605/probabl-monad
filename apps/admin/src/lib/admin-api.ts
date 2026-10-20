@@ -4,6 +4,7 @@ import type {
 } from "@conditional-stocks/evm-client/admin";
 import type {
   CreationEvidencePacket,
+  EventSource,
   EvidenceEnvelope,
   ResolutionEvidencePacket,
 } from "@conditional-stocks/market-data";
@@ -13,6 +14,7 @@ import type {
 export type AdminPreview = Preview & { prerequisites: AdminTransaction[] };
 
 import { assertRequestSession } from "./admin-session";
+import { parseKalshiTicker } from "./kalshi-ticker";
 import { logger } from "./logger";
 import { parseMarketSlug } from "./polymarket-slug";
 
@@ -91,11 +93,22 @@ export async function adminRequest<T>(
   }
 }
 
-export function fetchMarketMetadata<T>(token: string, input: string): Promise<T> {
-  return adminRequest<T>(token, "admin/polymarket/metadata/fetch-by-slug", {
-    method: "POST",
-    body: JSON.stringify({ marketSlug: parseMarketSlug(input) }),
-  });
+/** Stores and returns a fresh snapshot of a venue market: a Polymarket market by its slug, or a
+ * Kalshi market by its ticker. */
+export function fetchEventMetadata<T>(
+  token: string,
+  source: EventSource,
+  input: string,
+): Promise<T> {
+  return source === "kalshi"
+    ? adminRequest<T>(token, "admin/kalshi/metadata/fetch", {
+        method: "POST",
+        body: JSON.stringify({ ticker: parseKalshiTicker(input) }),
+      })
+    : adminRequest<T>(token, "admin/polymarket/metadata/fetch-by-slug", {
+        method: "POST",
+        body: JSON.stringify({ marketSlug: parseMarketSlug(input) }),
+      });
 }
 
 export interface EvidenceView {

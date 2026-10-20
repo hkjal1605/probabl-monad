@@ -1,6 +1,7 @@
-/** The operations automation jobs build on: create markets from Polymarket markets and stock
- * tokens, and settle a market once Polymarket's payout is final. Both are idempotent, so a job
- * may call them on every run. */
+/** The operations automation jobs build on: create markets from venue (Polymarket or Kalshi)
+ * markets and stock tokens, and settle a market once its venue's result is final. Both are
+ * idempotent, so a job may call them on every run. */
+import { type EventSource, eventMarketId } from "@conditional-stocks/market-data";
 import { type Address, getAddress } from "viem";
 import {
   type Admin,
@@ -11,7 +12,9 @@ import {
   OPEN,
   SCHEDULED,
 } from "./admin.ts";
-import { POLYGON_CONDITIONAL_TOKENS, type ReportedPayout } from "./polygon.ts";
+import type { Settlement } from "./settlement.ts";
+import { kalshiResolution } from "./venues/kalshi.ts";
+import { polymarketResolution } from "./venues/polymarket.ts";
 
 /** Order and exposure limits in raw units of 18-decimal stocks and 6-decimal quote: 0.001-share
  * steps, $0.01 ticks, $1 to $10,000 orders, 1,000 shares per order, $100,000 open per wallet and
@@ -31,11 +34,13 @@ export interface Fees {
   takerFeeBps: string;
 }
 export interface MarketSpec {
-  /** The Polymarket market (Gamma id) whose YES/NO question is the market's event. */
-  gammaMarketId: string;
+  /** The venue whose YES/NO market is the local market's event. */
+  source: EventSource;
+  /** The venue's id of that market: Polymarket's Gamma market id, or the Kalshi ticker. */
+  marketId: string;
   /** The stock token traded conditionally on the event. */
   base: Address;
-  /** Trading cutoff in unix seconds; Polymarket's end time when omitted. */
+  /** Trading cutoff in unix seconds; the venue market's end time when omitted. */
   cutoff?: number;
   fees?: Fees;
   /** Maker rebate in bps of the taker fee (up to 5,000), set before the market opens. */
@@ -53,7 +58,7 @@ export type Created = { spec: MarketSpec } & (
  * not stop the others. */
 export async function createMarkets(admin: Admin, specs: MarketSpec[]): Promise<Created[]> {
   const unique = [
-    ...new Map(specs.map((s) => [`${s.gammaMarketId}:${getAddress(s.base)}`, s])).values(),
+    ...new Map(specs.map((s) => [`${s.source}:${s.marketId}:${getAddress(s.base)}`, s])).values(),
   ];
   const [evidence, markets] = await Promise.all([admin.evidence(), admin.markets()]);
   const results: Created[] = [];
@@ -77,7 +82,7 @@ async function createMarket(
   const onChain = (list: Market[], condition: string) =>
     list.find(
       (m) =>
-        m.polymarketConditionId.toLowerCase() === condition.toLowerCase() &&
+        m.eventConditionId.toLowerCase() === condition.toLowerCase() &&
         getAddress(m.baseToken) === base,
     );
   let packet = evidence.find((e) => {
@@ -85,7 +90,8 @@ async function createMarket(
     return (
       e.status !== "rejected" &&
       p.kind === "market-creation" &&
-      p.polymarket.gammaMarketId === spec.gammaMarketId &&
+      p.event.source === spec.source &&
+      p.event.marketId === spec.marketId &&
       getAddress(p.config.baseToken) === base
     );
   });
@@ -95,11 +101,11 @@ async function createMarket(
     // A packet from an earlier run may also have been executed without being reconciled.
     existing = onChain(
       executed ? markets : await admin.markets(),
-      packet.envelope.packet.polymarket.conditionId,
+      packet.envelope.packet.event.conditionId,
     );
     if (executed && !existing) throw new Error("The created market is not indexed yet");
   } else {
-    const snapshot = await admin.fetchMetadata(spec.gammaMarketId);
+    const snapshot = await admin.fetchMetadata(spec.source, spec.marketId);
     const { canonicalUrl, conditionId, endTime, rules } = snapshot.normalized;
     existing = onChain(markets, conditionId);
     if (!existing) {
@@ -139,14 +145,14 @@ async function createMarket(
   return { marketId, created: !existing };
 }
 
-/** Advances an open, frozen or awaiting market one step toward Polymarket's final payout:
- * freeze (at the cutoff, or early once the payout is known), commit the resolution, resolve.
+/** Advances an open, frozen or awaiting market one step toward its venue's final result:
+ * freeze (at the cutoff, or early once the result is known), commit the resolution, resolve.
  * `evidence` is the recent packet list (`admin.evidence()`), needed past the freeze. Returns
  * the step taken, or why none was. */
 export async function settleMarket(
   admin: Admin,
   market: Market,
-  reported: ReportedPayout,
+  settlement: Settlement,
   evidence: Evidence[],
 ) {
   const id = market.venue.marketId;
@@ -155,11 +161,11 @@ export async function settleMarket(
       await admin.lifecycle(id, 2);
       return "freeze-at-cutoff";
     }
-    await admin.lifecycle(id, 1, "Polymarket settled the market before its trading cutoff");
+    await admin.lifecycle(id, 1, "The event settled before the market's trading cutoff");
     return "freeze-early";
   }
   if (market.state !== FROZEN && market.state !== AWAITING) return "not-active";
-  const { yes, no, denominator } = reported.payout;
+  const { yes, no, denominator } = settlement.payout;
   // The newest packet for this payout; the API's stored packets do not keep key order.
   let packet = evidence.find((e) => {
     const p = e.envelope.packet;
@@ -173,39 +179,28 @@ export async function settleMarket(
     );
   });
   if (!packet) {
-    const { gammaMarketId } = (await admin.polymarket(id)).normalized;
-    const snapshot = await admin.fetchMetadata(gammaMarketId);
-    const { canonicalUrl, closed, resolutionStatus } = snapshot.normalized;
-    // Polymarket's own API must agree before evidence cites it.
-    if (!closed || resolutionStatus?.toLowerCase() !== "resolved") return "awaiting-polymarket-api";
-    const observedAt = new Date().toISOString();
+    const latest = (await admin.event(id)).normalized;
+    if (latest.source !== settlement.source) throw new Error("The event's venue changed");
+    const snapshot = await admin.fetchMetadata(latest.source, eventMarketId(latest));
+    // The venue's own API must agree before evidence cites it.
+    const resolution =
+      settlement.source === "kalshi"
+        ? kalshiResolution(snapshot, settlement)
+        : polymarketResolution(snapshot, settlement);
+    if (!resolution) return "awaiting-venue-api";
     packet = await admin.prepare("resolution", {
       marketId: id,
       metadataSnapshotId: snapshot.snapshotId,
       attachments: [],
-      officialStatus: resolutionStatus,
-      officialUrl: canonicalUrl,
-      payout: reported.payout,
-      polygon: {
-        chainId: "137",
-        conditionalTokensAddress: POLYGON_CONDITIONAL_TOKENS,
-        blockNumber: String(reported.blockNumber),
-        blockHash: reported.blockHash,
-        transactionHash: null,
-      },
-      sourceObservations: [
-        { observedAt, payout: reported.payout, status: resolutionStatus, url: canonicalUrl },
-        {
-          observedAt,
-          payout: reported.payout,
-          status: `payout reported on Polygon at finalized block ${reported.blockNumber}`,
-          url: `https://polygonscan.com/address/${POLYGON_CONDITIONAL_TOKENS}`,
-        },
-      ],
-      sourceReference: canonicalUrl,
+      ...resolution,
     });
   }
   if (packet.status === "prepared")
-    packet = await admin.approve(packet, "Polymarket's payout, read on Polygon");
+    packet = await admin.approve(
+      packet,
+      settlement.source === "kalshi"
+        ? "Kalshi's final result"
+        : "Polymarket's payout, read on Polygon",
+    );
   return (await admin.execute(packet)).action;
 }

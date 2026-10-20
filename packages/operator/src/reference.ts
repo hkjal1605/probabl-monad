@@ -17,15 +17,15 @@ export interface Units {
 export interface Reference {
   /** Quote raw per base raw x 1e18. */
   spot: bigint;
-  /** YES probability x 1e6 (Polymarket midpoint). */
+  /** YES probability x 1e6 (the event market's midpoint). */
   probability: bigint;
   /** Oldest time behind the reference (ms). */
   observedAt: number;
-  /** Polymarket bid-ask spread x 1e6. */
+  /** The event market's bid-ask spread x 1e6. */
   spread: bigint;
   /** Reference publish time (ms), or the probability time when stale prices are allowed. */
   spotAt: number;
-  /** Polymarket observation time (ms). */
+  /** The event market's observation time (ms). */
   probabilityAt: number;
 }
 /** Reviewed unit conversion of a market's reference prices. */
@@ -217,9 +217,9 @@ export function spotPair(
   const find = (token: Address) => response.prices.filter((p) => getAddress(p.token) === token);
   return { ...response, prices: [...find(quote).slice(0, 1), ...find(base).slice(0, 1)] };
 }
-/** Polymarket metadata and the latest probability of one market's event. */
-export const fetchPolymarket = (origin: string, market: number) =>
-  json(`${origin}/v1/markets/${market}/polymarket`);
+/** The metadata and latest probability of one market's event (Polymarket or Kalshi). */
+export const fetchEvent = (origin: string, market: number) =>
+  json(`${origin}/v1/markets/${market}/event`);
 export async function fetchReference(
   origin: string,
   market: Pick<MarketState, "id" | "condition" | "yesIndex" | "noIndex" | "tick">,
@@ -228,7 +228,7 @@ export async function fetchReference(
   units: Units,
 ) {
   const [source, prices] = await Promise.all([
-    json(`${origin}/v1/markets/${market.id}/polymarket`),
+    json(`${origin}/v1/markets/${market.id}/event`),
     json(`${origin}/v1/spot-prices?tokens=${units.quote},${policy.base}`),
   ]);
   return reference(source, prices, market, policy, s, units);

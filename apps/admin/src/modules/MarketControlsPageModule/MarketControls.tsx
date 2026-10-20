@@ -29,7 +29,7 @@ import { MarketLifecycleAction } from "./MarketLifecycleAction";
 
 interface Market {
   id: string;
-  polymarketConditionId: string;
+  eventConditionId: string;
   base: {
     token: string;
     symbol: string | null;

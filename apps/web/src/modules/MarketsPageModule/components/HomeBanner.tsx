@@ -1,4 +1,7 @@
-"use client";
+import { EVENT_SOURCE_NAMES } from "@conditional-stocks/market-data";
+
+("use client");
+
 import type { UTCTimestamp } from "lightweight-charts";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
@@ -74,7 +77,7 @@ function StockIcon({ market, className }: { market: MarketView; className?: stri
   );
 }
 
-/** One outcome's live value, as Polymarket lists outcomes: a colored key, its name, its price. */
+/** One outcome's live value, as prediction markets list outcomes: a colored key, its name, its price. */
 function Outcome({
   color,
   label,
@@ -204,7 +207,7 @@ function FeaturedEvent({ assets }: { assets: MarketView[] }) {
   const live = { yes: midpoint(market.yes), no: midpoint(market.no), spot: currentSpotUsd(market) };
   const volume = assets.reduce((sum, asset) => sum + (asset.volume24h ?? 0), 0);
   const liquidity = assets.reduce((sum, asset) => sum + bookDepthUsd(asset), 0);
-  const source = safeExternalUrl(event.mapping.polymarketUrl);
+  const source = safeExternalUrl(event.mapping.sourceUrl);
   return (
     <Card
       variant="market"
@@ -278,7 +281,7 @@ function FeaturedEvent({ assets }: { assets: MarketView[] }) {
                 rel="noreferrer noopener"
                 className="inline-flex items-center gap-0.5 transition-colors hover:text-foreground"
               >
-                Polymarket
+                {EVENT_SOURCE_NAMES[event.mapping.source]}
                 <ArrowUpRight aria-hidden="true" className="size-3.5" />
               </a>
             </>

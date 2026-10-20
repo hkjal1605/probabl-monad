@@ -19,10 +19,15 @@ Every transaction the API previews is rebuilt locally from the approved evidence
 - **`--execute`** signs transactions.
 - **`--once`** runs each job once and exits.
 
-There is one job today, **`resolve-markets`**, which runs every minute. For each open, frozen or awaiting market, it reads Polymarket's payout from Gnosis Conditional Tokens on Polygon, at the finalized block. Once that payout is reported, each run advances the market one step:
+There is one job today, **`resolve-markets`**, which runs every minute. For each open, frozen or awaiting market, it reads the final result of the market's event from its venue (`eventSource` in the indexer's market view):
 
-1. **Freeze.** At the cutoff, or early if the payout arrives before it.
-2. **Commit the payout.** The job first waits until Polymarket's API also reports the market closed and resolved. It then prepares and approves a resolution packet citing both sources, and commits the payout as the market admin.
+- **Polymarket:** the payout reported to Gnosis Conditional Tokens on Polygon, read at the finalized block (`src/venues/polymarket.ts`).
+- **Kalshi:** the result of a `finalized` market, from the ingestor's latest snapshot, which it refreshes every minute (`src/venues/kalshi.ts`).
+
+Once the result is final, each run advances the market one step:
+
+1. **Freeze.** At the cutoff, or early if the result arrives before it.
+2. **Commit the payout.** The job first fetches a fresh snapshot from the venue's API, which must agree: Polymarket must report the market closed and resolved, Kalshi must show the same finalized result. It then prepares and approves a resolution packet, and commits the payout as the market admin. Polymarket packets cite Polygon as well; Kalshi packets have no Polygon record.
 3. **Resolve.** Signed as the resolution admin.
 
 A step only runs when the API's indexed state of the market matches its state on chain. The index trails the chain by a few seconds, so a lagging market simply waits for the next run.
@@ -33,13 +38,13 @@ What the job maps and what it leaves alone:
 
 ## Creating markets from a job
 
-`createMarkets(admin, specs)` creates and opens one market per spec. Each spec is a Polymarket market (its Gamma id) and a stock token. Optional fields are the trading cutoff (Polymarket's end time by default), fees, maker rebate and limits.
+`createMarkets(admin, specs)` creates and opens one market per spec. Each spec is a venue market and a stock token: `{ source: "polymarket", marketId: <Gamma id> }` or `{ source: "kalshi", marketId: <ticker> }`. Optional fields are the trading cutoff (the venue market's end time by default), fees, maker rebate and limits.
 
 It is idempotent, so a job can pass the same specs on every run:
-- A market already on chain for the same Polymarket condition and token is returned as is.
+- A market already on chain for the same event and token is returned as is.
 - A packet from an interrupted run is resumed, never executed twice.
 
-`scripts/evm/create-markets.ts` uses the same function for planned markets.
+`scripts/evm/create-markets.ts` uses the same function for planned markets (each planned event names a `gammaMarketId` or a `kalshiTicker`).
 
 A daily ladder job looks like this:
 
@@ -58,7 +63,9 @@ export const dailyLadders: Job = {
 
 Add it to `JOBS`.
 
-The importer accepts any Polymarket YES/NO market. That includes the daily "above $K" crypto and stock strike ladders, and single outcomes of negative-risk events (one winner among many), such as FOMC or CPI brackets, election candidates and "largest company".
+Kalshi lists a new event per day for recurring questions as well (e.g. `KXBTCD-26OCT2017`, Bitcoin's price on Oct 20 at 5 pm ET, with a market per strike); its markets come from `GET /events/{event_ticker}` on Kalshi's public API, and a spec takes each market's ticker.
+
+The importer accepts any binary Kalshi market and any Polymarket YES/NO market. That includes the daily "above $K" crypto and stock strike ladders, and single outcomes of negative-risk events (one winner among many), such as FOMC or CPI brackets, election candidates and "largest company".
 
 Two kinds of outcome change meaning after listing, so they are refused:
 - **"Other" outcomes.** The normalizer rejects them.

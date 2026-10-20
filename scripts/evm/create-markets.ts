@@ -1,7 +1,8 @@
 /** Creates the markets planned in deployments/<chainId>-markets.json with the market
  * automation's `createMarkets` (the API's admin evidence flow, signed by the market admin). Each
- * planned event lists the stock tokens it moves; every (event, stock) pair is one market, trading
- * until the event's end. A market's maker and taker fees (whole bps, fixed at creation) come from
+ * planned event is a Polymarket market (`gammaMarketId`) or a Kalshi market (`kalshiTicker`) and
+ * lists the stock tokens it moves; every (event, stock) pair is one market, trading until the
+ * event's end. A market's maker and taker fees (whole bps, fixed at creation) come from
  * its own `fees`, else its event's, else the plan's, else none; its maker rebate (bps of the taker
  * fee, up to 5,000) likewise from `makerRebateBps`, set before the market opens and updated on a
  * later run when the plan changes it. Resumable: created markets are written back to the plan.
@@ -44,7 +45,8 @@ interface Plan {
   events: {
     fees?: Fees;
     makerRebateBps?: string;
-    gammaMarketId: string;
+    gammaMarketId?: string;
+    kalshiTicker?: string;
     slug: string;
     question: string;
     rationale: string;
@@ -111,8 +113,12 @@ const planned = plan.events.flatMap((event) =>
     if (!base) throw new Error(`${ticker} has no planned token`);
     const rebate = record.makerRebateBps ?? event.makerRebateBps ?? plan.makerRebateBps ?? "0";
     const fees = record.fees ?? event.fees ?? plan.fees;
+    if (!event.gammaMarketId === !event.kalshiTicker)
+      throw new Error(`${event.question}: plan exactly one of gammaMarketId and kalshiTicker`);
     const spec: MarketSpec = {
-      gammaMarketId: event.gammaMarketId,
+      ...(event.kalshiTicker
+        ? { source: "kalshi", marketId: event.kalshiTicker }
+        : { source: "polymarket", marketId: event.gammaMarketId as string }),
       base,
       makerRebateBps: Number(rebate),
       note: `${ticker}: ${event.rationale}`,

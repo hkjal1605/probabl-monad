@@ -7,7 +7,11 @@ import {
   tokenDecimals,
 } from "@conditional-stocks/domain";
 import { type FeeRates, isFeeRate, isRebateRate } from "@conditional-stocks/evm-client";
-import { polymarketImageUrl } from "@conditional-stocks/market-data";
+import {
+  EVENT_SOURCES,
+  type EventSource,
+  polymarketImageUrl,
+} from "@conditional-stocks/market-data";
 import { marketTokenDisplay } from "../lib/tokens/catalog";
 import type {
   BaseLiveView,
@@ -214,16 +218,16 @@ async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<Mar
         ],
       }
     : await json<{ markets: Record<string, unknown>[] }>(`${upstreamUrl("indexer")}/markets`);
-  // Sibling asset markets share one immutable Polymarket condition. Fetch its
+  // Sibling asset markets share one immutable event (a Polymarket or Kalshi market). Fetch its
   // metadata/probability once so one event cannot randomly diverge per asset.
   const attachments = new Map<string, Promise<Record<string, unknown>>>();
   for (const market of marketResponse.markets) {
-    const condition = text(market.polymarketConditionId).toLowerCase();
+    const condition = text(market.eventConditionId).toLowerCase();
     if (!attachments.has(condition)) {
       const id = text(market.id);
       attachments.set(
         condition,
-        json<Record<string, unknown>>(`${upstreamUrl("api")}/v1/markets/${id}/polymarket`).catch(
+        json<Record<string, unknown>>(`${upstreamUrl("api")}/v1/markets/${id}/event`).catch(
           () => ({}),
         ),
       );
@@ -240,7 +244,7 @@ async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<Mar
       const fees = parseFees(market);
       const makerRebateBps = parseRebate(market);
       const quoteToken = address(market.quoteToken, "quote token");
-      const condition = text(market.polymarketConditionId).toLowerCase();
+      const condition = text(market.eventConditionId).toLowerCase();
       const [attached, book] = await Promise.all([
         attachments.get(condition) ?? Promise.resolve({}),
         marketId
@@ -253,6 +257,9 @@ async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<Mar
       ]);
       const attachedRecord = record(attached);
       const metadata = record(record(attachedRecord.metadata).normalized);
+      const source: EventSource = EVENT_SOURCES.includes(market.eventSource as EventSource)
+        ? (market.eventSource as EventSource)
+        : "polymarket";
       const probability = record(attachedRecord.probability);
       let probabilityView: MarketView["probability"] = {
         ask: null,
@@ -264,8 +271,8 @@ async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<Mar
       try {
         probabilityView = expireCachedProbability(
           parseProbabilityMessage(
-            { topic: `probability.${text(market.polymarketConditionId)}`, value: probability },
-            text(market.polymarketConditionId),
+            { topic: `probability.${text(market.eventConditionId)}`, value: probability },
+            text(market.eventConditionId),
           ),
         );
       } catch {
@@ -319,10 +326,11 @@ async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<Mar
         venue,
         lifecycle: lifecycle(market.state),
         mapping: {
-          conditionId: text(market.polymarketConditionId),
-          noIndex: text(market.polymarketNoIndex),
-          polymarketUrl: text(metadata.canonicalUrl, "https://polymarket.com"),
-          yesIndex: text(market.polymarketYesIndex),
+          conditionId: text(market.eventConditionId),
+          noIndex: text(market.eventNoIndex),
+          source,
+          sourceUrl: text(metadata.canonicalUrl, `https://${source}.com`),
+          yesIndex: text(market.eventYesIndex),
         },
         no,
         ordinaryReference: null,

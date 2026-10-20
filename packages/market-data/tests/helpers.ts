@@ -30,3 +30,32 @@ export const bookSnapshot = (overrides: Record<string, unknown> = {}) => ({
   timestamp: "1767225600000",
   ...overrides,
 });
+
+/** A Kalshi snapshot as the ingestor stores it: `GET /markets/{ticker}` and its event. */
+export const kalshiSnapshot = (
+  market: Record<string, unknown> = {},
+  event: Record<string, unknown> = {},
+) => ({
+  market: {
+    close_time: "2026-12-09T18:59:00Z",
+    event_ticker: "KXFEDDECISION-26DEC",
+    market_type: "binary",
+    result: "",
+    rules_primary:
+      "If the Federal Reserve hikes rates by 25bps at its December 2026 meeting, then the market resolves to Yes.",
+    rules_secondary: " ",
+    status: "active",
+    ticker: "KXFEDDECISION-26DEC-H25",
+    title: "Will the Federal Reserve Hike rates by 25bps at their December 2026 meeting?",
+    yes_bid_dollars: "0.7700",
+    yes_sub_title: "Hike 25bps",
+    ...market,
+  },
+  event: {
+    event_ticker: "KXFEDDECISION-26DEC",
+    series_ticker: "KXFEDDECISION",
+    settlement_sources: [{ name: "Federal Reserve", url: "https://www.federalreserve.gov" }],
+    title: "Fed decision in Dec 2026?",
+    ...event,
+  },
+});

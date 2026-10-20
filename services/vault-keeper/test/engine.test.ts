@@ -78,7 +78,7 @@ const round = () =>
     bases: [protocol.stock],
     spotPrices: async () =>
       ({ source: "robinhood", displayOnly: true, chainId: 31337, asOf: 0, prices: [] }) as never,
-    polymarket: async () => ({}),
+    event: async () => ({}),
   });
 /** A keeper of `address` signing with `account`, its journal fresh. */
 const keeperOf = (

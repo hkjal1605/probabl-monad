@@ -16,6 +16,7 @@ import {
   buildCreationEvidence,
   buildResolutionEvidence,
   canonicalStringify,
+  eventMarketId,
   isHex32,
   noOutcome,
   requiredString,
@@ -32,7 +33,7 @@ import {
   type Hex,
   type PublicClient,
 } from "viem";
-import type { PolymarketIngestorClient } from "../integrations/polymarket.ts";
+import type { EventMarketsClient } from "../integrations/event-markets.ts";
 
 /** Reviewer confirmations; keys are shared with the admin UI. */
 const creationChecks = [
@@ -73,10 +74,10 @@ export function mountAdmin(
     chainId: number;
     domain: string;
     authenticate: (header: string | undefined) => Promise<string>;
-    polymarket: () => PolymarketIngestorClient;
+    events: () => EventMarketsClient;
   },
 ) {
-  const { db, indexer, client, chainId, domain, authenticate, polymarket } = options;
+  const { db, indexer, client, chainId, domain, authenticate, events } = options;
   const exchange = indexer.options.exchange;
   const roles = () => {
     const c = indexer.trading().config;
@@ -166,11 +167,22 @@ export function mountAdmin(
     return m;
   };
 
+  // A fresh, stored snapshot of the venue market a local market will be conditioned on.
   app.post("/v1/admin/polymarket/metadata/fetch", async (c) => {
     await operator(c.req.header("authorization"));
     const body = await c.req.json();
     return c.json(
-      await polymarket().fetchMetadata(requiredString(body.gammaMarketId, "gammaMarketId", 256)),
+      await events().fetchMetadata(
+        "polymarket",
+        requiredString(body.gammaMarketId, "gammaMarketId", 256),
+      ),
+    );
+  });
+  app.post("/v1/admin/kalshi/metadata/fetch", async (c) => {
+    await operator(c.req.header("authorization"));
+    const body = await c.req.json();
+    return c.json(
+      await events().fetchMetadata("kalshi", requiredString(body.ticker, "ticker", 128)),
     );
   });
 
@@ -178,7 +190,7 @@ export function mountAdmin(
     app.post(`/v1/admin/evidence/${kind}/prepare`, async (c) => {
       const owner = await operator(c.req.header("authorization"), true);
       const body = await c.req.json();
-      const source = await polymarket().snapshot(
+      const source = await events().snapshot(
         requiredString(body.metadataSnapshotId, "metadataSnapshotId", 256),
       );
       const m = kind === "resolution" ? market(String(body.marketId)) : null;
@@ -215,13 +227,15 @@ export function mountAdmin(
                 ...shared,
                 conditionId: String(m!.id),
                 marketId: String(m!.id),
+                source: source.normalized.source,
+                eventMarketId: eventMarketId(source.normalized),
                 officialStatus: body.officialStatus,
                 officialUrl: body.officialUrl,
                 payout: body.payout,
                 polygon: body.polygon,
-                polymarketConditionId: m!.condition,
-                polymarketYesIndex: String(m!.yesIndex),
-                polymarketNoIndex: String(m!.noIndex),
+                eventConditionId: m!.condition,
+                eventYesIndex: String(m!.yesIndex),
+                eventNoIndex: String(m!.noIndex),
                 sourceObservations: body.sourceObservations,
                 sourceReference: body.sourceReference,
               });
@@ -419,7 +433,7 @@ export function mountAdmin(
     };
     await db.audit(domain, hash, "RECONCILE", owner, observation);
     if (view.envelope.packet.kind === "market-creation")
-      await polymarket().track(view.envelope.packet.polymarket.metadataSnapshotId);
+      await events().track(view.envelope.packet.event.metadataSnapshotId);
     return c.json(observation);
   });
   app.get("/v1/admin/history", async (c) => {

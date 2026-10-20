@@ -6,31 +6,14 @@ import {
   MarketDataError,
   object,
   requiredString,
-} from "./canonical.ts";
+} from "../canonical.ts";
+import type { EventMarketFields, EventOutcome } from "../event-market.ts";
 
-export interface PolymarketOutcome {
-  indexSet: "1" | "2";
-  label: "NO" | "YES";
-  tokenId: string;
-}
-
-export interface NormalizedPolymarketMarket {
-  active: boolean;
-  canonicalUrl: string;
-  closed: boolean;
-  conditionId: Hex;
-  endTime: string;
+export interface NormalizedPolymarketMarket extends EventMarketFields {
+  source: "polymarket";
   gammaMarketId: string;
-  imageUrl?: string | null;
-  mappingHash: Hex;
   /** One outcome of a Polymarket event with exactly one winner (a YES/NO market itself). */
   negRisk: boolean;
-  outcomes: [PolymarketOutcome, PolymarketOutcome];
-  question: string;
-  resolutionSource: string;
-  resolutionStatus: string | null;
-  rules: string;
-  schemaVersion: 1;
   slug: string;
 }
 
@@ -110,12 +93,12 @@ export const normalizeGammaMarket = (input: unknown): NormalizedPolymarketMarket
     throw new MarketDataError("UNSUPPORTED_MARKET", "outcomes must contain exactly YES and NO");
   }
   const outcomes = labels.map(
-    (_, index): PolymarketOutcome => ({
+    (_, index): EventOutcome => ({
       indexSet: index === 0 ? "1" : "2",
       label: normalizedLabels[index] as "NO" | "YES",
       tokenId: decimalInteger(tokenIds[index], `clobTokenIds[${index}]`),
     }),
-  ) as [PolymarketOutcome, PolymarketOutcome];
+  ) as [EventOutcome, EventOutcome];
   if (outcomes[0].tokenId === outcomes[1].tokenId) {
     throw new MarketDataError("INVALID_METADATA", "outcome token IDs must differ");
   }
@@ -131,6 +114,7 @@ export const normalizeGammaMarket = (input: unknown): NormalizedPolymarketMarket
     outcomes,
   };
   return {
+    source: "polymarket",
     active: boolean(raw.active, "active"),
     canonicalUrl: `https://polymarket.com/event/${eventSlug ? `${encodeURIComponent(eventSlug)}/` : ""}${encodeURIComponent(slug)}`,
     closed: boolean(raw.closed, "closed"),
@@ -148,16 +132,4 @@ export const normalizeGammaMarket = (input: unknown): NormalizedPolymarketMarket
     schemaVersion: 1,
     slug,
   };
-};
-
-export const yesOutcome = (market: NormalizedPolymarketMarket): PolymarketOutcome => {
-  const outcome = market.outcomes.find((item) => item.label === "YES");
-  if (!outcome) throw new MarketDataError("INVALID_METADATA", "YES outcome is missing");
-  return outcome;
-};
-
-export const noOutcome = (market: NormalizedPolymarketMarket): PolymarketOutcome => {
-  const outcome = market.outcomes.find((item) => item.label === "NO");
-  if (!outcome) throw new MarketDataError("INVALID_METADATA", "NO outcome is missing");
-  return outcome;
 };

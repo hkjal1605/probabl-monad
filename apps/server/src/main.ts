@@ -25,7 +25,7 @@ import { logger } from "./common/logger.ts";
 import { mountCustody } from "./custody/routes.ts";
 import { mountDeltaVaults } from "./delta-vaults/routes.ts";
 import { mountFaucet } from "./faucet.ts";
-import { PolymarketIngestorClient } from "./integrations/polymarket.ts";
+import { EventMarketsClient } from "./integrations/event-markets.ts";
 import { mountInvites } from "./invites/routes.ts";
 import { PriceRecorder } from "./market-data/history.ts";
 import { RobinhoodSpotPrices } from "./market-data/robinhood.ts";
@@ -257,12 +257,12 @@ app.get("/v1/system/readiness", (c) => {
   }
 });
 
-const polymarket = () => {
+/** The Polymarket and Kalshi ingestor (POLYMARKET_INGESTOR_URL predates Kalshi). */
+const events = () => {
   const url = process.env.POLYMARKET_INGESTOR_URL,
     token = process.env.POLYMARKET_INTERNAL_TOKEN;
-  if (!url || !token)
-    throw new HTTPException(503, { message: "Polymarket ingestor is not configured" });
-  return new PolymarketIngestorClient(url, token);
+  if (!url || !token) throw new HTTPException(503, { message: "Event ingestor is not configured" });
+  return new EventMarketsClient(url, token);
 };
 // Redis shares probability ticks across API processes; without it, reads go to the ingestor.
 let cacheWarning = 0;
@@ -276,10 +276,10 @@ const probabilityCache = new RedisCache(
   },
 );
 const probabilities = new CachedProbability(probabilityCache, (condition) =>
-  polymarket().probability(condition),
+  events().probability(condition),
 );
 const prices = new RobinhoodSpotPrices(chainId, process.env.ROBINHOOD_PRICES_URL || undefined);
-mountMarketData(app, { indexer, prices, probabilities, polymarket, db });
+mountMarketData(app, { indexer, prices, probabilities, events, db });
 const recorder = new PriceRecorder({
   indexer,
   prices,
@@ -356,7 +356,7 @@ mountRfq(app, {
   trustedHops,
 });
 mountCustody(app, indexer, client, auth);
-mountAdmin(app, { db, indexer, client, chainId, domain, authenticate: auth.bearer, polymarket });
+mountAdmin(app, { db, indexer, client, chainId, domain, authenticate: auth.bearer, events });
 const faucet = mountFaucet(app, {
   secret: process.env.FAUCET_PRIVATE_KEY,
   chainId,

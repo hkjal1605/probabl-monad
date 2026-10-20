@@ -1,5 +1,7 @@
-/** Creates or verifies the protocol and Polymarket schemas (idempotent). */
+/** Creates or verifies the protocol schema and the ingestor's Polymarket and Kalshi storage
+ * (idempotent). */
 import { createDatabase } from "../src/index.ts";
+import { initializeKalshiStorage } from "../src/kalshi/queries.ts";
 import {
   createPolymarketDatabase,
   initializePolymarketStorage,
@@ -12,5 +14,6 @@ await db.initialize();
 await db.close();
 const polymarket = createPolymarketDatabase(url);
 await initializePolymarketStorage(polymarket, { createSchema: true });
+await initializeKalshiStorage(polymarket);
 await polymarket.end();
 console.info("Database schema is current");

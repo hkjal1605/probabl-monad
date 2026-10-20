@@ -106,7 +106,7 @@ export function widening(secondsLeft: bigint, window: number, factor: number): b
 }
 
 /** Half-spread in bps of the branch price. A probability error dp moves both branch prices by
- * s·δ̂·dp, so the Polymarket spread widens quotes in proportion to |δ̂|. */
+ * s·δ̂·dp, so the event market's spread widens quotes in proportion to |δ̂|. */
 export function halfSpread(input: {
   minBps: number;
   makerBps: number;

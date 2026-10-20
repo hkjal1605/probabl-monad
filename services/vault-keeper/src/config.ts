@@ -75,7 +75,7 @@ export interface Settings {
   bandMarginBps: number;
   maxProbabilitySpreadX6: number;
   probabilityFloorX6: number;
-  /** Quoting stops while other traders' books imply a probability this far from Polymarket's. */
+  /** Quoting stops while other traders' books imply a probability this far from the event market's. */
   maxProbabilityDriftX6: number;
   jumpBps: number;
   probabilityJumpX6: number;
