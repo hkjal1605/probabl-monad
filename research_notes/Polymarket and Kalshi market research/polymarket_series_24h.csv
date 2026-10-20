@@ -1,0 +1,2505 @@
+series_slug,title,recurrence,vol24h_usd,category
+btc-up-or-down-5m,BTC Up or Down 5m,5m,11576017,crypto
+atp,ATP,daily,11234361,sports
+nfl-2026,NFL 2026,daily,9894675,sports
+counter-strike,Counter Strike,daily,5109202,esports
+wta,WTA,daily,4765162,sports
+premier-league-2025,Premier League 2025,daily,4628427,sports
+serie-a-2025,Serie A 2025,daily,3454572,sports
+fomc,FOMC,monthly,2910087,economy/Fed/macro
+btc-up-or-down-15m,BTC Up or Down 15m,15m,2770138,crypto
+saudi-professional-league,Saudi Professional League,daily,2264056,sports
+la-liga-2025,La Liga 2025,daily,2034463,sports
+us-iran-ceasefire-continues,US-Iran ceasefire continues,monthly,1962393,geopolitics/war
+ucl-2025,UEFA Champions League 2025,daily,1656746,sports
+dota-2,Dota 2,daily,1313705,esports
+btc-multi-strikes-weekly,BTC Multi Strikes Weekly,weekly,1279009,crypto
+primeira-liga,Primeira Liga,daily,1154029,sports
+tur-2025,Süper Lig 2025,daily,1007887,sports
+primera-divisin-argentina,Primera División Argentina,daily,979497,sports
+brazil-serie-a,Brazil Serie A,daily,962475,sports
+mlb,MLB,daily,904475,sports
+wnba,WNBA,daily,900053,sports
+elon-tweets,Elon Tweets,weekly,852724,mentions/tweets
+nhl-2026,NHL 2026,daily,845648,sports
+btc-up-or-down-hourly,BTC Up or Down Hourly,hourly,677808,crypto
+bitcoin-hit-price-monthly,Bitcoin Hit Price Monthly,monthly,584128,crypto
+eth-up-or-down-5m,ETH Up or Down 5m,5m,549127,crypto
+itf,ITF,daily,505886,sports
+bitcoin-hit-price-daily,Bitcoin Hit Price Daily,daily,455002,crypto
+eth-up-or-down-15m,ETH Up or Down 15m,15m,440970,crypto
+league-of-legends,League of Legends,daily,397237,esports
+tur2-games,Turkey 1. Lig,daily,390141,sports
+ethereum-multi-strikes-weekly,Ethereum Multi Strikes Weekly,weekly,373037,crypto
+egypt-1,Egypt 1,daily,338374,sports
+hormuz-traffic-returns-to-normal,Hormuz Traffic Returns to Normal,,327989,geopolitics/war
+international-cricket,International Cricket,daily,317150,sports
+elon-tweets-48h,Elon Tweets 48H,daily,312324,mentions/tweets
+primera-a,Primera A,daily,278215,sports
+argpn-games,Primera Nacional,daily,270972,sports
+brazil-serie-b,Brazil Serie B,daily,266195,sports
+putin-out-as-president,Putin out as President,,245392,geopolitics/war
+col2-games,Primera B (Colombia),daily,219217,sports
+lva1-games,Virslīga,daily,213503,sports
+kim-jong-un-out,Kim Jong Un Out,,213115,geopolitics/war
+gta-vi-extended-look-views,GTA VI Extended Look Views,,210961,culture/entertainment/awards
+denmark-superliga,Denmark Superliga,daily,206898,sports
+romania-1,Romania 1,daily,199761,sports
+btc-up-or-down-daily,BTC Up or Down Daily,daily,194525,crypto
+crude-oil-cl-hit,Crude Oil (CL) hit__,monthly,191101,finance/stocks/earnings
+nba-2026,NBA 2026,daily,188440,sports
+spx-daily-up-or-down,SPX Daily Up or Down,daily,171406,finance/stocks/earnings
+cba,CBA,daily,168519,sports
+ethereum-hit-price-daily,Ethereum Hit Price Daily,daily,160544,crypto
+eth-up-or-down-hourly,ETH Up or Down Hourly,hourly,144924,crypto
+bitcoin-neg-risk-weekly,Bitcoin Neg Risk Weekly,weekly,134765,crypto
+sol-up-or-down-5m,SOL Up or Down 5m,5m,132950,crypto
+total-internet-blackout-in-iran,Total Internet Blackout in Iran,,132177,
+sweden-allsvenskan-2026,Sweden Allsvenskan 2026,daily,130811,sports
+sol-up-or-down-15m,SOL Up or Down 15m,15m,130421,crypto
+ned2-games,Netherlands Eerste Divisie,daily,125434,sports
+bank-of-canada-decision,Bank of Canada decision,annual,122960,economy/Fed/macro
+la-liga-2,La Liga 2,daily,119290,sports
+paris-daily-weather,Paris Daily Weather,daily,116479,weather/climate/science
+who-attend-us-iran-peace-talks,Who attend US-Iran peace talks,,111899,geopolitics/war
+chess,chess,daily,111464,
+best-ai-company,Best AI Company,monthly,105032,AI
+bitcoin-hit-price-weekly,Bitcoin Hit Price Weekly,weekly,97029,crypto
+next-leader-out,Next leader out,annual,94550,geopolitics/war
+ligue-2,Ligue 2,daily,92931,sports
+hong-kong-daily-weather,Hong Kong Daily Weather,daily,91904,weather/climate/science
+ethereum-hit-price-monthly,Ethereum Hit Price Monthly,monthly,91778,crypto
+us-monthly-inflation,US Monthly Inflation,monthly,88191,economy/Fed/macro
+ukraine-premier-liha,Ukraine Premier Liha,daily,85093,sports
+shanghai-daily-weather,Shanghai Daily Weather,daily,83690,weather/climate/science
+tokyo-daily-weather,Tokyo Daily Weather,daily,81247,weather/climate/science
+london-daily-weather,London Daily Weather,daily,80892,weather/climate/science
+xrp-up-or-down-15m,XRP Up or Down 15m,15m,80239,crypto
+istanbul-daily-weather,Istanbul Daily Weather,daily,76960,weather/climate/science
+ligue-1-2025,Ligue 1 2025,daily,76942,sports
+cape-town-daily-weather,Cape Town Daily Weather,daily,76643,weather/climate/science
+soccer-fpd,Liga Promerica,daily,76169,sports
+irl1-games,Premier Division (Ireland),daily,74519,sports
+israel-premier-league-2026,Israel Premier League 2026,daily,74186,sports
+kbl,KBL,daily,74022,sports
+blr1-games,Vysshaya Liga (Belarus),daily,73445,sports
+bundesliga-2,Bundesliga 2,daily,72199,sports
+china-invade-taiwan,China invade Taiwan,,72171,geopolitics/war
+ethereum-neg-risk-weekly,Ethereum Neg Risk Weekly,weekly,71900,crypto
+buenos-aires-daily-weather,Buenos Aires Daily Weather,daily,69679,weather/climate/science
+btc-up-or-down-4h,BTC Up or Down 4h,4h,65374,crypto
+anthropic-ipo,Anthropic IPO,,65118,finance/stocks/earnings
+isl1-games,Besta deild,daily,63806,sports
+solana-up-or-down-hourly,Solana Up or Down Hourly,hourly,63671,crypto
+iran-regime,iran regime,,61649,geopolitics/war
+amsterdam-daily-weather,Amsterdam Daily Weather,daily,60480,weather/climate/science
+anthropic-valuation,Anthropic Valuation,,60252,AI
+madrid-daily-weather,Madrid Daily Weather,daily,60165,weather/climate/science
+nyc-daily-weather,NYC Daily Weather,daily,59661,weather/climate/science
+wellington-daily-weather,Wellington Daily Weather,daily,59599,weather/climate/science
+seoul-daily-weather,Seoul Daily Weather,daily,59328,weather/climate/science
+ufc,UFC,weekly,59143,sports
+beijing-daily-weather,Beijing Daily Weather,daily,58485,weather/climate/science
+bkjpn,Japan B League,daily,58342,sports
+denver-daily-weather,Denver Daily Weather,daily,58179,weather/climate/science
+munich-daily-weather,Munich Daily Weather,daily,58058,weather/climate/science
+ecu1-games,LigaPro Primera A,daily,56616,sports
+swe2-games,Superettan,daily,56496,sports
+indian-super-league,Indian Super League,daily,55686,sports
+bundesliga-2025,Bundesliga 2025,daily,55296,sports
+xrp-hit-price-monthly,XRP Hit Price Monthly,monthly,54756,crypto
+shenzhen-daily-weather,Shenzhen Daily Weather,daily,54436,weather/climate/science
+bnb-up-or-down-15m,BNB Up or Down 15m,15m,54151,crypto
+largest-company,Largest Company,monthly,52444,finance/stocks/earnings
+ere-2025,Eredivisie 2025,daily,49737,sports
+milan-daily-weather,Milan Daily Weather,daily,49723,weather/climate/science
+trump-truth-social,Trump Truth Social,daily,49456,mentions/tweets
+doge-up-or-down-15m,DOGE Up or Down 15m,15m,49298,crypto
+xrp-up-or-down-hourly,XRP Up or Down Hourly,hourly,49294,crypto
+eth-up-or-down-daily,ETH Up or Down Daily,daily,49236,crypto
+cfb-2026,CFB 2026,daily,48686,sports
+guangzhou-daily-weather,Guangzhou Daily Weather,daily,48211,weather/climate/science
+russia-enter-khatnie,Russia enter Khatnie,,46323,geopolitics/war
+measles,measles,monthly,45602,weather/climate/science
+dallas-daily-weather,Dallas Daily Weather,daily,45026,weather/climate/science
+mrbeast-views-week-1,MrBeast views week 1,weekly,44765,culture/entertainment/awards
+helsinki-daily-weather,Helsinki Daily Weather,daily,43894,weather/climate/science
+chongqing-daily-weather,Chongqing Daily Weather,daily,42912,weather/climate/science
+busan-daily-weather,Busan Daily Weather,daily,42347,weather/climate/science
+houston-daily-weather,Houston Daily Weather,daily,42041,weather/climate/science
+miami-daily-weather,Miami Daily Weather,daily,41796,weather/climate/science
+ethereum-hit-price-weekly,Ethereum Hit Price Weekly,weekly,41623,crypto
+atlanta-daily-weather,Atlanta Daily Weather,daily,41353,weather/climate/science
+chengdu-daily-weather,Chengdu Daily Weather,daily,41176,weather/climate/science
+serc-games,Serie C,daily,40061,sports
+sao-paulo-daily-weather,Sao Paulo Daily Weather,daily,39811,weather/climate/science
+wuhan-daily-weather,Wuhan Daily Weather,daily,39769,weather/climate/science
+xrp-up-or-down-5m,XRP Up or Down 5m,5m,39730,crypto
+wti-daily-close-uo,WTI Daily Close U/O,daily,39334,finance/stocks/earnings
+doge-up-or-down-5m,DOGE Up or Down 5m,5m,38901,crypto
+warsaw-daily-weather,Warsaw Daily Weather,daily,37852,weather/climate/science
+bank-of-russia-decision,Bank of Russia Decision,annual,37175,economy/Fed/macro
+spy-daily-up-or-down,SPY Daily Up or Down,daily,36979,finance/stocks/earnings
+toronto-daily-weather,Toronto Daily Weather,daily,36848,weather/climate/science
+moscow-daily-weather,Moscow Daily Weather,daily,36492,weather/climate/science
+austin-daily-weather,Austin Daily Weather,daily,35775,weather/climate/science
+trump-monthly-meeting,trump monthly meeting,monthly,35636,geopolitics/war
+mexico-city-daily-weather,Mexico City Daily Weather,daily,34282,weather/climate/science
+6pt5-earthquake-weekly,6.5 Earthquake Weekly,weekly,34233,weather/climate/science
+russian-premier-league,Russian Premier League,daily,34143,sports
+trump-out,Trump out,,32751,politics/elections
+hong-kong-daily-lowest-temperature,Hong Kong Daily Lowest Temperature,daily,32258,weather/climate/science
+san-francisco-daily-weather,San Francisco Daily Weather,daily,31657,weather/climate/science
+lucknow-daily-weather,Lucknow Daily Weather,daily,31465,weather/climate/science
+saudi-arabia-military-action-against-yemen-on,Saudi Arabia military action against Yemen on,monthly,31103,geopolitics/war
+singapore-daily-weather,Singapore Daily Weather,daily,31093,weather/climate/science
+uru1-games,Primera División (Uruguay),daily,30309,sports
+kuala-lumpur-daily-weather,Kuala Lumpur Daily Weather,daily,30264,weather/climate/science
+los-angeles-daily-weather,Los Angeles Daily Weather,daily,30101,weather/climate/science
+us-to-invade-iran,US to invade Iran,,29803,geopolitics/war
+panama-daily-weather,Panama Daily Weather,daily,29721,weather/climate/science
+chicago-daily-weather,Chicago Daily Weather,daily,29704,weather/climate/science
+solana-hit-price-monthly,Solana Hit Price Monthly,monthly,29507,crypto
+tel-aviv-daily-weather,Tel Aviv Daily Weather,daily,29176,weather/climate/science
+hype-up-or-down-15m,HYPE Up or Down 15m,15m,28195,crypto
+atp-doubles,ATP Doubles,daily,27746,sports
+mrbeast-views-day-1,MrBeast views day 1,weekly,27218,culture/entertainment/awards
+bitcoin-multi-strikes-hourly,Bitcoin Multi Strikes Hourly,hourly,26433,crypto
+karachi-daily-weather,Karachi Daily Weather,daily,26194,weather/climate/science
+uel-2025,UEFA Europa League 2025,daily,25988,sports
+jeddah-daily-weather,Jeddah Daily Weather,daily,25850,weather/climate/science
+taipei-daily-weather,Taipei Daily Weather,daily,25499,weather/climate/science
+openrouter-ai-market-share,OpenRouter AI Market Share,weekly,25169,AI
+manila-daily-weather,Manila Daily Weather,daily,25048,weather/climate/science
+bank-of-england-decision,Bank of England decision,annual,24410,economy/Fed/macro
+qingdao-daily-weather,Qingdao Daily Weather,daily,24142,weather/climate/science
+ankara-daily-weather,Ankara Daily Weather,daily,23440,weather/climate/science
+soccer-gtm,Liga Nacional Guatemala,daily,23139,sports
+seattle-daily-weather,Seattle Daily Weather,daily,23034,weather/climate/science
+us-x-iran-diplomatic-meeting,US x Iran diplomatic meeting,,22966,geopolitics/war
+fa-cup,FA Cup,daily,22905,sports
+amzn-multi-strikes-weekly,AMZN Multi Strikes Weekly,weekly,22764,finance/stocks/earnings
+ethereum-multi-strikes-hourly,Ethereum Multi Strikes Hourly,hourly,22654,crypto
+solana-multi-strikes-weekly,Solana Multi Strikes Weekly,weekly,22181,crypto
+xi-jinping-out,Xi Jinping out,,22007,geopolitics/war
+poland-ekstraklasa,Poland Ekstraklasa,daily,21590,sports
+strc-hits-100-by,STRC Hits 100 By,,19184,crypto
+box-office-openings,Box Office Openings,,19162,culture/entertainment/awards
+eth-up-or-down-4h,ETH Up or Down 4h,4h,19003,crypto
+msft-multi-strikes-weekly,MSFT Multi Strikes Weekly,weekly,18587,finance/stocks/earnings
+nvda-multi-strikes-weekly,NVDA Multi Strikes Weekly,weekly,18254,finance/stocks/earnings
+spy-daily-close-uo,SPY Daily Close U/O,daily,18235,finance/stocks/earnings
+ltu1-games,A Lyga,daily,18049,sports
+xauusd-hit-month,(XAUUSD) hit Month,monthly,17990,finance/stocks/earnings
+tesla-hit-price-weekly,Tesla Hit Price Weekly,weekly,17897,finance/stocks/earnings
+putin-x-zelenskyy-where-next,Putin x Zelenskyy Where Next,,17259,geopolitics/war
+rotten-tomatoes,rotten tomatoes,,17103,culture/entertainment/awards
+mex-2025,Liga MX 2025,daily,16755,sports
+chl2-games,Primera B (Chile),daily,14938,sports
+pete-hegseth-out,Pete Hegseth out,,14789,politics/elections
+trump-putin-meet-where,Trump-Putin Meet where,,14668,geopolitics/war
+spy-hit-month,(SPY) hit Month,monthly,14449,finance/stocks/earnings
+mls-2025,MLS 2025,daily,14253,sports
+bnb-up-or-down-5m,BNB Up or Down 5m,5m,14044,crypto
+spy-hit-price-weekly,SPY Hit Price Weekly,weekly,13984,finance/stocks/earnings
+tokyo-daily-lowest-temperature,Tokyo Daily Lowest Temperature,daily,13973,weather/climate/science
+natural-gas-hit-price-weekly,Natural Gas Hit Price Weekly,weekly,13758,finance/stocks/earnings
+meta-hit-price-weekly,Meta Hit Price Weekly,weekly,13577,finance/stocks/earnings
+idn1-games,Indonesia Liga 1,daily,13191,sports
+bkeurocup-games,EuroCup,daily,12547,sports
+abraham-accords-new-country,Abraham Accords New Country,,12292,geopolitics/war
+tsla-multi-strikes-weekly,TSLA Multi Strikes Weekly,weekly,11510,finance/stocks/earnings
+oil-daily-up-or-down,OIL Daily Up or Down,daily,11410,finance/stocks/earnings
+googl-multi-strikes-weekly,GOOGL Multi Strikes Weekly,weekly,11283,finance/stocks/earnings
+bkbsl,Turkey BSL,daily,11215,sports
+bkaba,ABA League,daily,11211,sports
+enrichment-of-uranium,enrichment of uranium,,10567,geopolitics/war
+biggest-opening-weekend,Biggest Opening Weekend,,10252,culture/entertainment/awards
+spx-open-daily-up-or-down,SPX Open Daily Up or Down,daily,10130,finance/stocks/earnings
+bkisrsl-games,Super League (Israel),daily,10126,sports
+solana-up-or-down-daily,Solana Up or Down Daily,daily,9940,crypto
+netanyahu-out,Netanyahu out,,9867,geopolitics/war
+ewy-hit-month,(EWY) hit Month,monthly,9711,finance/stocks/earnings
+aapl-multi-strikes-weekly,AAPL Multi Strikes Weekly,weekly,9632,finance/stocks/earnings
+ecb-interest-rates,ECB Interest Rates,annual,9627,economy/Fed/macro
+chinese-ai-1,Chinese AI #1,monthly,9529,AI
+nvidia-hit-price-weekly,NVIDIA Hit Price Weekly,weekly,9478,finance/stocks/earnings
+box-office-total-gross,Box Office Total Gross,,9287,culture/entertainment/awards
+yearly-ipos,Yearly IPOs,annual,9184,finance/stocks/earnings
+monthly-precipitation,Monthly Precipitation,monthly,9175,weather/climate/science
+wta-doubles,WTA Doubles,daily,9104,sports
+third-best-code-arena-webdev-ai,Third-Best Code Arena WebDev AI,monthly,9079,AI
+russia-x-ukraine-diplomatic-meeting,Russia x Ukraine diplomatic meeting,,9037,geopolitics/war
+daily-rain-location,Daily Rain Location,daily,8620,
+russia-target-kyiv-on,Russia target Kyiv on,,8597,geopolitics/war
+ewy-hit-price-weekly,EWY Hit Price Weekly,weekly,8581,finance/stocks/earnings
+wti-crude-oil-hit-price-weekly,WTI Crude Oil Hit Price Weekly,weekly,8463,finance/stocks/earnings
+gold-hit-price-weekly,Gold Hit Price Weekly,weekly,8326,finance/stocks/earnings
+rain-daily,Where Will It Rain Today?,daily,8139,weather/climate/science
+openai-ipo,OpenAI IPO,,8062,finance/stocks/earnings
+next-google-gemini-pro-model-released-on,Next Google Gemini Pro Model released on,,8059,AI
+dow-jones-daily-up-or-down,Dow Jones Daily Up or Down,daily,7960,finance/stocks/earnings
+nfl,NFL,daily,7944,
+coinbase-hit-price-weekly,Coinbase Hit Price Weekly,weekly,7857,finance/stocks/earnings
+merz-out,Merz Out,,7436,politics/elections
+soccer-el2,League Two,daily,7424,sports
+seoul-daily-lowest-temperature,Seoul Daily Lowest Temperature,daily,7361,weather/climate/science
+apple-hit-price-weekly,Apple Hit Price Weekly,weekly,7340,finance/stocks/earnings
+europa-conference-league,Europa Conference League,daily,7266,sports
+fed-rate-hike,Fed Rate Hike,,7036,economy/Fed/macro
+meta-hit-price-monthly,Meta Hit Price Monthly,monthly,6981,finance/stocks/earnings
+jesus-christ-return,Jesus Christ return,,6901,culture/entertainment/awards
+second-best-ai-agent-lab,Second-best AI Agent Lab,monthly,6799,AI
+soccer-el1,League One,daily,6748,sports
+netflix-hit-price-weekly,Netflix Hit Price Weekly,weekly,6608,finance/stocks/earnings
+khl-2026,khl-2026,daily,6543,sports
+bank-of-israel-decision,Bank of Israel Decision,annual,6257,economy/Fed/macro
+which-countries-recognize-israel,Which countries recognize Israel,,6248,geopolitics/war
+abraham-accords-new-member,Abraham Accords New Member,,6244,geopolitics/war
+gold-daily-up-or-down,GOLD Daily Up or Down,daily,6169,finance/stocks/earnings
+london-daily-lowest-temperature,London Daily Lowest Temperature,daily,6155,weather/climate/science
+nvda-daily-up-down,NVDA Daily Up Down,daily,6097,finance/stocks/earnings
+hype-up-or-down-5m,HYPE Up or Down 5m,5m,6048,crypto
+xagusd-hit-month,(XAGUSD) hit Month,monthly,5996,finance/stocks/earnings
+ukraine-target-moscow-on,Ukraine target Moscow on,monthly,5857,geopolitics/war
+new-pandemic,New Pandemic,,5666,weather/climate/science
+median-home-price-chicago,Median Home Price Chicago,monthly,5621,economy/Fed/macro
+silver-hit-price-weekly,Silver Hit Price Weekly,weekly,5619,finance/stocks/earnings
+susie-wiles-out,Susie Wiles out,,5545,politics/elections
+geenland-deriv,geenland deriv,monthly,5528,geopolitics/war
+trump-talk-monthly,Trump talk monthly,monthly,5356,geopolitics/war
+istanbul-daily-lowest-temperature,Istanbul Daily Lowest Temperature,daily,5354,weather/climate/science
+elon-net-worth,Elon Net Worth,monthly,5333,economy/Fed/macro
+spcx-daily-up-or-down,SPCX Daily Up or Down,daily,5318,finance/stocks/earnings
+bonbast,Bonbast ,monthly,5239,finance/stocks/earnings
+aapl-daily-up-down,AAPL Daily Up Down,daily,5144,finance/stocks/earnings
+bnb-up-or-down-hourly,BNB Up or Down Hourly,hourly,5141,crypto
+tsla-daily-up-down,TSLA Daily Up Down,daily,5105,finance/stocks/earnings
+trump-538-approval-binary,Trump 538 Approval Binary,weekly,5037,politics/elections
+cricranji-games,Ranji Trophy,daily,4974,sports
+spacex-hit-price-weekly,SpaceX Hit Price Weekly,weekly,4969,finance/stocks/earnings
+trump-administration-resignations,Trump administration resignations,monthly,4957,politics/elections
+nvidia-hit-price-monthly,Nvidia Hit Price Monthly,monthly,4929,finance/stocks/earnings
+cfb-2025,CFB 2025,daily,4852,
+lnb,LNB,daily,4825,sports
+modi-out,Modi Out,,4805,geopolitics/war
+monthly-tornadoes-us,Monthly Tornadoes US,monthly,4792,weather/climate/science
+robinhood-hit-price-weekly,Robinhood Hit Price Weekly,weekly,4776,finance/stocks/earnings
+tesla-hit-price-monthly,Tesla Hit Price Monthly,monthly,4748,finance/stocks/earnings
+bkkls-games,KLS,daily,4715,sports
+openai-valuation,OpenAI Valuation,,4691,AI
+2-us-netflix-show,#2 US Netflix Show,weekly,4660,culture/entertainment/awards
+dks-kpis,DKS KPIs,,4654,finance/stocks/earnings
+bknbb-games,NBB,daily,4486,sports
+iran-target-a-arab-country-by,Iran target a Arab country by,,4472,geopolitics/war
+inflation-china-annual,Inflation China - Annual,monthly,4447,economy/Fed/macro
+zelenskyy-tweets,Zelenskyy Tweets,daily,4444,mentions/tweets
+amazon-hit-price-weekly,Amazon Hit Price Weekly,weekly,4415,finance/stocks/earnings
+next-openai-gpt-terra-release-by,Next OpenAI GPT Terra Release by,,4394,AI
+microsoft-hit-price-weekly,Microsoft Hit Price Weekly,weekly,4349,finance/stocks/earnings
+busan-daily-lowest-temperature,Busan Daily Lowest Temperature,daily,4347,weather/climate/science
+biggest-earthquake-daily,Daily Biggest Earthquake,daily,4322,weather/climate/science
+coin-hit-month,(COIN) hit Month,monthly,4321,finance/stocks/earnings
+opendoor-hit-price-weekly,Opendoor Hit Price Weekly,weekly,4320,finance/stocks/earnings
+micron-hit-price-weekly,Micron Hit Price Weekly,weekly,4271,finance/stocks/earnings
+xrp-up-or-down-4h,XRP Up or Down 4H,4h,4259,crypto
+cz-tweets,CZ Tweets,daily,4255,mentions/tweets
+whitehouse-daily-tweets,Whitehouse Daily Tweets,daily,4245,mentions/tweets
+paris-daily-lowest-temperature,Paris Daily Lowest Temperature,daily,4243,weather/climate/science
+zelenskyy-out,Zelenskyy out,,4208,geopolitics/war
+billboard-2-song,Billboard #2 Song,weekly,4136,culture/entertainment/awards
+10-year-treasur,10-year Treasur,weekly,4135,finance/stocks/earnings
+best-ai-model,Best AI model,weekly,4062,AI
+msft-daily-up-down,MSFT Daily Up Down,daily,4057,finance/stocks/earnings
+efl-championship,EFL Championship,daily,4025,sports
+top-us-spotify-song,Top US Spotify Song,weekly,4010,culture/entertainment/awards
+amazon-s-market-cap,Amazon’s Market Cap,monthly,3936,finance/stocks/earnings
+best-ai-agent,best AI Agent,monthly,3929,AI
+japan-j-league,Japan J League,daily,3858,sports
+alphabet-s-market-cap,Alphabet’s Market Cap,monthly,3813,finance/stocks/earnings
+hood-hit-month,(HOOD) hit Month,monthly,3805,finance/stocks/earnings
+hyperliquid-hit-price-monthly,Hyperliquid Hit Price Monthly,monthly,3803,crypto
+nyc-daily-lowest-temperature,NYC Daily Lowest Temperature,daily,3732,weather/climate/science
+2-spotify-artist-monthly,#2 Spotify Artist Monthly,monthly,3634,culture/entertainment/awards
+bank-of-korea-decision,Bank of Korea decision,annual,3628,economy/Fed/macro
+ppi-yoy,PPI YoY,monthly,3626,economy/Fed/macro
+yoon-out,Yoon Out,,3614,geopolitics/war
+wuhan-daily-lowest-temperature,Wuhan Daily Lowest Temperature,daily,3595,weather/climate/science
+khamenei-daily-tweets,Khamenei Daily Tweets,daily,3559,mentions/tweets
+putin-meets-with-iranian-officials,Putin meets with Iranian officials,,3487,geopolitics/war
+isrg-kpis,ISRG KPIs,,3478,finance/stocks/earnings
+amazon-hit-price-monthly,Amazon Hit Price Monthly,monthly,3458,finance/stocks/earnings
+polyv2bkbsl,PolyV2 Basketbol Süper Ligi Canary,daily,3440,
+billboard-1-album,Billboard #1 Album,weekly,3420,culture/entertainment/awards
+iran-nuke,Iran Nuke ,,3377,geopolitics/war
+kbo,KBO,daily,3362,sports
+mstr-sell-weeklies,MSTR sell weeklies,weekly,3358,crypto
+reserve-bank-of-australia-decision,Reserve Bank of Australia Decision,annual,3356,economy/Fed/macro
+trump-praise,Trump Praise,monthly,3334,politics/elections
+rocket-lab-hit-price-weekly,Rocket Lab Hit Price Weekly,weekly,3304,finance/stocks/earnings
+trump-putin-and-zelensky-meet,"Trump, Putin, and Zelensky meet",monthly,3294,geopolitics/war
+silver-daily-up-or-down,SILVER Daily Up or Down,daily,3188,finance/stocks/earnings
+bkplk-games,PLK,daily,3151,sports
+tornado-risk-daily,Which Cities Face Tornado Risk Today?,daily,3130,weather/climate/science
+wellington-daily-lowest-temperature,Wellington Daily Lowest Temperature,daily,3122,weather/climate/science
+googl-daily-up-down,GOOGL Daily Up Down,daily,3117,finance/stocks/earnings
+meta-daily-up-down,META Daily Up Down,daily,3105,finance/stocks/earnings
+palantir-hit-price-weekly,Palantir Hit Price Weekly,weekly,3072,finance/stocks/earnings
+inflation-uk-annual,Inflation UK - Annual,monthly,3072,economy/Fed/macro
+mrbeast-gaming-views,MrBeast Gaming Views,monthly,3028,culture/entertainment/awards
+doge-up-or-down-hourly,DOGE Up or Down Hourly,hourly,2991,crypto
+who-trump-insult,Who Trump insult,monthly,2983,politics/elections
+bank-of-japan,Bank of Japan,annual,2904,economy/Fed/macro
+airbnb-hit-price-monthly,Airbnb Hit Price Monthly,monthly,2858,finance/stocks/earnings
+sol-up-or-down-4h,SOL Up or Down 4H,4h,2846,crypto
+5-5-earthquake,5.5 Earthquake,weekly,2795,weather/climate/science
+earnings-call-mentions,Earnings Call Mentions,,2788,mentions/tweets
+hyperliquid-up-or-down-daily,Hyperliquid Up or Down Daily,daily,2756,
+foreign-intervention-in-gaza,Foreign Intervention In Gaza,,2744,geopolitics/war
+airbnb-hit-price-weekly,Airbnb Hit Price Weekly,weekly,2718,finance/stocks/earnings
+russia-enter-group,Russia Enter Group,,2712,geopolitics/war
+japan-j2-league,Japan J2 League,daily,2709,sports
+highest-grossing-movie,Highest Grossing Movie,annual,2671,culture/entertainment/awards
+ted-cruz-daily-tweets,Ted Cruz Daily Tweets,daily,2646,mentions/tweets
+solana-neg-risk-weekly,Solana Neg Risk Weekly,weekly,2615,crypto
+solana-hit-price-weekly,Solana Hit Price Weekly,weekly,2599,crypto
+ships-transit-the-strait-of-hormuz,ships transit the Strait of Hormuz,weekly,2548,geopolitics/war
+waymo-launch,Waymo launch,,2511,AI
+jeddah-daily-lowest-temperature,Jeddah Daily Lowest Temperature,daily,2493,weather/climate/science
+taipei-daily-lowest-temperature,Taipei Daily Lowest Temperature,daily,2466,weather/climate/science
+chinese-super-league,Chinese Super League,daily,2440,sports
+munich-daily-lowest-temperature,Munich Daily Lowest Temperature,daily,2432,weather/climate/science
+xrp-multi-strikes-weekly,XRP Multi Strikes Weekly,weekly,2430,crypto
+inflation-argentina-monthly,Inflation Argentina - Monthly,monthly,2403,economy/Fed/macro
+space-exploration-technologies-market-cap,Space Exploration Technologies' Market Cap,monthly,2383,finance/stocks/earnings
+trump-538-approval,Trump 538 Approval,weekly,2382,politics/elections
+3rd-largest-company,3rd largest company,monthly,2332,finance/stocks/earnings
+china-x-philippines-clash,China x Philippines Clash,,2264,geopolitics/war
+us-crude-oil-reserves-fall-to,US crude oil reserves fall to __,monthly,2224,economy/Fed/macro
+shenzhen-daily-lowest-temperature,Shenzhen Daily Lowest Temperature,daily,2212,weather/climate/science
+israel-military-action-against-lebanon,Israel military action against Lebanon,,2204,geopolitics/war
+karachi-daily-lowest-temperature,Karachi Daily Lowest Temperature,daily,2203,weather/climate/science
+google-hit-price-weekly,Google Hit Price Weekly,weekly,2194,finance/stocks/earnings
+solana-hit-price-daily,Solana Hit Price Daily,daily,2180,crypto
+where-us-iran-meeting,where US-Iran meeting,,2178,geopolitics/war
+brazil-gdp,Brazil GDP,annual,2169,economy/Fed/macro
+bitcoin-hashprice-weekly,Bitcoin Hashprice Weekly,weekly,2159,crypto
+trump-insult-on,Trump insult on,monthly,2158,politics/elections
+fed-3-parlay,Fed 3-Parlay,daily,2141,economy/Fed/macro
+critical-cloudflare-incident,Critical Cloudflare Incident,monthly,2124,tech
+efl-cup,EFL Cup,daily,2116,sports
+bank-of-brazil-decision,Bank of Brazil decision,annual,2077,economy/Fed/macro
+palantir-hit-price-monthly,Palantir Hit Price Monthly,monthly,2068,finance/stocks/earnings
+what-will-gold-gc-hit,What will Gold (GC) hit__,monthly,2062,finance/stocks/earnings
+ual-kpis,UAL KPIs,,2044,finance/stocks/earnings
+rtx-5090-rental-price,RTX 5090 Rental Price,monthly,2015,AI
+xrp-up-or-down-daily,XRP Up or Down Daily,daily,1986,crypto
+warsaw-daily-lowest-temperature,Warsaw Daily Lowest Temperature,daily,1981,weather/climate/science
+ko-kpis,KO KPIs,,1968,finance/stocks/earnings
+pltr-daily-up-or-down,PLTR Daily Up or Down,daily,1957,finance/stocks/earnings
+israel-target-a-syria-by,Israel target a Syria by,,1862,geopolitics/war
+gdp-quarterly,gdp quarterly,monthly,1845,economy/Fed/macro
+ism-services-pmi,ISM Services PMI,monthly,1837,economy/Fed/macro
+3-ai-model-style-control-on, #3 AI model Style Control On,monthly,1774,AI
+discord-ipo-market-cap,Discord IPO Market Cap,,1756,finance/stocks/earnings
+chinese-ai-3,Chinese AI #3,monthly,1755,AI
+chongqing-daily-lowest-temperature,Chongqing Daily Lowest Temperature,daily,1751,weather/climate/science
+houthi-military-action-against-saudi-arabia-on,Houthi military action against Saudi Arabia on,monthly,1744,geopolitics/war
+third-best-ai-company,Third Best AI Company,monthly,1731,AI
+top-ai-company-style-on,Top AI Company (Style on),monthly,1718,AI
+2-free-app,#2 Free App,weekly,1716,tech
+nothing-ever-happens,Nothing Ever Happens,monthly,1703,geopolitics/war
+rocket-lab-hit-price-monthly,Rocket Lab Hit Price Monthly,monthly,1688,finance/stocks/earnings
+nflx-kpis,NFLX KPIs,,1642,finance/stocks/earnings
+wmt-kpis,WMT KPIs,,1637,finance/stocks/earnings
+monthly-listeners,Monthly Listeners,monthly,1618,culture/entertainment/awards
+mu-daily-up-or-down,MU Daily Up or Down,daily,1609,finance/stocks/earnings
+second-largest-company,Second Largest Company,monthly,1603,finance/stocks/earnings
+mexico-city-daily-lowest-temperature,Mexico City Daily Lowest Temperature,daily,1602,weather/climate/science
+snhl-2026,snhl-2026,daily,1589,sports
+rklb-daily-up-or-down,RKLB Daily Up or Down,daily,1563,finance/stocks/earnings
+russell-2000-daily-up-or-down,Russell 2000 Daily Up or Down,daily,1547,finance/stocks/earnings
+1-free-app,#1 Free App,weekly,1534,tech
+setkameua-games,Setka Cup Ukraine Men,daily,1510,sports
+dissent-at-fed-meeting,Dissent at Fed meeting,daily,1503,economy/Fed/macro
+new-coronavirus-pandemic,New Coronavirus Pandemic,,1503,weather/climate/science
+apple-s-market-cap,Apple’s Market Cap,monthly,1486,finance/stocks/earnings
+us-recession-by,US recession by,annual,1479,economy/Fed/macro
+modus,MODUS Super Series,daily,1479,sports
+openrouter-total-tokens-weekly,OpenRouter Total Tokens Weekly,weekly,1471,AI
+xrp-hit-price-daily,XRP Hit Price Daily,daily,1470,crypto
+unemployment,Unemployment,monthly,1450,economy/Fed/macro
+moscow-daily-lowest-temperature,Moscow Daily Lowest Temperature,daily,1447,weather/climate/science
+helsinki-daily-lowest-temperature,Helsinki Daily Lowest Temperature,daily,1443,weather/climate/science
+google-hit-price-monthly,Google Hit Price Monthly,monthly,1440,finance/stocks/earnings
+bnb-up-or-down-4h,BNB Up or Down 4h,4h,1428,crypto
+amsterdam-daily-lowest-temperature,Amsterdam Daily Lowest Temperature,daily,1416,weather/climate/science
+china-coup,China Coup,,1406,geopolitics/war
+glean-valuation,Glean Valuation,,1386,finance/stocks/earnings
+shanghai-daily-lowest-temperature,Shanghai Daily Lowest Temperature,daily,1375,weather/climate/science
+doge-up-or-down-4h,DOGE Up or Down 4h,4h,1338,crypto
+second-best-ai-company,Second Best AI Company,monthly,1334,AI
+claude-downtime,Claude Downtime,monthly,1317,AI
+iran-target-saudi-arabia-by,Iran target Saudi Arabia by,,1314,geopolitics/war
+sp-500-monthly-hit,S&P 500 monthly hit,monthly,1305,finance/stocks/earnings
+2-netflix-movie,#2 Netflix Movie,weekly,1302,culture/entertainment/awards
+eu-emergency-diesel-stocks,EU emergency diesel stocks,monthly,1293,finance/stocks/earnings
+tmo-kpis,TMO KPIs,,1290,finance/stocks/earnings
+sbux-kpis,SBUX KPIs,,1287,finance/stocks/earnings
+qqq-hit-price-weekly,QQQ Hit Price Weekly,weekly,1284,
+white-house-call-a-full-lid,White House call a full lid,daily,1281,politics/elections
+guangzhou-daily-lowest-temperature,Guangzhou Daily Lowest Temperature,daily,1271,weather/climate/science
+apple-hit-price-monthly,Apple Hit Price Monthly,monthly,1268,finance/stocks/earnings
+ncaab,NCAAB,daily,1243,
+second-best-code-arena-webdev-ai,Second-Best Code Arena WebDev AI,monthly,1243,AI
+a-league-soccer,A League Soccer,daily,1233,sports
+miami-daily-lowest-temperature,Miami Daily Lowest Temperature,daily,1226,weather/climate/science
+buenos-aires-daily-lowest-temperature,Buenos Aires Daily Lowest Temperature,daily,1224,weather/climate/science
+trump-weekly-mentions,Trump Weekly Mentions,weekly,1207,mentions/tweets
+v-kpis,V KPIs,,1206,finance/stocks/earnings
+overwatch,Overwatch,daily,1201,esports
+meta-kpis,META KPIs,,1195,tech
+los-angeles-daily-lowest-temperature,Los Angeles Daily Lowest Temperature,daily,1176,weather/climate/science
+nflx-neg-risk-weekly,NFLX Neg Risk Weekly,weekly,1173,finance/stocks/earnings
+third-best-ai-agent-lab,Third-best AI Agent Lab,monthly,1169,AI
+trump-resign,Trump resign,,1165,politics/elections
+ankara-daily-lowest-temperature,Ankara Daily Lowest Temperature,daily,1161,weather/climate/science
+open-neg-risk-weekly,OPEN Neg Risk Weekly,weekly,1152,finance/stocks/earnings
+kaito,Kaito,,1139,tech
+chengdu-daily-lowest-temperature,Chengdu Daily Lowest Temperature,daily,1139,weather/climate/science
+central-bank-of-colombia-decision,Central Bank of Colombia Decision,annual,1133,economy/Fed/macro
+lucknow-daily-lowest-temperature,Lucknow Daily Lowest Temperature,daily,1133,weather/climate/science
+us-gas-price-daily,US Gas Price Daily,daily,1125,finance/stocks/earnings
+dancing-with-the-stars-weekly-elimination,Dancing with the Stars Weekly Elimination,weekly,1120,culture/entertainment/awards
+cape-town-daily-lowest-temperature,Cape Town Daily Lowest Temperature,daily,1107,weather/climate/science
+taiwan-blockade,Taiwan blockade,,1105,geopolitics/war
+democratic-senate-odds,Democratic Senate Odds,weekly,1101,politics/elections
+qingdao-daily-lowest-temperature,Qingdao Daily Lowest Temperature,daily,1078,weather/climate/science
+companies-with-1-ai,Companies with #1 AI,monthly,1058,AI
+sud-2025,Copa Sudamericana 2025,daily,1023,sports
+h200-rental-price-hit,H200 Rental Price Hit,monthly,1023,AI
+anti-cartel-operation,anti-cartel operation,,1019,geopolitics/war
+spacex-hit-price-monthly,SpaceX Hit Price Monthly,monthly,1012,finance/stocks/earnings
+pg-kpis,PG KPIs,,1010,finance/stocks/earnings
+israel-x-lebanon-diplomatic-meeting,Israel x Lebanon diplomatic meeting,,1007,geopolitics/war
+second-best-math-ai,Second-Best Math AI,monthly,1005,AI
+nfl-2025,NFL 2025,daily,1000,
+openai-s-valuation,OpenAI’s valuation,,996,AI
+chinese-ai-2,Chinese AI #2,monthly,994,AI
+mu-kpis,MU KPIs,,977,AI
+open-daily-up-or-down,OPEN Daily Up or Down,daily,972,finance/stocks/earnings
+bnb-hit-price-monthly,BNB Hit Price Monthly,monthly,965,crypto
+nycmayor-tweets,NYCMayor Tweets,daily,964,mentions/tweets
+a100-rental-price,A100 Rental Price,monthly,964,AI
+h200-rental-price,H200 Rental Price,monthly,954,AI
+iran-target-iraq-by,Iran target Iraq by,,954,geopolitics/war
+claude-opus-model-text-arena-debut,Claude Opus Model: Text Arena Debut,,942,AI
+lighter-hit-price-monthly,Lighter Hit Price Monthly,monthly,934,crypto
+dxy-hit-price-monthly,DXY Hit Price Monthly,monthly,926,finance/stocks/earnings
+nor2-games,OBOS-ligaen,daily,916,sports
+trump-approval-rating-floor,Trump Approval Rating Floor,,915,politics/elections
+setkamecz-games,Setka Cup Czechia Men,daily,910,sports
+etsy-earnings,ETSY Earnings,,908,finance/stocks/earnings
+atlanta-daily-lowest-temperature,Atlanta Daily Lowest Temperature,daily,903,weather/climate/science
+bank-of-mexico-decision,Bank of Mexico Decision,annual,899,economy/Fed/macro
+czechia-1,Czechia 1,daily,892,sports
+egg-prices-monthly,Egg Prices Monthly,monthly,888,economy/Fed/macro
+madrid-daily-lowest-temperature,Madrid Daily Lowest Temperature,daily,884,weather/climate/science
+core-cpi-mom,Core CPI MoM,monthly,878,economy/Fed/macro
+median-home-price-miami,Median Home Price Miami,monthly,870,economy/Fed/macro
+impeachment,Impeachment,,848,politics/elections
+core-pce-mom,Core PCE MoM,monthly,841,economy/Fed/macro
+weekly-total-bab-el-mandeb-strait,Weekly total Bab el-Mandeb Strait,weekly,839,geopolitics/war
+lib-2025,Copa Libertadores 2025,daily,838,sports
+euroleague-basketball,Euroleague Basketball,daily,827,sports
+waymo-operate,Waymo operate,,813,AI
+inflation-argentina-annual,Inflation Argentina - Annual,monthly,788,economy/Fed/macro
+avg-bab-el-mandeb-strait,Avg. Bab el-Mandeb Strait,monthly,774,geopolitics/war
+lee-jae-myung-arrest,Lee Jae-myung Arrest,,767,politics/elections
+valorant,Valorant,daily,764,esports
+spacex-multi-strikes-weekly,SpaceX Multi Strikes Weekly,weekly,754,finance/stocks/earnings
+dfb-pokal,DFB-Pokal,daily,753,sports
+nflx-daily-up-or-down,NFLX Daily Up or Down,daily,746,finance/stocks/earnings
+which-artists-will-release-songs,Which Artists Will Release Songs,,727,culture/entertainment/awards
+trump-25th-amendment,Trump 25th Amendment,,710,politics/elections
+first-to-leave-trump-cabinet,First To Leave Trump Cabinet,annual,710,politics/elections
+tel-aviv-daily-lowest-temperature,Tel Aviv Daily Lowest Temperature,daily,710,weather/climate/science
+2-ai-model-style-control-on,#2 AI model Style Control On,monthly,702,AI
+2-netflix-show,#2 Netflix Show,weekly,693,culture/entertainment/awards
+austria-bundesliga-2026,Austria Bundesliga 2026,daily,689,sports
+amzn-daily-up-down,AMZN Daily Up Down,daily,673,finance/stocks/earnings
+tesla-multi-strikes-weekly,Tesla Multi Strikes Weekly,weekly,672,finance/stocks/earnings
+milan-daily-lowest-temperature,Milan Daily Lowest Temperature,daily,663,weather/climate/science
+xrp-hit-price-weekly,XRP Hit Price Weekly,weekly,662,crypto
+new-album,new album,,662,culture/entertainment/awards
+netflix-hit-price-monthly,Netflix Hit Price Monthly,monthly,660,finance/stocks/earnings
+skhy-hit-price-weekly,SK hynix Hit Price Weekly,weekly,660,finance/stocks/earnings
+openrouter-total-tokens-monthly,OpenRouter Total Tokens Monthly,monthly,656,AI
+anduril-valuation,Anduril Valuation,,653,finance/stocks/earnings
+nvidia-s-market-cap,Nvidia’s Market Cap,monthly,649,finance/stocks/earnings
+chicago-daily-lowest-temperature,Chicago Daily Lowest Temperature,daily,647,weather/climate/science
+microsoft-hit-price-monthly,Microsoft Hit Price Monthly,monthly,646,finance/stocks/earnings
+databricks-valuation,Databricks Valuation,,636,finance/stocks/earnings
+hormuz-shipping-targeted,Hormuz shipping targeted,monthly,634,geopolitics/war
+ipo-closing-market-cap,IPO Closing Market Cap,,633,finance/stocks/earnings
+nfl-mentions,NFL Mentions,weekly,632,sports
+nfl-scorigami,NFL Scorigami,weekly,630,
+richest-person,Richest person,monthly,624,tech
+china-gdp,China GDP,monthly,622,economy/Fed/macro
+meta-s-market-cap,Meta’s Market Cap,monthly,617,finance/stocks/earnings
+2-us-netflix-movie,#2 US Netflix Movie,weekly,613,culture/entertainment/awards
+all-kpis,ALL KPIs,,613,finance/stocks/earnings
+elon-tweet-daily,elon tweet daily,daily,602,mentions/tweets
+ukraine-x-russia-peace-deal,Ukraine x Russia Peace Deal,,600,geopolitics/war
+russia-strikes-vessel-in-black-sea,Russia strikes vessel in Black Sea,,576,
+beijing-daily-lowest-temperature,Beijing Daily Lowest Temperature,daily,565,weather/climate/science
+cvs-kpis,CVS KPIs,,559,finance/stocks/earnings
+gold-card,Gold Card,,555,geopolitics/war
+san-francisco-daily-lowest-temperature,San Francisco Daily Lowest Temperature,daily,549,weather/climate/science
+h100-rental-price,H100 Rental Price,monthly,548,AI
+denver-daily-lowest-temperature,Denver Daily Lowest Temperature,daily,546,weather/climate/science
+mobile-legends-bang-bang,Mobile Legends: Bang Bang,daily,543,esports
+bel1-games,Belgium Pro League,daily,543,sports
+roku-earnings,ROKU Earnings,,540,finance/stocks/earnings
+bkvtb,VTB United League,daily,540,sports
+trump-declassifies-ufo,Trump Declassifies UFO,annual,522,weather/climate/science
+mcd-kpis,MCD KPIs,,509,finance/stocks/earnings
+xrp-neg-risk-weekly,XRP Neg Risk Weekly,weekly,506,crypto
+opendoor-hit-price-monthly,Opendoor Hit Price Monthly,monthly,501,finance/stocks/earnings
+best-math-ai,Best Math AI,monthly,501,AI
+core-pce-yoy,Core PCE YoY,monthly,501,economy/Fed/macro
+meta-multi-strikes-daily,META Multi Strikes Daily,daily,499,finance/stocks/earnings
+us-declares-war-on-iran,US declares war on Iran,,497,geopolitics/war
+hezbollah-disarm,Hezbollah Disarm,,492,geopolitics/war
+bklkl-games,LKL,daily,492,sports
+netflix-multi-strikes-weekly,Netflix Multi Strikes Weekly,weekly,486,finance/stocks/earnings
+dogecoin-hit-price-monthly,Dogecoin Hit Price Monthly,monthly,482,crypto
+austin-daily-lowest-temperature,Austin Daily Lowest Temperature,daily,481,weather/climate/science
+reserve-bank-of-new-zealand-decision,Reserve Bank of New Zealand Decision,annual,480,economy/Fed/macro
+max-chatbot-arena-coding,Max Chatbot Arena Coding,monthly,479,AI
+cpbl,CPBL,daily,472,sports
+nfl-preseason-2025,NFL Preseason 2025,daily,471,
+h100-rental-price-hit,H100 Rental Price Hit,daily,471,AI
+coin-daily-up-or-down,COIN Daily Up or Down,daily,470,finance/stocks/earnings
+iran-target-the-united-arab-emirates-by,Iran target the United Arab Emirates by,,467,geopolitics/war
+trump-countries-visited,Trump Countries Visited,annual,453,geopolitics/war
+b200-rental-price-hit,B200 Rental Price Hit,monthly,448,AI
+mstr-weeklies,MSTR weeklies,weekly,440,crypto
+strait-of-trump,Strait of Trump,,437,geopolitics/war
+trump-monthly-mentions,Trump Monthly Mentions,monthly,437,mentions/tweets
+switzerland-super-league,Switzerland Super League,daily,435,sports
+google-gemini-flash-model-released-by,Google Gemini Flash Model Released by,,433,AI
+world-leader-out,world leader out,annual,432,
+bnb-up-or-down-daily,BNB Up or Down Daily,daily,418,crypto
+core-cpi,Core CPI,monthly,416,economy/Fed/macro
+databricks-vs-stripe,Databricks vs Stripe,,415,finance/stocks/earnings
+will-mrbeast-hit-million-subscribers,Will MrBeast hit ___ Million subscribers,monthly,411,culture/entertainment/awards
+spacex-starship-flight-test,SpaceX Starship Flight Test,,404,weather/climate/science
+dxy-daily-up-or-down,DXY Daily Up or Down,daily,404,finance/stocks/earnings
+monthly-spacex-launches,Monthly SpaceX launches,monthly,395,weather/climate/science
+natural-gas-daily-up-or-down,NATURAL GAS Daily Up or Down,daily,394,finance/stocks/earnings
+aph-kpis,APH KPIs,,393,finance/stocks/earnings
+norway-eliteserien,Norway Eliteserien,daily,392,sports
+mamdani-announcement-mentions,Mamdani Announcement Mentions,,386,mentions/tweets
+cehl-2026,cehl-2026,daily,385,sports
+another-crypto-hack,Another crypto hack,monthly,380,crypto
+longest-github-critical-incident,Longest GitHub critical incident,monthly,378,tech
+ma-kpis,MA KPIs,,375,finance/stocks/earnings
+third-best-math-ai,Third-Best Math AI,monthly,375,AI
+poilievre-out,Poilievre Out,,365,politics/elections
+axp-earnings,AXP Earnings,,360,finance/stocks/earnings
+median-home-price-us,Median Home Price US,monthly,359,economy/Fed/macro
+crm-kpis,CRM KPIs,,358,finance/stocks/earnings
+abnb-daily-up-or-down,ABNB Daily Up or Down,daily,357,finance/stocks/earnings
+azo-kpis,AZO KPIs,,355,finance/stocks/earnings
+liiga-games,Liiga,daily,348,sports
+california-midterm-propositions,California Midterm Propositions,annual,347,politics/elections
+kor2-games,K League 2,daily,343,sports
+hype-up-or-down-hourly,HYPE Up or Down Hourly,hourly,342,crypto
+adi-kpis,ADI KPIs,,338,tech
+israel-x-turkey-clash,Israel x Turkey Clash,,337,geopolitics/war
+china-x-taiwan-clash,China x Taiwan Clash,,333,geopolitics/war
+openai-s-frontier-output-token-price,OpenAI's frontier output token price,annual,323,AI
+tgt-kpis,TGT KPIs,,318,finance/stocks/earnings
+iran-target-jordan-by,Iran target Jordan by,,316,geopolitics/war
+cvx-earnings,CVX Earnings,,312,finance/stocks/earnings
+abbv-kpis,ABBV KPIs,,312,finance/stocks/earnings
+1-us-netflix-show,#1 US Netflix Show,weekly,311,culture/entertainment/awards
+unp-kpis,UNP KPIs,,307,finance/stocks/earnings
+amazon-multi-strikes-weekly,Amazon Multi Strikes Weekly,weekly,300,finance/stocks/earnings
+chainlink-hit-price-monthly,Chainlink Hit Price Monthly,monthly,299,crypto
+starmer-pmqs,Starmer PMQs,weekly,298,mentions/tweets
+epstein-alive,Epstein Alive,,296,politics/elections
+ukraine-cede-territory,Ukraine cede territory,,294,geopolitics/war
+best-text-to-video-ai,best Text-to-Video AI,monthly,293,AI
+israel-x-lebanon-relations,Israel x Lebanon Relations,,292,geopolitics/war
+msci-earnings,MSCI Earnings,,292,finance/stocks/earnings
+github-git-operations-critical-incident,GitHub Git Operations critical incident,monthly,288,tech
+tw-earnings,TW Earnings,,287,finance/stocks/earnings
+houston-daily-lowest-temperature,Houston Daily Lowest Temperature,daily,287,weather/climate/science
+warsh-mentions,Warsh Mentions,monthly,283,mentions/tweets
+how-many-different-countries-will-israel-strike,How many different countries will Israel strike,,276,geopolitics/war
+googl-kpis,GOOGL KPIs,,270,tech
+germany-gdp,Germany GDP,annual,268,economy/Fed/macro
+best-code-arena-webdev-ai,Best Code Arena WebDev AI,monthly,268,AI
+grok-web-outage,Grok (Web) Outage,monthly,268,AI
+seattle-daily-lowest-temperature,Seattle Daily Lowest Temperature,daily,267,weather/climate/science
+msft-kpis,MSFT KPIs,,266,tech
+honor-of-kings,Honor of Kings,daily,264,esports
+vrt-kpis,VRT KPIs,,264,finance/stocks/earnings
+max-chatbot-arena,Max Chatbot Arena,daily,261,AI
+next-alibaba-qwen-plus-released-by,Next Alibaba Qwen Plus Released by,,259,AI
+bolivia-1, Bolivia 1,daily,258,sports
+gis-kpis,GIS KPIs,,257,finance/stocks/earnings
+usoc-games,US Open Cup,daily,252,sports
+epl,EPL,daily,250,
+stripe-valuation,Stripe Valuation,,250,finance/stocks/earnings
+toronto-daily-lowest-temperature,Toronto Daily Lowest Temperature,daily,250,weather/climate/science
+livebench-mathematics-monthly,LiveBench (Mathematics) Monthly,monthly,249,AI
+wsl-games,Women's Super League,daily,248,sports
+bytedance-valuation,ByteDance Valuation,,244,finance/stocks/earnings
+mrbeast-gaming-mentions,MrBeast gaming mentions,weekly,243,mentions/tweets
+iran-npt-withdrawal,Iran NPT Withdrawal,,242,geopolitics/war
+which-banks-will-fail,Which banks will fail,monthly,240,economy/Fed/macro
+sao-paulo-daily-lowest-temperature,Sao Paulo Daily Lowest Temperature,daily,238,weather/climate/science
+hood-daily-up-or-down,HOOD Daily Up or Down,daily,228,finance/stocks/earnings
+lly-kpis,LLY KPIs,,227,finance/stocks/earnings
+maxwell-pardon,maxwell pardon,,226,politics/elections
+will-mrbeast-hit-billion-views,Will MrBeast hit ___ Billion views,monthly,221,culture/entertainment/awards
+aapl-kpis,AAPL KPIs,,220,tech
+ncaa-cbb,NCAA CBB,daily,217,
+israel-x-saudi-arabia-relations,Israel x Saudi Arabia relations,,216,geopolitics/war
+zec-up-or-down-15m,ZEC Up or Down 15m,15m,216,crypto
+hype-up-or-down-4h,HYPE Up or Down 4h,4h,209,crypto
+max-chatbot-arena-math,Max Chatbot Arena Math,monthly,206,AI
+well-kpis,WELL KPIs,,206,finance/stocks/earnings
+nvda-kpis,NVDA KPIs,,206,AI
+next-openai-gpt-luna-release-by,Next OpenAI GPT Luna Release by,,205,AI
+mstr-weekly-strike,MSTR Weekly Strike,weekly,202,crypto
+pakistan-military-action-against-yemen-by,Pakistan military action against Yemen by,,201,geopolitics/war
+opendoor-multi-strikes-weekly,Opendoor Multi Strikes Weekly,weekly,200,finance/stocks/earnings
+canada-gdp-mom,Canada GDP MoM,monthly,195,economy/Fed/macro
+next-openai-gpt-sol-release-by,Next OpenAI GPT Sol Release by,,194,AI
+dallas-daily-lowest-temperature,Dallas Daily Lowest Temperature,daily,192,weather/climate/science
+iran-successfully-targets-shipping-on,Iran successfully targets shipping on,,191,
+yum-kpis,YUM KPIs,,191,finance/stocks/earnings
+tsla-earnings,TSLA Earnings,,189,finance/stocks/earnings
+how-many-7pt0-or-above-earthquakes,How many 7.0 or above earthquakes,annual,188,weather/climate/science
+hlt-earnings,HLT Earnings,,188,finance/stocks/earnings
+us-annual-inflation,US Annual Inflation ,monthly,187,economy/Fed/macro
+putin-meet-zelenskyy,Putin meet Zelenskyy,daily,185,geopolitics/war
+b200-rental-price,B200 Rental Price,monthly,184,AI
+median-home-price-nyc,Median Home Price NYC,monthly,183,economy/Fed/macro
+south-africa-reserve-bank-decision,South Africa Reserve Bank Decision,annual,182,economy/Fed/macro
+sheffield-shield,Sheffield Shield,daily,180,sports
+deepseek-pro-released-by,DeepSeek Pro Released by,,180,AI
+dogecoin-up-or-down-daily,Dogecoin Up or Down Daily,daily,175,crypto
+ko-earnings,KO Earnings,,171,finance/stocks/earnings
+ukmto-notices-weekly,UKMTO notices weekly,weekly,170,geopolitics/war
+basketball-champions-league,Basketball Champions League,daily,167,sports
+bank-failure,Bank Failure,monthly,166,economy/Fed/macro
+primera-division,Primera Division,daily,166,sports
+earthquake-monthly,Earthquake Monthly,monthly,166,weather/climate/science
+switzerland-referenda,Switzerland Referenda,monthly,165,politics/elections
+mo-kpis,MO KPIs,,165,finance/stocks/earnings
+anthropic-sandbox-escape,Anthropic Sandbox Escape,monthly,164,AI
+gambling-loss-deduction-cap,Gambling Loss Deduction Cap,,162,politics/elections
+trump-pardon-anyone-monthly,Trump pardon anyone monthly,monthly,161,politics/elections
+another-iranian-diplomat-expelled-by,Another Iranian diplomat expelled by,,158,geopolitics/war
+jolts,JOLTS,monthly,153,economy/Fed/macro
+iran-nuclear-test,Iran Nuclear Test,,152,geopolitics/war
+1-us-netflix-movie,#1 US Netflix Movie,weekly,150,culture/entertainment/awards
+github-com-critical-incident-by,GitHub.com critical incident by,monthly,150,tech
+skhy-hit-price-monthly,SK hynix Hit Price Monthly,monthly,150,finance/stocks/earnings
+ewy-daily-up-or-down,EWY Daily Up or Down,daily,145,finance/stocks/earnings
+bx-earnings,BX Earnings,,145,finance/stocks/earnings
+elon-tweet-mention,elon tweet mention,weekly,140,mentions/tweets
+ftse-100-daily-up-or-down,FTSE 100 Daily Up or Down,daily,137,finance/stocks/earnings
+gre1-games,Greece Super League,daily,137,sports
+nirl1-games,NIFL Premiership,daily,137,sports
+wtfc-earnings,WTFC Earnings,,135,finance/stocks/earnings
+amzn-earnings,AMZN Earnings,,131,finance/stocks/earnings
+soccer-enl,National League,daily,130,sports
+nflx-earnings,NFLX Earnings,,130,finance/stocks/earnings
+nee-kpis,NEE KPIs,,130,finance/stocks/earnings
+abt-kpis,ABT KPIs,,126,finance/stocks/earnings
+tesla-robotaxi-launch,Tesla Robotaxi Launch,,125,AI
+chatgpt-outage-days,ChatGPT Outage Days,monthly,124,AI
+ge-kpis,GE KPIs,,123,finance/stocks/earnings
+next-alibaba-qwen-flash-released-by,Next Alibaba Qwen Flash Released by,,120,AI
+spot-kpis,SPOT KPIs,,117,economy/Fed/macro
+mrk-earnings,MRK Earnings,,117,finance/stocks/earnings
+musk-presidential-run,Musk Presidential Run,,116,tech
+2-paid-app,#2 Paid App,weekly,116,tech
+lly-earnings,LLY Earnings,,114,finance/stocks/earnings
+dax-daily-up-or-down,DAX Daily Up or Down,daily,112,finance/stocks/earnings
+serie-b,Serie B,daily,111,sports
+dehl-2026,dehl-2026,daily,110,sports
+pga-tour,PGA Tour,daily,110,sports
+russia-capture-kupiansk-vuzlovyi,Russia capture Kupiansk-Vuzlovyi,,110,geopolitics/war
+glw-kpis,GLW KPIs,,110,finance/stocks/earnings
+ethena-hit-price-monthly,Ethena Hit Price Monthly,monthly,107,crypto
+claude-haiku-released,Claude Haiku released,,107,AI
+wsl2-games,Women's Super League 2,daily,107,sports
+crwd-kpis,CRWD KPIs,,106,AI
+ai-imo-gold-medal,AI IMO Gold Medal,,105,AI
+inflation-canada-annual,Inflation Canada - Annual,monthly,105,economy/Fed/macro
+nbl,NBL,daily,105,sports
+top-netflix-movie-week,Top Netflix Movie Week,weekly,103,culture/entertainment/awards
+tdoc-earnings,TDOC Earnings,,101,finance/stocks/earnings
+praise-allah,Praise allah,annual,100,politics/elections
+dario-amodei-arrested,Dario Amodei arrested,,100,AI
+google-gemini-flash-lite-model-released-by,Google Gemini Flash-Lite Model Released by,,100,AI
+meta-earnings,META Earnings,,98,finance/stocks/earnings
+median-home-price-dc,Median Home Price DC,monthly,97,economy/Fed/macro
+kraken-valuation,Kraken Valuation,,95,finance/stocks/earnings
+us-imposes-new-sanctions-on-china,US imposes new sanctions on China,monthly,93,geopolitics/war
+googl-earnings,GOOGL Earnings,,90,finance/stocks/earnings
+ual-earnings,UAL Earnings,,90,finance/stocks/earnings
+efx-earnings,EFX Earnings,,90,finance/stocks/earnings
+ag-commodity-drought-weekly,Weekly Agricultural Commodity Drought,weekly,90,weather/climate/science
+bkng-kpis,BKNG KPIs,,87,finance/stocks/earnings
+russian-slovainsk-capture,Russian Slovainsk Capture,,86,geopolitics/war
+neurolink-valuation,Neurolink Valuation,,86,tech
+sndk-earnings,SNDK Earnings,,86,finance/stocks/earnings
+trump-putin-and-zelensky-seen,"Trump, Putin, and Zelensky seen",,85,geopolitics/war
+ivz-earnings,IVZ Earnings,,85,finance/stocks/earnings
+txn-kpis,TXN KPIs,,82,finance/stocks/earnings
+titled-tuesday,Titled Tuesday,weekly,82,sports
+south-korea-gdp,South Korea GDP,annual,80,economy/Fed/macro
+cboe-earnings,CBOE Earnings,,80,finance/stocks/earnings
+peoples-bank-of-china,People's Bank of China,monthly,80,economy/Fed/macro
+gev-kpis,GEV KPIs,,80,finance/stocks/earnings
+ai-millennium-prize-solution,AI millennium prize solution,,80,AI
+image-edit-arena-ranking,Image edit arena ranking,,80,AI
+nasdaq-100-monthly-ou,Nasdaq 100 monthly O/U,monthly,79,
+top-netflix-show-week,Top Netflix Show Week,weekly,77,culture/entertainment/awards
+how-high-will-trumps-approval-rating-go,How high will Trump's approval rating go,,77,politics/elections
+hormuz-transits-neg,Hormuz Transits (neg),monthly,77,geopolitics/war
+ares-earnings,ARES Earnings,,75,finance/stocks/earnings
+trump-post-weekly,Trump Post Weekly,weekly,75,mentions/tweets
+perplexity-valuation,Perplexity Valuation,,74,finance/stocks/earnings
+uslc,USL Championship,daily,74,sports
+dxy-hit-price-weekly,DXY Hit Price Weekly,weekly,74,finance/stocks/earnings
+next-z-ai-glm-released-by,next Z.ai GLM Released by,,72,AI
+revolut-valuation,Revolut Valuation,,71,finance/stocks/earnings
+ibm-earnings,IBM Earnings,,71,finance/stocks/earnings
+livebench-overall-monthly,LiveBench (Overall) Monthly,monthly,71,AI
+amazon-multi-strikes-monthly,Amazon Multi Strikes Monthly,monthly,70,finance/stocks/earnings
+hgv-earnings,HGV Earnings,,70,finance/stocks/earnings
+comey-charges-dropped,Comey Charges Dropped,,70,politics/elections
+cvx-kpis,CVX KPIs,,70,finance/stocks/earnings
+mbwm-earnings,MBWM Earnings,,69,finance/stocks/earnings
+bl3-games,3. Liga,daily,69,sports
+trump-trade-deal-countries,Trump Trade Deal Countries,annual,67,geopolitics/war
+scottish-premiership,Scottish Premiership,daily,67,sports
+vbbelligaa-games,Belgian Liga A,daily,67,sports
+anthropic-vs-openai,Anthropic vs OpenAI,,66,AI
+mmm-earnings,MMM Earnings,,66,finance/stocks/earnings
+mar-kpis,MAR KPIs,,65,finance/stocks/earnings
+hog-earnings,HOG Earnings,,64,finance/stocks/earnings
+tmus-kpis,TMUS KPIs,,63,finance/stocks/earnings
+dell-kpis,DELL KPIs,,63,AI
+claude-sonnet-released,Claude Sonnet released,,62,AI
+ally-earnings,ALLY Earnings,,62,finance/stocks/earnings
+nvidia-multi-strikes-monthly,Nvidia Multi Strikes Monthly,monthly,60,finance/stocks/earnings
+opendoor-multi-strikes-monthly,Opendoor Multi Strikes Monthly,monthly,60,finance/stocks/earnings
+orly-earnings,ORLY Earnings,,60,finance/stocks/earnings
+lh-earnings,LH Earnings,,60,finance/stocks/earnings
+tmus-earnings,TMUS Earnings,,60,finance/stocks/earnings
+movie-delay,Movie Delay,,60,culture/entertainment/awards
+iran-target-oman-by,Iran target Oman by,,60,geopolitics/war
+ttwo-kpis,TTWO KPIs,,60,tech
+palestine-recognition,Palestine recognition,,59,geopolitics/war
+liga-1,Liga 1,daily,58,sports
+real-earnings,REAL Earnings,,57,finance/stocks/earnings
+cof-earnings,COF Earnings,,57,finance/stocks/earnings
+vbsvleague-games,SV.League,daily,56,sports
+vb2bundesliga-games,2. Bundesliga,daily,56,sports
+k-league,K-league,daily,55,sports
+chatgpt-full-outage,ChatGPT Full Outage,monthly,55,AI
+ssnc-earnings,SSNC Earnings,,54,finance/stocks/earnings
+university-of-michigan-consumer-sentiment,University of Michigan Consumer Sentiment,monthly,53,economy/Fed/macro
+imax-earnings,IMAX Earnings,,52,finance/stocks/earnings
+pdcdarts,PDC,daily,51,sports
+nya,NYA,daily,50,finance/stocks/earnings
+cvna-earnings,CVNA Earnings,,50,finance/stocks/earnings
+panw-kpis,PANW KPIs,,50,AI
+axp-kpis,AXP KPIs,,50,finance/stocks/earnings
+bitcoin-etf-flows-daily,Bitcoin ETF Flows Daily,daily,49,crypto
+shl-2026,SHL 2026,daily,49,sports
+how-many-spacex-starship-launches,How many SpaceX Starship launches,annual,49,weather/climate/science
+houthi-military-action-against-israel,Houthi military action against Israel,,47,geopolitics/war
+khc-earnings,KHC Earnings,,46,finance/stocks/earnings
+cbre-earnings,CBRE Earnings,,46,finance/stocks/earnings
+iran-target-kuwait-by,Iran target Kuwait by,,45,geopolitics/war
+pakistan-military-action-against-afghanistan-by,Pakistan military action against Afghanistan by,monthly,45,geopolitics/war
+ethereum-etf-flows-daily,Ethereum ETF Flows Daily,daily,44,crypto
+ukraine-surrender-donbas,Ukraine Surrender Donbas,,42,geopolitics/war
+nato-article-5,NATO Article 5,,42,geopolitics/war
+sp-500-monthly-close-negrisk,S&P 500 monthly close negrisk,monthly,42,finance/stocks/earnings
+eurusd-daily-up-or-down,EUR/USD Daily Up or Down,daily,41,finance/stocks/earnings
+eurozone-gdp,Eurozone GDP,monthly,41,economy/Fed/macro
+ndx-daily-up-or-down,NDX Daily Up or Down,daily,40,
+nik-daily-up-or-down,NIK Daily Up or Down,daily,40,finance/stocks/earnings
+rddt-earnings,RDDT Earnings,,40,finance/stocks/earnings
+rfk-jr-out,RFK Jr. Out,,40,politics/elections
+hungary-nb1-2026,Hungary NB I 2026,daily,40,sports
+ism-manufacturing-pmi,ISM Manufacturing PMI,monthly,40,economy/Fed/macro
+cfl,CFL,daily,40,sports
+median-home-price-sf,Median Home Price SF,monthly,40,economy/Fed/macro
+avgo-kpis,AVGO KPIs,,40,AI
+intc-kpis,INTC KPIs,,40,finance/stocks/earnings
+dow-earnings,DOW Earnings,,40,finance/stocks/earnings
+kr-kpis,KR KPIs,,40,finance/stocks/earnings
+amd-kpis,AMD KPIs,,40,finance/stocks/earnings
+iran-successfully-targets-shipping-by,Iran successfully targets shipping by,,40,geopolitics/war
+dkng-earnings,DKNG Earnings,,39,finance/stocks/earnings
+livebench-coding-monthly,LiveBench (Coding) Monthly,monthly,39,AI
+ships-transit-the-strait-of-hormuz-on-any-day, __ ships transit the Strait of Hormuz on any day,monthly,38,geopolitics/war
+hype-up-or-down-daily,HYPE Up or Down Daily,daily,37,crypto
+rogan-mentions,Rogan Mentions,weekly,36,mentions/tweets
+lmt-kpis,LMT KPIs,,36,finance/stocks/earnings
+netflix-multi-strikes-monthly,Netflix Multi Strikes Monthly,monthly,35,finance/stocks/earnings
+russia-enter-oleksiievo-druzhkivka,Russia enter Oleksiievo-Druzhkivka,,35,geopolitics/war
+mex2-games,Liga de Expansión MX,daily,35,sports
+median-home-price-la,Median Home Price LA,monthly,33,economy/Fed/macro
+t-kpis,T KPIs,,33,finance/stocks/earnings
+cl-earnings,CL Earnings,,33,finance/stocks/earnings
+zec-up-or-down-5m,ZEC Up or Down 5m,5m,33,crypto
+rainbow-six-siege,Rainbow Six Siege,daily,32,esports
+cmg-earnings,CMG Earnings,,31,finance/stocks/earnings
+aal-earnings,AAL Earnings,,31,finance/stocks/earnings
+us-recognizes-machado,U.S. recognizes Machado,,30,geopolitics/war
+japan-gdp,Japan GDP,annual,30,economy/Fed/macro
+lambda-valuation,Lambda Valuation,,30,finance/stocks/earnings
+micron-hit-price-monthly,Micron Hit Price Monthly,monthly,30,finance/stocks/earnings
+mstr-hit-price-monthly,MSTR Hit Price Monthly,monthly,30,finance/stocks/earnings
+usdbrl-daily-up-or-down,USDBRL Daily Up or Down,daily,30,finance/stocks/earnings
+nord-stream-on,Nord Stream On,,28,geopolitics/war
+hood-earnings,HOOD Earnings,,28,finance/stocks/earnings
+uk-gdp,UK GDP,monthly,27,economy/Fed/macro
+womens-t20-world-cup-qualifier,Women's T20 World Cup Qualifier,daily,27,
+spgi-kpis,SPGI KPIs,,27,finance/stocks/earnings
+central-bank-of-chile-decision,Central Bank of Chile Decision,monthly,27,economy/Fed/macro
+deportation-count,Deportation Count,annual,25,geopolitics/war
+spacex-multi-strikes-monthly,SpaceX Multi Strikes Monthly,monthly,25,finance/stocks/earnings
+bfc-earnings,BFC Earnings,,25,finance/stocks/earnings
+klac-kpis,KLAC KPIs,,25,finance/stocks/earnings
+hbehfcl-games,EHF Champions League,daily,25,sports
+cme-earnings,CME Earnings,,24,finance/stocks/earnings
+txn-earnings,TXN Earnings,,24,finance/stocks/earnings
+weed-rescheduling,Weed Rescheduling,,22,politics/elections
+frontier-math-problem,Frontier Math Problem,,22,AI
+usdjpy-daily-up-or-down,USD/JPY Daily Up or Down,daily,21,finance/stocks/earnings
+trump-invokes-war-powers-in-yemen,Trump invokes war powers in Yemen,monthly,21,geopolitics/war
+hang-seng-daily-up-or-down,Hang Seng Daily Up or Down,daily,20,finance/stocks/earnings
+usdmxn-daily-up-or-down,USD/MXN Daily Up or Down,daily,20,finance/stocks/earnings
+aws-service-disrupted,AWS service disrupted ,monthly,20,tech
+mgm-earnings,MGM Earnings,,20,finance/stocks/earnings
+joseph-aoun-out,Joseph Aoun out,,20,geopolitics/war
+usdnok-daily-up-or-down,USDNOK Daily Up or Down,daily,20,finance/stocks/earnings
+ibm-kpis,IBM KPIs,,20,finance/stocks/earnings
+gd-earnings,GD Earnings,,20,finance/stocks/earnings
+sbux-earnings,SBUX Earnings,,20,finance/stocks/earnings
+xom-earnings,XOM Earnings,,20,finance/stocks/earnings
+stx-kpis,STX KPIs,,20,finance/stocks/earnings
+wdc-kpis,WDC KPIs,,20,finance/stocks/earnings
+iran-target-syria-by,Iran target Syria by,,20,geopolitics/war
+iran-target-bahrain-by,Iran target Bahrain by,,20,geopolitics/war
+drought-d4-weekly,Exceptional Drought This Week,weekly,20,weather/climate/science
+cflt-earnings,CFLT Earnings,,20,finance/stocks/earnings
+green-days-weekly,Green Days Weekly,weekly,20,crypto
+mistral-medium-3-6-released-by,Mistral Medium (3.6+) released by,monthly,20,AI
+euro-gdp,Euro GDP,annual,19,economy/Fed/macro
+lemonade-stand,Lemonade Stand,weekly,19,mentions/tweets
+net-earnings,NET Earnings,,18,finance/stocks/earnings
+fed-emergency-rate-cut,Fed Emergency Rate Cut,,17,economy/Fed/macro
+dhr-kpis,DHR KPIs,,17,finance/stocks/earnings
+nls-games,National League South,daily,17,sports
+h-kpis,H KPIs,,16,finance/stocks/earnings
+macron-call-a-referendum,Macron call a referendum,monthly,16,politics/elections
+jobs-added,Jobs Added,monthly,15,economy/Fed/macro
+nvidia-multi-strikes-weekly,Nvidia Multi Strikes Weekly,weekly,15,finance/stocks/earnings
+ukraine-not-nato,Ukraine Not NATO,,14,geopolitics/war
+ups-earnings,UPS Earnings,,14,finance/stocks/earnings
+cricwcl,World Championship of Legends,daily,13,sports
+negative-gdp,Negative gdp,monthly,12,
+hon-earnings,HON Earnings,,12,finance/stocks/earnings
+t-earnings,T Earnings,,12,finance/stocks/earnings
+best-text-to-image-ai,Best Text-to-Image AI,monthly,12,AI
+nba,NBA,daily,11,
+aptv-earnings,APTV Earnings,,11,finance/stocks/earnings
+usdchf-daily-up-or-down,USD/CHF Daily Up or Down,daily,10,finance/stocks/earnings
+usdkrw-daily-up-or-down,USDKRW Daily Up or Down,daily,10,finance/stocks/earnings
+bulgaria-parva-liga-2026,Bulgaria Parva Liga 2026,daily,10,sports
+mstr-hit-price-weekly,MSTR Hit Price Weekly,weekly,10,finance/stocks/earnings
+claude-opus-released,Claude Opus released,,10,AI
+usdsek-daily-up-or-down,USDSEK Daily Up or Down,daily,10,finance/stocks/earnings
+usdzar-daily-up-or-down,USDZAR Daily Up or Down,daily,10,finance/stocks/earnings
+lmt-earnings,LMT Earnings,,10,finance/stocks/earnings
+v-earnings,V Earnings,,10,finance/stocks/earnings
+setkamemd-games,Setka Cup Moldova Men,daily,10,sports
+bitcoin-dominance-weekly,Bitcoin Dominance Weekly,weekly,10,crypto
+vz-kpis,VZ KPIs,,9,finance/stocks/earnings
+hal-earnings,HAL Earnings,,9,finance/stocks/earnings
+arcc-earnings,ARCC Earnings,,9,finance/stocks/earnings
+nyt-headlines,NYT Headlines,weekly,8,mentions/tweets
+ubsi-earnings,UBSI Earnings,,8,finance/stocks/earnings
+msft-earnings,MSFT Earnings,,8,finance/stocks/earnings
+median-home-price-denver,Median Home Price Denver,monthly,8,economy/Fed/macro
+comex-gold-futures-daily-up-or-down,COMEX Gold Futures Daily Up or Down,daily,7,
+reserve-bank-of-india-decision,Reserve Bank of India Decision,monthly,7,economy/Fed/macro
+key-earnings,KEY Earnings,,7,finance/stocks/earnings
+codex-weekly-reset-negrisk,Codex Weekly Reset Negrisk,,7,AI
+mco-earnings,MCO Earnings,,6,finance/stocks/earnings
+wing-earnings,WING Earnings,,6,finance/stocks/earnings
+tsco-earnings,TSCO Earnings,,6,finance/stocks/earnings
+hbsuperliga-games,Superliga,daily,6,sports
+meta-multi-strikes-monthly,Meta Multi Strikes Monthly,monthly,5,finance/stocks/earnings
+tsla-neg-risk-weekly,TSLA Neg Risk Weekly,weekly,5,finance/stocks/earnings
+russia-rejoin-g7,Russia Rejoin G7,,5,geopolitics/war
+argentina-official-usd-exchange-rate,Argentina Official USD Exchange Rate,monthly,5,finance/stocks/earnings
+gas-price-hits,US Gas Hit Price Monthly,monthly,5,finance/stocks/earnings
+vbcl-games,CEV Champions League,daily,5,sports
+hbbundesliga-games,Handball Bundesliga,daily,5,sports
+next-alibaba-qwen-max-released-by,Next Alibaba Qwen Max Released by,,5,AI
+trump-company-mentions,trump company mentions,monthly,5,mentions/tweets
+snow-kpis,SNOW KPIs,,5,tech
+ipl,IPL,daily,4,
+ahl-2026,ahl-2026,daily,4,sports
+sp-500-company-buys-bitcoin,S&P 500 Company buys Bitcoin,,3,crypto
+critical-discord-incident,Critical Discord Incident,monthly,3,tech
+bx-kpis,BX KPIs,,3,finance/stocks/earnings
+1-paid-app,#1 Paid App,weekly,2,tech
+gbpusd-daily-up-or-down,GBP/USD Daily Up or Down,daily,1,finance/stocks/earnings
+google-multi-strikes-monthly,Google Multi Strikes Monthly,monthly,1,finance/stocks/earnings
+image-to-video-arena-ranking,Image-to-video arena ranking,,1,AI
+swiss-national-bank-decision,Swiss national bank decision,,1,economy/Fed/macro
+nhl,NHL,daily,0,
+cpi,CPI,monthly,0,
+champions-league,Champions League,daily,0,
+march-madness,March Madness Games,daily,0,
+arb-price,ARB Price,,0,
+rcp-polling-margin,RCP Polling Margin,weekly,0,
+cfb,CFB,daily,0,
+ucl,UEFA Champions League,daily,0,
+ice-detainers,ICE Detainers,daily,0,
+trump-daily-eos,Trump Daily EOs,daily,0,
+trump-truths,Trump Truths,weekly,0,
+tawetwettweet,tawetwettweet,daily,0,
+testsetset,testsetset,weekly,0,
+doge-weeklies,DOGE weeklies,weekly,0,
+hottest-month,Hottest Month,monthly,0,
+temperature-increase,Temperature Increase,monthly,0,weather/climate/science
+ecb-rates,ECB Rates,monthly,0,
+powell-mentions,Powell mentions,monthly,0,
+potus-tweets,POTUS Tweets,weekly,0,
+trump-positive-favorability,Trump Positive Favorability,monthly,0,
+uel,UEL,weekly,0,
+press-briefings,Press Briefings,weekly,0,
+trump-negative-approval,Trump negative approval,monthly,0,
+deepseek-top-model,Deepseek Top Model,monthly,0,
+solana-etf,Solana ETF,,0,
+litecoin-etf,Litecoin ETF,,0,
+doge-etf,DOGE ETF,,0,
+ripple-etf,Ripple ETF,,0,
+airdrops,Airdrops,,0,
+cbb,CBB,,0,
+gas-prices,Gas Prices,weekly,0,
+trump-monthly-eos,Trump Monthly EOs,monthly,0,
+border-encounters,Border encounters,monthly,0,
+mstr-holdings,MSTR holdings,monthly,0,
+kanye-tweets,Kanye tweets,,0,
+trump-approval-positve,Trump approval (Positve),monthly,0,
+russia-x-ukraine-ceasefire,Russia x Ukraine Ceasefire,,0,
+north-korea-missile-test,North Korea missile test,,0,geopolitics/war
+israel-x-hamas-ceasefire,Israel x Hamas ceasefire,,0,
+mlb-games,MLB Games,daily,0,
+fear-greed,Fear & Greed,weekly,0,
+houthis-end-attacks-on-shipping,Houthis  end attacks on shipping ,monthly,0,
+bitcoin-up-or-down-monthly,Bitcoin Up or Down Monthly,monthly,0,
+eth-up-or-down-monthly,ETH Up or Down Monthly,monthly,0,
+xrp-up-down-monthly,XRP Up Down Monthly,monthly,0,
+sol-up-down-monthly,SOL Up Down Monthly,monthly,0,
+doge-up-down-monthly,DOGE Up Down Monthly,monthly,0,
+xrp-ath,xrp ath,monthly,0,
+sol-ath,Sol ath,monthly,0,
+eth-ath,eth ath,monthly,0,
+btc-ath,btc ath,monthly,0,
+sol-dailies,SOL dailies,daily,0,
+sui-monthly-hit-price,SUI Monthly Hit Price,monthly,0,
+fartcoin-monthly-hit-price,Fartcoin Monthly Hit Price,monthly,0,
+fartcoin-up-or-down-daily,Fartcoin Up or Down Daily,daily,0,
+bitcoin-and-ethereum-up-daily,Bitcoin and Ethereum Up Daily,daily,0,
+bitcoin-dominance-up-or-down-monthly,Bitcoin Dominance Up or Down Monthly,monthly,0,
+bitcoin-dominance-up-or-down-weekly,Bitcoin Dominance Up or Down Weekly,weekly,0,
+bitcoin-up-or-down-weekly,Bitcoin Up or Down Weekly,weekly,0,
+ethereum-up-or-down-weekly,Ethereum Up or Down Weekly,weekly,0,
+ethbtc-up-or-down-weekly,ETH/BTC Up or Down Weekly,weekly,0,
+ethbtc-up-or-down-monthly,ETH/BTC Up or Down Monthly,monthly,0,
+soleth-up-or-down-monthly,SOL/ETH Up or Down Monthly,monthly,0,
+trump-approval-weekly-brackets,Trump Approval Weekly Brackets,weekly,0,
+bitcoin-neg-risk-4h,Bitcoin Neg Risk 4H,4h,0,
+ethereum-neg-risk-4h,Ethereum Neg Risk 4H,4h,0,
+fartcoin-weeklies,Fartcoin weeklies,weekly,0,
+israel-strike-iran,Israel strike iran,,0,
+israel-strike-iran-nuke,israel strike iran nuke,,0,
+archbtc-up-or-down-hourly,archBTC Up or Down Hourly,hourly,0,
+trump-approval-binary,trump approval binary,weekly,0,politics/elections
+dubai-daily-weather,Dubai Daily Weather,daily,0,
+trump-epstein,Trump epstein,,0,
+iran-strike-israel,iran strike israel,,0,
+israel-x-iran-ceasefire,israel x iran ceasefire,,0,
+khamenei-out,Khamenei out,,0,
+us-strikes-iran,US strikes iran,,0,
+iran-x-israel-conflict-ends-before-july,Iran x Israel conflict ends before July?,,0,
+israel-declares-war,Israel declares war,,0,
+iran-declares-war,Iran declares war,,0,
+strait-of-hormuz,Strait of Hormuz,weekly,0,
+israel-ends-military-operations,Israel ends military operations,,0,
+fda-approval,FDA Approval,,0,
+kahmenei-out,Kahmenei Out,monthly,0,
+khameni,Khameni,weekly,0,
+khamenei,Khamenei,,0,
+tesla-robotaxi,Tesla robotaxi,,0,
+congress-authorizes-military-force-against-iran-before-july,Congress authorizes military force against Iran before July?,,0,
+pumpfun-daily,pumpfun daily,daily,0,
+trump-increase-sanctions-on-russia,Trump increase sanctions on Russia,,0,
+trump-increase-sanctions-on-russia-before-august,Trump increase sanctions on Russia before August,,0,
+nuclear-deal,nuclear deal,,0,
+bitcoin-monthly-strikes,Bitcoin Monthly Strikes,monthly,0,
+ethereum-monthly-strikes,Ethereum Monthly Strikes,monthly,0,
+trump-try-to-fire-powell,Trump try to fire powell,,0,
+powell-out,powell out,,0,
+epstein-files-relased,epstein files relased,,0,
+earthquake,Earthquake,monthly,0,
+keon-hee-arrest,Keon-hee arrest,,0,
+israel-withdraws-from-syria,Israel withdraws from Syria,,0,
+israel-strike-damascus,Israel strike Damascus,,0,
+kash-patel-out,Kash Patel out,,0,
+bondi-bongino-or-patel-out," Bondi, Bongino or Patel out",,0,
+trump-meet-xi-jinping,Trump meet Xi Jinping,,0,
+israel-strikes-syria,Israel strikes Syria,,0,
+israel-strike-syria,Israel strike Syria,,0,
+israel-strike-yemen,Israel strike Yemen,,0,
+erdoan-out,Erdoğan out,,0,geopolitics/war
+thailand-x-cambodia-ceasefire,Thailand x Cambodia ceasefire,,0,
+thailand-ceasefire,Thailand ceasefire,,0,
+handala,Handala,,0,
+error1,error1,daily,0,
+eth-outperforms-bitcoin,ETH outperforms Bitcoin,daily,0,
+india-strike-pakistan,India strike Pakistan,,0,
+pakistan-strike-india,Pakistan strike India,,0,
+trump-meet-putin,trump meet Putin,,0,
+major-league-pickleball,Major League Pickleball,daily,0,
+archived2,archived2,daily,0,
+bitcoin-multi-strikes-4h,Bitcoin Multi Strikes 4H,4h,0,
+nubcat,Nubcat,,0,
+openai-browser,OpenAI browser,,0,
+earthquake-7pt0-monthly,Earthquake 7.0 Monthly,monthly,0,
+houthi-strike-israel,Houthi strike Israel,,0,
+powerball,Powerball,weekly,0,
+euro-basket,euro-basket,daily,0,
+epl-2025,EPL 2025,daily,0,
+efl-2025,EFL 2025,daily,0,
+ethereum-multi-strikes-4h,Ethereum Multi Strikes 4H,4h,0,
+xrp-multi-strikes-4h,XRP Multi Strikes 4H,4h,0,
+solana-multi-strikes-4h,Solana Multi Strikes 4H,4h,0,
+metaplanet,Metaplanet,,0,
+fifa-friendly,Fifa Friendly,daily,0,sports
+caf,CAF,daily,0,
+afc,AFC,daily,0,
+afc-wc,AFC WC,daily,0,
+uef-qualifiers,UEF Qualifiers,daily,0,
+concacaf,Concacaf,daily,0,
+oceania-wc-qualifiers,Oceania WC Qualifiers,daily,0,
+conmebol,Conmebol,daily,0,
+solana-neg-risk-4h,Solana Neg Risk 4H,4h,0,
+xrp-neg-risk-4h,XRP Neg Risk 4H,4h,0,
+arg-2025,Argentina Primera División 2025,daily,0,
+itc-2025,Coppa Italia 2025,daily,0,sports
+lcs-2025,Leagues Cup 2025,daily,0,
+brazil-monthly-inflation,Brazil Monthly Inflation,monthly,0,
+ofc,Oceania Football Confederation,daily,0,
+taylor-swift-new-song,Taylor Swift New Song,,0,
+rus-2025,Russian Premier League 2025,daily,0,
+efa-2025,English Football Association Cup 2025,daily,0,
+coupe-de-france,Coupe de France,daily,0,
+copa-del-rey,Copa del Rey,daily,0,sports
+musk-rejoins-trump,Musk rejoins Trump,,0,tech
+trump-meet-musk,Trump meet Musk,monthly,0,
+drug-boat,drug boat,,0,
+bitcoin-up-or-down-4h,Bitcoin Up or Down 4H,4h,0,
+ethereum-up-or-down-4h,Ethereum Up or Down 4H,4h,0,
+solana-up-or-down-4h,Solana Up or Down 4H,4h,0,
+player-props,Player Props,daily,0,
+greta-thunberg-arrested,Greta Thunberg arrested,,0,
+earnings,Earnings,weekly,0,
+megaquake,Megaquake,monthly,0,
+houthi-attack-on-shipping,Houthi attack on shipping,,0,
+shutdown-ends-neg,Shutdown ends (neg),,0,
+sidemen-views-day-1,Sidemen views day 1,,0,
+sidemen-views-week-1,Sidemen views week 1,,0,
+marques-brownlee-views-day-1,Marques Brownlee views day 1,,0,
+marques-brownlee-views-week-1,Marques Brownlee views week 1,,0,
+stokes-twins-views-day-1,Stokes Twins views day 1,,0,
+stokes-twins-views-week-1,Stokes Twins views week 1,,0,
+pewdiepie-views-day-1,PewDiePie views day 1,,0,
+pewdiepie-views-week-1,PewDiePie views week 1,,0,
+tennis,Tennis,daily,0,
+chuck-schumer-meet-trump,Chuck Schumer meet trump,,0,
+hamas-release-any-hostages,Hamas release any hostages,daily,0,
+123hottest-month-on-record,123Hottest month on record,daily,0,
+vegas-matt,Vegas Matt,,0,
+netflix-daily-up-or-down,Netflix Daily Up or Down,daily,0,
+xau-daily-up-or-down,XAU Daily Up or Down,daily,0,
+xag-daily-up-or-down,XAG Daily Up or Down,daily,0,
+xpd-daily-up-or-down,XPD Daily Up or Down,daily,0,
+xpt-daily-up-or-down,XPT Daily Up or Down,daily,0,
+hg-daily-up-or-down,HG Daily Up or Down,daily,0,
+cl-daily-up-or-down,CL Daily Up or Down,daily,0,
+audusd-daily-up-or-down,AUD/USD Daily Up or Down,daily,0,
+nzdusd-daily-up-or-down,NZD/USD Daily Up or Down,daily,0,
+usdcad-daily-up-or-down,USD/CAD Daily Up or Down,daily,0,
+tesla-deliveries,Tesla deliveries,daily,0,tech
+brent-crude-oil-daily-up-or-down,Brent Crude Oil Daily Up or Down,daily,0,
+rbob-gasoline-daily-up-or-down,RBOB Gasoline Daily Up or Down,daily,0,
+corn-daily-up-or-down,Corn Daily Up or Down,daily,0,
+wheat-daily-up-or-down,Wheat Daily Up or Down,daily,0,
+soybeans-daily-up-or-down,Soybeans Daily Up or Down,daily,0,
+diddy-pardon,diddy pardon,,0,
+call-of-duty,Call of Duty,daily,0,
+ea-sports-fifa,EA Sports FIFA,daily,0,
+league-of-legends-wild-rift,League of Legends: Wild Rift,daily,0,
+pubg,PUBG,daily,0,
+rocket-league,Rocket League,daily,0,esports
+starcraft-2,StarCraft 2,daily,0,esports
+starcraft-brood-war,StarCraft: Brood War,daily,0,
+north-korea-missile-launch,North Korea missile launch,,0,
+international-t20,International T20,daily,0,
+csa-t20,CSA T20,daily,0,sports
+pakistan-tri-series,Pakistan Tri-Series,daily,0,
+lanka-premier-league,Lanka Premier League,daily,0,
+big-bash-league,Big Bash League,daily,0,
+sa20,SA20,daily,0,
+odi,ODI,daily,0,
+womens-cricket-world-cup,Women's Cricket World Cup,daily,0,
+bangladesh-test-series,Bangladesh Test Series,daily,0,
+world-test-championship,World Test Championship,daily,0,
+choo-kyung-ho-in-jail,Choo Kyung-ho in jail,,0,
+comex-silver-futures-daily-up-or-down,COMEX Silver Futures Daily Up or Down,daily,0,
+nymex-palladium-futures-daily-up-or-down,NYMEX Palladium Futures Daily Up or Down,daily,0,
+nymex-crude-oil-futures-wti-daily-up-or-down,NYMEX Crude Oil Futures (WTI) Daily Up or Down,daily,0,
+comex-copper-futures-daily-up-or-down,COMEX Copper Futures Daily Up or Down,daily,0,
+ice-brent-crude-oil-futures-daily-up-or-down,ICE Brent Crude Oil Futures Daily Up or Down,daily,0,
+nymex-rbob-gasoline-futures-daily-up-or-down,NYMEX RBOB Gasoline Futures Daily Up or Down,daily,0,
+cbot-corn-futures-daily-up-or-down,CBOT Corn Futures Daily Up or Down,daily,0,
+cbot-wheat-futures-daily-up-or-down,CBOT Wheat Futures Daily Up or Down,daily,0,
+cbot-soybean-futures-daily-up-or-down,CBOT Soybean Futures Daily Up or Down,daily,0,
+john-brennan-federally-charged,John Brennan federally charged,,0,
+us-tariff-agreements,U.S. tariff agreements,,0,
+jake-paul-vs-gervonta-davis,Jake Paul vs. Gervonta Davis,,0,
+cwbb,CWBB,daily,0,
+nfl-underdog,NFL underdog,daily,0,
+speed-chess-qf,Speed Chess QF,,0,
+greg-goes-all-in,Greg Goes All In,,0,
+apple-multi-strikes-weekly,Apple Multi Strikes Weekly,weekly,0,finance/stocks/earnings
+microsoft-multi-strikes-weekly,Microsoft Multi Strikes Weekly,weekly,0,finance/stocks/earnings
+google-multi-strikes-weekly,Google Multi Strikes Weekly,weekly,0,finance/stocks/earnings
+meta-multi-strikes-weekly,Meta Multi Strikes Weekly,weekly,0,finance/stocks/earnings
+palantir-multi-strikes-weekly,Palantir Multi Strikes Weekly,weekly,0,finance/stocks/earnings
+rocket-lab-multi-strikes-weekly,Rocket Lab Multi Strikes Weekly,weekly,0,
+airbnb-multi-strikes-weekly,Airbnb Multi Strikes Weekly,weekly,0,
+apple-multi-strikes-monthly,Apple Multi Strikes Monthly,monthly,0,finance/stocks/earnings
+microsoft-multi-strikes-monthly,Microsoft Multi Strikes Monthly,monthly,0,finance/stocks/earnings
+tesla-multi-strikes-monthly,Tesla Multi Strikes Monthly,monthly,0,finance/stocks/earnings
+palantir-multi-strikes-monthly,Palantir Multi Strikes Monthly,monthly,0,finance/stocks/earnings
+rocket-lab-multi-strikes-monthly,Rocket Lab Multi Strikes Monthly,monthly,0,
+airbnb-multi-strikes-monthly,Airbnb Multi Strikes Monthly,monthly,0,
+2025-fide-world-cup,2025 FIDE World Cup,daily,0,
+gemini-performance,Gemini Performance,,0,
+us-national-bitcoin-reserve,US National Bitcoin Reserve,,0,crypto
+trump-announces-new-drug-boat-strike,Trump announces new drug boat strike,,0,
+trump-meetings,Trump Meetings,annual,0,
+yoon-prison-sentence,Yoon Prison Sentence,,0,
+elon-party,Elon Party,,0,tech
+obama-divorce,Obama Divorce,,0,politics/elections
+russian-sovereignty-crimea,Russian Sovereignty (Crimea),,0,geopolitics/war
+national-ethereum-reserve,National Ethereum Reserve,,0,crypto
+trump-corporate-tax-cut,Trump Corporate Tax Cut,,0,economy/Fed/macro
+milei-out,Milei Out,,0,geopolitics/war
+fed-abolition,Fed Abolition,,0,economy/Fed/macro
+putin-x-zelenskyy-handshake,Putin x Zelenskyy Handshake,,0,geopolitics/war
+obama-federal-charges,Obama Federal Charges,,0,politics/elections
+north-korean-sk-invasion,North Korean SK Invasion,,0,geopolitics/war
+mamdani-citizenship,Mamdani Citizenship,,0,politics/elections
+obama-arrest,Obama Arrest,,0,politics/elections
+us-nato-withdrawal,US NATO Withdrawal,,0,
+us-treasury-blockchain,US Treasury Blockchain,,0,crypto
+long-term-capital-gains-tax-cut,Long Term Capital Gains Tax Cut,,0,economy/Fed/macro
+us-forces-in-gaza,US Forces In Gaza,,0,geopolitics/war
+trump-deficit-reduction,Trump Deficit Reduction,,0,economy/Fed/macro
+ukraine-joins-nato,Ukraine Joins NATO,,0,geopolitics/war
+north-x-south-korea-talks,North x South Korea Talks,,0,geopolitics/war
+canadian-secession-referendum,Canadian Secession Referendum,annual,0,
+lee-jae-myung-impeachment,Lee Jae-myung Impeachment,,0,politics/elections
+israel-x-west-bank-annex,Israel x West Bank Annex,,0,geopolitics/war
+peak-us-national-debt,Peak US National Debt,,0,economy/Fed/macro
+yoon-out-of-custody,Yoon Out Of Custody,,0,
+us-defaults-on-debt,US Defaults On Debt,,0,economy/Fed/macro
+congress-stock-trading-ban,Congress Stock Trading Ban,,0,politics/elections
+gaza-board-of-peace-establishment,Gaza Board Of Peace Establishment,,0,
+us-debt-downgrade,US Debt Downgrade,,0,economy/Fed/macro
+ahmed-al-sharaa-out,Ahmed al-Sharaa Out,,0,geopolitics/war
+tiktok-ban,TikTok Ban,,0,
+china-bitcoin-ban,China Bitcoin Ban,,0,
+bangladesh-premier-league,Bangladesh Premier League,daily,0,
+trump-resignation,Trump Resignation,,0,
+zelenskyy-x-putin-next-meeting,Zelenskyy x Putin Next Meeting,,0,
+nuclear-test,nuclear test,,0,
+spx-hit-price-monthly,SPX Hit Price Monthly,monthly,0,
+ndx-hit-price-monthly,NDX Hit Price Monthly,monthly,0,
+nik-hit-price-monthly,NIK Hit Price Monthly,monthly,0,
+dji-hit-price-monthly,DJI Hit Price Monthly,monthly,0,
+ukx-hit-price-monthly,UKX Hit Price Monthly,monthly,0,
+dax-hit-price-monthly,DAX Hit Price Monthly,monthly,0,
+hsi-hit-price-monthly,HSI Hit Price Monthly,monthly,0,
+rut-hit-price-monthly,RUT Hit Price Monthly,monthly,0,
+nya-hit-price-monthly,NYA Hit Price Monthly,monthly,0,
+spx-multi-strikes-weekly,SPX Multi Strikes Weekly,weekly,0,
+ndx-multi-strikes-weekly,NDX Multi Strikes Weekly,weekly,0,
+dji-multi-strikes-weekly,DJI Multi Strikes Weekly,weekly,0,
+rut-multi-strikes-weekly,RUT Multi Strikes Weekly,weekly,0,
+nya-multi-strikes-weekly,NYA Multi Strikes Weekly,weekly,0,
+bolsonaro-in-jail,Bolsonaro In Jail,,0,
+outdoor-boys-new-video,Outdoor Boys New Video,,0,
+sarkozy-imprisoned,Sarkozy imprisoned,,0,
+trump-tariff-dividend,Trump Tariff Dividend,,0,economy/Fed/macro
+tiktok-sale,TikTok Sale,,0,
+musk-out-as-tesla-ceo,Musk Out as Tesla CEO,,0,tech
+reusable-spacex-starship,Reusable SpaceX Starship,,0,weather/climate/science
+openai-acquired,OpenAI Acquired,,0,AI
+microstrategy-bankruptcy,MicroStrategy Bankruptcy,,0,crypto
+us-ai-safety-bill,US AI Safety Bill,,0,AI
+openai-token-release,OpenAI Token Release,,0,crypto
+bitcoin-most-valuable-company,Bitcoin most valuable company,,0,crypto
+altman-equity,Altman Equity,,0,
+anthropic-acquired,Anthropic Acquired,,0,AI
+ai-frontiermath-score-90,AI FrontierMath Score 90+,,0,
+aapl-neg-risk-weekly,AAPL Neg Risk Weekly,weekly,0,finance/stocks/earnings
+msft-neg-risk-weekly,MSFT Neg Risk Weekly,weekly,0,finance/stocks/earnings
+amzn-neg-risk-weekly,AMZN Neg Risk Weekly,weekly,0,finance/stocks/earnings
+googl-neg-risk-weekly,GOOGL Neg Risk Weekly,weekly,0,finance/stocks/earnings
+meta-neg-risk-weekly,META Neg Risk Weekly,weekly,0,finance/stocks/earnings
+nvda-neg-risk-weekly,NVDA Neg Risk Weekly,weekly,0,finance/stocks/earnings
+pltr-neg-risk-weekly,PLTR Neg Risk Weekly,weekly,0,finance/stocks/earnings
+rklb-neg-risk-weekly,RKLB Neg Risk Weekly,weekly,0,
+abnb-neg-risk-weekly,ABNB Neg Risk Weekly,weekly,0,
+us-bank-bailout,US Bank Bailout,,0,economy/Fed/macro
+hezbollah-x-israel-strike,Hezbollah x Israel Strike,,0,
+israel-x-lebanon-ground-offense,Israel x Lebanon Ground Offense,,0,
+us-recognizes-russian-ukraine-sovereignty,US Recognizes Russian Ukraine Sovereignty,,0,geopolitics/war
+us-x-iran-nuclear-talks,US x Iran Nuclear Talks,,0,
+bkfc,BKFC,daily,0,
+leavitt-next-briefing,Leavitt Next Briefing,annual,0,mentions/tweets
+us-ally-nukes,US Ally Nukes,,0,geopolitics/war
+cricket-test,Cricket Test,daily,0,
+govt-shutdown-by,Govt Shutdown By?,,0,
+will-newjeans-perform,Will NewJeans Perform,,0,
+uk-election-called,UK Election Called?,annual,0,
+fide-world-cup-2025-quarterfinals,FIDE World Cup 2025 Quarterfinals,daily,0,
+house-votes-epstein,house votes epstein #,,0,
+copa-liga,Copa Liga,daily,0,
+concacaf-nations-league,Concacaf Nations League,daily,0,sports
+dept-of-education-end,Dept of Education End,,0,politics/elections
+fide-world-cup-2025-semifinals,FIDE World Cup 2025 Semifinals,daily,0,
+top-magnificent-7,Top Magnificent 7,weekly,0,
+fed-derivative-pair-on-date,Fed Derivative pair on date,daily,0,
+odds-of-russia-x-ukraine-ceasefire,Odds of Russia x Ukraine ceasefire,weekly,0,
+musk-change-his-x-profile-picture,Musk change his X profile picture,,0,
+apple-acquire-mistral,Apple acquire Mistral ,,0,
+russia-strike-on-kyiv,Russia strike on Kyiv,,0,
+houthi-strike-on-israel,Houthi strike on Israel,,0,
+enter-lyman,enter Lyman,,0,
+1-spotify-song,#1 Spotify Song,weekly,0,culture/entertainment/awards
+maduro-leaves-venezuela,Maduro leaves Venezuela,,0,
+netanyahu-pardon,Netanyahu Pardon,,0,
+israel-x-iraq-strike,Israel x Iraq Strike,,0,
+tsa-passengers,TSA passengers,daily,0,
+honduran-deriv,honduran deriv,daily,0,
+trump-x-maduro-talk,Trump x Maduro Talk,,0,
+odds-of-russia-x-ukraine-on-friday,Odds of Russia x Ukraine on Friday,daily,0,
+la-daily-weather,LA Daily Weather,daily,0,
+phoenix-daily-weather,Phoenix Daily Weather,daily,0,
+hurricane-landfall-us,Hurricane Landfall US,monthly,0,
+hurricane-form,Hurricane Form,daily,0,
+us-tariff-revenue-up,US tariff revenue up,,0,
+boston-daily-weather,Boston Daily Weather,daily,0,
+minneapolis-daily-weather,Minneapolis Daily Weather,daily,0,
+named-storm-forms-before-hurricane-season,Named storm forms before hurricane season,annual,0,
+time-derivatives,Time + Derivatives,,0,
+elon-musk-trillionaire,Elon Musk Trillionaire,,0,
+first-to-leave-the-trump-cabinet,First to leave the Trump Cabinet,daily,0,
+bucharest-flip,Bucharest Flip,,0,
+cricket-india,Cricket India,daily,0,
+cricket-england,Cricket England,daily,0,
+cricket-pakistan,Cricket Pakistan,daily,0,
+cricket-australia,Cricket Australia,daily,0,
+cricket-south-africa,Cricket South Africa,daily,0,
+cricket-uae,Cricket UAE,daily,0,
+cricket-new-zealand,Cricket New Zealand,daily,0,
+nancy-updown,Nancy Up/Down,weekly,0,
+pelosi-vs-mtg,Pelosi vs. MTG,weekly,0,
+buffett-v-ackman-v-sp,Buffett v. Ackman v. S&P,weekly,0,
+mag-7-weekly,mag 7 weekly,weekly,0,
+openai-new-model,OpenAI new model,,0,
+best-ai-math,Best AI Math,monthly,0,
+qbgami,QBgami,,0,
+china-inflation-monthly,China Inflation - Monthly,monthly,0,
+us-civil-war,US civil war,,0,
+trump-invoke-war-powers,Trump invoke War Powers,,0,
+tsa-daily,TSA Daily,daily,0,
+mustafa-test,mustafa test,daily,0,
+companies-added-to-sp-500,Companies added to S&P 500,,0,
+unemployment-rate-uk,Unemployment Rate - U.K.,monthly,0,
+aca-premium-tax-credits,ACA premium tax credits,,0,
+africa-cup-of-nations,Africa Cup of Nations,daily,0,
+1-grossing-play-store,#1 Grossing Play Store,weekly,0,
+2-grossing-play-store,#2 Grossing Play Store,weekly,0,
+seize-venezuela-ship,seize Venezuela ship,,0,
+ukraine-strikes-another-tanker-in-black-sea,Ukraine strikes another tanker in Black Sea,,0,
+of-announced-new-drug-boat-strikes,# of announced new drug boat strikes,,0,
+cs2-operation,CS2 Operation,,0,
+cricket-bangladesh,Cricket Bangladesh,daily,0,
+named-in-newly-released-epstein-files,named in newly released Epstein files,,0,
+gold-gc-above,Gold (GC) above ___,monthly,0,
+what-will-gold-gc-settle-at,What will Gold (GC) settle at,monthly,0,
+silver-si-above,Silver (SI) above ___,monthly,0,
+will-silver-si-hit,Will Silver (SI) hit__,monthly,0,
+what-will-silver-si-settle-at,What will Silver (SI) settle at,monthly,0,
+ukraine-security-guarantee,ukraine security guarantee,,0,geopolitics/war
+ukraine-peacekeeping,ukraine peacekeeping,,0,geopolitics/war
+counter-strike-knife-index-multistrike-weekly,Counter-Strike Knife Index Multistrike Weekly,weekly,0,
+counter-strike-doppler-index-multistrike-weekly,Counter-Strike Doppler Index Multistrike Weekly,weekly,0,
+counter-strike-case-index-multistrike-weekly,Counter-Strike Case Index Multistrike Weekly,weekly,0,
+counter-strike-gloves-index-multistrike-weekly,Counter-Strike Gloves Index Multistrike Weekly,weekly,0,
+thailand-strikes-cambodia,Thailand strikes Cambodia,,0,
+next-us-x-venezuela-military-engagement-on,Next US x Venezuela military engagement on,,0,
+israel-strike-lebanon-on,Israel strike Lebanon on,,0,
+israel-strike-gaza-on,Israel strike Gaza on,,0,
+crude-oil-cl-settle,Crude Oil (CL) settle,monthly,0,
+crude-oil-cl-up-or-down,Crude Oil (CL) Up or Down,daily,0,
+crude-oil-cl-above,Crude Oil (CL) above ___,monthly,0,
+100m-views-on-a-mrbeast-video,100m views on a MrBeast video,,0,
+meteor-strike-10kt,meteor strike (10kt+),,0,weather/climate/science
+5kt-meteor-strike,5kt meteor strike,,0,weather/climate/science
+hottest-year-on-record,hottest year on record,daily,0,
+second-hottest-year-on-record,second hottest year on record,daily,0,
+another-7pt0-or-above-earthquake-by,Another 7.0 or above earthquake by,,0,
+measles-cases-binary,Measles cases binary,,0,
+flu-hospitalization-rate-week,Flu Hospitalization Rate Week,weekly,0,
+lai-ching-te-impeached,Lai Ching-te impeached,,0,geopolitics/war
+inflation-canada-monthly,Inflation Canada - Monthly,monthly,0,
+us-forces-in-venezuela,US forces in Venezuela,,0,
+us-x-venezuela-military-engagement,US x Venezuela military engagement,,0,
+rugby-premiership,Rugby Premiership,daily,0,sports
+rugby-top-14,Rugby Top 14,daily,0,sports
+counter-strike-knife-index-multi-strike-monthly,Counter Strike Knife Index Multi Strike Monthly,monthly,0,
+counter-strike-doppler-index-multi-strike-monthly,Counter Strike Doppler Index Multi Strike Monthly,monthly,0,
+counter-strike-glove-index-multi-strike-monthly,Counter Strike Glove Index Multi Strike Monthly,monthly,0,
+counter-strike-case-index-multi-strike-monthly,Counter Strike Case Index Multi Strike Monthly,monthly,0,
+what-will-bitcoin-outperform,What will Bitcoin outperform,monthly,0,
+sports-prediction-markets-banned,sports prediction markets banned,,0,
+strike-on-moscow,strike on Moscow,,0,
+sp-500-monthly-ou,S&P 500 monthly O/U,monthly,0,
+nasdaq-100-monthly-hit,Nasdaq 100 monthly hit,monthly,0,
+nasdaq-100-monthly-close-negrisk,NASDAQ 100 monthly close negrisk,monthly,0,
+dji-monthly-hit,DJI monthly hit,monthly,0,
+dji-monthly-ou,DJI Monthly O/U,monthly,0,
+dji-monthly-close-negrisk,DJI monthly close negrisk,monthly,0,
+spanish-super-cup,Spanish Super Cup,daily,0,
+billboard-1-song,Billboard #1 Song,weekly,0,culture/entertainment/awards
+30-year-mortgage-rate,30-year mortgage rate,monthly,0,
+release-any-more-epstein-related-files,release any more Epstein related files,,0,
+brics-add-a-new-member,BRICS add a new member,,0,geopolitics/war
+country-leave-brics,country leave BRICS,,0,geopolitics/war
+pro-a,Pro A,daily,0,sports
+basketball-series-a,Basketball Series A,daily,0,sports
+liga-endesa,Liga Endesa,daily,0,sports
+rugby-six-nations,Rugby Six Nations,daily,0,
+united-rugby-championship,United Rugby Championship,daily,0,sports
+rugby-champions-cup,Rugby Champions Cup,daily,0,sports
+super-rugby-pacific,Super Rugby Pacific,daily,0,
+rugby-championship,Rugby Championship,daily,0,
+next-country-us-strike,next country us strike,,0,
+next-country-us-strikes,Next Country US Strikes,,0,
+how-many-different-countries-will-the-us-strike,How many different countries will the US strike,,0,
+deepseek-v4,DeepSeek V4,,0,
+khamenei-public-appearance,Khamenei public appearance,daily,0,
+ukraine-hits-moscow,Ukraine hits Moscow,,0,
+us-strike-on-somalia,U.S. strike on Somalia,,0,
+us-seize-oil-ship,US Seize Oil Ship,,0,
+us-forces-seize-another-oil-ship,U.S. forces seize another oil ship,,0,
+iran-strike-on-us-military,Iran strike on US military,,0,
+israel-nuclear-weapon-use,Israel nuclear weapon use,,0,
+auckland-daily-weather,Auckland Daily Weather,daily,0,
+level-3-warning,Level 3 warning,,0,
+level-4-warning,Level 4 warning,,0,
+cricket-u19-world-cup,Cricket U19 World Cup,daily,0,
+cricket-women-premier-league,Cricket Women Premier League,daily,0,
+womens-national-cricket-league,Women's National Cricket League,daily,0,sports
+afghanistan-vs-west-indies-t20i,Afghanistan vs West Indies (T20I),daily,0,
+bhutan-tri-series,Bhutan Tri-Series,daily,0,
+internet-access-restored-in-iran,Internet access restored in Iran,,0,
+fraukger-strike-iran,Fra/UK/Ger Strike Iran,,0,
+counter-strike-glove-index-multi-strike-weekly,Counter Strike Glove Index Multi Strike Weekly,weekly,0,
+charizard-ex-199-multistrike-weekly,Charizard Ex 199 Multistrike Weekly,weekly,0,
+charizard-4-base-multistrike-weekly,Charizard 4 Base Multistrike Weekly,weekly,0,
+umbreon-vmax-215-multistrike-weekly,Umbreon VMAX 215 Multistrike Weekly,weekly,0,
+pikachu-ex-238-multistrike-weekly,Pikachu ex #238 Multistrike Weekly,weekly,0,
+pikachu-grey-felt-hat-85-multistrike-weekly,Pikachu Grey Felt Hat #85 Multistrike Weekly,weekly,0,
+ohtani-bowman-49-multistrike-weekly,Ohtani Bowman 49 Multistrike Weekly,weekly,0,
+ohtani-topps-us285-multistrike-weekly,Ohtani Topps US285 Multistrike Weekly,weekly,0,
+jokic-prizm-335-multistrike-weekly,Jokic Prizm 335 Multistrike Weekly,weekly,0,
+jokic-sga-prizm-184-multistrike-weekly,Jokic SGA Prizm 184 Multistrike Weekly,weekly,0,
+maye-downtown-13-multistrike-weekly,Maye Downtown 13 Multistrike Weekly,weekly,0,
+maye-prizm-329-multistrike-weekly,Maye Prizm 329 Multistrike Weekly,weekly,0,
+charizard-ex-199-multistrike-monthly,Charizard Ex 199 Multistrike Monthly,monthly,0,
+charizard-4-base-multistrike-monthly,Charizard 4 Base Multistrike Monthly,monthly,0,
+umbreon-vmax-215-multistrike-monthly,Umbreon VMAX #215 Multistrike Monthly,monthly,0,
+pikachu-ex-238-multistrike-monthly,Pikachu ex #238 Multistrike Monthly,monthly,0,
+pikachu-with-grey-felt-hat-85-multistrike-monthly,Pikachu with Grey Felt Hat #85 Multistrike Monthly,monthly,0,
+ohtani-bowman-49-multistrike-monthly,Ohtani Bowman 49 Multistrike Monthly,monthly,0,
+ohtani-topps-us285-multistrike-monthly,Ohtani Topps US285 Multistrike Monthly,monthly,0,
+jokic-prizm-335-multistrike-monthly,Jokic Prizm 335 Multistrike Monthly,monthly,0,
+sga-prizm-184-multistrike-monthly,SGA Prizm 184 Multistrike Monthly,monthly,0,
+maye-downtown-13-multistrike-monthly,Maye Downtown 13 Multistrike Monthly,monthly,0,
+maye-prizm-329-multistrike-monthly,Maye Prizm 329 Multistrike Monthly,monthly,0,
+counter-strike-knife-index-multistrike-monthly,Counter-Strike Knife Index Multistrike Monthly,monthly,0,
+counter-strike-glove-index-multistrike-monthly,Counter-Strike Glove Index Multistrike Monthly,monthly,0,
+counter-strike-case-index-multistrike-monthly,Counter-Strike Case Index Multistrike Monthly,monthly,0,
+counter-strike-doppler-index-multistrike-monthly,Counter-Strike Doppler Index Multistrike Monthly,monthly,0,
+counter-strike-top-2000-index-multistrike-monthly,Counter-Strike Top 2000 Index Multistrike Monthly,monthly,0,
+zuffa,Zuffa,daily,0,sports
+hungary-pm-deriv,Hungary PM Deriv,monthly,0,
+texas-senate-primary-deriv,Texas Senate Primary Deriv,monthly,0,
+maine-senate-primary-deriv,Maine Senate Primary Deriv,monthly,0,
+senate-deriv,Senate Deriv,monthly,0,
+house-odds-deriv,House Odds Deriv,monthly,0,
+bill-clinton-charged,Bill Clinton Charged,,0,
+acu23,acu23,daily,0,
+greenland-deal,Greenland Deal,,0,geopolitics/war
+morocco-1,Morocco 1,daily,0,sports
+us-cyberattack-iran,US CyberAttack Iran,,0,
+trumprx-launch,TrumpRX Launch,,0,
+russia-strike-on-kyiv-municipality-on,Russia strike on Kyiv municipality on,,0,
+canada-unemployment,canada unemployment,monthly,0,
+japan-unemployment,Japan Unemployment,monthly,0,
+what-will-copper-hg-hit,What will Copper (HG) hit,monthly,0,
+copper-hg-above,Copper (HG) above,monthly,0,
+grok-4pt20-release-on,Grok 4.20 Release on,,0,
+gemini-humanitys-last-exam,Gemini Humanity's last exam,,0,
+russia-capture-havrylivka,Russia capture Havrylivka,,0,geopolitics/war
+russia-capture-drobysheve,Russia capture Drobysheve,,0,
+eurusd-up-or-down-daily,EURUSD Up or Down Daily,daily,0,
+gbpusd-up-or-down-daily,GBPUSD Up or Down Daily,daily,0,
+usdjpy-up-or-down-daily,USDJPY Up or Down Daily,daily,0,
+usdcad-up-or-down-daily,USDCAD Up or Down Daily,daily,0,
+usdkrw-up-or-down-daily,USDKRW Up or Down Daily,daily,0,
+openai-1t-valuation,OpenAI $1T+ valuation,,0,AI
+mpc-earnings,MPC Earnings,,0,
+h-earnings,H Earnings,,0,finance/stocks/earnings
+ny-precipitation,NY Precipitation,monthly,0,
+seattle-precipitation,Seattle Precipitation,monthly,0,
+epstein-data-set,Epstein Data Set,,0,
+spacex-monthly-launches,SpaceX Monthly Launches,monthly,0,
+mexico-gdp,Mexico GDP,annual,0,economy/Fed/macro
+2026-winter-games,2026 Winter Games,daily,0,
+iranian-officials-visit-the-white-house,Iranian officials visit the White House,,0,
+us-anti-cartel-ground-operation-in-mexico,U.S. anti-cartel ground operation in Mexico,,0,
+maduro-trial-scheduled,Maduro trial scheduled,,0,
+us-evacuates-baghdad-embassy,U.S. evacuates Baghdad Embassy,,0,
+france-uk-or-germany-strike-iran,"France, UK or Germany strike Iran",,0,
+trump-try-to-fire-jpow,Trump try to fire jpow,,0,
+rsf-capture-el-obeid,RSF capture El Obeid,,0,
+rsf-capture-dilling,RSF capture Dilling,,0,
+rsf-capture-kadugli,RSF capture Kadugli,,0,
+pltr-earnings,PLTR Earnings,,0,
+dis-earnings,DIS Earnings,,0,
+pfe-earnings,PFE Earnings,,0,
+pypl-earnings,PYPL Earnings,,0,finance/stocks/earnings
+foxa-earnings,FOXA Earnings,,0,
+amd-earnings,AMD Earnings,,0,
+uber-earnings,UBER Earnings,,0,
+qcom-earnings,QCOM Earnings,,0,
+arm-earnings,ARM Earnings,,0,
+nyt-earnings,NYT Earnings,,0,
+uhalb-earnings,UHAL.B Earnings,,0,
+met-earnings,MET Earnings,,0,
+all-earnings,ALL Earnings,,0,
+cop-earnings,COP Earnings,,0,
+ice-earnings,ICE Earnings,,0,finance/stocks/earnings
+rl-earnings,RL Earnings,,0,
+rblx-earnings,RBLX Earnings,,0,finance/stocks/earnings
+apo-earnings,APO Earnings,,0,
+cvs-earnings,CVS Earnings,,0,
+lyft-earnings,LYFT Earnings,,0,
+spgi-earnings,SPGI Earnings,,0,finance/stocks/earnings
+crsp-earnings,CRSP Earnings,,0,
+mar-earnings,MAR Earnings,,0,
+ddog-earnings,DDOG Earnings,,0,
+fis-earnings,FIS Earnings,,0,
+mcd-earnings,MCD Earnings,,0,
+csco-earnings,CSCO Earnings,,0,
+grab-earnings,GRAB Earnings,,0,
+pag-earnings,PAG Earnings,,0,
+expe-earnings,EXPE Earnings,,0,
+pins-earnings,PINS Earnings,,0,
+rivn-earnings,RIVN Earnings,,0,finance/stocks/earnings
+coin-earnings,COIN Earnings,,0,
+tost-earnings,TOST Earnings,,0,
+abnb-earnings,ABNB Earnings,,0,
+bud-earnings,BUD Earnings,,0,
+amat-earnings,AMAT Earnings,,0,
+tsn-earnings,TSN Earnings,,0,
+f-earnings,F Earnings,,0,finance/stocks/earnings
+shutdown-ends,Shutdown ends,,0,
+tsem-earnings,TSEM Earnings,,0,
+mrna-earnings,MRNA Earnings,,0,
+wen-earnings,WEN Earnings,,0,
+sun-earnings,SUN Earnings,,0,
+czr-earnings,CZR Earnings,,0,finance/stocks/earnings
+way-earnings,WAY Earnings,,0,finance/stocks/earnings
+trip-earnings,TRIP Earnings,,0,
+bgc-earnings,BGC Earnings,,0,
+hubs-earnings,HUBS Earnings,,0,
+gt-earnings,GT Earnings,,0,
+usfd-earnings,USFD Earnings,,0,
+yelp-earnings,YELP Earnings,,0,finance/stocks/earnings
+panw-earnings,PANW Earnings,,0,
+kkr-earnings,KKR Earnings,,0,
+el-earnings,EL Earnings,,0,
+nwsa-earnings,NWSA Earnings,,0,
+pton-earnings,PTON Earnings,,0,finance/stocks/earnings
+uaa-earnings,UAA Earnings,,0,
+acm-earnings,ACM Earnings,,0,
+chgg-earnings,CHGG Earnings,,0,
+gtm-earnings,GTM Earnings,,0,
+dd-earnings,DD Earnings,,0,
+wmb-earnings,WMB Earnings,,0,
+app-earnings,APP Earnings,,0,
+hum-earnings,HUM Earnings,,0,
+wynn-earnings,WYNN Earnings,,0,
+gpu-rental-prices,GPU Rental Prices,,0,
+lzb-earnings,LZB Earnings,,0,
+ampl-earnings,AMPL Earnings,,0,
+dash-earnings,DASH Earnings,,0,
+adi-earnings,ADI Earnings,,0,
+oxy-earnings,OXY Earnings,,0,
+grmn-earnings,GRMN Earnings,,0,finance/stocks/earnings
+bkng-earnings,BKNG Earnings,,0,
+crl-earnings,CRL Earnings,,0,
+fnf-earnings,FNF Earnings,,0,
+hhh-earnings,HHH Earnings,,0,
+open-earnings,OPEN Earnings,,0,
+akam-earnings,AKAM Earnings,,0,
+wmt-earnings,WMT Earnings,,0,
+ed-earnings,ED Earnings,,0,finance/stocks/earnings
+dbx-earnings,DBX Earnings,,0,finance/stocks/earnings
+de-earnings,DE Earnings,,0,
+txrh-earnings,TXRH Earnings,,0,finance/stocks/earnings
+mens-winter-olympics-hockey,Men's Winter Olympics Hockey,daily,0,
+womens-winter-olympics-hockey,Women's Winter Olympics Hockey,daily,0,
+weekly-jobless-claims,Weekly Jobless Claims,weekly,0,
+republican-house-odds-up-or-down-this-week,Republican House Odds Up or Down this week,weekly,0,
+russia-enter-pokrovskoe,Russia enter Pokrovskoe,,0,geopolitics/war
+of-ldp-seats,# of LDP seats,annual,0,
+of-cra-seats,# of CRA seats,annual,0,
+seguro-win-districts,Seguro win districts,annual,0,
+mexico-unemployment,Mexico Unemployment,monthly,0,
+clavicular-in-jail,Clavicular in jail,,0,
+trump-and-netanyahu-hug,Trump and Netanyahu hug,,0,
+trump-and-netanyahu-shake-hands,Trump and Netanyahu shake hands,,0,
+trump-meet-with-netanyahu,Trump meet with Netanyahu,,0,
+trump-publicly-disparage-netanyahu,Trump publicly disparage Netanyahu,,0,
+us-next-strikes-iran-on,US next strikes Iran on,,0,
+andrew-tate-tweets,andrew tate tweets,daily,0,
+brazil-unemployment,Brazil Unemployment,monthly,0,
+south-korea-unemployment,South Korea Unemployment,monthly,0,
+india-unemployment,India Unemployment,monthly,0,
+wix-earnings,Wix Earnings,,0,
+bbby-earnings,BBBY Earnings,,0,
+hims-earnings,HIMS Earnings,,0,
+dpz-earnings,DPZ Earnings,,0,finance/stocks/earnings
+csgp-earnings,CSGP Earnings,,0,finance/stocks/earnings
+hd-earnings,HD Earnings,,0,
+as-earnings,AS Earnings,,0,
+nvda-earnings,NVDA Earnings,,0,
+crm-earnings,CRM Earnings,,0,
+zm-earnings,ZM earnings,,0,
+low-earnings,LOW Earnings,,0,
+snow-earnings,SNOW Earnings,,0,
+ebay-earnings,EBAY Earnings,,0,finance/stocks/earnings
+tko-earnings,TKO Earnings,,0,
+iep-earnings,IEP Earnings,,0,
+iart-earnings,IART Earnings,,0,finance/stocks/earnings
+ttd-earnings,TTD Earnings,,0,
+adsk-earnings,ADSK Earnings,,0,
+wday-earnings,WDAY Earnings,,0,
+ionq-earnings,IONQ Earnings,,0,
+intu-earnings,INTU Earnings,,0,
+hpq-earnings,HPQ Earnings,,0,
+dell-earnings,DELL Earnings,,0,
+sg-earnings,SG Earnings,,0,
+rklb-earnings,RKLB Earnings,,0,
+wrby-earnings,WRBY Earnings,,0,
+shak-earnings,SHAK Earnings,,0,finance/stocks/earnings
+ftdr-earnings,FTDR Earnings,,0,
+pzza-earnings,PZZA Earnings,,0,
+icui-earnings,ICUI Earnings,,0,
+the-bondi,The Bondi,,0,
+judy-shelton-fed-chair-nomination-odds,Judy Shelton Fed Chair Nomination Odds,weekly,0,
+sofr-monthly-hitdip,SOFR Monthly Hit/Dip,monthly,0,
+wtt-mens-singles,WTT Men's Singles,daily,0,
+wtt-womens-singles,WTT Women's Singles,daily,0,
+us-seize-iran-linked-tanker,US seize Iran-linked tanker,,0,
+bynd-earnings,BYND Earnings,,0,
+spce-earnings,SPCE Earnings,,0,
+tbph-earnings,TBPH Earnings,,0,
+tfx-earnings,TFX Earnings,,0,finance/stocks/earnings
+mnst-earnings,MNST Earnings,,0,finance/stocks/earnings
+eb-earnings,EB Earnings,,0,
+chatgpt-outage,ChatGPT Outage,monthly,0,
+highest-grossing-movie-weekly,Highest Grossing Movie Weekly,,0,
+trump-does-anything,Trump Does Anything,daily,0,
+bitmine-weekly,Bitmine Weekly,weekly,0,
+indian-premier-league,Indian Premier League,daily,0,
+pakistan-super-league,Pakistan Super League,daily,0,sports
+t20-blast,T20 Blast,daily,0,
+caribbean-premier-league,Caribbean Premier League,daily,0,sports
+super-smash,Super Smash,daily,0,
+international-league-t20,International League T20,daily,0,
+t20-premier-league-women,T20 Premier League Women,daily,0,sports
+major-league-cricket,Major League Cricket,daily,0,
+ppa,PPA,daily,0,
+crwd-earnings,CRWD Earnings,,0,
+azo-earnings,AZO Earnings,,0,finance/stocks/earnings
+avgo-earnings,AVGO Earnings,,0,
+bbwi-earnings,BBWI Earnings,,0,
+aeo-earnings,AEO Earnings,,0,
+okta-earnings,OKTA Earnings,,0,
+anf-earnings,ANF Earnings,,0,
+vsco-earnings,VSCO Earnings,,0,
+cost-earnings,COST Earnings,,0,finance/stocks/earnings
+mrvl-earnings,MRVL Earnings,,0,
+burl-earnings,BURL Earnings,,0,
+gap-earnings,GAP Earnings,,0,
+m-earnings,M Earnings,,0,
+kr-earnings,KR Earnings,,0,
+iot-earnings,IOT Earnings,,0,
+gpro-earnings,GPRO Earnings,,0,
+womens-champions-league,Women's Champions League,daily,0,sports
+hpe-earnings,HPE Earnings,,0,
+casy-earnings,CASY Earnings,,0,
+kfy-earnings,KFY Earnings,,0,
+kss-earnings,KSS Earnings,,0,
+unfi-earnings,UNFI Earnings,,0,
+orcl-earnings,ORCL Earnings,,0,
+grpn-earnings,GRPN Earnings,,0,
+world-baseball-classic,World Baseball Classic,daily,0,
+trump-declare-war-on-iran,Trump declare war on Iran,,0,
+eu-sanctions-on-russia,EU sanctions on Russia,,0,
+cxm-earnings,CXM Earnings,,0,
+pd-earnings,PD Earnings,,0,
+adbe-earnings,ADBE Earnings,,0,
+rbrk-earnings,RBRK Earnings,,0,
+bbw-earnings,BBW Earnings,,0,
+bzfd-earnings,BZFD Earnings,,0,
+docu-earnings,DOCU Earnings,,0,
+gamb-earnings,GAMB Earnings,,0,
+plby-earnings,PLBY Earnings,,0,
+dg-earnings,DG Earnings,,0,
+pll,PLL,daily,0,sports
+wll,WLL,daily,0,sports
+legislation-signed,# legislation signed,monthly,0,
+times-will-the-us-strike-somalia,times will the US strike Somalia,,0,
+mens-singles-ppa,Men's Singles PPA,daily,0,
+womens-singles-ppa,Women's Singles PPA,daily,0,
+gety-earnings,GETY Earnings,,0,
+kharg-island-oil-terminal-be-hit,Kharg Island oil terminal be hit,,0,
+iran-strike-gulf-oil-facilities,Iran strike gulf oil facilities,,0,
+wb-earnings,WB Earnings,,0,
+pmqs,PMQs,weekly,0,
+pakistan-t20,Pakistan T20,daily,0,
+plunket-shield,Plunket Shield,daily,0,
+hong-kong-t20-premier-league-women,Hong Kong T20 Premier League Women,daily,0,
+rum-earnings,RUM Earnings,,0,
+woof-earnings,WOOF Earnings,,0,
+dltr-earnings,DLTR Earnings,,0,
+aso-earnings,ASO Earnings,,0,
+lulu-earnings,LULU Earnings,,0,
+power-slap,Power Slap,daily,0,sports
+spain-snap-election,Spain Snap Election,annual,0,politics/elections
+clavicular-cortisol-hourly,Clavicular Cortisol Hourly,,0,
+all-in-podcast,All-In Podcast,weekly,0,mentions/tweets
+qqq-daily-up-or-down,QQQ Daily Up or Down,daily,0,
+vxx-daily-up-or-down,VXX Daily Up or Down,daily,0,
+copper-daily-up-or-down,COPPER Daily Up or Down,daily,0,
+gme-earnings,GME Earnings,,0,
+chwy-earnings,CHWY Earnings,,0,
+ctas-earnings,CTAS Earnings,,0,finance/stocks/earnings
+jef-earnings,JEF Earnings,,0,finance/stocks/earnings
+payx-earnings,PAYX Earnings,,0,finance/stocks/earnings
+femy-earnings,FEMY Earnings,,0,
+nmax-earnings,NMAX Earnings,,0,
+fds-earnings,FDS Earnings,,0,finance/stocks/earnings
+mkc-earnings,MKC Earnings,,0,finance/stocks/earnings
+nke-earnings,NKE Earnings,,0,finance/stocks/earnings
+survivor-eliminations,Survivor Eliminations,weekly,0,
+legends-league-cricket,Legends League Cricket,daily,0,sports
+national-t20-cup,National T20 Cup,daily,0,
+thunderbolt-t10-league,Thunderbolt T10 League,daily,0,
+bitcoin-hit-first-daily,Bitcoin Hit First Daily,daily,0,
+israel-rocket-alerts,Israel Rocket Alerts,,0,
+israel-strike-greater-beirut,Israel strike Greater Beirut,,0,
+play-earnings,PLAY Earnings,,0,
+mkc-earnigns,MKC Earnigns,,0,
+cag-earnings,CAG Earnings,,0,finance/stocks/earnings
+lw-earnings,LW Earnings,,0,finance/stocks/earnings
+rh-earnings,RH Earnings,,0,
+msm-earnings,MSM Earnings,,0,
+vxx-hit-price-weekly,VXX Hit Price Weekly,weekly,0,
+eurusd-hit-price-weekly,EUR/USD Hit Price Weekly,weekly,0,
+gbpusd-hit-price-weekly,GBP/USD Hit Price Weekly,weekly,0,
+usdcad-hit-price-weekly,USD/CAD Hit Price Weekly,weekly,0,
+usdjpy-hit-price-weekly,USD/JPY Hit Price Weekly,weekly,0,
+usdkrw-hit-price-weekly,USD/KRW Hit Price Weekly,weekly,0,
+copper-hit-price-weekly,Copper Hit Price Weekly,weekly,0,
+what-will-iran-conduct-military-action-against,What will Iran conduct military action against,,0,
+which-countries-will-conduct-military-action-against-iran,Which countries will conduct military action against Iran,,0,
+russia-military-action-against-kyiv,Russia military action against Kyiv,,0,
+flight-delays-daily,flight-delays-daily,daily,0,
+israel-military-action-against-gaza,Israel military action against Gaza ,,0,
+iran-military-action-against-israel,Iran military action against Israel,,0,
+iran-military-action-against-a-gulf-state,Iran military action against a Gulf State,,0,
+hezbollah-military-action-against-israel-on,Hezbollah military action against Israel on,,0,
+how-many-ships-will-iran-successfully-target,How many ships will Iran successfully target,,0,
+flight-cancellations-daily,flight-cancellations-daily,daily,0,
+iran-military-action-against,Iran military action against ___,,0,
+military-action-against-iran-ends-by,Military action against Iran ends by,,0,
+military-action-against-iran-ends-on,Military action against Iran ends on,,0,
+london-precipitation,London Precipitation,monthly,0,
+seoul-precipitation,Seoul Precipitation,monthly,0,
+hong-kong-precipitation,Hong Kong Precipitation,monthly,0,
+us-evacuates-beirut-embassy,U.S. evacuates Beirut Embassy,,0,geopolitics/war
+congress-passes-iran-war-powers-resolution,Congress passes Iran war powers resolution,,0,
+houthi-military-action-against-saudi-arabia,Houthi military action against Saudi Arabia,,0,
+lpc-up-or-down,LPC Up or Down,weekly,0,
+soccer-copaam,Copa America,daily,0,
+soccer-euc,European Championship,daily,0,
+soccer-ueq,UEFA Euro Qualification,daily,0,
+soccer-ncag,CONCACAF Gold Cup,daily,0,
+soccer-fifwc,FIFA World Cup,daily,0,
+soccer-sawq,WC Qualification South America,daily,0,
+soccer-brcm,Campeonato Mineiro,daily,0,
+soccer-aswq,WC Qualification Asia,daily,0,
+soccer-afwq,WC Qualification Africa,daily,0,
+soccer-nawq,WC Qualification North America,daily,0,
+soccer-owq,WC Qualification Oceania,daily,0,
+soccer-ewq,WC Qualification Europe,daily,0,
+soccer-unl,UEFA Nations League,daily,0,sports
+soccer-weuc,UEFA Women's EURO,daily,0,
+soccer-fifaw,FIFA Women's World Cup,daily,0,
+soccer-lec,Leagues Cup,daily,0,sports
+soccer-skc,King Cup,daily,0,sports
+soccer-hr1,Prva Liga,daily,0,sports
+soccer-svk1,Nike Liga,daily,0,sports
+soccer-trsk,TFF Super Kupa,daily,0,sports
+soccer-ptc,Taca de Portugal,daily,0,sports
+soccer-atc,OFB Cup,daily,0,sports
+soccer-auc,Australia Cup,daily,0,sports
+soccer-grc,Greek Cup,daily,0,sports
+soccer-scoc,Scottish Cup,daily,0,sports
+soccer-nlc,KNVB Beker,daily,0,sports
+soccer-brco,Copa do Brasil,daily,0,sports
+soccer-cwc,FIFA Club World Cup,daily,0,
+soccer-nwsl,NWSL,daily,0,sports
+soccer-icwq,WCQ Inter-Confederation Playoffs,daily,0,
+soccer-ccc,CONCACAF Champions Cup,daily,0,
+bkbbl,Germany BBL,daily,0,sports
+bkgr1,Greek Basketball League,daily,0,sports
+bkfibaqaf,FIBA WCQ Africa,daily,0,
+bkfibaqam,FIBA WCQ Americas,daily,0,sports
+bkfibaqas,FIBA WCQ Asia,daily,0,
+bkfibaqeu,FIBA WCQ Europe,daily,0,
+unty-earnings,UNTY Earnings,,0,finance/stocks/earnings
+fide-candidates-2026,fide-candidates-2026,daily,0,
+hungary-election-mov,Hungary Election MOV,daily,0,
+trump-media-x-tae-technologies-merger,Trump Media x TAE Technologies merger,,0,economy/Fed/macro
+recognize-somaliland,recognize Somaliland,,0,
+jang-dong-hyeok-out,Jang Dong-hyeok out,,0,
+howard-lutnick-out,Howard Lutnick out,,0,politics/elections
+nikita-bier-out,Nikita Bier out,,0,
+any-country-expel-a-us-ambassador,any country expel a U.S. ambassador,,0,geopolitics/war
+crude-oil-all-time-high,Crude Oil all time high,monthly,0,
+uk-government-approval,UK Government approval,weekly,0,
+dcms-self-certify-sports-event-contracts,DCMs self-certify sports event contracts,,0,tech
+qatarenergy,qatarenergy,,0,
+best-coding-ai,best Coding AI,monthly,0,
+second-best-coding-ai,second best Coding AI,monthly,0,
+best-chinese-ai-company,Best Chinese AI Company,monthly,0,
+top-ai-model,Top AI model,weekly,0,
+jakarta-daily-weather,Jakarta Daily Weather,daily,0,
+t20-brisbane-champions-league,T20 Brisbane Champions League,daily,0,sports
+lagos-daily-weather,Lagos Daily Weather,daily,0,
+mrbeast-mentions,MrBeast Mentions,monthly,0,mentions/tweets
+chinese-ai-model-become-1,Chinese AI model become #1,monthly,0,
+us-crude-reserves,US Crude Reserves,monthly,0,
+gpt-5pt5-released,GPT-5.5 released,,0,
+trump-publicly-insult-by,Trump publicly insult ___ by,monthly,0,
+claude-4pt7-released,Claude 4.7 released,,0,
+republican-senate-seats,Republican Senate seats,annual,0,
+when-dhs-shutdown-end,When DHS shutdown end,,0,
+ng-daily-close-uo,NG Daily Close U/O,daily,0,
+xauusd-daily-close-uo,XAUUSD Daily Close U/O,daily,0,
+obtain-uranium,Obtain Uranium,,0,
+donald-trump-tie-color,Donald Trump tie color,daily,0,
+fisa-section-702,FISA Section 702,,0,
+highest-ai-revenue,Highest AI Revenue,weekly,0,
+second-highest-ai-revenue,Second Highest AI Revenue,weekly,0,
+deepseek-v4-released,DeepSeek V4 released,,0,
+deepseek-release,DeepSeek release,,0,
+trump-today,Trump Today,daily,0,
+top-ai,Top AI,weekly,0,
+2-coding-ai,#2 Coding AI,monthly,0,
+of-chatgpt-outages,# of ChatGPT Outages,monthly,0,
+of-gpt-outages,# of GPT Outages,monthly,0,
+anera-highest-revenue,Anera highest revenue,,0,
+anera-1-revenue,Anera 1 revenue,,0,
+anera-2-revenue,Anera 2 revenue,,0,
+anera-second-revenue,Anera second revenue,,0,
+anera-revenue-2,Anera revenue 2,,0,
+second-anera-revenue,second Anera revenue,,0,
+rev2-anera,rev2 anera,,0,
+major-us-official-out,Major US Official Out,monthly,0,
+trump-tie-color,Trump tie color,daily,0,
+trump-tie-color-daily,Trump Tie Color Daily,daily,0,
+tie-color-daily,Tie Color Daily,daily,0,
+jinan-daily-weather,Jinan Daily Weather,daily,0,weather/climate/science
+trump-dance-daily,Trump dance daily,daily,0,
+dance-daily,Dance Daily,daily,0,
+trump-daily-tie,Trump daily tie,daily,0,
+1-ai-model-by, #1 AI model by,monthly,0,
+uae-levaes-gcc,uae levaes gcc,,0,
+uae-leaves-gcc,uae leaves gcc,,0,
+trump-agree,Trump Agree,,0,
+cloudflare-incident,Cloudflare Incident,monthly,0,
+trump-visit-north-korea,Trump visit North Korea,,0,
+us-joint-chiefs-of-staff-member-out,US Joint Chiefs of Staff member out,,0,
+testtesttest,testtesttest,daily,0,
+gaygamma,GAYGAMMA,monthly,0,
+gammagay,GAMMAGAY,monthly,0,
+bosurum,BOSURUM,annual,0,
+gaytest,gaytest,annual,0,
+treehugger,treehugger,daily,0,
+bryan-johnson-sex,Bryan Johnson sex,,0,
+gas-ng-hit-monthly,Gas (NG) hit Monthly,monthly,0,
+who-will-meet-with-iran,Who will meet with Iran,,0,
+trump-praise-allah,Trump praise Allah,monthly,0,
+treestuff,treestuff,daily,0,
+unrestricted-shipping,unrestricted shipping,,0,
+trump-agree-iran,Trump agree Iran,,0,
+openai-debut,OpenAI Debut,,0,
+iranian-demands,Iranian Demands,,0,
+trump-photographed,Trump Photographed,monthly,0,
+warships-through-hormuz,Warships through Hormuz,monthly,0,
+ufo-declassify,UFO Declassify,,0,
+ag-announce,AG announce,,0,
+major-us-official,Major US official,monthly,0,
+confirmed-case-of-hantavirus,Confirmed case of Hantavirus,monthly,0,
+f1-2026,Formula 1 2026,,0,
+serbian-superliga-2026,Serbian SuperLiga 2026,daily,0,sports
+slovenia-prvaliga-2026,Slovenia PrvaLiga 2026,daily,0,sports
+ireland-premier-division-2026,Ireland Premier Division 2026,daily,0,
+afc-champions-league-elite-2026,AFC Champions League Elite 2026,daily,0,sports
+f03-robot,F.03 Robot,,0,
+iihf,IIHF,daily,0,
+us-x-cuba-meeting,US x Cuba Meeting,,0,
+wsm-earnings,WSM Earnings,,0,
+fro-earnings,FRO Earnings,,0,
+epic-games-valuation,Epic Games Valuation,,0,finance/stocks/earnings
+canva-valuation,Canva Valuation,,0,finance/stocks/earnings
+five-earnings,FIVE Earnings,,0,
+mlp,MLP,daily,0,sports
+warships,Warships,monthly,0,geopolitics/war
+cbrl-earnings,CBRL Earnings,,0,finance/stocks/earnings
+dks-earnings,DKS Earnings,,0,
+brze-earnings,BRZE Earnings,,0,
+mdb-earnings,MDB Earnings,,0,
+bby-earnings,BBY Earnings,,0,
+gtlb-earnings,GTLB Earnings,,0,
+swe1,swe1,daily,0,
+claude-code-commits,Claude Code Commits,monthly,0,
+us-x-china-tariff-agreement,US x China Tariff Agreement?,,0,geopolitics/war
+micron-multi-strikes-weekly,Micron Multi Strikes Weekly,weekly,0,finance/stocks/earnings
+micron-multi-strikes-monthly,Micron Multi Strikes Monthly,monthly,0,finance/stocks/earnings
+mu-neg-risk-weekly,MU Neg Risk Weekly,weekly,0,finance/stocks/earnings
+claude-4pt8,Claude 4.8,,0,
+congress-passes-iran-war-powers,Congress passes Iran war powers,,0,
+cpb-earnings,CPB Earnings,,0,
+mtn-earnings,MTN Earnings,,0,finance/stocks/earnings
+sjm-earnings,SJM Earnings,,0,
+len-earnings,LEN Earnings,,0,
+next-gemini-pro,Next Gemini Pro,,0,
+dbi-earnings,DBI Earnings,,0,
+kmx-earnings,KMX Earnings,,0,finance/stocks/earnings
+t20-blast-women,T20 Blast Women,daily,0,
+t20-blast-women-2,T20 Blast Women 2,daily,0,
+swbi-earnings,SWBI Earnings,,0,
+acn-earnings,ACN Earnings,,0,finance/stocks/earnings
+trump-daily,Trump Daily,daily,0,
+uefa-w-championship-qualification,UEFA W Championship Qualification,daily,0,
+uefa-womens-world-cup-qualification,UEFA Women’s World Cup Qualification,daily,0,sports
+fin1-games,Veikkausliiga,daily,0,sports
+kaz1-games,Premier League (Kazakhstan),daily,0,sports
+uzb1-games,Superliga (Uzbekistan),daily,0,sports
+bra3-games,Brasileiro Série C,daily,0,sports
+ven1-games,Primera División (Venezuela),daily,0,sports
+est1-games,Premium Liiga,daily,0,sports
+geo1-games,Erovnuli Liga,daily,0,
+fro1-games,Betri deildin,daily,0,sports
+chi2-games,China League 1,daily,0,sports
+ccl-earnings,CCL Earnings,,0,finance/stocks/earnings
+bkbsn-games,BSN,daily,0,
+bkvensl-games,SuperLiga (Venezuela),daily,0,
+bkibl-games,IBL,daily,0,
+bkcebl-games,CEBL,daily,0,
+bkligarg-games,Liga Argentina,daily,0,
+mythos-released,Mythos released,,0,
+sbf-pardon-by,SBF Pardon By,,0,
+russia-x-ukraine-meeting,Russia x Ukraine meeting,,0,
+spacex-updown,SpaceX Up/Down,monthly,0,
+rick-and-morty-s9,Rick and Morty S9,weekly,0,
+rick-and-morty-mentions,Rick and Morty Mentions,weekly,0,
+brlusd-hit-price-weekly,BRL/USD Hit Price Weekly,weekly,0,
+ng-hit-month,(NG) hit Month,monthly,0,
+ttworldcup-games,ITTF World Cup,daily,0,
+ttworlds-games,ITTF World Championships,daily,0,
+ttolympics-games,Olympic Table Tennis,daily,0,
+ttcl-games,Table Tennis Champions League,daily,0,
+tteuropecup-games,Table Tennis Europe Cup,daily,0,
+ttbl-games,TTBL (German Bundesliga),daily,0,
+vbsuperlega-games,SuperLega,daily,0,sports
+vbplusliga-games,PlusLiga,daily,0,sports
+vbefeler-games,Efeler Ligi,daily,0,sports
+vbsuperliga-games,Superliga,daily,0,
+vbliguea-games,Ligue A,daily,0,sports
+vbbundesliga-games,Volleyball Bundesliga,daily,0,sports
+vbvleague-games,V-League,daily,0,
+vbvnl-games,FIVB Nations League,daily,0,
+vbworlds-games,FIVB World Championship,daily,0,
+vbeuro-games,European Championship,daily,0,sports
+testtest,testtest,annual,0,
+testtesttesttest,testtesttesttest,annual,0,
+john-ratcliffe-out,John Ratcliffe Out,,0,politics/elections
+world-cup-mentions,World cup mentions,weekly,0,
+us-x-cuba-diplomatic-meeting-by,US x Cuba diplomatic meeting by,,0,geopolitics/war
+next-us-x-iran-diplomatic-meeting,Next US x Iran diplomatic meeting,,0,
+next-us-x-iran-meeting,Next US x Iran meeting,,0,
+npb,NPB,daily,0,sports
+who-attend-us-x-iran-meeting,Who attend US x Iran meeting,,0,
+indycar,IndyCar,daily,0,
+serie-nacional,Serie Nacional,daily,0,
+lidom,LIDOM,daily,0,
+lvbp,LVBP,daily,0,
+world-juniors,World Juniors,daily,0,
+iran-x-oman-strait-of-hormuz-agreement,Iran x Oman Strait of Hormuz agreement,,0,
+house-of-the-dragon-s3-mentions,House of the Dragon S3 mentions,weekly,0,
+love-island-mentions,Love Island Mentions,weekly,0,
+spcx-neg-risk-weekly,SPCX Neg Risk Weekly,weekly,0,finance/stocks/earnings
+top-spotify-artist-monthly,Top Spotify Artist Monthly,monthly,0,culture/entertainment/awards
+1-hits-monthly-us,#1 Hits Monthly US,monthly,0,
+1-hits-monthly-global,#1 Hits Monthly Global,monthly,0,
+cricmaharaja,Maharaja T20 Trophy,daily,0,
+crictelangana,Telangana T20,daily,0,
+criccoppat10,Coppa il Mondo T10,daily,0,sports
+cricecsbg,ECS Bulgaria,daily,0,sports
+cricnsk,NSK Trophy State T20,daily,0,
+cricapl,Andhra Premier League,daily,0,
+cricshpageeza,Shpageeza Cricket League,daily,0,
+crickpl,KPL Indo Nepal T20,daily,0,
+cricjcl,JCL T20,daily,0,sports
+love-island-eliminations-weekly,love island eliminations weekly,weekly,0,
+pep-earnings,PEP Earnings,,0,finance/stocks/earnings
+wdfc-earnings,WDFC Earnings,,0,finance/stocks/earnings
+mamdani-city-owned-grocery,Mamdani City-Owned Grocery,,0,
+jones-act-requirements-removed-by,Jones Act requirements removed by,,0,economy/Fed/macro
+top-twitch-streamer,Top Twitch Streamer,monthly,0,
+iran-targets-shipping-by,Iran targets shipping by,,0,
+wimbledon,Wimbledon,daily,0,
+largest-private-company,Largest Private Company,monthly,0,AI
+2nd-largest-private-company,2nd Largest Private Company,monthly,0,AI
+3rd-largest-private-company,3rd Largest Private Company,monthly,0,AI
+elon-baby,Elon baby,,0,tech
+usd-idr-hits,USD IDR hits,monthly,0,
+stripe-ipo-closing-market-cap,Stripe IPO Closing Market Cap,,0,finance/stocks/earnings
+databricks-ipo-closing-market-cap,Databricks IPO Closing Market Cap,,0,finance/stocks/earnings
+fannie-mae-ipo-closing-market-cap,Fannie Mae IPO Closing Market Cap,,0,
+jpm-earnings,JPM Earnings,,0,finance/stocks/earnings
+blk-earnings,BLK Earnings,,0,finance/stocks/earnings
+wfc-earnings,WFC Earnings,,0,finance/stocks/earnings
+gs-earnings,GS Earnings,,0,finance/stocks/earnings
+c-earnings,C Earnings,,0,finance/stocks/earnings
+bac-earnings,BAC Earnings,,0,finance/stocks/earnings
+median-home-price-austin,Median Home Price Austin,monthly,0,economy/Fed/macro
+germany,Germany,daily,0,
+btc-multi-strikes-daily,BTC Multi Strikes Daily,daily,0,
+eth-multi-strikes-daily,ETH Multi Strikes Daily,daily,0,
+sol-multi-strikes-daily,SOL Multi Strikes Daily,daily,0,
+xrp-multi-strikes-daily,XRP Multi Strikes Daily,daily,0,
+bnb-multi-strikes-daily,BNB Multi Strikes Daily,daily,0,
+doge-multi-strikes-daily,DOGE Multi Strikes Daily,daily,0,
+hype-multi-strikes-daily,HYPE Multi Strikes Daily,daily,0,
+spacex-closing-price-end-of-month,SpaceX Closing Price End of Month,monthly,0,
+spacex-closing-market-cap-end-of-month,SpaceX Closing Market Cap End of Month,monthly,0,
+nasdaq-round-the-clock-by,Nasdaq round the clock by,,0,finance/stocks/earnings
+trump-animal-mention,Trump animal mention,monthly,0,
+usb-earnings,USB Earnings,,0,finance/stocks/earnings
+tsm-earnings,TSM Earnings,,0,
+stt-earnings,STT Earnings,,0,finance/stocks/earnings
+cfg-earnings,CFG Earnings,,0,finance/stocks/earnings
+unh-earnings,UNH Earnings,,0,finance/stocks/earnings
+pnc-earnings,PNC Earnings,,0,finance/stocks/earnings
+ms-earnings,MS Earnings,,0,finance/stocks/earnings
+jnj-earnings,JNJ Earnings,,0,finance/stocks/earnings
+mtb-earnings,MTB Earnings,,0,finance/stocks/earnings
+kmi-earnings,KMI Earnings,,0,finance/stocks/earnings
+tfc-earnings,TFC Earnings,,0,finance/stocks/earnings
+vz-rev-kpi,VZ Rev KPI,,0,
+usdtry-daily-up-or-down,USDTRY Daily Up or Down,daily,0,finance/stocks/earnings
+trump-announces-us-x-iran-ceasefire-over,Trump announces US x Iran ceasefire over,,0,
+crude-oil-cl-settlement-hit,Crude Oil (CL) Settlement Hit,monthly,0,
+rtx-kpis,RTX KPIs,,0,finance/stocks/earnings
+hon-kpis,HON KPIs,,0,finance/stocks/earnings
+nke-kpis,NKE KPIs,,0,
+gm-kpis,GM KPIs,,0,
+ulta-kpis,ULTA KPIs,,0,
+rost-kpis,ROST KPIs,,0,
+lyft-kpis,LYFT KPIs,,0,finance/stocks/earnings
+mrvl-kpis,MRVL KPIs,,0,
+uber-kpis,UBER KPIs,,0,
+intu-kpis,INTU KPIs,,0,
+dash-kpis,DASH KPIs,,0,
+gme-kpis,GME KPIs,,0,
+ba-kpis,BA KPIs,,0,
+hd-kpis,HD KPIs,,0,
+de-kpis,DE KPIs,,0,
+amat-kpis,AMAT KPIs,,0,
+deck-kpis,DECK KPIs,,0,
+pltr-kpis,PLTR KPIs,,0,
+cava-kpis,CAVA KPIs,,0,
+wday-kpis,WDAY KPIs,,0,
+orcl-kpis,ORCL KPIs,,0,
+dltr-kpis,DLTR KPIs,,0,
+cost-kpis,COST KPIs,,0,
+adbe-kpis,ADBE KPIs,,0,
+cien-kpis,CIEN KPIs,,0,
+abnb-kpis,ABNB KPIs,,0,
+tjx-kpis,TJX KPIs,,0,
+rl-kpis,RL KPIs,,0,
+mtch-kpis,MTCH KPIs,,0,
+rh-kpis,RH KPIs,,0,
+lowe-kpis,LOWE KPIs,,0,
+mdb-kpis,MDB KPIs,,0,
+race-kpis,RACE KPIs,,0,
+len-kpis,LEN KPIs,,0,
+hpe-kpis,HPE KPIs,,0,
+keys-kpis,KEYS KPIs,,0,
+zm-kpis,ZM KPIs,,0,
+five-kpis,FIVE KPIs,,0,
+tsm-kpis,TSM KPIs,,0,AI
+pld-kpis,PLD KPIs,,0,finance/stocks/earnings
+dal-kpis,DAL KPIs,,0,
+schw-kpis,SCHW KPIs,,0,
+ibkr-kpis,IBKR KPIs,,0,finance/stocks/earnings
+pgr-kpis,PGR KPIs,,0,finance/stocks/earnings
+wfc-kpis,WFC KPIs,,0,finance/stocks/earnings
+bac-kpis,BAC KPIs,,0,finance/stocks/earnings
+c-kpis,C KPIs,,0,finance/stocks/earnings
+gs-kpis,GS KPIs,,0,
+amzn-kpis,AMZN KPIs,,0,
+ms-kpis,MS KPIs,,0,finance/stocks/earnings
+jnj-kpis,JNJ KPIs,,0,finance/stocks/earnings
+jpm-kpis,JPM KPIs,,0,finance/stocks/earnings
+nba-summer-league,NBA Summer League,daily,0,
+pm-kpis,PM KPIs,,0,
+moscow-air-traffic,Moscow air traffic,monthly,0,
+ufc-329-mentions,UFC 329 Mentions,,0,
+houthis-target-shipping,Houthis target shipping,,0,geopolitics/war
+big-brother-mentions,Big Brother Mentions,weekly,0,mentions/tweets
+big-brother-weekly-elimination,Big Brother Weekly Elimination,weekly,0,culture/entertainment/awards
+stba-earnings,STBA Earnings,,0,finance/stocks/earnings
+infy-earnings,INFY Earnings,,0,
+cour-earnings,COUR Earnings,,0,finance/stocks/earnings
+intc-earnings,INTC Earnings,,0,
+unp-earnings,UNP Earnings,,0,finance/stocks/earnings
+pcg-earnings,PCG Earnings,,0,finance/stocks/earnings
+has-earnings,HAS Earnings,,0,finance/stocks/earnings
+schw-earnings,SCHW Earnings,,0,finance/stocks/earnings
+ibkr-earnings,IBKR Earnings,,0,finance/stocks/earnings
+ssc-earnings,SS&C Earnings,,0,
+claude-extend,claude extend,,0,
+nvts-earnings,NVTS Earnings,,0,
+wwd-earnings,WWD Earnings,,0,
+vz-earnings,VZ Earnings,,0,finance/stocks/earnings
+uefa-super-cup,UEFA Super Cup,daily,0,
+sotheby-s-auctions,Sotheby's Auctions,,0,
+movie-trailer-mention,Movie Trailer Mention,,0,
+monthly-precipitation-in-seattle,Monthly Precipitation in Seattle,monthly,0,
+monthly-precipitation-in-london,Monthly Precipitation in London,monthly,0,
+ea-earnings,EA Earnings,,0,finance/stocks/earnings
+sono-earnings,SONO Earnings,,0,
+sofi-earnings,SOFI Earnings,,0,finance/stocks/earnings
+pg-earnings,PG Earnings,,0,finance/stocks/earnings
+jblu-earnings,JBLU Earnings,,0,finance/stocks/earnings
+rcl-earnings,RCL Earnings,,0,finance/stocks/earnings
+ba-earnings,BA Earnings,,0,finance/stocks/earnings
+nxpi-earnings,NXPI Earnings,,0,finance/stocks/earnings
+unh-kpis,UNH KPIs,,0,
+lana-del-rey-album,Lana del Rey Album,,0,culture/entertainment/awards
+anthropic-s-valuation-negrisk,Anthropic’s valuation Negrisk,,0,
+2-spotify-song,#2 Spotify Song,weekly,0,culture/entertainment/awards
+2-us-spotify-song,#2 US Spotify Song,weekly,0,culture/entertainment/awards
+ben-earnings,BEN Earnings,,0,
+psky-earnings,PSKY Earnings,,0,
+yum-earnings,YUM Earnings,,0,
+pipr-earnings,PIPR Earnings,,0,finance/stocks/earnings
+dlb-earnings,DLB Earnings,,0,
+virt-earnings,VIRT Earnings,,0,
+mstr-earnings,MSTR Earnings,,0,finance/stocks/earnings
+fti-earnings,FTI Earnings,,0,
+fcn-earnings,FCN Earnings,,0,
+ma-earnings,MA Earnings,,0,
+aapl-earnings,AAPL Earnings,,0,
+ci-earnings,CI Earnings,,0,
+tday-earnings,TDAY Earnings,,0,finance/stocks/earnings
+lin-kpis,LIN KPIs,,0,finance/stocks/earnings
+xom-kpis,XOM KPIs,,0,finance/stocks/earnings
+coin-kpis,COIN KPIs,,0,
+lrcx-kpis,LRCX KPIs,,0,finance/stocks/earnings
+qcom-kpis,QCOM KPIs,,0,finance/stocks/earnings
+tsla-kpis,TSLA KPIs,,0,
+psky-kpis,PSKY KPIs,,0,
+hood-kpis,HOOD KPIs,,0,
+match-kpis,MATCH KPIs,,0,
+csco-kpis,CSCO KPIs,,0,
+fdx-kpis,FDX KPIs,,0,
+snps-kpis,SNPS KPIs,,0,tech
+pep-kpis,PEP KPIs,,0,
+scotland-league-cup,Scotland League Cup,daily,0,sports
+china-fa-cup,China FA Cup,daily,0,
+ttelite-games,TT Elite Series,daily,0,
+czechligapro-games,Czech Liga Pro,daily,0,
+ttcup-games,TT Cup,daily,0,
+ttchallenger-games,TT Challenger Series,daily,0,
+first-week-album-sales,First Week Album Sales,,0,culture/entertainment/awards
+setkawoua-games,Setka Cup Ukraine Women,daily,0,sports
+hot-ones-mentions,Hot Ones Mentions,monthly,0,
+spy-open-daily-up-or-down,SPY Open Daily Up or Down,daily,0,finance/stocks/earnings
+uci-cycling,Cycling,daily,0,sports
+powl-earnings,POWL Earnings,,0,
+on-earnings,ON Earnings,,0,
+clx-earnings,CLX Earnings,,0,
+hesm-earnings,HESM Earnings,,0,finance/stocks/earnings
+cbt-earnings,CBT Earnings,,0,
+cat-earnings,CAT Earnings,,0,finance/stocks/earnings
+syy-earnings,SYY Earnings,,0,
+hnge-earnings,HNGE Earnings,,0,
+snex-earnings,SNEX Earnings,,0,
+the-hundred,The Hundred,daily,0,
+the-hundred-women,The Hundred Women,daily,0,
+bel2-games,Belgium Challenger Pro League,daily,0,sports
+uae1-games,UAE Pro League,daily,0,sports
+qat1-games,Qatar Stars League,daily,0,sports
+ptsc-games,Portugal Super Cup,daily,0,
+ecs-games,FA Community Shield,daily,0,
+frtc-games,Trophee des Champions,daily,0,
+saf1-games,South Africa Premiership,daily,0,sports
+par1-games,Paraguay Primera División,daily,0,sports
+usl1-games,USL League One,daily,0,sports
+cafcl-games,CAF Champions League,daily,0,sports
+argcopa-games,Copa Argentina,daily,0,sports
+cricgsl,Global Super League,daily,0,
+cricodc,Metro Bank One Day Cup,daily,0,sports
+cricodcl2w,Metro Bank One Day Cup Women League 2,daily,0,sports
+cricgermant10,German Super League Hamburg T10,daily,0,
+cricecsch,ECS Switzerland,daily,0,
+cricecseng,ECS England,daily,0,
+cricmaharani,Maharani Trophy KSCA T20,daily,0,
+cricmukono,Mukono Super Smash T20,daily,0,sports
+crickerala,Kuwait Kerala Premier League T20,daily,0,sports
+cricjclt10,JCL T10,daily,0,sports
+cricppl,Pondicherry Premier League,daily,0,
+cricfalcons,Falcons Super League T20,daily,0,
+cricinterprov,Inter-Provincial One Day,daily,0,
+houthis-target-shipping-on,Houthis target shipping on,,0,
+htz-earnings,HTZ Earnings,,0,
+dnut-earnings,DNUT Earnings,,0,
+celh-earnings,CELH Earnings,,0,
+afl-earnings,AFL Earnings,,0,
+flut-earnings,FLUT Earnings,,0,
+mchp-earnings,MCHP Earnings,,0,
+soun-earnings,SOUN Earnings,,0,
+crcl-earnings,CRCL Earnings,,0,
+chym-earnings,CHYM Earnings,,0,
+fig-earnings,FIG Earnings,,0,
+ato-earnings,ATO Earnings,,0,
+mktx-earnings,MKTX Earnings,,0,finance/stocks/earnings
+cyclosporiasis-cases,Cyclosporiasis cases,monthly,0,
+earnings-calls,Earnings Calls,daily,0,
+oscars-winner,Oscars Winner,annual,0,
+clf-games,Club Friendlies,daily,0,sports
+qubt-earnings,QUBT Earnings,,0,
+spcx-earnings,SPCX Earnings,,0,
+president-curtis-mentions,President Curtis Mentions,weekly,0,mentions/tweets
+ccup-games,Campeones Cup,daily,0,
+lpga-tour,LPGA Tour,daily,0,sports
+dp-world-tour,DP World Tour,daily,0,sports
+liv-golf,LIV Golf,daily,0,
+bklat-games,Latvia LBL,daily,0,
+bkcro-games,Croatia Premijer liga,daily,0,
+bkned-games,Netherlands BNXT,daily,0,
+bkbel-games,Belgium BNXT,daily,0,
+bkfin-games,Finland Korisliiga,daily,0,
+bkcze-games,Czech NBL,daily,0,
+bkhun-games,Hungary NB I/A,daily,0,
+bkmex-games,Mexico LNBP,daily,0,
+bkgbr-games,Great Britain SLB,daily,0,
+bkaut-games,Austria Superliga,daily,0,
+bkbul-games,Bulgaria NBL,daily,0,
+bkcyp-games,Cyprus Division A,daily,0,
+bkden-games,Denmark Basketligaen,daily,0,
+bkest-games,Estonia KML,daily,0,
+bkkaz-games,Kazakhstan NBL,daily,0,
+bkmkd-games,Macedonia Prva Liga,daily,0,
+bknor-games,Norway BLNO,daily,0,
+bksvk-games,Slovakia SBL,daily,0,
+bksvn-games,Slovenia Liga Nova KBM,daily,0,
+bkukr-games,Ukraine Superleague,daily,0,
+bkfr2-games,France Elite 2,daily,0,
+bkgr2-games,Greece Elite League,daily,0,
+bkit2-games,Italy Serie A2,daily,0,
+bkes2-games,Spain Primera FEB,daily,0,
+bkfi2-games,Finland I Divisioona A,daily,0,
+bkkz2-games,Kazakhstan Higher League,daily,0,
+bkrus-games,Russia Superleague,daily,0,
+bkblr-games,Belarus Premier League,daily,0,
+nrl-games,NRL,daily,0,sports
+super-league-games,Super League,daily,0,sports
+mcconnell-votes-in-the-senate-by,McConnell Votes in the Senate by,,0,
+us-trade-deficit-monthly,US Trade Deficit Monthly,monthly,0,
+mrx-earnings,MRX Earnings,,0,
+stub-earnings,STUB Earnings,,0,
+pxlw-earnings,PXLW Earnings,,0,
+etor-earnings,ETOR Earnings,,0,
+russia-target-kyiv,Russia target Kyiv,,0,
+virginia-and-vini-jr-breakup,Virginia and Vini Jr breakup,,0,
+korn-ferry-tour,Korn Ferry Tour,daily,0,sports
+bonbast-hit,Bonbast Hit,monthly,0,
+anthropic-vs-openai-private-return,Anthropic vs OpenAI Private Return,,0,AI
+privates-largest-increase-in-valuation-monthly,Privates Largest Increase in Valuation (Monthly),monthly,0,AI
+ukraine-target-moscow,Ukraine target Moscow,,0,
+asean-games,ASEAN Championship,daily,0,
+zec-up-or-down-4h,ZEC Up or Down 4h,4h,0,crypto
+anthropic-s-valuation,Anthropic’s valuation,,0,AI
+ukraine-strikes-vessel-in-black-sea,Ukraine strikes vessel in Black Sea,,0,
+blsh-earnings,BLSH Earnings,,0,
+vik-earnings,VIK Earnings,,0,
+microsoft-s-market-cap,Microsoft’s Market Cap,monthly,0,finance/stocks/earnings
+1-movie-on-netflix-views-this-week,#1 Movie on Netflix Views this week,weekly,0,culture/entertainment/awards
+1-show-on-netflix-views-this-week,#1 Show on Netflix Views this week,weekly,0,culture/entertainment/awards
+tgt-earnings,TGT Earnings,,0,
+dy-earnings,DY Earnings,,0,
+nielsen-views-this-week,Nielsen # Views This Week,weekly,0,
+zhengzhou-daily-weather,Zhengzhou Daily Weather,daily,0,weather/climate/science
+canpl-games,Canadian Premier League,daily,0,sports
+tpe1-games,Taiwan Football Premier League,daily,0,sports
+tpew-games,Taiwan Mulan Football League,daily,0,
+aze1-games,Azerbaijan Premier League,daily,0,sports
+aze2-games,Azerbaijan First Division,daily,0,sports
+azec-games,Azerbaijan Cup,daily,0,
+aseanw-games,ASEAN Championship Women,daily,0,
+aseanc-games,ASEAN Club Championship,daily,0,
+bknznbl-games,New Zealand NBL,daily,0,
+ufl-games,UFL,daily,0,
+hbhandbold-games,Håndboldligaen,daily,0,sports
+hblnh-games,LNH Division 1,daily,0,sports
+hbnbi-games,NB I,daily,0,sports
+hbeliteserien-games,Eliteserien,daily,0,sports
+hbasobal-games,Liga ASOBAL,daily,0,sports
+hbhandboll-games,Handbollsligan,daily,0,
+afl-games,AFL,daily,0,sports
+aflw-games,AFL Women,daily,0,sports
+lmp-games,Liga Mexicana del Pacífico,daily,0,
+hockeychl-games,Champions Hockey League,daily,0,sports
+ncaalax-games,NCAA Men's Lacrosse,daily,0,
+ncaawlax-games,NCAA Women's Lacrosse,daily,0,
+rueuchall-games,European Challenge Cup,daily,0,sports
+ruprod2-games,Pro D2,daily,0,
+cricdhakadpl-games,Dhaka Premier Division Cricket League,daily,0,
+cricadt10-games,Abu Dhabi T10 League,daily,0,
+nascar,NASCAR Cup Series,daily,0,
+nascar-xfinity,NASCAR Xfinity Series,daily,0,
+nascar-truck,NASCAR Truck Series,daily,0,
+boxing,Boxing,daily,0,sports
+poker,Poker,daily,0,
+rodeo,Rodeo,daily,0,
+isc-games,Supercoppa Italiana,daily,0,
+rlchallenge-games,RFL Challenge Cup,daily,0,
+darts-games,Darts,daily,0,
+vbligueb-games,Ligue B,daily,0,sports
+vbligueaw-games,Ligue A Women,daily,0,sports
+vbbundesligaw-games,1. Bundesliga Women,daily,0,
+vb2bundesligaw-games,2. Bundesliga Women,daily,0,
+vbdivisao1-games,Portuguese I Divisão,daily,0,
+haiti-elections-delayed,Haiti elections delayed,monthly,0,politics/elections
+tha1-games,Thai League 1,daily,0,sports
+idn2-games,Indonesia Liga 2,daily,0,sports
+nielsen-views-jesse-watters-weekly,Nielsen # Views Jesse Watters Weekly,weekly,0,
+nielsen-views-the-five-weekly,Nielsen # Views The Five Weekly,weekly,0,
+nielsen-most-viewed-day-abc-world-news-weekly,Nielsen Most Viewed Day ABC World News Weekly,weekly,0,
+nielsen-most-viewed-day-the-five-weekly,Nielsen Most Viewed Day The Five Weekly,weekly,0,
+nielsen-most-viewed-day-jesse-watters-weekly,Nielsen Most Viewed Day Jesse Watters Weekly,weekly,0,
+nielsen-views-abc-world-news-weekly,Nielsen # Views ABC World News Weekly,weekly,0,
+trump-attend-ufc,Trump attend UFC,,0,sports
+trumpdaily,TrumpDaily,daily,0,
+ukraine-strikes-in-caspian-sea,Ukraine strikes in Caspian Sea,,0,geopolitics/war
+saudi-military-action-against-yemen,Saudi military action against Yemen,,0,
+baba-earnings,BABA Earnings,,0,
+bj-earnings,BJ Earnings,,0,
+smtc-earnings,SMTC Earnings,,0,
+box-earnings,BOX Earnings,,0,
+prim-wisconsin,PRIM Wisconsin,,0,
+gemini-flash-release-by,Gemini Flash release by,,0,
+urbn-earnings,URBN Earnings,,0,
+trump-weekly-actions,trump weekly actions,daily,0,
+trump-executive-orders-weekly,trump executive orders weekly,daily,0,
+next-meta-muse-spark-released-by,Next Meta Muse Spark released by,,0,AI
+151-ultra-premium-collection-price-up-down,151 Ultra-Premium Collection Price Up/Down,monthly,0,culture/entertainment/awards
+celebrations-ultra-premium-collection-price-up-down,Celebrations Ultra Premium Collection Price Up/Down,monthly,0,culture/entertainment/awards
+ascended-heroes-pokemon-center-elite-trainer-box-exclusive-price-up-down,Ascended Heroes Pokémon Center Elite Trainer Box (Exclusive) Price Up/Down,monthly,0,culture/entertainment/awards
+ascended-heroes-elite-trainer-box-price-up-down,Ascended Heroes Elite Trainer Box Price Up/Down,monthly,0,culture/entertainment/awards
+phantasmal-flames-booster-box-price-up-down,Phantasmal Flames Booster Box Price Up/Down,monthly,0,culture/entertainment/awards
+team-rocket-s-moltres-ex-ultra-premium-collection-price-up-down,Team Rocket's Moltres ex Ultra-Premium Collection Price Up/Down,monthly,0,culture/entertainment/awards
+blooming-waters-premium-collection-price-up-down,Blooming Waters Premium Collection Price Up/Down,monthly,0,culture/entertainment/awards
+perfect-order-booster-box-price-up-down,Perfect Order Booster Box Price Up/Down,monthly,0,culture/entertainment/awards
+perfect-order-pokemon-center-elite-trainer-box-price-up-down,Perfect Order Pokémon Center Elite Trainer Box Price Up/Down,monthly,0,culture/entertainment/awards
+first-partner-illustration-collection-series-1-price-up-down,First Partner Illustration Collection (Series 1) Price Up/Down,monthly,0,culture/entertainment/awards
+mega-gengar-ex-price-up-down,Mega Gengar ex Price Up/Down,monthly,0,culture/entertainment/awards
+pikachu-ex-price-up-down,Pikachu ex Price Up/Down,monthly,0,culture/entertainment/awards
+mega-dragonite-ex-price-up-down,Mega Dragonite ex Price Up/Down,monthly,0,culture/entertainment/awards
+mega-charizard-y-ex-price-up-down,Mega Charizard Y ex Price Up/Down,monthly,0,culture/entertainment/awards
+mega-charizard-x-ex-price-up-down,Mega Charizard X ex Price Up/Down,monthly,0,culture/entertainment/awards
+charizard-ex-price-up-down,Charizard ex Price Up/Down,monthly,0,culture/entertainment/awards
+gengar-cosmos-holo-eb-games-exclusive-price-up-down,Gengar (Cosmos Holo) — EB Games Exclusive Price Up/Down,monthly,0,culture/entertainment/awards
+charmander-price-up-down,Charmander Price Up/Down,monthly,0,culture/entertainment/awards
+squirtle-price-up-down,Squirtle Price Up/Down,monthly,0,culture/entertainment/awards
+bulbasaur-price-up-down,Bulbasaur Price Up/Down,monthly,0,culture/entertainment/awards
+next-openai-gpt-image-release-by,Next OpenAI GPT Image Release by,,0,AI
+deepseek-flash-released-by,DeepSeek Flash Released by,,0,AI
+nielsen-views-nbc-nightly-news-weekly,Nielsen # Views NBC Nightly News Weekly,weekly,0,
+nielsen-most-viewed-day-nbc-nightly-news-weekly,Nielsen Most Viewed Day NBC Nightly News Weekly,weekly,0,
+youtube-music-views,Youtube Music Views,weekly,0,
+generic-ballot-2026,generic ballot 2026,weekly,0,
+iran-target-egypt-by,Iran target Egypt by,,0,geopolitics/war
+iran-target-qatar-by,Iran target Qatar by,,0,geopolitics/war
+claude-opus-hle-debut,Claude Opus HLE Debut,,0,AI
+gsc-games,German Super Cup,daily,0,
+rurgr-games,Rugby's Greatest Rivalry,daily,0,
+nato-downs-russian-drone,NATO downs Russian drone,,0,geopolitics/war
+singapore-daily-lowest-temperature,Singapore Daily Lowest Temperature,daily,0,weather/climate/science
+panama-city-daily-lowest-temperature,Panama Daily Lowest Temperature,daily,0,weather/climate/science
+kuala-lumpur-daily-lowest-temperature,Kuala Lumpur Daily Lowest Temperature,daily,0,weather/climate/science
+jinan-daily-lowest-temperature,Jinan Daily Lowest Temperature,daily,0,weather/climate/science
+zhengzhou-daily-lowest-temperature,Zhengzhou Daily Lowest Temperature,daily,0,weather/climate/science
+manila-daily-lowest-temperature,Manila Daily Lowest Temperature,daily,0,weather/climate/science
+asan-earnings,ASAN Earnings,,0,
+crictnpl,Tamil Nadu Premier League,daily,0,
+cricdpl,Delhi Premier League,daily,0,
+cricassam,Assam Premier League,daily,0,
+houthis-target-saudi-arabia-by,Houthis target Saudi Arabia by,,0,
+crictopend,Top End T20 Series,daily,0,
+cricetpl,European T20 Premier League,daily,0,sports
+crickcl,Kerala Cricket League T20,daily,0,
+cricupt20,Uttar Pradesh T20,daily,0,
+crict20max,KFC T20 Max,daily,0,
+crickcct20,KCC T20 Summer League,daily,0,sports
+cricodcw,Metro Bank One Day Cup Women,daily,0,
+trump-speak-to-mark-carney,Trump speak to Mark Carney,monthly,0,
+bkfibaw-games,FIBA Women's World Cup,daily,0,
+cricsherepunjab,Sher-E-Punjab T20,daily,0,
+cricdplw,Women's Delhi Premier League T20,daily,0,
+cricnrwt10,German Super League NRW T10,daily,0,
+cricecspt,ECS Portugal,daily,0,
+cricmajort20,Major Clubs T20,daily,0,
+cricomand50,Oman D50,daily,0,
+lmb-games,Liga Mexicana de Béisbol,daily,0,sports
+ncaabaseball-games,NCAA Baseball,daily,0,
+uk-by-election-called,UK by-election called,monthly,0,politics/elections
+ttan-earnings,TTAN Earnings,,0,
+path-earnings,PATH Earnings,,0,
+openai-resets-codex-weekly-usage,OpenAI resets Codex weekly usage,,0,AI
+chatgpt-outage-by,ChatGPT Outage by,monthly,0,AI
+canch-games,Canadian Championship,daily,0,sports
+lacy-and-marlon-fortnite-deaths,Lacy and Marlon Fortnite Deaths,,0,
+u20wwc-games,FIFA U-20 Women's World Cup,daily,0,sports
+amc-earnings,AMC Earnings,,0,
+bny-earnings,BNY Earnings,,0,finance/stocks/earnings
+dal-earnings,DAL Earnings,,0,finance/stocks/earnings
+fdx-earnings,FDX Earnings,,0,finance/stocks/earnings
+gis-earnings,GIS Earnings,,0,
+kbh-earnings,KBH Earnings,,0,finance/stocks/earnings
+mog-a-earnings,MOG.A Earnings,,0,finance/stocks/earnings
+mu-earnings,MU Earnings,,0,finance/stocks/earnings
+pjt-earnings,PJT Earnings,,0,finance/stocks/earnings
+meck-vor-cdu-over-under,Meck-Vor CDU Over/Under,,0,politics/elections
+south-park-s29-mentions,South Park S29 Mentions,weekly,0,mentions/tweets
+x,x,,0,
+towns-and-woods-sotheby-s-picks,Towns and Woods' Sotheby's picks,,0,culture/entertainment/awards
+daviscup-games,Davis Cup,daily,0,sports
+bjkcup-games,Billie Jean King Cup,daily,0,
+codex-daily-reset,Codex daily reset,,0,
+openai-resets-codex-weekly-limit-on,OpenAI resets Codex weekly limit on,weekly,0,AI
+afcq-games,Africa Cup of Nations Qualifiers,daily,0,sports
+crypto-race-weekly,Crypto Race Weekly,weekly,0,crypto
+eth-btc-hit-price-weekly,ETH/BTC Hit Price Weekly,weekly,0,crypto
+caq-seats,CAQ # Seats?,,0,politics/elections
+bolsonaro-vote-share,Bolsonaro Vote Share?,,0,politics/elections
+trump-food-mentions,trump food mentions,monthly,0,mentions/tweets
+senate-mov-matchups,Senate MOV Matchups,,0,politics/elections
+zzz-probe-do-not-use,[UNUSED] created in error - safe to delete,monthly,0,
+eu-country-blames-russia-for-new-sabotage-attack,EU country blames Russia for new sabotage attack,monthly,0,geopolitics/war
+uwec-games,UEFA Women's Europa Cup,daily,0,sports
+openai-sandbox-escape,OpenAI Sandbox Escape,monthly,0,AI
+trump-and-pezeshkian-meet,Trump and Pezeshkian meet,monthly,0,geopolitics/war
+us-announces-withdrawal-from-al-udeid,US announces withdrawal from Al Udeid,monthly,0,geopolitics/war
+median-home-price-dallas,Median Home Price Dallas,monthly,0,economy/Fed/macro
+flavio-bolsonaro-charged-or-arrested,Flávio Bolsonaro charged or arrested,monthly,0,politics/elections
+netanyahu-drops-out-of-israel-election,Netanyahu drops out of Israel election,monthly,0,geopolitics/war
+lula-vote-share,Lula Vote Share?,monthly,0,politics/elections
+bitcoin-difficulty-adjustment,Bitcoin Difficulty Adjustment,weekly,0,crypto
+mistral-large-4-1-released-by,Mistral Large (4.1+) released by,monthly,0,AI
+mistral-small-4-1-released-by,Mistral Small (4.1+) released by,monthly,0,AI
+es3-games,Primera Federación,daily,0,sports
+nln-games,National League North,daily,0,sports
+ja3-games,J3 League,daily,0,sports
+pt2-games,Liga Portugal 2,daily,0,sports
+iran-sabotage-internet-cables,Iran sabotage internet cables,monthly,0,
+nem-kpis,NEM KPIs,,0,finance/stocks/earnings
+acl2-games,AFC Champions League Two,daily,0,sports
+deadlock,Deadlock,daily,0,
+wtt,WTT,daily,0,sports
+gas-price-hits-weekly,US Gas Hit Price Weekly,weekly,0,finance/stocks/earnings
+blk-kpis,BLK KPIs,,0,finance/stocks/earnings
+ncaahockey-games,NCAA Men's Hockey,daily,0,

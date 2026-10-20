@@ -1,0 +1,196 @@
+symbol,name,kind,direct_events,direct_markets,direct_vol24,direct_vol,direct_oi,direct_link_types,proxy_markets,proxy_vol24,proxy_oi,top_event
+QQQ,Invesco QQQ,etf_or_fund,0,0,0,0,0,,2921,29534,3846783,
+SGOV,iShares 0-3 Month Treasury Bond,etf_or_fund,0,0,0,0,0,,1365,252360,16526889,
+SHY,iShares 1-3 Year Treasury Bond ETF,etf_or_fund,0,0,0,0,0,,1350,246490,16513065,
+XOM,ExxonMobil Holdings Corporation,stock,4,10,1532,10228,6367,fundamentals (earnings/KPIs):7; political/policy reference:2; mention (what a speaker says):1,985,826347,6520690,ExxonMobil Credit Card Spend in October
+USO,United States Oil Fund,etf_or_fund,0,0,0,0,0,,985,826347,6520690,
+SPMO,Invesco S&P 500 Momentum ETF,etf_or_fund,0,0,0,0,0,,687,90556,6782137,
+SPY,SPDR S&P 500 ETF Trust,etf_or_fund,0,0,0,0,0,,687,90556,6782137,
+VTI,Vanguard Morningstar Total Stock Market ETF,etf_or_fund,0,0,0,0,0,,687,90556,6782137,
+BND,Vanguard Total Bond Market ETF,etf_or_fund,0,0,0,0,0,,685,37703,416763,
+GOOGL,Alphabet Class A,stock,70,392,96666,5758221,2667196,platform/content ranking:186; tech/product:93; fundamentals (earnings/KPIs):50; mention (what a speaker says):32; corporate event:20; price:8; company other:2; political/policy reference:1,0,0,0,Best AI at the end of 2026?
+GLD,SPDR Gold Trust,etf_or_fund,0,0,0,0,0,,271,90823,363645,
+TTWO,Take-Two Interactive Software,stock,18,261,83363,5008873,2066289,platform/content ranking:260; price:1,0,0,0,Grand Theft Auto VI: The Album · Features
+SLV,iShares Silver Trust,etf_or_fund,0,0,0,0,0,,204,6295,39599,
+SPCX,Space Exploration Technologies Corp. Class A Common Stock,stock,49,154,103916,5195319,2542580,tech/product:65; mention (what a speaker says):35; fundamentals (earnings/KPIs):27; corporate event:15; macro (rate/price proxy):8; company other:2; platform/content ranking:1; political/policy reference:1,0,0,0,How many launches will SpaceX have in October?
+TSLA,Tesla,stock,26,153,32030,2083202,850744,fundamentals (earnings/KPIs):92; mention (what a speaker says):31; corporate event:13; product price:11; tech/product:5; company other:1,0,0,0,When will Tesla and SpaceX merge?
+AMZN,Amazon,stock,24,95,15612,484924,191978,mention (what a speaker says):30; fundamentals (earnings/KPIs):28; platform/content ranking:26; tech/product:4; corporate event:4; company other:2; political/policy reference:1,0,0,0,Amazon Credit Card Spend in October
+META,Meta Platforms,stock,23,92,3903,332536,108611,fundamentals (earnings/KPIs):53; mention (what a speaker says):18; tech/product:16; political/policy reference:2; corporate event:2; company other:1,0,0,0,What will Meta say during their next earnings call?
+COST,Costco,stock,5,54,322,91274,36661,fundamentals (earnings/KPIs):29; mention (what a speaker says):21; macro (rate/price proxy):4,0,0,0,Costco Credit Card Spend in October
+NFLX,Netflix,stock,18,52,8168,114395,55174,mention (what a speaker says):24; fundamentals (earnings/KPIs):17; platform/content ranking:6; company other:2; corporate event:2; product price:1,0,0,0,What will Netflix say during their next earnings call?
+HIMS,Hims & Hers Health,stock,5,46,126,69486,22561,fundamentals (earnings/KPIs):26; mention (what a speaker says):19; company other:1,0,0,0,What will Hims say during their next earnings call?
+AAPL,Apple,stock,14,44,4932,1779613,480179,mention (what a speaker says):20; corporate event:8; product price:7; fundamentals (earnings/KPIs):6; company other:1; political/policy reference:1; platform/content ranking:1,0,0,0,When will Apple release the iPhone 18?
+PLTR,Palantir Technologies,stock,6,44,16,121643,45173,fundamentals (earnings/KPIs):21; mention (what a speaker says):20; political/policy reference:2; corporate event:1,0,0,0,What will Palantir say during their next earnings call?
+SNOW,Snowflake,stock,5,44,110,1422,1153,fundamentals (earnings/KPIs):25; mention (what a speaker says):18; corporate event:1,0,0,0,What will Snowflake CEO say during his agentic enterprise keynote?
+LMT,Lockheed,stock,5,43,963,92119,22953,fundamentals (earnings/KPIs):27; mention (what a speaker says):15; corporate event:1,0,0,0,Lockheed Martin F-35 deliveries in Q3
+ORCL,Oracle,stock,5,43,423,14523,6227,mention (what a speaker says):35; fundamentals (earnings/KPIs):8,0,0,0,What companies will Trump say in October?
+RBLX,Roblox,stock,5,43,3212,135633,40487,fundamentals (earnings/KPIs):42; corporate event:1,0,0,0,Roblox hours engaged in Q3
+RIVN,Rivian Automotive,stock,3,42,781,87626,27383,fundamentals (earnings/KPIs):30; mention (what a speaker says):12,0,0,0,What will Rivian say during their next earnings call?
+CCL,Carnival Corporation,stock,3,40,1499,147907,49695,fundamentals (earnings/KPIs):26; mention (what a speaker says):14,0,0,0,Carnival Cruise available lower berth days in 2026
+MSFT,Microsoft,stock,11,40,1086,63079,17431,mention (what a speaker says):32; tech/product:3; corporate event:3; political/policy reference:2,0,0,0,What will Jay Parikh say during GitHub Universe Keynote?
+BA,Boeing,stock,8,38,316,407101,57862,fundamentals (earnings/KPIs):19; mention (what a speaker says):17; corporate event:2,0,0,0,Boeing commercial airplane deliveries in 2026
+NVDA,NVIDIA,stock,15,38,285,142697,47805,mention (what a speaker says):26; fundamentals (earnings/KPIs):6; tech/product:4; political/policy reference:1; corporate event:1,0,0,0,Which companies will the US take a stake in this year?
+RDDT,Reddit,stock,4,38,933,18956,10185,fundamentals (earnings/KPIs):21; mention (what a speaker says):16; corporate event:1,0,0,0,Reddit daily active uniques in Q3
+CVNA,Carvana,stock,3,33,1087,120247,53557,fundamentals (earnings/KPIs):20; mention (what a speaker says):13,0,0,0,What will Carvana say during their next earnings call?
+INTC,Intel,stock,6,33,69,25468,14543,fundamentals (earnings/KPIs):16; mention (what a speaker says):16; political/policy reference:1,0,0,0,What will Intel say during their next earnings call?
+CRWV,CoreWeave,stock,5,32,204,9279,8689,fundamentals (earnings/KPIs):31; corporate event:1,0,0,0,CoreWeave contracted power capacity in fiscal 2026
+LLY,Eli Lilly,stock,4,32,1151,35647,13426,mention (what a speaker says):17; fundamentals (earnings/KPIs):13; platform/content ranking:1; corporate event:1,0,0,0,What will Eli Lilly say during their next earnings call?
+RKLB,Rocket Lab Corporation,stock,4,32,1,36278,23277,corporate event:18; tech/product:14,0,0,0,When will Rocket Lab Corporation launch Neutron
+LULU,Lululemon,stock,2,30,13065,61309,22431,fundamentals (earnings/KPIs):30,0,0,0,Lululemon Credit Card Spend in October
+ADBE,Adobe,stock,2,29,151,706,692,mention (what a speaker says):29,0,0,0,What will Shantanu Narayen say during Adobe MAX Opening Keynote?
+F,Ford Motor,stock,2,27,0,57829,27916,fundamentals (earnings/KPIs):27,0,0,0,Ford US vehicle sales volume in 2026
+ZETA,Zeta Global,stock,2,18,0,1003,680,fundamentals (earnings/KPIs):18,0,0,0,Zeta super-scaled customers (>$1m) in 2026
+JNJ,Johnson & Johnson,stock,2,17,763,2215,1542,mention (what a speaker says):16; corporate event:1,0,0,0,What will Johnson & Johnson say during their next earnings call?
+NU,Nu,stock,2,17,0,2103,1423,fundamentals (earnings/KPIs):17,0,0,0,Nu Holdings customers in 2026
+SNAP,Snap,stock,2,17,0,12176,4288,fundamentals (earnings/KPIs):17,0,0,0,Snap daily active users in Q3
+COIN,Coinbase,stock,4,16,5,10492,2391,fundamentals (earnings/KPIs):14; company other:1; mention (what a speaker says):1,0,0,0,Which brands will advertise during the Big Game?
+BULL,Webull,stock,2,15,0,7305,3781,fundamentals (earnings/KPIs):15,0,0,0,Webull funded accounts in Q3
+DDOG,Datadog,stock,2,15,200,15972,7611,fundamentals (earnings/KPIs):15,0,0,0,Datadog customers over $100k ARR in Q3
+SOFI,SoFi Technologies,stock,4,15,18,12962,5352,fundamentals (earnings/KPIs):13; platform/content ranking:1; corporate event:1,0,0,0,SoFi members in Q3
+AVAV,AeroVironment,stock,1,14,0,807,793,mention (what a speaker says):14,0,0,0,What will AeroVironment say during their next earnings call?
+BB,Blackberry,stock,1,14,0,288,283,mention (what a speaker says):14,0,0,0,What will BlackBerry say during their next earnings call?
+CRCL,Circle Internet Group,stock,3,14,0,221,213,stock price / market cap:12; corporate event:2,0,0,0,USDC + USDT market cap at year end 2026?
+FUTU,Futu Holdings,stock,2,14,0,1321,382,fundamentals (earnings/KPIs):14,0,0,0,Futu total funded accounts in fiscal 2026
+NET,"Cloudflare, Inc. Class A common stock",stock,3,14,0,1132,981,fundamentals (earnings/KPIs):13; corporate event:1,0,0,0,Which companies will be added to the S&P 500 in Q4?
+BABA,Alibaba,stock,12,13,127,79037,64708,tech/product:13,0,0,0,Top Chinese AI company this month
+MSTR,Strategy Inc.,stock,3,13,4,27817,10304,macro (rate/price proxy):11; platform/content ranking:1; corporate event:1,0,0,0,"Michael Saylor net worth on Dec 31, 2026"
+SHOP,Shopify,stock,3,13,0,15344,5384,fundamentals (earnings/KPIs):12; mention (what a speaker says):1,0,0,0,Shopify gross merchandise volume in fiscal 2026
+ASTS,AST SpaceMobile,stock,1,12,2,1051,1047,mention (what a speaker says):12,0,0,0,What will AST SpaceMobile say during their next earnings call?
+FIG,Figma,stock,3,12,0,2433,1055,fundamentals (earnings/KPIs):11; corporate event:1,0,0,0,Figma paid customers >$100k arr in fiscal 2026
+ZM,Zoom,stock,2,11,0,330,205,fundamentals (earnings/KPIs):11,0,0,0,Zoom customers with over $100k in TTM revenue in fiscal 2027
+DJT,Trump Media & Technology Group,stock,2,8,8254,30203,16598,political/policy reference:8,0,0,0,How many people will Trump endorse on Truth Social this week? (10/17-10/23)
+PATH,UiPath,stock,1,6,0,401,401,fundamentals (earnings/KPIs):6,0,0,0,UiPath customers with arr of at least $1m in fiscal 2027
+NBIS,Nebius Group,stock,3,3,0,2920,428,mention (what a speaker says):2; corporate event:1,0,0,0,Which companies will be acquired this year?
+TSM,Taiwan Semiconductor Manufacturing,stock,3,3,12,29589,10891,mention (what a speaker says):2; corporate event:1,0,0,0,Which companies will the US take a stake in this year?
+AMD,AMD,stock,2,2,0,5524,3986,mention (what a speaker says):2,0,0,0,What companies will Trump say in October?
+DELL,Dell,stock,2,2,333,2573,2008,macro (rate/price proxy):1; mention (what a speaker says):1,0,0,0,What companies will Trump say in October?
+EWY,iShares MSCI South Korea fund,etf_or_fund,0,0,0,0,0,,2,0,1652,
+FICO,Fair Isaac,stock,2,2,319,935,877,mention (what a speaker says):2,0,0,0,What will Ally Financial say during their next earnings call?
+IBM,IBM,stock,2,2,0,10083,6449,tech/product:1; mention (what a speaker says):1,0,0,0,Which AI companies will have a Pareto efficient model at the end of 2026?
+IONQ,IonQ,stock,2,2,0,31540,10350,corporate event:2,0,0,0,Which companies will the US take a stake in this year?
+MU,Micron Technology,stock,2,2,0,32332,11600,corporate event:1; mention (what a speaker says):1,0,0,0,Which companies will the US take a stake in this year?
+ALAB,"Astera Labs, Inc.",stock,1,1,0,387,372,corporate event:1,0,0,0,Which companies will be added to the S&P 500 in Q4?
+AVGO,Broadcom,stock,1,1,0,960,925,mention (what a speaker says):1,0,0,0,What will Apple say during their next earnings call?
+CBRS,Cerebras Systems,stock,1,1,0,0,0,corporate event:1,0,0,0,Which companies will be added to the S&P 500 in Q4?
+CRDO,Credo Technology Group,stock,1,1,0,220,214,corporate event:1,0,0,0,Which companies will be added to the S&P 500 in Q4?
+CRM,Salesforce,stock,1,1,0,2,0,corporate event:1,0,0,0,Which companies will be removed from the Dow Jones Industrial Average in 2026?
+CSCO,Cisco Systems,stock,1,1,0,16,16,corporate event:1,0,0,0,Which companies will be removed from the Dow Jones Industrial Average in 2026?
+FISV,Fiserv,stock,1,1,0,21,21,mention (what a speaker says):1,0,0,0,What will Mastercard say during their next earnings call?
+FTNT,Fortinet,stock,1,1,0,178,120,mention (what a speaker says):1,0,0,0,What will Intel say during their next earnings call?
+GME,GameStop,stock,1,1,8155,3565774,1197919,corporate event:1,0,0,0,Will GameStop acquire eBay in 2026?
+MDB,MongoDB,stock,1,1,0,119,119,corporate event:1,0,0,0,Which companies will be added to the S&P 500 in Q4?
+MRNA,Moderna,stock,1,1,0,400,200,corporate event:1,0,0,0,Companies added to the MSCI USA Index in Q4?
+NAVN,Navan,stock,1,1,0,0,0,mention (what a speaker says):1,0,0,0,What will Hilton say during their next earnings call?
+OKLO,Oklo,stock,1,1,0,0,0,corporate event:1,0,0,0,Companies added to the MSCI USA Index in Q4?
+PFE,Pfizer,stock,1,1,0,11727,3481,corporate event:1,0,0,0,Which companies will the US take a stake in this year?
+QCOM,Qualcomm,stock,1,1,0,101,82,mention (what a speaker says):1,0,0,0,What companies will Trump say in October?
+RGTI,Rigetti Computing,stock,1,1,105,775,608,mention (what a speaker says):1,0,0,0,What companies will Trump say in October?
+TEAM,Atlassian Corporation,stock,1,1,0,0,0,corporate event:1,0,0,0,Which companies will be added to the S&P 500 in Q4?
+UNH,UnitedHealth,stock,1,1,0,2,2,corporate event:1,0,0,0,Which companies will be removed from the Dow Jones Industrial Average in 2026?
+WDAY,Workday,stock,1,1,0,3619,2629,corporate event:1,0,0,0,Will Silver Lake acquire Workday this year?
+AAOI,Applied Optoelectronics,stock,0,0,0,0,0,,0,0,0,
+ABCL,Abcellera Biologics,stock,0,0,0,0,0,,0,0,0,
+AEHR,Aehr,stock,0,0,0,0,0,,0,0,0,
+AEIS,Advanced Energy,stock,0,0,0,0,0,,0,0,0,
+AMAT,Applied Materials,stock,0,0,0,0,0,,0,0,0,
+AMBA,Ambarella,stock,0,0,0,0,0,,0,0,0,
+AMC,AMC Entertainment,stock,0,0,0,0,0,,0,0,0,
+AMKR,Amkor Technology,stock,0,0,0,0,0,,0,0,0,
+ANET,Arista,stock,0,0,0,0,0,,0,0,0,
+APLD,Applied Digital,stock,0,0,0,0,0,,0,0,0,
+APP,AppLovin,stock,0,0,0,0,0,,0,0,0,
+ASML,ASML Holding NV,stock,0,0,0,0,0,,0,0,0,
+AUR,Aurora Innovation,stock,0,0,0,0,0,,0,0,0,
+AXON,Axon,stock,0,0,0,0,0,,0,0,0,
+AXTI,AXT,stock,0,0,0,0,0,,0,0,0,
+BE,Bloom Energy,stock,0,0,0,0,0,,0,0,0,
+CEG,Constellation Energy,stock,0,0,0,0,0,,0,0,0,
+CELH,Celsius,stock,0,0,0,0,0,,0,0,0,
+CIEN,Ciena,stock,0,0,0,0,0,,0,0,0,
+CLOV,Clover Health Investments,stock,0,0,0,0,0,,0,0,0,
+CLS,Celestica,stock,0,0,0,0,0,,0,0,0,
+CLSK,CleanSpark,stock,0,0,0,0,0,,0,0,0,
+COHR,Coherent,stock,0,0,0,0,0,,0,0,0,
+CRWD,CrowdStrike Holdings,stock,0,0,0,0,0,,0,0,0,
+CTSH,Cognizant,stock,0,0,0,0,0,,0,0,0,
+DOCN,DigitalOcean,stock,0,0,0,0,0,,0,0,0,
+ELF,e.l.f. Beauty,stock,0,0,0,0,0,,0,0,0,
+EWT,iShares MSCI Taiwan Capped ETF,etf_or_fund,0,0,0,0,0,,0,0,0,
+FIX,Comfort Systems,stock,0,0,0,0,0,,0,0,0,
+FLNC,Fluence Energy,stock,0,0,0,0,0,,0,0,0,
+FLY,Firefly Aerospace Inc.,stock,0,0,0,0,0,,0,0,0,
+GE,General Electric,stock,0,0,0,0,0,,0,0,0,
+GEV,GE Vernova,stock,0,0,0,0,0,,0,0,0,
+GLW,Corning,stock,0,0,0,0,0,,0,0,0,
+GLXY,Galaxy Digital Inc.,stock,0,0,0,0,0,,0,0,0,
+HII,Huntington Ingalls,stock,0,0,0,0,0,,0,0,0,
+HPE,HP Enterprise,stock,0,0,0,0,0,,0,0,0,
+HWM,Howmet Aerospace,stock,0,0,0,0,0,,0,0,0,
+IBRX,"ImmunityBio,",stock,0,0,0,0,0,,0,0,0,
+INDA,iShares MSCI India ETF,etf_or_fund,0,0,0,0,0,,0,0,0,
+INFQ,Infleqtion,stock,0,0,0,0,0,,0,0,0,
+INOD,Innodata,stock,0,0,0,0,0,,0,0,0,
+INTU,Intuit,stock,0,0,0,0,0,,0,0,0,
+IREN,IREN Limited,stock,0,0,0,0,0,,0,0,0,
+JBL,Jabil Inc.,stock,0,0,0,0,0,,0,0,0,
+JOBY,Joby Aviation,stock,0,0,0,0,0,,0,0,0,
+KLAC,KLA,stock,0,0,0,0,0,,0,0,0,
+KSS,Kohls Corporation,stock,0,0,0,0,0,,0,0,0,
+KTOS,Kratos Defense & Security Solutions,stock,0,0,0,0,0,,0,0,0,
+LHX,L3Harris,stock,0,0,0,0,0,,0,0,0,
+LITE,Lumentum,stock,0,0,0,0,0,,0,0,0,
+LRCX,Lam Research Corp,stock,0,0,0,0,0,,0,0,0,
+LUNR,Intuitive Machines,stock,0,0,0,0,0,,0,0,0,
+MOD,Modine,stock,0,0,0,0,0,,0,0,0,
+MPWR,Monolithic Power Systems,stock,0,0,0,0,0,,0,0,0,
+MRVL,Marvell Technology,stock,0,0,0,0,0,,0,0,0,
+MTSI,MACOM,stock,0,0,0,0,0,,0,0,0,
+MXL,MaxLinear,stock,0,0,0,0,0,,0,0,0,
+NNE,Nano Nuclear Energy,stock,0,0,0,0,0,,0,0,0,
+NOW,ServiceNow,stock,0,0,0,0,0,,0,0,0,
+NVTS,Navitas Semiconductor,stock,0,0,0,0,0,,0,0,0,
+ON,ON Semiconductor,stock,0,0,0,0,0,,0,0,0,
+ONTO,Onto Innovation,stock,0,0,0,0,0,,0,0,0,
+OUST,Ouster,stock,0,0,0,0,0,,0,0,0,
+P,Everpure,stock,0,0,0,0,0,,0,0,0,
+PANW,Palo Alto Networks,stock,0,0,0,0,0,,0,0,0,
+PENG,Penguin Solutions,stock,0,0,0,0,0,,0,0,0,
+PL,Planet Labs,stock,0,0,0,0,0,,0,0,0,
+POET,POET Technologies,stock,0,0,0,0,0,,0,0,0,
+POWL,Powell Industries,stock,0,0,0,0,0,,0,0,0,
+PR,Permian Resources,stock,0,0,0,0,0,,0,0,0,
+PWR,Quanta,stock,0,0,0,0,0,,0,0,0,
+QBTS,D-Wave Quantum Inc. Common Stock,stock,0,0,0,0,0,,0,0,0,
+QUBT,Quantum Computing,stock,0,0,0,0,0,,0,0,0,
+RCAT,Red Cat,stock,0,0,0,0,0,,0,0,0,
+RDW,Redwire,stock,0,0,0,0,0,,0,0,0,
+RUN,Sunrun,stock,0,0,0,0,0,,0,0,0,
+SATS,EchoStar,stock,0,0,0,0,0,,0,0,0,
+SCHD,Schwab US Dividend Equity ETF,etf_or_fund,0,0,0,0,0,,0,0,0,
+SIMO,Silicon Motion,stock,0,0,0,0,0,,0,0,0,
+SKHY,SK hynix Inc. American Depositary Shares,stock,0,0,0,0,0,,0,0,0,
+SLS,SELLAS Life Sciences,stock,0,0,0,0,0,,0,0,0,
+SMCI,Super Micro Computer,stock,0,0,0,0,0,,0,0,0,
+SMH,VanEck Semiconductor ETF,etf_or_fund,0,0,0,0,0,,0,0,0,
+SMR,NuScale Power,stock,0,0,0,0,0,,0,0,0,
+SNDK,Sandisk Corporation,stock,0,0,0,0,0,,0,0,0,
+SOUN,SoundHound AI,stock,0,0,0,0,0,,0,0,0,
+SOXX,iShares Semiconductor ETF,etf_or_fund,0,0,0,0,0,,0,0,0,
+TE,T1 Energy,stock,0,0,0,0,0,,0,0,0,
+TEM,Tempus AI,stock,0,0,0,0,0,,0,0,0,
+TER,Teradyne,stock,0,0,0,0,0,,0,0,0,
+TSEM,Tower Semiconductor,stock,0,0,0,0,0,,0,0,0,
+TTD,Trade Desk,stock,0,0,0,0,0,,0,0,0,
+UMC,United Microelectronics,stock,0,0,0,0,0,,0,0,0,
+UPS,UPS,stock,0,0,0,0,0,,0,0,0,
+USAR,USA Rare Earth,stock,0,0,0,0,0,,0,0,0,
+VICR,Vicor,stock,0,0,0,0,0,,0,0,0,
+VRT,Vertiv,stock,0,0,0,0,0,,0,0,0,
+VSAT,ViaSat,stock,0,0,0,0,0,,0,0,0,
+VST,Vistra,stock,0,0,0,0,0,,0,0,0,
+WDC,Western Digital,stock,0,0,0,0,0,,0,0,0,
+WULF,TeraWulf,stock,0,0,0,0,0,,0,0,0,
+WYFI,"WhiteFiber, Inc.",stock,0,0,0,0,0,,0,0,0,
+XLK,State Street Technology Select Sector SPDR ETF,etf_or_fund,0,0,0,0,0,,0,0,0,
+XNDU,Xanadu Quantum,stock,0,0,0,0,0,,0,0,0,
+ZS,Zscaler,stock,0,0,0,0,0,,0,0,0,

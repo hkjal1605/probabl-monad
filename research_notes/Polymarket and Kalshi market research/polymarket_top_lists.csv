@@ -1,0 +1,231 @@
+list,rank,title,slug,category,subcategory,vol24h_usd,vol1wk_usd,vol1mo_usd,vol_total_usd,liquidity_usd,open_interest_usd,comments,end_date,n_markets,series_slug
+top50_24h_volume,1,Fed Decision in October?,fed-decision-in-october-20260617190323537,economy/Fed/macro,,2725713,16209720,42139909,49929109,4783148,7343479,0,2026-10-29T03:59,5,fomc
+top50_24h_volume,2,US-Iran ceasefire continues through...?,us-iran-ceasefire-continues-throughptptpt,geopolitics/war,,1793166,4423717,7367912,18846826,779841,1416453,0,2026-10-31T23:59,20,us-iran-ceasefire-continues
+top50_24h_volume,3,Ballon d'Or Winner 2026,ballon-dor-winner-2026,sports,Soccer,1410511,5835007,17332098,54672610,11332653,4292073,1217,2027-01-01T04:59,89,
+top50_24h_volume,4,Brazil Presidential Election,brazil-presidential-election,politics/elections,,956699,8305674,27822811,188761942,1054673,10862462,25690,2026-10-26T03:59,32,
+top50_24h_volume,5,UEFA Champions League: 2027 Champion,uefa-champions-league-2027-champion-20260701202025549,sports,Soccer,948336,4975699,17694386,55876853,10926424,1182055,46,2027-06-20T03:59,42,
+top50_24h_volume,6,Next French Presidential Election,next-french-presidential-election,politics/elections,,716429,3675367,14114483,154074771,19139732,3444910,997,2027-04-19T03:59,128,
+top50_24h_volume,7,Democratic Presidential Nominee 2028,democratic-presidential-nominee-2028,politics/elections,,595745,2079026,13177712,1295704794,74113392,8451015,844,2028-11-08T04:59,128,
+top50_24h_volume,8,"Elon Musk # tweets October 13 - October 20, 2026?",elon-musk-of-tweets-october-13-october-20-2026,mentions/tweets,,544339,1337003,1373301,2031120,165632,224525,0,2026-10-20T16:00,26,elon-tweets
+top50_24h_volume,9,Prime Minister of Israel after the next election?,who-will-be-the-next-prime-minister-of-israel-after-the-next-election,politics/elections,,525369,3179498,9929055,49122797,3086676,4383108,886,2026-10-28T03:59,28,
+top50_24h_volume,10,Balance of Power: 2026 Midterms,balance-of-power-2026-midterms,politics/elections,,493608,2940386,12763579,25501636,11689350,10181940,407,2026-11-04T04:59,5,
+top50_24h_volume,11,Who wins the Senate pending Hormuz Agreement by Oct 23?,who-wins-the-senate-pending-hormuz-agreement,politics/elections,,431282,1233783,2288200,2281082,120006,380765,4,2026-11-04T04:59,3,
+top50_24h_volume,12,Bitcoin above ___ on October 20?,bitcoin-above-on-october-20-2026,crypto,,376241,538858,538858,544471,672867,328754,0,2026-10-20T16:00,11,btc-multi-strikes-weekly
+top50_24h_volume,13,Brazil Presidential Election Second Round: Margin of Victory,brazil-presidential-election-second-round-margin-of-victory,politics/elections,,362264,2304267,3060397,3060394,426911,536211,5,2026-10-26T03:59,9,
+top50_24h_volume,14,Which party will win the House in 2026?,which-party-will-win-the-house-in-2026,politics/elections,,335534,2171955,6925402,18751954,6754309,9007899,14,2026-11-04T04:59,9,
+top50_24h_volume,15,US announces end of Iranian blockade by...?,us-announces-end-of-iranian-blockade-byptptpt-20260713152715080,geopolitics/war,,325585,1578069,5994172,41569387,352543,1911234,837,2027-01-01T04:59,23,
+top50_24h_volume,16,Republican Presidential Nominee 2028,republican-presidential-nominee-2028,politics/elections,,323466,1935126,6506473,713790368,50118846,8901600,447,2028-11-08T04:59,128,
+top50_24h_volume,17,Ningbo Open: Yulia Putintseva vs Diana Shnaider,wta-putints-shnaide-2026-10-19,sports,Tennis,318376,318500,318500,310835,227073,175089,0,2026-10-27T02:00,16,wta
+top50_24h_volume,18,Paris Saint-Germain FC vs. FC Barcelona - More Markets,ucl-psg-fcb-2026-10-20-more-markets,sports,Soccer,305077,378290,378310,355037,1917630,344840,0,2026-10-20T19:00,60,ucl-2025
+top50_24h_volume,19,Israel x Iran ceasefire continues through...?,israel-x-iran-ceasefire-continues-throughptptpt-20260716224448963,geopolitics/war,,298762,1906877,3687567,37207318,239890,1341421,371,2026-12-31T20:29,29,
+top50_24h_volume,20,What price will Bitcoin hit in October?,what-price-will-bitcoin-hit-in-october-2026,crypto,,292224,2582625,7939982,8895715,1861712,3129169,0,2026-11-01T04:00,35,bitcoin-hit-price-monthly
+top50_24h_volume,21,What price will Bitcoin hit in 2026?,what-price-will-bitcoin-hit-before-2027,crypto,,289333,2521716,10369124,76597219,3520403,14073102,0,2027-01-01T05:00,47,bitcoin-hit-price-monthly
+top50_24h_volume,22,"Elon Musk # tweets October 16 - October 23, 2026?",elon-musk-of-tweets-october-16-october-23-2026,mentions/tweets,,288365,732903,734153,754458,213814,171423,0,2026-10-23T16:00,26,elon-tweets
+top50_24h_volume,23,SSC Napoli vs. FK Bodø/Glimt,ucl-nap-bog-2026-10-20,sports,Soccer,257457,260949,261005,260978,660601,252890,0,2026-10-20T19:00,3,ucl-2025
+top50_24h_volume,24,Japan Women's Open: Paula Badosa vs Antonia Ruzic,wta-badosa-ruzic-2026-10-18,sports,Tennis,246063,247663,247663,207573,113163,159358,0,2026-10-26T01:00,16,wta
+top50_24h_volume,25,Putin out as President of Russia by...?,putin-out-before-2027,geopolitics/war,,245352,711896,4112442,29689597,728835,7548684,1,2027-07-01T03:59,5,putin-out-as-president
+top50_24h_volume,26,Manchester City FC vs. AEK,ucl-mnc-aek1-2026-10-20,sports,Soccer,242240,357966,358288,358248,737867,300432,0,2026-10-20T19:00,3,ucl-2025
+top50_24h_volume,27,Japan Women's Open: Moyuka Uchijima vs Ena Shibahara,wta-uchijim-shibaha-2026-10-18,sports,Tennis,239488,243269,243269,222112,260364,136127,0,2026-10-26T01:00,16,wta
+top50_24h_volume,28,Who wins the Senate pending Hormuz Agreement before the midterms?,who-wins-the-senate-pending-hormuz-agreement-before-the-midterms,politics/elections,,232217,1210233,1332772,1326458,145468,332071,0,2026-11-04T04:59,3,
+top50_24h_volume,29,Anthropic announces bankruptcy by...?,anthropic-announces-bankruptcy-by,AI,,228108,346492,2028203,2073355,822581,1190553,12,2030-01-01T04:59,3,
+top50_24h_volume,30,Worlds 2026: Winner,worlds-2026-winner,esports,League of Legends,218727,1181344,1776932,1898591,2105432,248295,12,2026-11-29T04:59,20,
+top50_24h_volume,31,"Kim Jong Un out as Supreme Leader of North Korea by December 31, 2026?",kim-jong-un-out-as-supreme-leader-of-north-korea-before-2027,geopolitics/war,,211703,215942,217596,397086,56700,125188,0,2027-01-01T04:59,1,kim-jong-un-out
+top50_24h_volume,32,# of views of Grand Theft Auto VI Launch Trailer on week 1?,of-views-of-grand-theft-auto-vi-launch-trailer-on-week-1,culture/entertainment/awards,,210961,626280,626280,636757,54508,96364,0,2026-10-23T03:59,7,gta-vi-extended-look-views
+top50_24h_volume,33,Presidential Election Winner 2028,presidential-election-winner-2028,politics/elections,,210672,1790977,9764555,717451078,58816407,40508924,1056,2028-11-08T04:59,128,
+top50_24h_volume,34,Israel Election: Likud # of seats?,israel-election-likud-of-seats,politics/elections,,204521,309770,607018,806356,195552,430287,18,2026-10-28T03:59,5,
+top50_24h_volume,35,Strait of Hormuz traffic returns to normal by December 31?,strait-of-hormuz-traffic-returns-to-normal-by-december-31,geopolitics/war,,203956,633226,3410819,15267337,600929,1586093,0,2027-01-01T04:59,1,hormuz-traffic-returns-to-normal
+top50_24h_volume,36,Texas Senate Election Winner,texas-senate-election-winner,politics/elections,,199714,827663,2942068,4279976,898493,2505037,172,2026-11-04T04:59,13,
+top50_24h_volume,37,Ethereum above ___ on October 20?,ethereum-above-on-october-20-2026,crypto,,192944,275925,275925,273974,344314,176114,0,2026-10-20T16:00,11,ethereum-multi-strikes-weekly
+top50_24h_volume,38,Ningbo Open: Sara Bejlek vs Alycia Parks,wta-bejlek-parks-2026-10-20,sports,Tennis,191553,191553,191553,182739,134028,111962,0,2026-10-27T05:00,17,wta
+top50_24h_volume,39,What will WTI Crude Oil (WTI) hit in October 2026?,what-price-will-wti-hit-in-october-2026,finance/stocks/earnings,,191101,1064753,2842914,3162087,588787,1178305,0,2026-11-01T03:59,30,crude-oil-cl-hit
+top50_24h_volume,40,MLB World Series Champion 2026,mlb-world-series-champion-2026,sports,MLB,185997,753852,1683699,45470153,261453,687825,47,2026-10-31T23:55,31,
+top50_24h_volume,41,Pro Football: 2027 Champion,pro-football-2027-champion-20260729185915366,sports,NFL,181125,3042630,11065218,68552156,6705846,1064932,67,2027-04-01T03:59,33,
+top50_24h_volume,42,US-Iran ceasefire continues through the midterms?,us-iran-ceasefire-continues-through-the-midterms,geopolitics/war,,170067,637480,806793,806156,307989,107327,0,2026-11-04T04:59,1,us-iran-ceasefire-continues
+top50_24h_volume,43,Taipei Mayor Election Winner,taipei-mayor-election-winner-20260813125857100,politics/elections,,157032,340406,1129502,1353719,274507,571497,88,2026-11-29T04:59,30,
+top50_24h_volume,44,Next Press Secretary announced by...?,next-press-secretary-announced-byptptpt,politics/elections,,156908,516288,516288,516185,210822,142455,10,2027-01-01T04:59,3,
+top50_24h_volume,45,Alberta Independence Referendum: Margin of Victory,alberta-independence-referendum-margin-of-victory,politics/elections,,155649,252768,269878,264292,128860,98492,33,2026-10-20T03:59,7,
+top50_24h_volume,46,Israeli Legislative Election Winner,israeli-legislative-election-winner,politics/elections,,155040,539529,854249,1193690,727419,473299,13,2026-10-28T03:59,39,
+top50_24h_volume,47,EPL: 2027 Champion,epl-2027-champion-20260701200428749,sports,Soccer,151917,857356,4276939,22776812,9957988,2182430,47,2027-06-15T03:59,24,
+top50_24h_volume,48,LALIGA: 2027 Champion,laliga-2027-champion-20260701200737375,sports,Soccer,150203,877606,1910337,8943035,5374623,344850,3,2027-06-15T03:59,24,
+top50_24h_volume,49,Paris Saint-Germain FC vs. FC Barcelona,ucl-psg-fcb-2026-10-20,sports,Soccer,144735,300181,300323,294583,2181926,251716,0,2026-10-20T19:00,3,ucl-2025
+top50_24h_volume,50,Will the US confirm that aliens exist by...?,will-the-us-confirm-that-aliens-exist-before-2027,weather/climate/science,,141702,1146538,4518634,74303911,783817,8588469,1734,2027-01-01T04:59,7,
+top50_1wk_volume,1,"New ""Stranger Things"" episode released by...? ",new-stranger-things-episode-released-by-wednesday,culture/entertainment/awards,,0,19309692,27726455,30906011,107284,303627,732,2027-04-01T03:59,12,
+top50_1wk_volume,2,Fed Decision in October?,fed-decision-in-october-20260617190323537,economy/Fed/macro,,2725713,16209720,42139909,49929109,4783148,7343479,0,2026-10-29T03:59,5,fomc
+top50_1wk_volume,3,Brazil Presidential Election,brazil-presidential-election,politics/elections,,956699,8305674,27822811,188761942,1054673,10862462,25690,2026-10-26T03:59,32,
+top50_1wk_volume,4,Ballon d'Or Winner 2026,ballon-dor-winner-2026,sports,Soccer,1410511,5835007,17332098,54672610,11332653,4292073,1217,2027-01-01T04:59,89,
+top50_1wk_volume,5,UEFA Champions League: 2027 Champion,uefa-champions-league-2027-champion-20260701202025549,sports,Soccer,948336,4975699,17694386,55876853,10926424,1182055,46,2027-06-20T03:59,42,
+top50_1wk_volume,6,US-Iran ceasefire continues through...?,us-iran-ceasefire-continues-throughptptpt,geopolitics/war,,1793166,4423717,7367912,18846826,779841,1416453,0,2026-10-31T23:59,20,us-iran-ceasefire-continues
+top50_1wk_volume,7,Next French Presidential Election,next-french-presidential-election,politics/elections,,716429,3675367,14114483,154074771,19139732,3444910,997,2027-04-19T03:59,128,
+top50_1wk_volume,8,Prime Minister of Israel after the next election?,who-will-be-the-next-prime-minister-of-israel-after-the-next-election,politics/elections,,525369,3179498,9929055,49122797,3086676,4383108,886,2026-10-28T03:59,28,
+top50_1wk_volume,9,Pro Football: 2027 Champion,pro-football-2027-champion-20260729185915366,sports,NFL,181125,3042630,11065218,68552156,6705846,1064932,67,2027-04-01T03:59,33,
+top50_1wk_volume,10,Balance of Power: 2026 Midterms,balance-of-power-2026-midterms,politics/elections,,493608,2940386,12763579,25501636,11689350,10181940,407,2026-11-04T04:59,5,
+top50_1wk_volume,11,Indiana enacts data center moratorium by...?,indiana-enacts-data-center-moratorium-by-20260929,AI,,28527,2676359,5451723,6073378,789946,302840,3,2029-01-01T04:59,4,
+top50_1wk_volume,12,What price will Bitcoin hit in October?,what-price-will-bitcoin-hit-in-october-2026,crypto,,292224,2582625,7939982,8895715,1861712,3129169,0,2026-11-01T04:00,35,bitcoin-hit-price-monthly
+top50_1wk_volume,13,What price will Bitcoin hit in 2026?,what-price-will-bitcoin-hit-before-2027,crypto,,289333,2521716,10369124,76597219,3520403,14073102,0,2027-01-01T05:00,47,bitcoin-hit-price-monthly
+top50_1wk_volume,14,Brazil Presidential Election Second Round: Margin of Victory,brazil-presidential-election-second-round-margin-of-victory,politics/elections,,362264,2304267,3060397,3060394,426911,536211,5,2026-10-26T03:59,9,
+top50_1wk_volume,15,Which party will win the House in 2026?,which-party-will-win-the-house-in-2026,politics/elections,,335534,2171955,6925402,18751954,6754309,9007899,14,2026-11-04T04:59,9,
+top50_1wk_volume,16,Democratic Presidential Nominee 2028,democratic-presidential-nominee-2028,politics/elections,,595745,2079026,13177712,1295704794,74113392,8451015,844,2028-11-08T04:59,128,
+top50_1wk_volume,17,Republican Presidential Nominee 2028,republican-presidential-nominee-2028,politics/elections,,323466,1935126,6506473,713790368,50118846,8901600,447,2028-11-08T04:59,128,
+top50_1wk_volume,18,Israel x Iran ceasefire continues through...?,israel-x-iran-ceasefire-continues-throughptptpt-20260716224448963,geopolitics/war,,298762,1906877,3687567,37207318,239890,1341421,371,2026-12-31T20:29,29,
+top50_1wk_volume,19,Presidential Election Winner 2028,presidential-election-winner-2028,politics/elections,,210672,1790977,9764555,717451078,58816407,40508924,1056,2028-11-08T04:59,128,
+top50_1wk_volume,20,US announces end of Iranian blockade by...?,us-announces-end-of-iranian-blockade-byptptpt-20260713152715080,geopolitics/war,,325585,1578069,5994172,41569387,352543,1911234,837,2027-01-01T04:59,23,
+top50_1wk_volume,21,Israel x Hamas ceasefire cancelled by...?,israel-x-hamas-ceasefire-cancelled-by-october-31,geopolitics/war,,0,1559004,3202538,4068178,12504,6579,979,2027-01-01T04:59,8,
+top50_1wk_volume,22,Nicolás Maduro released from custody by...?,nicols-maduro-released-from-custody-by,geopolitics/war,,5,1504526,2396314,2690975,26048,86610,61,2027-01-01T04:59,3,
+top50_1wk_volume,23,NBA: 2027 Champion,nba-2027-champion,sports,NBA,124535,1357532,4332825,26593094,8557220,740665,30,2027-07-01T03:59,36,
+top50_1wk_volume,24,"Elon Musk # tweets October 13 - October 20, 2026?",elon-musk-of-tweets-october-13-october-20-2026,mentions/tweets,,544339,1337003,1373301,2031120,165632,224525,0,2026-10-20T16:00,26,elon-tweets
+top50_1wk_volume,25,Who wins the Senate pending Hormuz Agreement by Oct 23?,who-wins-the-senate-pending-hormuz-agreement,politics/elections,,431282,1233783,2288200,2281082,120006,380765,4,2026-11-04T04:59,3,
+top50_1wk_volume,26,Epstein client list released by...?,epstein-client-list-released-in-2025-372,politics/elections,,75,1219101,3246435,4376655,5824,3224,1049,2027-01-01T04:59,5,
+top50_1wk_volume,27,Who wins the Senate pending Hormuz Agreement before the midterms?,who-wins-the-senate-pending-hormuz-agreement-before-the-midterms,politics/elections,,232217,1210233,1332772,1326458,145468,332071,0,2026-11-04T04:59,3,
+top50_1wk_volume,28,Worlds 2026: Winner,worlds-2026-winner,esports,League of Legends,218727,1181344,1776932,1898591,2105432,248295,12,2026-11-29T04:59,20,
+top50_1wk_volume,29,Will the US confirm that aliens exist by...?,will-the-us-confirm-that-aliens-exist-before-2027,weather/climate/science,,141702,1146538,4518634,74303911,783817,8588469,1734,2027-01-01T04:59,7,
+top50_1wk_volume,30,Fed Decision in December?,fed-decision-in-december-20260729232808632,economy/Fed/macro,,139440,1072571,3020246,4113027,802579,569769,0,2026-12-10T04:59,5,fomc
+top50_1wk_volume,31,What will WTI Crude Oil (WTI) hit in October 2026?,what-price-will-wti-hit-in-october-2026,finance/stocks/earnings,,191101,1064753,2842914,3162087,588787,1178305,0,2026-11-01T03:59,30,crude-oil-cl-hit
+top50_1wk_volume,32,Will MetaMask launch a token by ___ ?,will-metamask-launch-a-token-in-2025,crypto,,30,914181,1541702,8724188,5895,68771,323,2027-01-01T04:59,4,
+top50_1wk_volume,33,LALIGA: 2027 Champion,laliga-2027-champion-20260701200737375,sports,Soccer,150203,877606,1910337,8943035,5374623,344850,3,2027-06-15T03:59,24,
+top50_1wk_volume,34,EPL: 2027 Champion,epl-2027-champion-20260701200428749,sports,Soccer,151917,857356,4276939,22776812,9957988,2182430,47,2027-06-15T03:59,24,
+top50_1wk_volume,35,Which party will win the Senate in 2026?,which-party-will-win-the-senate-in-2026,politics/elections,,89496,846331,2460308,7221406,6350975,2640408,220,2026-11-04T04:59,9,
+top50_1wk_volume,36,Texas Senate Election Winner,texas-senate-election-winner,politics/elections,,199714,827663,2942068,4279976,898493,2505037,172,2026-11-04T04:59,13,
+top50_1wk_volume,37,Will the U.S. invade Iran before 2027?,will-the-us-invade-iran-before-2027,geopolitics/war,,29803,759152,7307761,74662912,458596,6934196,1,2027-01-01T04:59,1,us-to-invade-iran
+top50_1wk_volume,38,MLB World Series Champion 2026,mlb-world-series-champion-2026,sports,MLB,185997,753852,1683699,45470153,261453,687825,47,2026-10-31T23:55,31,
+top50_1wk_volume,39,What price will Ethereum hit in 2026?,what-price-will-ethereum-hit-before-2027,crypto,,15688,752349,3755996,18149992,1568891,5972808,0,2027-01-01T05:00,30,ethereum-hit-price-monthly
+top50_1wk_volume,40,"Elon Musk # tweets October 16 - October 23, 2026?",elon-musk-of-tweets-october-16-october-23-2026,mentions/tweets,,288365,732903,734153,754458,213814,171423,0,2026-10-23T16:00,26,elon-tweets
+top50_1wk_volume,41,Will the U.S. invade Venezuela by...?,will-the-us-invade-venezuela-in-2025,geopolitics/war,,6397,713544,9534089,14219930,45500,43011,1176,2027-01-01T04:59,4,
+top50_1wk_volume,42,Putin out as President of Russia by...?,putin-out-before-2027,geopolitics/war,,245352,711896,4112442,29689597,728835,7548684,1,2027-07-01T03:59,5,putin-out-as-president
+top50_1wk_volume,43,What price will Ethereum hit in October?,what-price-will-ethereum-hit-in-october-2026,crypto,,76090,699877,1983084,2278866,1295765,993693,0,2026-11-01T04:00,37,ethereum-hit-price-monthly
+top50_1wk_volume,44,Who wins the Senate pending oil below $85 before the midterms?,who-wins-the-senate-pending-oil-below-85-before-the-midterms,politics/elections,,73082,675939,746903,746882,677046,60724,0,2026-11-04T04:59,4,
+top50_1wk_volume,45,Strait of Hormuz traffic returns to normal by October 31?,strait-of-hormuz-traffic-returns-to-normal-by-october-31-20260810151043583,geopolitics/war,,73260,666581,2166172,2916031,134459,1304884,0,2026-11-01T03:59,1,hormuz-traffic-returns-to-normal
+top50_1wk_volume,46,NATO x Russia military clash by...?,nato-x-russia-military-clash-in-2025,geopolitics/war,,107739,656508,2585034,9503529,150175,1648977,285,2027-01-03T04:59,6,
+top50_1wk_volume,47,US-Iran ceasefire continues through the midterms?,us-iran-ceasefire-continues-through-the-midterms,geopolitics/war,,170067,637480,806793,806156,307989,107327,0,2026-11-04T04:59,1,us-iran-ceasefire-continues
+top50_1wk_volume,48,Strait of Hormuz traffic returns to normal by December 31?,strait-of-hormuz-traffic-returns-to-normal-by-december-31,geopolitics/war,,203956,633226,3410819,15267337,600929,1586093,0,2027-01-01T04:59,1,hormuz-traffic-returns-to-normal
+top50_1wk_volume,49,# of views of Grand Theft Auto VI Launch Trailer on week 1?,of-views-of-grand-theft-auto-vi-launch-trailer-on-week-1,culture/entertainment/awards,,210961,626280,626280,636757,54508,96364,0,2026-10-23T03:59,7,gta-vi-extended-look-views
+top50_1wk_volume,50,Israeli Legislative Election Winner,israeli-legislative-election-winner,politics/elections,,155040,539529,854249,1193690,727419,473299,13,2026-10-28T03:59,39,
+top50_total_volume,1,Democratic Presidential Nominee 2028,democratic-presidential-nominee-2028,politics/elections,,595745,2079026,13177712,1295704794,74113392,8451015,844,2028-11-08T04:59,128,
+top50_total_volume,2,Presidential Election Winner 2028,presidential-election-winner-2028,politics/elections,,210672,1790977,9764555,717451078,58816407,40508924,1056,2028-11-08T04:59,128,
+top50_total_volume,3,Republican Presidential Nominee 2028,republican-presidential-nominee-2028,politics/elections,,323466,1935126,6506473,713790368,50118846,8901600,447,2028-11-08T04:59,128,
+top50_total_volume,4,F1 Drivers' Champion,2026-f1-drivers-champion,sports,F1/motorsport,69220,206622,1396429,204505211,1805208,1272212,277,2027-04-01T03:59,32,
+top50_total_volume,5,Brazil Presidential Election,brazil-presidential-election,politics/elections,,956699,8305674,27822811,188761942,1054673,10862462,25690,2026-10-26T03:59,32,
+top50_total_volume,6,Next French Presidential Election,next-french-presidential-election,politics/elections,,716429,3675367,14114483,154074771,19139732,3444910,997,2027-04-19T03:59,128,
+top50_total_volume,7,Netanyahu out by...?,netanyahu-out-before-2027,geopolitics/war,,9851,85807,232466,124618863,72836,438935,29,2027-01-01T04:59,6,netanyahu-out
+top50_total_volume,8,Venezuela leader end of 2026?,venezuela-leader-end-of-2026,geopolitics/war,,34456,300727,1520429,98525726,2209024,679608,485,2027-01-01T04:59,57,
+top50_total_volume,9,What price will Bitcoin hit in 2026?,what-price-will-bitcoin-hit-before-2027,crypto,,289333,2521716,10369124,76597219,3520403,14073102,0,2027-01-01T05:00,47,bitcoin-hit-price-monthly
+top50_total_volume,10,Kharg Island no longer under Iranian control by...?,kharg-island-no-longer-under-iranian-control-by-march-31,geopolitics/war,,76955,445117,1480539,76331824,265126,1022991,522,2027-01-01T04:59,11,
+top50_total_volume,11,Will the U.S. invade Iran before 2027?,will-the-us-invade-iran-before-2027,geopolitics/war,,29803,759152,7307761,74662912,458596,6934196,1,2027-01-01T04:59,1,us-to-invade-iran
+top50_total_volume,12,Will the US confirm that aliens exist by...?,will-the-us-confirm-that-aliens-exist-before-2027,weather/climate/science,,141702,1146538,4518634,74303911,783817,8588469,1734,2027-01-01T04:59,7,
+top50_total_volume,13,Pro Football: 2027 Champion,pro-football-2027-champion-20260729185915366,sports,NFL,181125,3042630,11065218,68552156,6705846,1064932,67,2027-04-01T03:59,33,
+top50_total_volume,14,Will Jesus Christ return before 2027?,will-jesus-christ-return-before-2027,culture/entertainment/awards,,6901,103408,741695,66578380,407737,1015355,1,2027-01-01T04:59,1,jesus-christ-return
+top50_total_volume,15,UEFA Champions League: 2027 Champion,uefa-champions-league-2027-champion-20260701202025549,sports,Soccer,948336,4975699,17694386,55876853,10926424,1182055,46,2027-06-20T03:59,42,
+top50_total_volume,16,Ballon d'Or Winner 2026,ballon-dor-winner-2026,sports,Soccer,1410511,5835007,17332098,54672610,11332653,4292073,1217,2027-01-01T04:59,89,
+top50_total_volume,17,How many Fed rate cuts in 2026?,how-many-fed-rate-cuts-in-2026,economy/Fed/macro,,31270,435486,1402923,54531363,3742589,1937564,127,2027-01-01T04:59,13,
+top50_total_volume,18,Fed Decision in October?,fed-decision-in-october-20260617190323537,economy/Fed/macro,,2725713,16209720,42139909,49929109,4783148,7343479,0,2026-10-29T03:59,5,fomc
+top50_total_volume,19,Prime Minister of Israel after the next election?,who-will-be-the-next-prime-minister-of-israel-after-the-next-election,politics/elections,,525369,3179498,9929055,49122797,3086676,4383108,886,2026-10-28T03:59,28,
+top50_total_volume,20,MLB World Series Champion 2026,mlb-world-series-champion-2026,sports,MLB,185997,753852,1683699,45470153,261453,687825,47,2026-10-31T23:55,31,
+top50_total_volume,21,Will China invade Taiwan by end of 2026?,will-china-invade-taiwan-before-2027,geopolitics/war,,62189,419909,1914255,44371714,388156,5996647,73,2027-01-01T04:59,1,china-invade-taiwan
+top50_total_volume,22,California Governor Election Winner,california-governor-election-2026,politics/elections,,54851,277300,949964,42092200,7004460,1387258,89,2026-11-04T04:59,45,
+top50_total_volume,23,US announces end of Iranian blockade by...?,us-announces-end-of-iranian-blockade-byptptpt-20260713152715080,geopolitics/war,,325585,1578069,5994172,41569387,352543,1911234,837,2027-01-01T04:59,23,
+top50_total_volume,24,Iran leader end of 2026?,iran-leader-end-of-2026,geopolitics/war,,9246,61475,375678,40263229,1192247,815977,156,2026-12-31T17:00,123,
+top50_total_volume,25,Israel x Iran ceasefire continues through...?,israel-x-iran-ceasefire-continues-throughptptpt-20260716224448963,geopolitics/war,,298762,1906877,3687567,37207318,239890,1341421,371,2026-12-31T20:29,29,
+top50_total_volume,26,Will Trump acquire Greenland before 2027?,will-trump-acquire-greenland-before-2027,geopolitics/war,,5528,17293,158223,35687934,136687,2909280,0,2027-01-01T04:59,1,geenland-deriv
+top50_total_volume,27,"New ""Stranger Things"" episode released by...? ",new-stranger-things-episode-released-by-wednesday,culture/entertainment/awards,,0,19309692,27726455,30906011,107284,303627,732,2027-04-01T03:59,12,
+top50_total_volume,28,Putin out as President of Russia by...?,putin-out-before-2027,geopolitics/war,,245352,711896,4112442,29689597,728835,7548684,1,2027-07-01T03:59,5,putin-out-as-president
+top50_total_volume,29,US obtains Iranian enriched uranium by...?,us-obtains-iranian-enriched-uranium-by,geopolitics/war,,1632,60338,97774,29588392,100177,362715,195,2027-01-01T04:59,8,
+top50_total_volume,30,F1 Constructors' Champion,f1-constructors-champion,sports,F1/motorsport,3525,25174,263320,29194238,346306,443734,52,2027-04-01T03:59,12,
+top50_total_volume,31,Iran leadership change by...?,iran-leadership-change-by,geopolitics/war,,42988,351229,1543736,27599006,345410,1123715,1090,2027-07-01T03:59,14,
+top50_total_volume,32,Will the Iranian regime fall before 2027?,will-the-iranian-regime-fall-by-the-end-of-2026,geopolitics/war,,45565,458445,1412106,27584371,464757,4619545,6,2027-01-01T04:59,1,iran-regime
+top50_total_volume,33,When will Bitcoin hit $150k?,when-will-bitcoin-hit-150k,crypto,,67,331084,901340,27309734,99346,245512,78,2027-01-01T05:00,9,
+top50_total_volume,34,NBA: 2027 Champion,nba-2027-champion,sports,NBA,124535,1357532,4332825,26593094,8557220,740665,30,2027-07-01T03:59,36,
+top50_total_volume,35,Balance of Power: 2026 Midterms,balance-of-power-2026-midterms,politics/elections,,493608,2940386,12763579,25501636,11689350,10181940,407,2026-11-04T04:59,5,
+top50_total_volume,36,Clarity Act (H.R.3633) signed into law in 2026?,clarity-act-signed-into-law-in-2026,crypto,,16084,103237,1620935,24109232,226659,5219546,386,2027-01-01T05:00,1,
+top50_total_volume,37,EPL: 2027 Champion,epl-2027-champion-20260701200428749,sports,Soccer,151917,857356,4276939,22776812,9957988,2182430,47,2027-06-15T03:59,24,
+top50_total_volume,38,Will Reza Pahlavi enter Iran by...?,will-reza-pahlavi-enter-iran-by-june-30,geopolitics/war,,1547,243402,969585,22188523,89782,606987,432,2027-01-01T04:59,7,
+top50_total_volume,39,MLS Cup Winner 2026,mls-cup-winner-2026,sports,Soccer,5468,21843,1180256,21965970,743091,293498,16,2027-01-01T04:59,31,
+top50_total_volume,40,US-Iran Final Nuclear Deal by…?,us-iran-final-nuclear-deal-by-20260621201254412,geopolitics/war,,58985,209948,1683876,20110920,319904,1600586,162,2027-01-01T04:59,9,
+top50_total_volume,41,US-Iran ceasefire continues through...?,us-iran-ceasefire-continues-throughptptpt,geopolitics/war,,1793166,4423717,7367912,18846826,779841,1416453,0,2026-10-31T23:59,20,us-iran-ceasefire-continues
+top50_total_volume,42,Which party will win the House in 2026?,which-party-will-win-the-house-in-2026,politics/elections,,335534,2171955,6925402,18751954,6754309,9007899,14,2026-11-04T04:59,9,
+top50_total_volume,43,Hantavirus pandemic in 2026?,hantavirus-pandemic-in-2026,weather/climate/science,,3394,16035,340570,18624212,144338,1106049,571,2027-01-01T04:59,1,
+top50_total_volume,44,Which companies will be acquired before 2027?,which-companies-will-be-acquired-before-2027,AI,,183,11811,68954,18381634,191475,103741,23,2027-01-01T04:59,19,
+top50_total_volume,45,Iran agrees to surrender enriched uranium stockpile by...?,iran-agrees-to-surrender-enriched-uranium-stockpile-by,geopolitics/war,,54586,181647,297269,18228369,85121,252140,218,2027-01-01T04:59,7,
+top50_total_volume,46,What price will Ethereum hit in 2026?,what-price-will-ethereum-hit-before-2027,crypto,,15688,752349,3755996,18149992,1568891,5972808,0,2027-01-01T05:00,30,ethereum-hit-price-monthly
+top50_total_volume,47,Highest grossing movie in 2026?,highest-grossing-movie-in-2026,culture/entertainment/awards,,2671,20237,152282,17665166,2353952,323747,1,2027-01-08T04:59,28,highest-grossing-movie
+top50_total_volume,48,Bab el-Mandeb Strait effectively closed by...?,bab-el-mandeb-strait-effectively-closed-by,geopolitics/war,,54151,459992,1853447,17339275,346799,1195250,280,2027-01-01T04:59,13,
+top50_total_volume,49,Los Angeles Mayoral Election,los-angeles-mayoral-election-117,politics/elections,,42542,135046,1619929,15429581,276431,1538338,182,2026-06-03T03:59,15,
+top50_total_volume,50,Strait of Hormuz traffic returns to normal by December 31?,strait-of-hormuz-traffic-returns-to-normal-by-december-31,geopolitics/war,,203956,633226,3410819,15267337,600929,1586093,0,2027-01-01T04:59,1,hormuz-traffic-returns-to-normal
+top50_liquidity,1,Democratic Presidential Nominee 2028,democratic-presidential-nominee-2028,politics/elections,,595745,2079026,13177712,1295704794,74113392,8451015,844,2028-11-08T04:59,128,
+top50_liquidity,2,Presidential Election Winner 2028,presidential-election-winner-2028,politics/elections,,210672,1790977,9764555,717451078,58816407,40508924,1056,2028-11-08T04:59,128,
+top50_liquidity,3,Republican Presidential Nominee 2028,republican-presidential-nominee-2028,politics/elections,,323466,1935126,6506473,713790368,50118846,8901600,447,2028-11-08T04:59,128,
+top50_liquidity,4,Next French Presidential Election,next-french-presidential-election,politics/elections,,716429,3675367,14114483,154074771,19139732,3444910,997,2027-04-19T03:59,128,
+top50_liquidity,5,Balance of Power: 2026 Midterms,balance-of-power-2026-midterms,politics/elections,,493608,2940386,12763579,25501636,11689350,10181940,407,2026-11-04T04:59,5,
+top50_liquidity,6,Ballon d'Or Winner 2026,ballon-dor-winner-2026,sports,Soccer,1410511,5835007,17332098,54672610,11332653,4292073,1217,2027-01-01T04:59,89,
+top50_liquidity,7,UEFA Champions League: 2027 Champion,uefa-champions-league-2027-champion-20260701202025549,sports,Soccer,948336,4975699,17694386,55876853,10926424,1182055,46,2027-06-20T03:59,42,
+top50_liquidity,8,EPL: 2027 Champion,epl-2027-champion-20260701200428749,sports,Soccer,151917,857356,4276939,22776812,9957988,2182430,47,2027-06-15T03:59,24,
+top50_liquidity,9,NBA: 2027 Champion,nba-2027-champion,sports,NBA,124535,1357532,4332825,26593094,8557220,740665,30,2027-07-01T03:59,36,
+top50_liquidity,10,California Governor Election Winner,california-governor-election-2026,politics/elections,,54851,277300,949964,42092200,7004460,1387258,89,2026-11-04T04:59,45,
+top50_liquidity,11,Which party will win the House in 2026?,which-party-will-win-the-house-in-2026,politics/elections,,335534,2171955,6925402,18751954,6754309,9007899,14,2026-11-04T04:59,9,
+top50_liquidity,12,Pro Football: 2027 Champion,pro-football-2027-champion-20260729185915366,sports,NFL,181125,3042630,11065218,68552156,6705846,1064932,67,2027-04-01T03:59,33,
+top50_liquidity,13,Which party will win the Senate in 2026?,which-party-will-win-the-senate-in-2026,politics/elections,,89496,846331,2460308,7221406,6350975,2640408,220,2026-11-04T04:59,9,
+top50_liquidity,14,LALIGA: 2027 Champion,laliga-2027-champion-20260701200737375,sports,Soccer,150203,877606,1910337,8943035,5374623,344850,3,2027-06-15T03:59,24,
+top50_liquidity,15,Fed Decision in October?,fed-decision-in-october-20260617190323537,economy/Fed/macro,,2725713,16209720,42139909,49929109,4783148,7343479,0,2026-10-29T03:59,5,fomc
+top50_liquidity,16,How many Fed rate cuts in 2026?,how-many-fed-rate-cuts-in-2026,economy/Fed/macro,,31270,435486,1402923,54531363,3742589,1937564,127,2027-01-01T04:59,13,
+top50_liquidity,17,What price will Bitcoin hit in 2026?,what-price-will-bitcoin-hit-before-2027,crypto,,289333,2521716,10369124,76597219,3520403,14073102,0,2027-01-01T05:00,47,bitcoin-hit-price-monthly
+top50_liquidity,18,Prime Minister of Israel after the next election?,who-will-be-the-next-prime-minister-of-israel-after-the-next-election,politics/elections,,525369,3179498,9929055,49122797,3086676,4383108,886,2026-10-28T03:59,28,
+top50_liquidity,19,UEFA EURO 2028: Winner,uefa-euro-2028-winner-20260720162754434,sports,Soccer,5046,30291,48129,161662,2926388,10971,4,2028-07-24T03:59,66,
+top50_liquidity,20,Paris Saint-Germain FC vs. FC Barcelona - Exact Score,ucl-psg-fcb-2026-10-20-exact-score,sports,Soccer,101152,109446,122465,121957,2530531,96464,0,2026-10-20T19:00,37,ucl-2025
+top50_liquidity,21,Highest grossing movie in 2026?,highest-grossing-movie-in-2026,culture/entertainment/awards,,2671,20237,152282,17665166,2353952,323747,1,2027-01-08T04:59,28,highest-grossing-movie
+top50_liquidity,22,Venezuela leader end of 2026?,venezuela-leader-end-of-2026,geopolitics/war,,34456,300727,1520429,98525726,2209024,679608,485,2027-01-01T04:59,57,
+top50_liquidity,23,Paris Saint-Germain FC vs. FC Barcelona,ucl-psg-fcb-2026-10-20,sports,Soccer,144735,300181,300323,294583,2181926,251716,0,2026-10-20T19:00,3,ucl-2025
+top50_liquidity,24,Worlds 2026: Winner,worlds-2026-winner,esports,League of Legends,218727,1181344,1776932,1898591,2105432,248295,12,2026-11-29T04:59,20,
+top50_liquidity,25,VfB Stuttgart vs. Club Atlético de Madrid - Exact Score,ucl-stu-atm-2026-10-20-exact-score,sports,Soccer,24474,24516,24516,37556,2039848,22793,0,2026-10-20T19:00,37,ucl-2025
+top50_liquidity,26,NHL: 2027 Champion,nhl-2027-champion-20260612185656162,sports,NHL,14854,59073,372870,1302168,1994844,53451,5,2027-07-01T03:59,38,
+top50_liquidity,27,Liverpool FC vs. Villarreal CF - Exact Score,ucl-liv-vil-2026-10-20-exact-score,sports,Soccer,5695,5903,5903,18907,1962654,5984,0,2026-10-20T19:00,37,ucl-2025
+top50_liquidity,28,Patriots vs. Bears,nfl-ne-chi-2026-10-23,sports,NFL,9076,11256,11258,12702,1955284,10723,0,2026-10-23T00:15,306,nfl-2026
+top50_liquidity,29,Paris Saint-Germain FC vs. FC Barcelona - More Markets,ucl-psg-fcb-2026-10-20-more-markets,sports,Soccer,305077,378290,378310,355037,1917630,344840,0,2026-10-20T19:00,60,ucl-2025
+top50_liquidity,30,What price will Bitcoin hit in October?,what-price-will-bitcoin-hit-in-october-2026,crypto,,292224,2582625,7939982,8895715,1861712,3129169,0,2026-11-01T04:00,35,bitcoin-hit-price-monthly
+top50_liquidity,31,F1 Drivers' Champion,2026-f1-drivers-champion,sports,F1/motorsport,69220,206622,1396429,204505211,1805208,1272212,277,2027-04-01T03:59,32,
+top50_liquidity,32,Manchester City FC vs. AEK - More Markets,ucl-mnc-aek1-2026-10-20-more-markets,sports,Soccer,47028,55083,55116,47496,1755791,55840,0,2026-10-20T19:00,60,ucl-2025
+top50_liquidity,33,#1 Searched Person on Google 2026?,1-searched-person-on-google-this-year-20260717214320563,tech,,557,2447,19900,343398,1753605,71968,6,2027-04-01T03:59,93,
+top50_liquidity,34,Liverpool FC vs. Villarreal CF - More Markets,ucl-liv-vil-2026-10-20-more-markets,sports,Soccer,96902,99496,99496,75281,1703327,101562,0,2026-10-20T19:00,60,ucl-2025
+top50_liquidity,35,AS Roma vs. ŠK Slovan Bratislava - More Markets,ucl-rom-sba-2026-10-20-more-markets,sports,Soccer,68909,73858,73858,74281,1683314,74674,0,2026-10-20T19:00,60,ucl-2025
+top50_liquidity,36,FC Porto vs. PSV - More Markets,ucl-por-psv-2026-10-20-more-markets,sports,Soccer,6984,7978,7978,8010,1581563,9075,0,2026-10-20T19:00,60,ucl-2025
+top50_liquidity,37,What price will Ethereum hit in 2026?,what-price-will-ethereum-hit-before-2027,crypto,,15688,752349,3755996,18149992,1568891,5972808,0,2027-01-01T05:00,30,ethereum-hit-price-monthly
+top50_liquidity,38,SSC Napoli vs. FK Bodø/Glimt - Exact Score,ucl-nap-bog-2026-10-20-exact-score,sports,Soccer,14481,14481,14481,27757,1511050,14950,0,2026-10-20T19:00,37,ucl-2025
+top50_liquidity,39,Which company has the best AI model end of October?,which-company-has-the-best-ai-model-end-of-october,AI,,59859,486060,1998857,2957360,1510947,463341,0,2026-10-31T16:00,32,best-ai-company
+top50_liquidity,40,SSC Napoli vs. FK Bodø/Glimt - More Markets,ucl-nap-bog-2026-10-20-more-markets,sports,Soccer,13797,14171,14171,14105,1488485,15988,0,2026-10-20T19:00,60,ucl-2025
+top50_liquidity,41,Next Prime Minister of Spain?,next-prime-minister-of-spain-20260625005215443,politics/elections,,84515,183182,1572955,2020488,1466070,340157,67,2028-04-01T03:59,58,
+top50_liquidity,42,Fenerbahçe SK vs. SK Slavia Praha - Exact Score,ucl-fen-slp-2026-10-20-exact-score,sports,Soccer,5826,5826,5826,31873,1437533,5647,0,2026-10-20T16:45,37,ucl-2025
+top50_liquidity,43,VfB Stuttgart vs. Club Atlético de Madrid - More Markets,ucl-stu-atm-2026-10-20-more-markets,sports,Soccer,6543,10945,10945,11021,1427969,11818,0,2026-10-20T19:00,60,ucl-2025
+top50_liquidity,44,Democratic VP Nominee 2028,democratic-vp-nominee-2028,politics/elections,,313,1752,7953,114397,1398922,19863,0,2028-11-08T04:59,128,
+top50_liquidity,45,#1 Searched Person on Google in the US 2026?,1-searched-person-on-google-in-the-us-2026-20260730192940,tech,,163,2718,16664,209143,1378478,26809,8,2027-04-01T03:59,103,
+top50_liquidity,46,Real Madrid CF vs. RB Leipzig - More Markets,ucl-rma-rbl-2026-10-21-more-markets,sports,Soccer,2540,4568,4568,4867,1336481,4636,0,2026-10-21T19:00,60,ucl-2025
+top50_liquidity,47,PGA Tour: Butterfield Bermuda Championship Winner,2026-butterfield-bermuda-championship-winner,sports,Golf,0,0,0,0,1310604,0,0,2026-10-25T00:00,121,pga-tour
+top50_liquidity,48,What price will Ethereum hit in October?,what-price-will-ethereum-hit-in-october-2026,crypto,,76090,699877,1983084,2278866,1295765,993693,0,2026-11-01T04:00,37,ethereum-hit-price-monthly
+top50_liquidity,49,Republican Senate seats after the 2026 midterm elections?,republican-senate-seats-after-the-2026-midterm-elections-927,politics/elections,,16347,57843,237275,3216242,1293396,239474,12,2026-11-03T17:00,11,
+top50_liquidity,50,Manchester City FC vs. AEK - Exact Score,ucl-mnc-aek1-2026-10-20-exact-score,sports,Soccer,5637,6472,6472,19546,1237280,6507,0,2026-10-20T19:00,37,ucl-2025
+top30_comments,1,Brazil Presidential Election,brazil-presidential-election,politics/elections,,956699,8305674,27822811,188761942,1054673,10862462,25690,2026-10-26T03:59,32,
+top30_comments,2,Will the US confirm that aliens exist by...?,will-the-us-confirm-that-aliens-exist-before-2027,weather/climate/science,,141702,1146538,4518634,74303911,783817,8588469,1734,2027-01-01T04:59,7,
+top30_comments,3,Ballon d'Or Winner 2026,ballon-dor-winner-2026,sports,Soccer,1410511,5835007,17332098,54672610,11332653,4292073,1217,2027-01-01T04:59,89,
+top30_comments,4,Will the U.S. invade Venezuela by...?,will-the-us-invade-venezuela-in-2025,geopolitics/war,,6397,713544,9534089,14219930,45500,43011,1176,2027-01-01T04:59,4,
+top30_comments,5,Iran leadership change by...?,iran-leadership-change-by,geopolitics/war,,42988,351229,1543736,27599006,345410,1123715,1090,2027-07-01T03:59,14,
+top30_comments,6,Presidential Election Winner 2028,presidential-election-winner-2028,politics/elections,,210672,1790977,9764555,717451078,58816407,40508924,1056,2028-11-08T04:59,128,
+top30_comments,7,Epstein client list released by...?,epstein-client-list-released-in-2025-372,politics/elections,,75,1219101,3246435,4376655,5824,3224,1049,2027-01-01T04:59,5,
+top30_comments,8,Iran full airspace closure by...?,iran-full-airspace-closure-byptptpt-20260625195253028,geopolitics/war,,23273,101786,382199,10290981,47852,180810,1024,2027-01-01T04:59,11,
+top30_comments,9,Next French Presidential Election,next-french-presidential-election,politics/elections,,716429,3675367,14114483,154074771,19139732,3444910,997,2027-04-19T03:59,128,
+top30_comments,10,Israel x Hamas ceasefire cancelled by...?,israel-x-hamas-ceasefire-cancelled-by-october-31,geopolitics/war,,0,1559004,3202538,4068178,12504,6579,979,2027-01-01T04:59,8,
+top30_comments,11,Prime Minister of Israel after the next election?,who-will-be-the-next-prime-minister-of-israel-after-the-next-election,politics/elections,,525369,3179498,9929055,49122797,3086676,4383108,886,2026-10-28T03:59,28,
+top30_comments,12,Democratic Presidential Nominee 2028,democratic-presidential-nominee-2028,politics/elections,,595745,2079026,13177712,1295704794,74113392,8451015,844,2028-11-08T04:59,128,
+top30_comments,13,US announces end of Iranian blockade by...?,us-announces-end-of-iranian-blockade-byptptpt-20260713152715080,geopolitics/war,,325585,1578069,5994172,41569387,352543,1911234,837,2027-01-01T04:59,23,
+top30_comments,14,"New ""Stranger Things"" episode released by...? ",new-stranger-things-episode-released-by-wednesday,culture/entertainment/awards,,0,19309692,27726455,30906011,107284,303627,732,2027-04-01T03:59,12,
+top30_comments,15,Xi Jinping out before 2027?,xi-jinping-out-before-2027,geopolitics/war,,22007,365367,1459771,15153446,476287,4301234,709,2027-01-01T04:59,1,xi-jinping-out
+top30_comments,16,Next Prime Minister of Romania?,next-prime-minister-of-romania-732,politics/elections,,45439,455437,1316011,5513262,1104677,208610,673,2028-01-01T04:59,49,
+top30_comments,17,Hantavirus pandemic in 2026?,hantavirus-pandemic-in-2026,weather/climate/science,,3394,16035,340570,18624212,144338,1106049,571,2027-01-01T04:59,1,
+top30_comments,18,Kharg Island no longer under Iranian control by...?,kharg-island-no-longer-under-iranian-control-by-march-31,geopolitics/war,,76955,445117,1480539,76331824,265126,1022991,522,2027-01-01T04:59,11,
+top30_comments,19,Will Ukraine recapture Crimean territory by...?,will-ukraine-recapture-crimean-territory-by-june-30-2026,geopolitics/war,,6334,66273,484892,4331167,140805,946188,500,2027-07-01T03:59,3,
+top30_comments,20,Venezuela leader end of 2026?,venezuela-leader-end-of-2026,geopolitics/war,,34456,300727,1520429,98525726,2209024,679608,485,2027-01-01T04:59,57,
+top30_comments,21,Lima Mayoral Election Winner,lima-mayoral-election-winner-20260724153924694,politics/elections,,417,4869,166080,547875,343816,103895,471,2026-10-05T03:59,49,
+top30_comments,22,María Corina Machado enters Venezuela by...?,will-mara-corina-machado-enter-venezuela-by-january-31,geopolitics/war,,7414,496590,2986640,6684410,39323,49293,461,2027-01-01T04:59,15,
+top30_comments,23,Republican Presidential Nominee 2028,republican-presidential-nominee-2028,politics/elections,,323466,1935126,6506473,713790368,50118846,8901600,447,2028-11-08T04:59,128,
+top30_comments,24,Will Reza Pahlavi enter Iran by...?,will-reza-pahlavi-enter-iran-by-june-30,geopolitics/war,,1547,243402,969585,22188523,89782,606987,432,2027-01-01T04:59,7,
+top30_comments,25,Kanye West performs in Russia by October 31?,kanye-west-performs-in-russia-by-october-31,culture/entertainment/awards,,534,93942,469257,1059512,16947,203196,414,2026-11-01T03:59,1,
+top30_comments,26,Mojtaba Khamenei public appearance by...?,mojtaba-khamenei-public-appearance-by,geopolitics/war,,3035,130878,241873,7471557,44028,241943,413,2027-01-01T04:59,15,
+top30_comments,27,Balance of Power: 2026 Midterms,balance-of-power-2026-midterms,politics/elections,,493608,2940386,12763579,25501636,11689350,10181940,407,2026-11-04T04:59,5,
+top30_comments,28,Clarity Act (H.R.3633) signed into law in 2026?,clarity-act-signed-into-law-in-2026,crypto,,16084,103237,1620935,24109232,226659,5219546,386,2027-01-01T05:00,1,
+top30_comments,29,Will Hamas agree to disarm by...?,will-hamaz-disarm-by-december-31,geopolitics/war,,1957,45591,365019,3805129,29395,242381,371,2027-01-01T04:59,6,
+top30_comments,30,Israel x Iran ceasefire continues through...?,israel-x-iran-ceasefire-continues-throughptptpt-20260716224448963,geopolitics/war,,298762,1906877,3687567,37207318,239890,1341421,371,2026-12-31T20:29,29,

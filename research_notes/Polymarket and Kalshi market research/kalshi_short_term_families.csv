@@ -1,0 +1,212 @@
+group,family,series,active_series,subjects,instances_30d,instances_per_day,median_instance_life_h,open_instances,open_markets,open_vol24,open_oi,median_vol_per_instance,p90_vol_per_instance,vol_per_day_30d,vol_per_day_7d,taker_ratio,ratio_source,est_taker_usd_per_day_7d,head_spread_median_c,head_tob_depth_usd_median,ob_markets_sampled,ob_spread_median_c,ob_depth5c_usd_median,settlement_source,fees
+commodity,Commodity 15-min up/down,7,7,"COPPER, GOLD, NATGAS, PALLADIUM, PLATINUM, SILVER, WTI",13765,458.8,0.25,7,7,45401,49600,23643,281309,36038463,41699696,0.469,sampled (100% of 7d vol),19563008,1.0,354,3,1.0,3863,Pyth - Copper; Pyth - Gold,quadratic x1
+commodity,Commodity daily (gold/silver/oil/gas/copper),6,6,"BRENT, COPPER, GOLD, NATGAS, SILVER, WTI",103,3.4,36.0,8,385,210373,557166,66078,327601,424137,457270,0.392,sampled (100% of 7d vol),179123,2.0,471,6,1.0,1117,Pyth - Brent; Pyth - Copper,quadratic x1
+commodity,Commodity hourly,5,5,"GOLD, PALLADIUM, PLATINUM, SILVER, WTI",2367,78.9,2.0,10,472,4108,2615,560,5053,128572,205779,0.552,sampled (99% of 7d vol),113649,6.0,44,6,2.0,1037,Pyth - Gold; Pyth - Palladium,quadratic x1
+crypto,Crypto 15-min up/down,9,9,"BNB, BTC, DOGE, ETH, HYPE, NEAR, SOL, XRP, ZEC",25632,854.4,0.25,9,9,268341,410934,39755,1609958,305373395,335882923,0.47,sampled (100% of 7d vol),157864769,0.2,52,3,1.0,2702,CF Benchmarks,quadratic x1
+crypto,Crypto above/below (hourly + daily strikes),8,8,"BNB, BTC, DOGE, ETH, HYPE, SHIB, SOL, XRP",4958,165.3,1.0,22,2006,1235424,1035662,2203,1032226,35671881,34173948,0.467,sampled (100% of 7d vol),15959338,6.0,361,6,3.0,6035,CF Benchmarks,quadratic x1
+crypto,Crypto price ranges (hourly + daily),8,8,"BNB, BTC, DOGE, ETH, HYPE, SHIB, SOL, XRP",4958,165.3,1.0,22,2006,37743,58541,197,23966,1313037,1134535,0.5,sampled (100% of 7d vol),567357,5.0,24,6,5.0,5095,CF Benchmarks,quadratic x1
+crypto,Crypto 15-min coin race / comparison,1,1,1 series,2848,94.9,0.25,1,5,1,536,2089,5465,254228,272902,0.68,sampled (100% of 7d vol),185600,9.0,55,2,5.5,779,CF Benchmarks,quadratic x1
+culture,Rotten Tomatoes scores,3,3,3 series,15,0.5,1052.0,22,249,463445,2069070,1070591,1772469,531706,732439,0.719,sampled (95% of 7d vol),526843,1.0,22274,4,18.0,3972,Rotten Tomatoes,quadratic x1
+culture,YouTube views / top video,12,11,12 series,276,9.2,130.99,55,688,176391,608044,9276,43345,147836,161671,0.719,group average,116290,12.0,429,6,1.5,3349,YouTube Charts; YouTube,quadratic x1
+culture,Netflix top-10 rankings,10,10,10 series,40,1.3,147.98,0,0,0,0,38205,217796,64180,51154,0.719,group average,36795,,,0,,,Netflix,quadratic x1
+culture,Billboard charts,20,10,20 series,21,0.7,276.97,19,366,11449,462811,7263,38494,12903,3350,0.719,group average,2410,4.5,11,6,8.0,412,Spotify; Billboard,quadratic x1
+culture,Steam top sellers,1,1,1 series,4,0.1,156.8,0,0,0,0,29725,59163,5016,9810,0.719,group average,7056,,,0,,,Steam Weekly Top Sellers,quadratic x1
+culture,Spotify charts / streams,2,0,2 series,0,0.0,,2,10,0,5980,,,0,0,0.719,group average,0,6.0,3,3,5.0,254,Spotify; Amazon Prime,quadratic x1
+econ,CPI release,10,10,10 series,10,0.3,781.2,14,202,62024,1481425,116876,1388533,145742,624608,0.522,sampled (73% of 7d vol),326160,2.0,633,6,1.5,3672,Bureau of Labor Statistics; BLS - CPI-U,quadratic x1; quadratic_with_maker_fees x1
+econ,Jobs report (payrolls / unemployment / ADP),6,4,6 series,3,0.1,7773.23,20,258,8384,587338,398137,572672,32794,0,0.522,group average,0,9.0,180,6,7.0,180,Bureau of Labor Statistics; ADP,quadratic x1; quadratic_with_maker_fees x1
+econ,Jobless claims (weekly),1,1,1 series,4,0.1,164.42,1,21,6666,7501,14135,27866,1505,1890,0.522,group average,987,4.0,4,2,7.0,62,Department of Labor,quadratic x1
+econ,Mortgage rates (weekly),1,1,1 series,1,0.0,4659.91,2,20,8,16780,34976,34976,1166,4997,0.522,group average,2609,28.0,1,2,28.0,165,Bureau of Labor Statistics- Employment Situation,quadratic x1
+econ,PCE release,2,2,2 series,2,0.1,4327.95,4,25,2303,13378,21256,55148,832,0,0.522,group average,0,8.0,92,4,4.0,854,Bureau of Economic Analysis; Federal Reserve Bank of New York,quadratic x1
+econ,Fed decision / FOMC,18,13,18 series,0,0.0,,48,627,202895,15422624,52999108,93164024,0,0,0.522,group average,0,6.0,30,4,1.0,143171,Federal Reserve; Federal Reserve Board of Governors,quadratic x1; quadratic_with_maker_fees x1
+econ,GDP release,5,3,5 series,0,0.0,,29,351,4878,701755,,,0,0,0.522,group average,0,5.0,129,6,4.0,321,Bureau of Economic Analysis; Bureau of Labor Statistics- Employment Situation,quadratic x1; quadratic_with_maker_fees x1
+fx,FX 15-min,5,5,"AUDUSD, EURUSD, GBPUSD, USDCAD, USDJPY",6612,220.4,0.25,5,5,442,3402,3088,11118,1183127,1329763,0.541,sampled (100% of 7d vol),718810,3.0,552,3,3.0,1416,Pyth; Pyth - GBPUSD,quadratic x1
+fx,FX daily,12,9,"AUDUSD, EURUSD, GBPUSD, NZDUSD, USDBRL, USDCAD, USDCHF, USDINR, USDJPY, USDNOK",188,6.2,7.5,3,50,18481,12323,0,8266,14953,11600,0.889,sampled (98% of 7d vol),10317,,,6,1.0,179,ICE ; Pyth - NZDUSD,quadratic x1
+gas,"Gas prices daily, by state (AAA)",50,50,50 series,1062,35.4,15.98,0,0,0,0,23430,50749,943226,1333488,0.878,sampled (100% of 7d vol),1170776,,,0,,,AAA,quadratic x1
+gas,"Gas price daily, US (AAA)",1,1,1 series,30,1.0,15.98,0,0,0,0,289650,449447,317962,421835,0.483,sampled (100% of 7d vol),203577,,,0,,,AAA,quadratic x1
+gas,Gas price weekly/monthly (AAA),18,15,18 series,16,0.5,579.99,18,203,636809,1825392,84337,1286861,224347,243932,0.429,sampled (73% of 7d vol),104769,3.0,59,6,1.0,1173,AAA,quadratic x1; quadratic_with_maker_fees x1
+gas,Diesel price (AAA/EIA),8,7,8 series,37,1.2,155.73,7,115,12534,241482,77107,154520,104725,54944,0.499,sampled (61% of 7d vol),27423,6.5,674,4,11.5,93,AAA,quadratic x1
+gas,ERCOT peak demand daily,2,2,2 series,30,1.0,24.0,2,26,1271,196333,17677,39520,21682,28605,0.553,sampled (100% of 7d vol),15807,1.5,11552,4,1.5,12954,Federal Reserve Bank of New York; Electric Reliability Council of Texas (ERCOT),quadratic x1
+index,Index hourly/close above/below,4,4,"DJI, INXU, NASDAQ100U, NKY",543,18.1,11.5,16,3294,20931,22631,51500,315925,3251103,1792345,0.444,sampled (100% of 7d vol),796584,9.5,2016,6,9.5,5252,"Pyth; For example, Google Finance",quadratic x1
+index,Index daily range (S&P/Nasdaq),2,2,"INX, NASDAQ100",42,1.4,17.5,4,120,149,153,9784,61188,85986,23144,0.406,sampled (100% of 7d vol),9390,30.0,24,4,17.5,18,"For example, Google Finance",quadratic x1
+index,Index daily up/down,2,2,"INXDUD, NASDAQDUD",42,1.4,20.0,2,2,3713,1918,10799,25037,18943,21839,0.483,sampled (100% of 7d vol),10554,4.5,2231,2,5.0,4401,"For example, Google Finance",quadratic x1
+mentions,Mentions: politicians / speeches / media,64,63,64 series,153,5.1,48.64,43,977,628552,897219,66224,794019,1212109,1474515,0.24,sampled (71% of 7d vol),354549,9.0,16,8,6.0,59281,ABC; Federal Reserve,quadratic x1
+mentions,Mentions: earnings calls,80,76,80 series,30,0.9,605.43,78,1164,37364,404290,56708,131659,75269,106189,0.24,group average,25533,8.0,89,6,8.0,96,Bloomberg; American Airlines Group Inc. Investor Events,quadratic x1
+other,Approval / poll trackers,2,2,2 series,55,1.8,29.01,2,18,339999,160390,237909,522999,431220,452816,0.517,sampled (100% of 7d vol),234323,14.5,2785,4,9.0,2120,RealClearPolitics; VoteHub,quadratic x1
+other,AI model leaderboards,4,4,4 series,6,0.2,166.0,8,46,150088,8425087,247940,499838,62169,40068,0.531,group average,21261,4.0,50,6,2.5,3995,LM Arena Leaderboard (Remove Style Control); ABC,quadratic x1; quadratic_with_maker_fees x1
+other,Post counts (Truth Social / X),2,2,2 series,23,0.8,95.98,2,17,55497,42608,18872,228140,51322,44219,0.82,sampled (39% of 7d vol),36269,,,4,1.5,845,Roll Call,quadratic x1
+other,Trump daily activity / press office,7,6,7 series,17,0.6,150.76,6,29,4691,30542,3753,133316,25452,28951,0.613,sampled (38% of 7d vol),17747,4.0,186,6,3.0,1634,the White House; Roll Call,quadratic x1
+other,TSA checkpoint numbers,2,2,2 series,15,0.5,89.98,2,36,1759,1593,7333,18263,2398,2171,0.531,group average,1152,8.5,6,4,4.0,277,Transportation Security Administration,quadratic x1
+other,Airport flights / delays,1,0,1 series,0,0.0,,1,1,0,5998,,,0,0,0.531,group average,0,6.3,478,1,6.3,1322,ABC,quadratic x1
+rates,Treasury yield hourly,5,5,"10, 2, 30, 5, 7",370,12.4,0.98,0,0,0,0,321,3237,13481,56854,0.979,sampled (100% of 7d vol),55679,,,6,89.0,209,Pyth - 10Y UST; Pyth - 2Y UST,quadratic x1
+rates,Treasury yield daily/weekly,5,5,"UST10A, UST2A, UST30A, UST5A, UST7A",20,0.7,168.0,5,75,51,1754,13808,20036,8714,6547,0.98,group average,6415,12.0,30,6,13.5,374,U.S. Department of the Treasury,quadratic x1
+rates,SOFR / reverse repo daily,1,1,SOFRD,20,0.7,22.52,1,7,5870,5870,7541,12019,5738,4232,0.987,sampled (100% of 7d vol),4179,,,2,9.0,3729,Federal Reserve Bank of New York,quadratic x1
+rates,Treasury yield 15-min,4,4,"10, 2, 30, 5",64,2.1,0.25,0,0,0,0,0,16,44,190,0.98,group average,186,,,3,87.0,39,Pyth - 10Y UST; Pyth - 2Y UST,quadratic x1
+sports,Tennis: game/match winner,15,15,Tennis,9355,311.8,20.75,529,1110,8427730,4721841,81162,1398535,147532469,144494002,0.497,sampled (100% of 7d vol),71832470,3.0,53,10,1.5,13970,ATP; ITF,quadratic x1; quadratic_with_maker_fees x1
+sports,NFL: game/match winner,1,1,NFL,75,2.5,304.18,28,56,1144808,1965033,16169890,68430064,63993178,67573205,0.433,sampled (100% of 7d vol),29279470,7.5,6609,2,1.5,803344,the Governing League,quadratic_with_maker_fees x1
+sports,NCAA football: game/match winner,1,1,NCAA football,546,18.2,338.38,224,448,983417,1888552,596167,8494869,52650985,63270558,0.369,sampled (100% of 7d vol),23359490,9.0,411,2,1.0,443571,Kalshi using information originating from the NCAA,quadratic_with_maker_fees x1
+sports,MLB: game/match winner,2,2,MLB,160,5.3,112.84,5,10,51079,51155,2907492,15916024,29500713,23096833,0.398,sampled (100% of 7d vol),9185611,3.0,776,2,1.0,309151,ESPN,quadratic_with_maker_fees x0.5; quadratic_with_maker_fees x1
+sports,Soccer: other: game/match winner,86,86,Soccer: other,2312,77.1,112.63,464,1392,170886,186489,91379,828085,27359702,17821781,0.457,sampled (80% of 7d vol),8150957,6.0,78,0,,,ESPN; BBC Sport,quadratic x1
+sports,NFL: player props,28,28,NFL,1607,53.6,75.43,22,564,120254,124099,16274,847915,20445348,20957389,0.439,sampled (96% of 7d vol),9204938,6.2,389,6,1.0,62566,the Governing League; ESPN,quadratic x1; quadratic_with_maker_fees x1
+sports,NFL: spreads,1,1,NFL,75,2.5,165.98,14,353,348530,382269,4376448,15021103,16291630,14420304,0.485,sampled (100% of 7d vol),6996732,1.0,20762,2,1.0,213992,the Governing League,quadratic_with_maker_fees x1
+sports,NCAA football: spreads,1,1,NCAA football,520,17.3,112.69,56,1653,447833,592969,329132,2653286,16003302,15563527,0.516,sampled (100% of 7d vol),8033893,1.0,3125,2,1.0,90076,ESPN,quadratic_with_maker_fees x1
+sports,NCAA football: totals,2,2,NCAA football,794,26.5,126.54,112,2342,209954,247114,139280,965238,9754162,9525648,0.524,sampled (100% of 7d vol),4991969,1.0,1003,2,1.0,45681,ESPN,quadratic x1; quadratic_with_maker_fees x1
+sports,NFL: totals,2,2,NFL,150,5.0,155.57,28,649,396120,402902,912421,5894046,9093623,7465848,0.488,sampled (100% of 7d vol),3646860,2.0,1112,2,1.0,355473,the Governing League,quadratic x1; quadratic_with_maker_fees x1
+sports,Cricket: game/match winner,7,7,Cricket,484,16.1,110.66,60,124,1516820,1113307,83509,1081789,7375865,8910292,0.48,sampled (99% of 7d vol),4279389,65.0,25,2,1.0,16676,ESPNcricinfo; Cricbuzz,quadratic x1
+sports,MLB: totals,3,3,MLB,1672,55.7,27.42,2,24,2291,2254,515,237755,7305440,3595913,0.526,sampled (97% of 7d vol),1890475,2.0,3554,2,1.5,36080,the Governing League; ESPN,quadratic x0.5; quadratic x1
+sports,Soccer: other: totals,85,85,Soccer: other,2372,79.1,25.85,51,306,82229,75167,32939,238892,7291554,6469976,0.527,sampled (53% of 7d vol),3408399,2.0,288,0,,,Fox Sports; FIFA,quadratic x1
+sports,NFL: in-game segments (halves/quarters/innings/sets/maps),25,25,NFL,1803,60.1,121.23,37,452,7482,12214,37809,260283,6749509,5783649,0.511,sampled (85% of 7d vol),2953963,5.0,234,0,,,the Governing League; ESPN,quadratic x1
+sports,NCAA football: in-game segments (halves/quarters/innings/sets/maps),20,20,NCAA football,3341,111.3,75.01,347,2695,4968,8757,26637,130145,6543147,6494863,0.565,sampled (83% of 7d vol),3667536,22.0,172,0,,,ESPN; Kalshi using information originating from the NCAA,quadratic x1
+sports,Esports: game/match winner,8,8,Esports,2392,79.7,33.93,135,270,134872,129982,16276,158165,5741693,5815189,0.479,sampled (99% of 7d vol),2786364,19.0,42,2,2.0,7118,B03; BO3,quadratic x1
+sports,UFC/MMA: game/match winner,3,3,UFC/MMA,110,3.7,79.33,14,28,159649,464947,1024829,3888634,5613513,3968061,0.512,sampled (99% of 7d vol),2033158,1.0,3369,2,1.0,529890,ESPN; DAZN,quadratic x1
+sports,Soccer: UEFA club comps: game/match winner,4,4,Soccer: UEFA club comps,72,2.4,355.25,63,189,3929649,5779404,1018513,3684814,4878675,17419499,0.401,sampled (100% of 7d vol),6977243,1.0,2880,4,1.0,1319862,ESPN,quadratic x1; quadratic_with_maker_fees x1
+sports,"Golf: other (races, tournaments, awards)",19,19,Golf,267,8.9,142.56,9,774,1103297,1881750,1592,88743,4818240,2029293,0.116,sampled (94% of 7d vol),234789,5.0,48,0,,,Fox Sports; DP World Tour,quadratic x1; quadratic_with_maker_fees x1
+sports,WNBA: game/match winner,2,2,WNBA,45,1.5,118.22,4,8,74838,77388,1916652,6372198,4401146,693994,0.497,sampled (100% of 7d vol),344637,3.5,1358,0,,,ESPN,quadratic_with_maker_fees x1; quadratic x1
+sports,NBA: game/match winner,1,1,NBA,67,2.2,169.29,52,104,739289,1015859,1534564,3683758,4160146,8778056,0.456,sampled (100% of 7d vol),3998404,8.5,219,2,1.0,833774,the Governing League,quadratic_with_maker_fees x1
+sports,MLB: player props,5,5,MLB,750,25.0,20.55,5,99,1438,1415,51780,358669,4073961,3718124,0.33,sampled (100% of 7d vol),1227397,3.0,820,0,,,ESPN,quadratic x0.5
+sports,MLB: spreads,2,2,MLB,157,5.2,95.69,2,12,3423,2960,483777,1922381,4024307,2143070,0.446,sampled (100% of 7d vol),955166,5.0,4631,0,,,ESPN; the Governing League,quadratic x1; quadratic x0.5
+sports,MLB: in-game segments (halves/quarters/innings/sets/maps),5,5,MLB,747,24.9,26.67,8,21,1541,1541,70693,469370,4006200,1939729,0.451,sampled (94% of 7d vol),874671,3.5,612,0,,,the Governing League; CBS Sports,quadratic x0.5
+sports,NHL: game/match winner,1,1,NHL,195,6.5,168.56,47,94,74389,87166,494900,1255526,3847749,6515030,0.497,sampled (100% of 7d vol),3237970,4.0,55,2,1.0,167362,NHL,quadratic_with_maker_fees x1
+sports,Tennis: in-game segments (halves/quarters/innings/sets/maps),2,2,Tennis,1373,45.8,26.02,84,168,303938,254746,50647,197199,3698809,3694704,0.489,sampled (100% of 7d vol),1805104,4.0,18,2,4.0,4374,ATP; WTA,quadratic x1
+sports,Soccer: Liga MX: game/match winner,1,1,Soccer: Liga MX,34,1.1,340.53,28,84,280193,335155,2674589,5011074,3609276,3517188,0.408,sampled (100% of 7d vol),1436419,4.0,111,2,1.0,177323,ESPN,quadratic x1
+sports,Soccer: La Liga: game/match winner,1,1,Soccer: La Liga,25,0.8,353.94,20,60,347891,922897,3226055,9680145,3481301,5896140,0.361,sampled (100% of 7d vol),2126738,2.0,2076,2,1.0,35800,ESPN,quadratic_with_maker_fees x1
+sports,Soccer: MLS: game/match winner,1,1,Soccer: MLS,78,2.6,340.07,44,132,17481,50007,869833,2187934,3105785,5817754,0.429,sampled (100% of 7d vol),2497562,37.0,42,2,1.0,17269,MLS,quadratic x1
+sports,Soccer: Premier League: game/match winner,1,1,Soccer: Premier League,24,0.8,351.48,20,60,57148,128453,2860710,6444627,2977656,6070741,0.441,sampled (100% of 7d vol),2679625,1.0,5237,2,1.0,116428,ESPN,quadratic_with_maker_fees x1
+sports,Esports: in-game segments (halves/quarters/innings/sets/maps),5,5,Esports,3474,115.8,22.36,218,436,3729,3859,5146,57944,2592112,2947586,0.521,sampled (100% of 7d vol),1535719,94.0,8,0,,,B03; BO3,quadratic x1
+sports,UFC/MMA: other game props,1,1,UFC/MMA,81,2.7,72.42,0,0,0,0,527571,1558515,2056476,1672526,0.225,sampled (100% of 7d vol),375817,,,0,,,ESPN,quadratic x1
+sports,Soccer: other: in-game segments (halves/quarters/innings/sets/maps),72,72,Soccer: other,2544,84.8,24.84,20,45,3624,3608,6782,61785,1858901,910268,0.456,group average,415211,1.0,688,0,,,Fox Sports; ESPN,quadratic x1
+sports,Soccer: other: spreads,80,80,Soccer: other,2153,71.8,25.86,51,204,17607,19216,7183,55514,1831391,1170679,0.456,group average,533995,3.0,178,0,,,Fox Sports; ESPN,quadratic x1
+sports,Soccer: Serie A: game/match winner,1,1,Soccer: Serie A,25,0.8,353.37,30,90,19573,25759,1366660,2734213,1381528,3148519,0.49,sampled (100% of 7d vol),1543719,2.5,1444,2,1.0,29329,ESPN,quadratic_with_maker_fees x1
+sports,"NFL: other (races, tournaments, awards)",17,17,NFL,1309,43.6,74.93,27,602,3921,51463,8989,79560,1345798,1642385,0.703,sampled (72% of 7d vol),1155035,6.5,117,0,,,the Governing League; Sleeper,quadratic x1
+sports,Basketball: other: game/match winner,35,35,Basketball: other,905,30.2,85.87,97,194,28697,31402,13417,104906,1269204,1674284,0.587,sampled (40% of 7d vol),982135,5.0,125,0,,,Sofascore; EuroBasket,quadratic x1
+sports,Soccer: other: other game props,85,85,Soccer: other,2368,78.9,25.77,51,51,3895,3790,3465,36461,1255291,692691,0.456,group average,315965,3.0,351,0,,,Fox Sports; FIFA,quadratic x1
+sports,NBA: totals,1,1,NBA,67,2.2,24.84,18,522,63373,122623,442197,1009843,1189795,2246090,0.547,sampled (100% of 7d vol),1228836,2.0,339,0,,,the Governing League,quadratic_with_maker_fees x1
+sports,NHL: totals,2,2,NHL,331,11.0,61.41,38,355,9162,8971,25169,277206,1139650,1723431,0.512,sampled (95% of 7d vol),882741,2.0,202,0,,,the National Hockey League; NHL,quadratic x1
+sports,Soccer: Bundesliga: game/match winner,1,1,Soccer: Bundesliga,21,0.7,351.0,18,54,5864,16264,909573,2636055,1069756,1534932,0.394,sampled (100% of 7d vol),603996,2.0,2088,0,,,ESPN,quadratic_with_maker_fees x1
+sports,Soccer: UEFA club comps: totals,7,7,Soccer: UEFA club comps,126,4.2,49.78,72,432,353313,376720,79858,667840,1025581,3142137,0.517,sampled (98% of 7d vol),1623677,2.0,1257,0,,,ESPN; Fox Sports,quadratic x1
+sports,Soccer: MLS: totals,2,2,Soccer: MLS,156,5.2,109.56,16,96,603,1641,76882,515246,950910,1948150,0.562,sampled (95% of 7d vol),1094276,3.0,184,0,,,ESPN; Fox Sports,quadratic x1
+sports,WNBA: totals,2,2,WNBA,76,2.5,27.64,1,9,144,134,183011,1025986,886905,75035,0.456,group average,34227,3.0,1132,0,,,ESPN; the Governing League,quadratic x1
+sports,Soccer: La Liga: totals,3,3,Soccer: La Liga,99,3.3,49.77,10,60,733,989,101817,663411,863608,1354773,0.577,sampled (88% of 7d vol),781569,2.0,1352,0,,,FIFA; ESPN,quadratic x1
+sports,Soccer: Ligue 1: game/match winner,1,1,Soccer: Ligue 1,21,0.7,356.06,18,54,4712,13245,607448,3138257,862884,2155760,0.441,sampled (100% of 7d vol),949612,2.0,2758,0,,,ESPN,quadratic_with_maker_fees x1
+sports,"Motorsport: other (races, tournaments, awards)",13,13,Motorsport,70,2.4,137.97,18,577,131378,130767,35561,1476376,839496,641009,0.112,sampled (94% of 7d vol),71985,8.0,315,0,,,the Governing League; FIA,quadratic x1; quadratic_with_maker_fees x1
+sports,WNBA: spreads,1,1,WNBA,38,1.3,34.96,1,9,352,344,494376,1162675,794843,78077,0.456,group average,35614,2.0,914,0,,,the Governing League,quadratic x1
+sports,"UFC/MMA: other (races, tournaments, awards)",4,4,UFC/MMA,324,10.8,72.43,0,0,0,0,46808,142391,759073,706792,0.385,sampled (67% of 7d vol),272305,,,0,,,ESPN,quadratic x1
+sports,NHL: player props,4,4,NHL,544,18.1,14.98,0,0,0,0,24789,95313,718130,1319667,0.516,sampled (100% of 7d vol),680559,,,0,,,NHL,quadratic x1
+sports,"Combat sports: other (races, tournaments, awards)",2,2,Combat sports,89,3.0,102.93,16,25,31332,262977,32681,567235,669004,1973274,0.426,sampled (100% of 7d vol),840812,5.0,332,0,,,DAZN; ESPN,quadratic x1
+sports,Soccer: Premier League: totals,2,2,Soccer: Premier League,48,1.6,109.92,10,60,141,273,157710,1133779,661050,1140370,0.513,sampled (92% of 7d vol),584554,2.0,925,0,,,ESPN; Fox Sports,quadratic x1
+sports,WNBA: in-game segments (halves/quarters/innings/sets/maps),19,19,WNBA,720,24.0,13.13,10,46,714,722,13816,65921,639885,58416,0.456,group average,26646,34.0,791,0,,,the Governing League; ESPN,quadratic x1
+sports,NBA: spreads,1,1,NBA,67,2.2,24.84,18,594,200877,310795,191419,550919,620249,1233157,0.518,sampled (100% of 7d vol),638899,1.0,4122,0,,,the Governing League,quadratic_with_maker_fees x1
+sports,NFL: other game props,9,9,NFL,375,12.5,92.56,19,494,14929,18847,9463,141040,545053,869078,0.295,sampled (76% of 7d vol),256112,7.0,17,0,,,the Governing League; ESPN,quadratic x1
+sports,Soccer: Liga MX: totals,2,2,Soccer: Liga MX,68,2.3,109.91,27,162,817,2415,97438,659073,532739,559914,0.545,sampled (96% of 7d vol),305377,3.0,271,0,,,ESPN; Fox Sports,quadratic x1
+sports,NHL: spreads,1,1,NHL,195,6.5,73.71,25,100,8590,8378,60725,189452,523284,769078,0.512,sampled (100% of 7d vol),394153,7.0,40,0,,,NHL,quadratic x1
+sports,"MLB: other (races, tournaments, awards)",12,12,MLB,2564,85.5,22.93,12,48,372,20085,689,14330,501233,436668,0.456,group average,199182,14.0,208,0,,,ESPN; NBC,quadratic x1; quadratic x0.5
+sports,Tennis: totals,2,2,Tennis,669,22.3,24.37,41,121,106465,90651,11467,50411,439867,558070,0.485,sampled (100% of 7d vol),270817,2.0,1802,0,,,ATP; WTA,quadratic x1
+sports,Baseball: other: game/match winner,1,1,Baseball: other,78,2.6,79.11,1,2,120395,120232,121498,328610,409171,149642,0.456,group average,68258,1.0,4868,0,,,KBO,quadratic x1
+sports,Baseball: game/match winner,2,2,Baseball,87,2.9,47.18,0,0,0,0,97718,257879,399077,236732,0.454,sampled (99% of 7d vol),107429,,,0,,,Flashscore; ESPN,quadratic x1
+sports,Soccer: UEFA club comps: spreads,4,4,Soccer: UEFA club comps,72,2.4,169.75,54,216,303578,356945,73168,256232,389047,1349389,0.465,sampled (95% of 7d vol),626989,2.0,1416,0,,,Fox Sports,quadratic x1
+sports,Soccer: Bundesliga: totals,3,3,Soccer: Bundesliga,63,2.1,49.33,9,54,57,74,55875,380808,377822,693773,0.542,sampled (76% of 7d vol),376372,3.0,625,0,,,FIFA; ESPN,quadratic x1
+sports,Soccer: EFL: game/match winner,3,3,Soccer: EFL,97,3.2,183.41,42,126,8664,12529,42591,236199,366227,845711,0.449,sampled (94% of 7d vol),379809,2.0,386,0,,,ESPN,quadratic x1
+sports,Soccer: Serie A: totals,2,2,Soccer: Serie A,50,1.7,109.62,10,60,8551,1530,56578,621135,365818,794972,0.522,sampled (97% of 7d vol),415055,2.0,1883,0,,,ESPN; Fox Sports,quadratic x1
+sports,Golf: game/match winner,1,1,Golf,30,1.0,20.34,0,0,0,0,289104,579416,317347,0,0.456,group average,0,,,0,,,ESPN,quadratic x1
+sports,Soccer: MLS: in-game segments (halves/quarters/innings/sets/maps),9,9,Soccer: MLS,702,23.4,48.84,9,33,11,11,3923,37544,310750,598192,0.518,sampled (75% of 7d vol),309907,4.0,69,0,,,Fox Sports; ESPN,quadratic x1
+sports,NHL: in-game segments (halves/quarters/innings/sets/maps),9,9,NHL,1230,41.0,47.98,117,312,1844,1527,2586,19016,305194,549345,0.593,sampled (61% of 7d vol),325597,17.0,56,0,,,NHL; ESPN,quadratic x1
+sports,Table Tennis: game/match winner,2,2,Table Tennis,4527,150.9,3.75,0,0,0,0,1241,4379,299209,27565,0.456,group average,12573,,,0,,,TT Elite Series; TT Star Series,quadratic x1
+sports,Soccer: UEFA club comps: other game props,9,9,Soccer: UEFA club comps,162,5.4,53.53,104,754,554173,695241,27377,114776,294261,1039741,0.472,sampled (64% of 7d vol),490285,2.0,2557,0,,,ESPN; Fox Sports,quadratic x1
+sports,Soccer: La Liga: spreads,2,2,Soccer: La Liga,74,2.5,97.59,10,40,8409,16772,28390,210632,284264,549580,0.476,sampled (97% of 7d vol),261600,3.0,1381,0,,,Fox Sports,quadratic x1
+sports,Soccer: UEFA club comps: in-game segments (halves/quarters/innings/sets/maps),17,17,Soccer: UEFA club comps,306,10.2,48.69,161,564,143577,148569,10209,76458,280337,1201444,0.512,sampled (58% of 7d vol),615097,3.0,330,0,,,Fox Sports; ESPN,quadratic x1
+sports,Golf: other game props,7,7,Golf,25,0.8,89.16,0,0,0,0,73324,713784,276379,339158,0.029,sampled (89% of 7d vol),9768,,,0,,,DP World Tour; ESPN,quadratic x1
+sports,Soccer: La Liga: other game props,5,5,Soccer: La Liga,149,5.0,95.73,10,10,780,2019,15924,113729,257079,473367,0.366,sampled (91% of 7d vol),173155,2.0,2331,0,,,ESPN; FIFA,quadratic x1
+sports,Soccer: FIFA/World Cup: game/match winner,1,1,Soccer: FIFA/World Cup,32,1.1,354.31,0,0,0,0,90699,639268,247740,118059,0.456,group average,53852,,,0,,,ESPN,quadratic x1
+sports,Soccer: La Liga: in-game segments (halves/quarters/innings/sets/maps),9,9,Soccer: La Liga,225,7.5,48.71,0,0,0,0,7591,89094,246248,466353,0.573,sampled (70% of 7d vol),267268,,,0,,,Fox Sports; ESPN,quadratic x1
+sports,E-sims (eSoccer/eBasketball): game/match winner,2,2,E-sims (eSoccer/eBasketball),6774,225.8,2.84,67,190,9022,14465,399,2524,231751,814515,0.671,sampled (100% of 7d vol),546852,97.0,1,0,,,DRAFTED.GG,quadratic x1
+sports,Soccer: Liga MX: in-game segments (halves/quarters/innings/sets/maps),9,9,Soccer: Liga MX,297,9.9,48.76,81,297,3063,3304,5344,69821,227077,289291,0.456,group average,131958,4.0,141,0,,,Fox Sports; ESPN,quadratic x1
+sports,Soccer: other: player props,2,2,Soccer: other,70,2.3,2.96,0,0,0,0,23417,291116,224179,0,0.456,group average,0,,,0,,,Fox Sports; ESPN,quadratic x1
+sports,Soccer: Premier League: spreads,1,1,Soccer: Premier League,24,0.8,169.94,10,40,3246,4242,150381,607182,221328,430826,0.5,sampled (100% of 7d vol),215327,2.0,885,0,,,Fox Sports,quadratic x1
+sports,NBA: in-game segments (halves/quarters/innings/sets/maps),3,3,NBA,195,6.5,4.52,26,270,12986,12936,16521,91051,219307,508039,0.599,sampled (93% of 7d vol),304258,4.5,110,0,,,the Governing League,quadratic x1
+sports,Soccer: MLS: spreads,1,1,Soccer: MLS,78,2.6,169.56,15,60,2543,7547,64195,160675,218345,459178,0.382,sampled (100% of 7d vol),175406,4.0,1084,0,,,Fox Sports,quadratic x1
+sports,Tennis: spreads,1,1,Tennis,342,11.4,25.21,26,78,10236,15705,12347,43410,215118,156605,0.495,sampled (100% of 7d vol),77566,1.0,2837,0,,,ESPN,quadratic x1
+sports,Soccer: Premier League: other game props,4,4,Soccer: Premier League,96,3.2,99.64,10,10,45,177,29496,193981,212680,453869,0.539,sampled (87% of 7d vol),244571,3.0,2561,0,,,ESPN; Fox Sports,quadratic x1
+sports,Soccer: Premier League: in-game segments (halves/quarters/innings/sets/maps),9,9,Soccer: Premier League,216,7.2,48.88,0,0,0,0,7292,95323,210852,440539,0.553,sampled (76% of 7d vol),243822,,,0,,,Fox Sports; ESPN,quadratic x1
+sports,Soccer: MLS: other game props,2,2,Soccer: MLS,156,5.2,109.67,16,45,583,578,30794,75400,202992,387286,0.501,sampled (100% of 7d vol),194112,3.0,1771,0,,,Fox Sports; ESPN,quadratic x1
+sports,Soccer: Liga MX: spreads,1,1,Soccer: Liga MX,34,1.1,170.0,18,72,3852,5208,112689,362045,177484,230224,0.433,sampled (100% of 7d vol),99733,3.0,402,0,,,Fox Sports,quadratic x1
+sports,Soccer: Liga MX: other game props,2,2,Soccer: Liga MX,67,2.2,109.75,27,288,2058,1847,65642,144297,174850,216542,0.456,group average,98774,3.0,532,0,,,Fox Sports; ESPN,quadratic x1
+sports,NCAA football: player props,4,4,NCAA football,277,9.2,75.39,27,81,63,63,7533,42143,161102,110827,0.456,group average,50553,32.0,592,0,,,ESPN; Kalshi using information originating from the NCAA,quadratic x1
+sports,Basketball: other: totals,17,17,Basketball: other,500,16.7,10.74,6,66,505,500,5255,22851,158741,234747,0.456,group average,107078,1.0,370,0,,,Sofascore; Basketball24,quadratic x1
+sports,WNBA: player props,3,3,WNBA,112,3.7,14.29,0,0,0,0,24793,116496,153695,43767,0.456,group average,19964,,,0,,,the Governing League,quadratic x1
+sports,Soccer: EFL: totals,3,3,Soccer: EFL,88,2.9,73.99,13,78,1430,1553,25733,77926,132720,318741,0.599,sampled (92% of 7d vol),190990,1.0,1203,0,,,Fox Sports; FIFA,quadratic x1
+sports,Soccer: Ligue 1: totals,2,2,Soccer: Ligue 1,42,1.4,109.59,9,54,13,27,46591,209604,130829,270958,0.541,sampled (94% of 7d vol),146724,3.0,844,0,,,ESPN; Fox Sports,quadratic x1
+sports,Soccer: Serie A: in-game segments (halves/quarters/innings/sets/maps),9,9,Soccer: Serie A,225,7.5,48.66,0,0,0,0,4198,64422,130554,288773,0.456,group average,131721,,,0,,,Fox Sports; ESPN,quadratic x1
+sports,Basketball: other: spreads,17,17,Basketball: other,500,16.7,10.74,6,72,2313,1999,4364,18007,127378,176730,0.456,group average,80614,2.5,341,0,,,Sofascore; Basketball24,quadratic x1
+sports,Esports: totals,4,4,Esports,1618,53.9,23.59,107,109,136,137,137,5623,119668,144542,0.456,group average,65932,95.0,1,0,,,Sofascore; HLTV,quadratic x1
+sports,Soccer: Bundesliga: in-game segments (halves/quarters/innings/sets/maps),9,9,Soccer: Bundesliga,189,6.3,48.67,0,0,0,0,4206,50354,109977,178211,0.456,group average,81289,,,0,,,Fox Sports; ESPN,quadratic x1
+sports,Soccer: Serie A: other game props,2,2,Soccer: Serie A,50,1.7,109.73,10,10,3692,658,45388,125523,104591,234981,0.456,group average,107184,3.0,3024,0,,,Fox Sports; ESPN,quadratic x1
+sports,Soccer: Serie A: spreads,1,1,Soccer: Serie A,25,0.8,169.66,10,40,2581,2782,78984,204379,91464,207179,0.467,sampled (100% of 7d vol),96835,3.0,1297,0,,,Fox Sports,quadratic x1
+sports,Hockey: other: game/match winner,8,8,Hockey: other,646,21.5,66.25,44,88,6336,6563,2743,7904,86452,118740,0.456,group average,54162,9.0,24,0,,,AHL; DEL,quadratic x1
+sports,Soccer: La Liga: player props,2,2,Soccer: La Liga,50,1.7,3.05,0,0,0,0,5556,198565,83864,171325,0.456,group average,78148,,,0,,,ESPN,quadratic x1
+sports,Soccer: Bundesliga: spreads,2,2,Soccer: Bundesliga,42,1.4,97.39,9,36,87,339,26769,102213,83402,107029,0.456,group average,48820,2.0,1402,0,,,Fox Sports,quadratic x1
+sports,Baseball: other: totals,1,1,Baseball: other,78,2.6,78.63,1,4,31054,26356,26803,55252,78326,28333,0.456,group average,12924,1.0,862,0,,,KBO,quadratic x1
+sports,Soccer: UEFA club comps: player props,3,3,Soccer: UEFA club comps,45,1.5,3.0,0,0,0,0,7583,158229,72962,312694,0.313,sampled (79% of 7d vol),97998,,,0,,,ESPN; Fox Sports,quadratic x1
+sports,"Soccer: FIFA/World Cup: other (races, tournaments, awards)",1,1,Soccer: FIFA/World Cup,16,0.5,355.15,0,0,0,0,74508,236293,69286,296942,0.254,sampled (100% of 7d vol),75453,,,0,,,ESPN,quadratic x1
+sports,Table tennis: game/match winner,1,1,Table tennis,736,24.5,12.3,80,160,14468,22636,1457,6030,64238,275306,0.606,sampled (100% of 7d vol),166698,89.0,0,0,,,Sofascore,quadratic x1
+sports,Soccer: Ligue 1: in-game segments (halves/quarters/innings/sets/maps),9,9,Soccer: Ligue 1,189,6.3,48.54,0,0,0,0,3223,32583,64015,110633,0.456,group average,50464,,,0,,,Fox Sports; ESPN,quadratic x1
+sports,"Tennis: other (races, tournaments, awards)",2,2,Tennis,14,0.5,126.84,13,324,8011,61269,87668,332790,62239,96958,0.456,group average,44227,8.0,10,0,,,Fox Sports,quadratic x1
+sports,Soccer: Bundesliga: other game props,3,3,Soccer: Bundesliga,63,2.1,49.76,9,9,0,16,16615,66644,61804,119960,0.456,group average,54719,2.0,2560,0,,,FIFA; Fox Sports,quadratic x1
+sports,Baseball: totals,1,1,Baseball,82,2.7,79.29,0,0,0,0,18101,42736,61027,38683,0.456,group average,17645,,,0,,,ESPN,quadratic x1
+sports,Soccer: EFL: in-game segments (halves/quarters/innings/sets/maps),8,8,Soccer: EFL,276,9.2,24.88,48,108,1269,1269,2713,15123,56106,96152,0.456,group average,43859,2.0,502,0,,,Fox Sports; ESPN,quadratic x1
+sports,Soccer: Premier League: player props,3,3,Soccer: Premier League,48,1.6,3.92,0,0,0,0,13733,78093,51046,105276,0.456,group average,48021,,,0,,,ESPN,quadratic x1
+sports,NCAA football: other game props,1,1,NCAA football,141,4.7,170.98,27,27,276,298,2279,31324,50833,69920,0.456,group average,31893,1.0,1158,0,,,ESPN,quadratic x1
+sports,Soccer: FIFA/World Cup: totals,1,1,Soccer: FIFA/World Cup,25,0.8,25.3,0,0,0,0,51882,113154,45211,112418,0.456,group average,51279,,,0,,,FIFA,quadratic x1
+sports,Soccer: Ligue 1: spreads,1,1,Soccer: Ligue 1,21,0.7,169.61,9,36,222,854,33839,141807,41534,82584,0.456,group average,37670,3.0,580,0,,,Fox Sports,quadratic x1
+sports,Soccer: Ligue 1: other game props,2,2,Soccer: Ligue 1,42,1.4,109.62,9,9,0,0,19706,59016,38719,86941,0.456,group average,39658,3.0,2007,0,,,Fox Sports; ESPN,quadratic x1
+sports,Baseball: other: spreads,1,1,Baseball: other,78,2.6,78.62,1,4,13673,12461,12116,30924,38636,15557,0.456,group average,7096,2.0,580,0,,,KBO,quadratic x1
+sports,Sports: other: game/match winner,1,1,Sports: other,367,12.2,50.75,1,2,3,3,1353,7676,36703,26973,0.456,group average,12303,80.0,2,0,,,Kalshi using information originating from the NCAA,quadratic x1
+sports,Baseball: spreads,1,1,Baseball,82,2.7,79.29,0,0,0,0,8100,20019,29247,17348,0.456,group average,7913,,,0,,,ESPN,quadratic x1
+sports,"Soccer: other: other (races, tournaments, awards)",6,6,Soccer: other,206,6.9,80.03,0,0,0,0,2326,8543,26835,792,0.456,group average,361,,,0,,,ESPN; FIFA,quadratic x1
+sports,"NHL: other (races, tournaments, awards)",2,2,NHL,273,9.1,28.3,13,13,151,124,1824,6574,26140,63760,0.456,group average,29084,3.0,234,0,,,NHL,quadratic x1
+sports,Esports: spreads,3,3,Esports,94,3.1,21.95,27,54,526,526,131,25259,26043,93978,0.456,group average,42867,37.5,0,0,,,HLTV; Gamers World,quadratic x1
+sports,Soccer: EFL: spreads,3,3,Soccer: EFL,88,2.9,73.92,13,52,318,344,5232,18279,25720,44214,0.456,group average,20168,1.0,287,0,,,Fox Sports,quadratic x1
+sports,Darts: game/match winner,1,1,Darts,386,12.9,30.84,30,60,17,16,1318,2512,19427,19140,0.456,group average,8731,92.0,2,0,,,Flashscore,quadratic x1
+sports,Soccer: EFL: other game props,3,3,Soccer: EFL,88,2.9,73.89,13,13,382,382,2402,15455,17255,51042,0.456,group average,23282,1.0,1010,0,,,FIFA; Fox Sports,quadratic x1
+sports,Football: other: game/match winner,1,1,Football: other,17,0.6,170.91,4,8,310,132,20566,61498,16843,13683,0.456,group average,6242,5.0,16,0,,,CFL,quadratic x1
+sports,Cricket: totals,1,1,Cricket,37,1.2,23.02,0,0,0,0,9305,17074,13780,0,0.456,group average,0,,,0,,,EuroBasket,quadratic x1
+sports,WNBA: other game props,2,2,WNBA,44,1.5,118.06,4,11,3258,15472,2232,23730,12144,3473,0.456,group average,1584,10.0,432,0,,,the Governing League; ESPN,quadratic x1
+sports,Soccer: FIFA/World Cup: spreads,1,1,Soccer: FIFA/World Cup,25,0.8,25.27,0,0,0,0,10624,24662,11783,21194,0.456,group average,9668,,,0,,,Fox Sports,quadratic x1
+sports,Baseball: in-game segments (halves/quarters/innings/sets/maps),1,1,Baseball,82,2.7,76.67,0,0,0,0,3074,8666,10861,4161,0.456,group average,1898,,,0,,,ESPN,quadratic x1
+sports,Cricket: spreads,1,1,Cricket,37,1.2,23.02,0,0,0,0,6539,15387,10575,0,0.456,group average,0,,,0,,,EuroBasket,quadratic x1
+sports,MLB: other game props,2,2,MLB,15,0.5,283.19,6,77,10057,44723,15180,27718,10435,20841,0.456,group average,9507,2.5,191,0,,,ESPN,quadratic x1
+sports,"Esports: other (races, tournaments, awards)",8,8,Esports,135,4.5,16.5,3,57,32217,147771,529,2916,10188,42774,0.456,group average,19511,1.0,4371,0,,,LoL Esports; Valorant,quadratic x1
+sports,Baseball: other: in-game segments (halves/quarters/innings/sets/maps),1,1,Baseball: other,78,2.6,77.13,1,1,3616,2376,2657,8200,9900,3422,0.456,group average,1561,1.0,152,0,,,KBO,quadratic x1
+sports,Football: other: spreads,1,1,Football: other,17,0.6,170.91,4,40,0,0,10640,33946,8791,4677,0.456,group average,2133,22.0,21,0,,,ESPN,quadratic x1
+sports,Soccer: FIFA/World Cup: other game props,1,1,Soccer: FIFA/World Cup,25,0.8,24.9,0,0,0,0,5709,23441,6964,15593,0.456,group average,7113,,,0,,,FIFA,quadratic x1
+sports,"Soccer: MLS: other (races, tournaments, awards)",1,1,Soccer: MLS,63,2.1,48.67,0,0,0,0,1080,7721,5870,2728,0.456,group average,1244,,,0,,,ESPN,quadratic x1
+sports,NHL: other game props,1,1,NHL,136,4.5,48.92,13,13,26,26,634,1828,5046,7378,0.456,group average,3365,2.0,897,0,,,NHL,quadratic x1
+sports,"Soccer: UEFA club comps: other (races, tournaments, awards)",4,4,Soccer: UEFA club comps,63,2.1,48.53,0,0,0,0,710,6959,4365,18708,0.456,group average,8533,,,0,,,ESPN,quadratic x1
+sports,Soccer: MLS: player props,2,2,Soccer: MLS,26,0.9,2.87,0,0,0,0,1482,6840,4159,17824,0.456,group average,8130,,,0,,,Fox Sports; ESPN,quadratic x1
+sports,Football: other: totals,1,1,Football: other,14,0.5,104.41,3,15,0,0,5976,20998,4078,2401,0.456,group average,1095,15.0,577,0,,,ESPN,quadratic x1
+sports,Rugby: game/match winner,5,5,Rugby,51,1.7,64.85,0,0,0,0,369,1509,3934,0,0.456,group average,0,,,0,,,ESPN; Sky Sports,quadratic x1
+sports,Golf: player props,1,1,Golf,4,0.1,117.53,0,0,0,0,32339,40676,3868,0,0.456,group average,0,,,0,,,ESPN,quadratic x1
+sports,"Soccer: Liga MX: other (races, tournaments, awards)",1,1,Soccer: Liga MX,23,0.8,48.33,0,0,0,0,2853,11156,3689,0,0.456,group average,0,,,0,,,ESPN,quadratic x1
+sports,"Soccer: Premier League: other (races, tournaments, awards)",2,2,Soccer: Premier League,34,1.1,26.77,0,0,0,0,2033,5146,3310,7826,0.456,group average,3570,,,0,,,FIFA; ESPN,quadratic x1
+sports,"Chess: other (races, tournaments, awards)",3,3,Chess,19,0.6,155.3,8,344,7907,42293,4212,9048,3306,4440,0.456,group average,2025,7.0,6,0,,,Liquipedia; Chess.com,quadratic x1
+sports,Combat sports: other game props,1,1,Combat sports,11,0.4,124.2,7,35,4,4,1372,12030,3040,11645,0.456,group average,5312,74.0,17,0,,,Fox Sports,quadratic x1
+sports,Soccer: Bundesliga: player props,2,2,Soccer: Bundesliga,16,0.5,2.65,0,0,0,0,735,4794,2521,10803,0.456,group average,4928,,,0,,,Fox Sports; ESPN,quadratic x1
+sports,Esports: other game props,1,1,Esports,6,0.2,19.53,0,0,0,0,11629,19871,2210,9473,0.456,group average,4321,,,0,,,LoL Esports,quadratic x1
+sports,Soccer: Serie A: player props,2,2,Soccer: Serie A,18,0.6,2.62,0,0,0,0,1404,9663,2120,9086,0.456,group average,4145,,,0,,,Fox Sports; ESPN,quadratic x1
+sports,Soccer: Liga MX: player props,2,2,Soccer: Liga MX,10,0.3,2.78,0,0,0,0,2408,12047,1997,8557,0.456,group average,3903,,,0,,,Fox Sports; ESPN,quadratic x1
+sports,MMA: game/match winner,1,1,MMA,8,0.3,34.14,0,0,0,0,7581,9569,1853,0,0.456,group average,0,,,0,,,Powerslap,quadratic x1
+sports,NBA: player props,1,1,NBA,3,0.1,7.33,3,86,34704,75170,12269,23298,1424,0,0.456,group average,0,1.0,7420,0,,,the Governing League,quadratic x1
+sports,"WNBA: other (races, tournaments, awards)",1,1,WNBA,6,0.2,131.37,1,3,752,2315,1133,14389,1044,0,0.456,group average,0,,,0,,,ESPN,quadratic x1
+sports,"Soccer: La Liga: other (races, tournaments, awards)",1,1,Soccer: La Liga,15,0.5,48.65,0,0,0,0,1749,3895,987,0,0.456,group average,0,,,0,,,FIFA,quadratic x1
+sports,Soccer: Ligue 1: player props,2,2,Soccer: Ligue 1,16,0.5,2.71,0,0,0,0,1022,2801,947,4060,0.456,group average,1852,,,0,,,Fox Sports; ESPN,quadratic x1
+sports,"Soccer: Bundesliga: other (races, tournaments, awards)",1,1,Soccer: Bundesliga,12,0.4,48.66,0,0,0,0,839,2196,785,0,0.456,group average,0,,,0,,,FIFA,quadratic x1
+sports,"Soccer: Serie A: other (races, tournaments, awards)",1,1,Soccer: Serie A,15,0.5,48.33,0,0,0,0,991,3003,704,0,0.456,group average,0,,,0,,,FIFA,quadratic x1
+sports,"MMA: other (races, tournaments, awards)",1,1,MMA,3,0.1,9.12,0,0,0,0,3244,12523,673,0,0.456,group average,0,,,0,,,ESPN,quadratic x1
+sports,Motorsport: in-game segments (halves/quarters/innings/sets/maps),1,1,Motorsport,14,0.5,63.92,0,0,0,0,1121,2708,590,0,0.456,group average,0,,,0,,,FIA,quadratic x1
+sports,"Soccer: Ligue 1: other (races, tournaments, awards)",1,1,Soccer: Ligue 1,12,0.4,48.66,0,0,0,0,667,3164,569,0,0.456,group average,0,,,0,,,FIFA,quadratic x1
+sports,Hockey: game/match winner,1,1,Hockey,6,0.2,23.58,0,0,0,0,633,1614,163,698,0.456,group average,319,,,0,,,Flashscore,quadratic x1
+weather,"Daily high temperature, by city",24,24,24 series,720,24.0,40.0,31,186,542408,421278,35466,154018,1703197,1570930,0.321,sampled (100% of 7d vol),504199,1.0,43,6,1.0,636,The Weather Company,quadratic x1
+weather,Rain / snow daily,8,4,8 series,33,1.1,82.98,6,54,458228,242373,1073116,1505260,1113268,1385861,0.357,sampled (100% of 7d vol),494891,28.0,181,2,,4330,The Weather Company; National Weather Service,quadratic x1
+weather,Hourly temperature (directional),4,4,4 series,2816,93.9,1.0,4,40,11443,10995,4940,18242,714472,858241,0.544,sampled (100% of 7d vol),467234,4.0,79,6,8.5,309,Synoptic Data; Kalshi,quadratic x1
+weather,"Daily low temperature, by city",24,24,24 series,720,24.0,40.0,31,186,131573,113101,4396,13227,159970,162822,0.457,sampled (96% of 7d vol),74437,1.5,115,6,8.0,104,The Weather Company,quadratic x1
+weather,Rain / snow weekly / weekend,2,2,2 series,6,0.2,161.41,1,35,1384,1251,153721,298957,32649,42522,0.388,group average,16511,2.0,95,2,3.0,343,The Weather Company,quadratic x1
+weather,Rain / snow monthly totals,16,16,16 series,21,0.7,483.16,33,211,11904,148997,7934,108160,24470,1754,0.388,group average,681,31.0,7,6,7.0,145,The Weather Company; NWS Climatological Report NY,quadratic x1
+weather,Earthquakes (USGS),3,2,3 series,30,1.0,28.0,5,14,11869,287399,11340,26502,13897,13719,0.702,sampled (100% of 7d vol),9625,2.0,20,5,6.0,517,USGS; the United States Geological Survey,quadratic x1
