@@ -30,7 +30,7 @@ function service(name, entry, memory, extra = []) {
     max_memory_restart: memory,
     args: [
       `--env-file=${resolve(root, ".env")}`,
-      ...(["market-maker", "vault-keeper", "feed-mirror"].includes(name)
+      ...(["market-maker", "vault-keeper", "feed-mirror", "market-automation"].includes(name)
         ? [`--env-file=${resolve(root, `.env.${name}`)}`]
         : []),
       resolve(root, entry),
@@ -40,8 +40,8 @@ function service(name, entry, memory, extra = []) {
 }
 
 // One API process runs the chain index (live replica, finalized persistence, reconciliation)
-// and the /v1 API. The market maker, the Δ-vault keeper and the testnet mock-feed mirror each use
-// their own dedicated wallet and run only when their .env.<name> file exists.
+// and the /v1 API. The market maker, the Δ-vault keeper, the market automation and the testnet
+// mock-feed mirror each use their own wallet and run only when their .env.<name> file exists.
 module.exports = {
   apps: [
     service("polymarket", "services/polymarket-ingestor/src/main.ts", "384M"),
@@ -51,6 +51,13 @@ module.exports = {
       : []),
     ...(existsSync(resolve(root, ".env.vault-keeper"))
       ? [service("vault-keeper", "services/vault-keeper/src/main.ts", "512M", ["--execute"])]
+      : []),
+    ...(existsSync(resolve(root, ".env.market-automation"))
+      ? [
+          service("market-automation", "services/market-automation/src/main.ts", "256M", [
+            "--execute",
+          ]),
+        ]
       : []),
     ...(existsSync(resolve(root, ".env.feed-mirror"))
       ? [service("feed-mirror", "scripts/evm/feed-mirror.ts", "256M")]

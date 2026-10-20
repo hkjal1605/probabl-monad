@@ -1,25 +1,19 @@
-/** Creates the markets planned in deployments/<chainId>-markets.json through the API's admin
- * evidence flow, the admin console's path: Polymarket metadata → creation evidence → approval →
- * API transaction preview, checked against a locally built one → signed by the market admin →
- * reconciled (subscribes the Polymarket ingestor) → opened. Each planned event lists the stock
- * tokens it moves; every (event, stock) pair is one market, trading until the event's end.
- * A market's maker and taker fees (whole bps, fixed at creation) come from its own `fees`, else
- * its event's, else the plan's, else none; its maker rebate (bps of the taker fee, up to 5,000)
- * likewise from `makerRebateBps`, set before the market opens and updated on a later run when
- * the plan changes it. Resumable: progress is written back to the plan file.
+/** Creates the markets planned in deployments/<chainId>-markets.json with the market
+ * automation's `createMarkets` (the API's admin evidence flow, signed by the market admin). Each
+ * planned event lists the stock tokens it moves; every (event, stock) pair is one market, trading
+ * until the event's end. A market's maker and taker fees (whole bps, fixed at creation) come from
+ * its own `fees`, else its event's, else the plan's, else none; its maker rebate (bps of the taker
+ * fee, up to 5,000) likewise from `makerRebateBps`, set before the market opens and updated on a
+ * later run when the plan changes it. Resumable: created markets are written back to the plan.
  *
  *   MARKET_ADMIN_PRIVATE_KEY=… RPC_URL=… CHAIN_ID=46630 bun scripts/evm/create-markets.ts */
 import { resolve } from "node:path";
-import { conditionalStocksAbi, underlyingId } from "@conditional-stocks/evm-client";
 import {
-  type AdminPreview,
-  type AdminTransaction,
-  evidenceTransactions,
-  lifecycleTransaction,
-  makerRebateTransaction,
-  type PacketEnvelope,
-  preflightAdmin,
-} from "@conditional-stocks/evm-client/admin";
+  Admin,
+  createMarkets,
+  type Fees,
+  type MarketSpec,
+} from "@conditional-stocks/market-automation";
 import { catalogUnderlying } from "@conditional-stocks/shared/token-catalog";
 import {
   createPublicClient,
@@ -30,25 +24,16 @@ import {
   getAddress,
   type Hex,
   http,
-  parseEventLogs,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
-/** Fee rates in whole bps, as decimal strings (e.g. "25" = 0.25%). */
-interface Fees {
-  makerFeeBps: string;
-  takerFeeBps: string;
-}
 interface MarketRecord {
   fees?: Fees;
   /** Maker rebate in bps of the taker fee, as a decimal string (e.g. "2500" = 25%). */
   makerRebateBps?: string;
   /** The rebate this script last set on chain. */
   rebate?: string;
-  packetHash?: string;
   marketId?: string;
-  transactionHash?: string;
-  opened?: true;
 }
 interface Plan {
   chainId: number;
@@ -66,24 +51,6 @@ interface Plan {
     markets: Record<string, MarketRecord>;
   }[];
 }
-/** Order and exposure limits of every planned market, in raw units of 18-decimal stocks and
- * 6-decimal quote: 0.001-share steps, $0.01 ticks, $1 to $10,000 orders, 1,000 shares per
- * order, $100,000 open per wallet and $1,000,000 per market. */
-const LIMITS = {
-  baseStep: "1000000000000000",
-  priceTickRawX18: "10000",
-  minNotional: "1000000",
-  maxOrderQuantity: "1000000000000000000000",
-  maxOrderNotional: "10000000000",
-  maxWalletOpenNotional: "100000000000",
-  maxMarketOpenNotional: "1000000000000",
-};
-const NO_FEES: Fees = { makerFeeBps: "0", takerFeeBps: "0" };
-/** A Polymarket metadata snapshot recorded by the API. */
-type Snapshot = {
-  snapshotId: string;
-  normalized: { endTime: string; canonicalUrl: string; rules: string };
-};
 /** The admin console's origin, which the API accepts for wallet sign-in. */
 const ORIGIN = "http://localhost:3002";
 
@@ -96,11 +63,8 @@ const chainId = Number(required("CHAIN_ID"));
 const root = resolve(import.meta.dir, "../..");
 const planPath = resolve(root, `deployments/${chainId}-markets.json`);
 const plan = (await Bun.file(planPath).json()) as Plan;
-const { exchange, quote } = (await Bun.file(
-  resolve(root, `deployments/${chainId}.json`),
-).json()) as {
+const { exchange } = (await Bun.file(resolve(root, `deployments/${chainId}.json`)).json()) as {
   exchange: `0x${string}`;
-  quote: `0x${string}`;
 };
 if (plan.chainId !== chainId) throw new Error("The plan is for another chain");
 const save = () => Bun.write(planPath, `${JSON.stringify(plan, null, 2)}\n`);
@@ -118,209 +82,67 @@ const chain = defineChain({
 const transport = fallback(rpcs.map((url) => http(url)));
 const client = createPublicClient({ chain, transport });
 if ((await client.getChainId()) !== chainId) throw new Error("RPC_URL serves another chain");
-const admin = privateKeyToAccount(required("MARKET_ADMIN_PRIVATE_KEY") as Hex);
-const wallet = createWalletClient({ account: admin, chain, transport });
-const [marketAdmin, , resolutionAdmin] = await client.readContract({
-  address: exchange,
-  abi: conditionalStocksAbi,
-  functionName: "roles",
+const marketAdmin = privateKeyToAccount(required("MARKET_ADMIN_PRIVATE_KEY") as Hex);
+if ((await client.getBalance({ address: marketAdmin.address })) === 0n)
+  throw new Error(`The market admin ${marketAdmin.address} has no gas`);
+const admin = new Admin({
+  api: plan.api,
+  origin: ORIGIN,
+  client,
+  wallet: createWalletClient({ chain, transport }),
+  exchange,
+  marketAdmin,
 });
-if (marketAdmin !== admin.address)
-  throw new Error(`MARKET_ADMIN_PRIVATE_KEY is not the exchange's market admin ${marketAdmin}`);
-if ((await client.getBalance({ address: admin.address })) === 0n)
-  throw new Error(`The market admin ${admin.address} has no gas`);
-const stocks = new Map<string, { token: `0x${string}`; underlying: Hex }>();
+const stocks = new Map<string, `0x${string}`>();
 for (const [ticker, token] of Object.entries(plan.tokens)) {
   const symbol = await client.readContract({
     address: token,
     abi: erc20Abi,
     functionName: "symbol",
   });
-  const underlying = catalogUnderlying(symbol);
-  if (symbol !== ticker || !underlying)
+  if (symbol !== ticker || !catalogUnderlying(symbol))
     throw new Error(`${token} is ${symbol}, not a catalogued ${ticker}`);
-  stocks.set(ticker, { token: getAddress(token), underlying: underlyingId(underlying) });
+  stocks.set(ticker, getAddress(token));
 }
 
-async function call<T>(path: string, body?: unknown, token?: string): Promise<T> {
-  const response = await fetch(`${plan.api}${path}`, {
-    method: body === undefined ? "GET" : "POST",
-    headers: {
-      "content-type": "application/json",
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
-    },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
-  const json = (await response.json()) as T & { error?: { message?: string } };
-  if (!response.ok) throw new Error(`${path}: ${json.error?.message ?? response.status}`);
-  return json;
-}
-async function send(transaction: AdminTransaction) {
-  await preflightAdmin(client, transaction);
-  const hash = await wallet.sendTransaction({ to: transaction.to, data: transaction.data });
-  const receipt = await client.waitForTransactionReceipt({ hash });
-  if (receipt.status !== "success") throw new Error(`Transaction ${hash} reverted`);
-  return hash;
-}
-
-const { challengeId, message } = await call<{ challengeId: string; message: string }>(
-  "/v1/auth/challenge",
-  { address: admin.address, origin: ORIGIN },
-);
-const { token } = await call<{ token: string }>("/v1/auth/verify", {
-  address: admin.address,
-  challengeId,
-  signature: await admin.signMessage({ message }),
-});
-const checklist = Object.fromEntries(
-  [
-    "stock-and-quote",
-    "condition-id",
-    "yes-no-orientation",
-    "rules-and-dates",
-    "maker-and-taker-fees",
-    "source-and-raw-hash",
-  ].map((key) => [key, true]),
+const planned = plan.events.flatMap((event) =>
+  Object.entries(event.markets).map(([ticker, record]) => {
+    const base = stocks.get(ticker);
+    if (!base) throw new Error(`${ticker} has no planned token`);
+    const rebate = record.makerRebateBps ?? event.makerRebateBps ?? plan.makerRebateBps ?? "0";
+    const fees = record.fees ?? event.fees ?? plan.fees;
+    const spec: MarketSpec = {
+      gammaMarketId: event.gammaMarketId,
+      base,
+      makerRebateBps: Number(rebate),
+      note: `${ticker}: ${event.rationale}`,
+      ...(fees ? { fees } : {}),
+    };
+    return { label: `${ticker} · ${event.question}`, record, rebate, spec };
+  }),
 );
 
 let failed = 0;
-for (const event of plan.events) {
-  let snapshot: Snapshot | undefined;
-  for (const [ticker, record] of Object.entries(event.markets)) {
-    try {
-      const stock = stocks.get(ticker);
-      if (!stock) throw new Error(`${ticker} has no planned token`);
-      const base = stock.token;
-      if (!record.marketId && !record.packetHash) {
-        snapshot ??= await call<Snapshot>(
-          "/v1/admin/polymarket/metadata/fetch",
-          { gammaMarketId: event.gammaMarketId },
-          token,
-        );
-        const s = snapshot;
-        const now = Math.floor(Date.now() / 1000);
-        const end = Math.floor(Date.parse(s.normalized.endTime) / 1000);
-        if (end < now + 86_400) throw new Error("The event ends within a day");
-        const { envelope } = await call<{ envelope: PacketEnvelope }>(
-          "/v1/admin/evidence/creation/prepare",
-          {
-            metadataSnapshotId: s.snapshotId,
-            sourceUrls: [s.normalized.canonicalUrl],
-            attachments: [],
-            config: {
-              baseToken: base,
-              quoteToken: quote,
-              ...LIMITS,
-              ...(record.fees ?? event.fees ?? plan.fees ?? NO_FEES),
-              tradingOpen: String(now - 60),
-              tradingCutoff: String(end),
-              metadataUri: s.normalized.canonicalUrl,
-              rules: s.normalized.rules,
-            },
-          },
-          token,
-        );
-        record.packetHash = envelope.packetHash;
-        await save();
-        await call(
-          `/v1/admin/evidence/${record.packetHash}/review`,
-          { decision: "approve", checklist, notes: `${ticker}: ${event.rationale}` },
-          token,
-        );
-      }
-      if (!record.marketId) {
-        const view = await call<{
-          envelope: PacketEnvelope;
-          observations: { marketId?: string }[];
-        }>(`/v1/admin/evidence/${record.packetHash}`, undefined, token);
-        // Executed earlier, with only the reconciliation left undone.
-        const executed = view.observations.find((o) => o.marketId)?.marketId;
-        if (executed) record.marketId = executed;
-        else {
-          const preview = await call<AdminPreview & { prerequisites: AdminTransaction[] }>(
-            `/v1/admin/evidence/${record.packetHash}/transaction`,
-            {},
-            token,
-          );
-          // Sign only what this script builds from the approved evidence and the live chain.
-          const [count, pool] = await Promise.all([
-            client.readContract({
-              address: exchange,
-              abi: conditionalStocksAbi,
-              functionName: "marketCount",
-            }),
-            client.readContract({
-              address: exchange,
-              abi: conditionalStocksAbi,
-              functionName: "pool",
-              args: [base],
-            }),
-          ]);
-          const { transactions } = evidenceTransactions(view.envelope, "create-market", {
-            chainId,
-            exchange,
-            marketAdmin,
-            resolutionAdmin,
-            nextMarketId: count + 1,
-            basePoolListed: () => pool.listed,
-            baseUnderlying: () => stock.underlying,
-          });
-          const remote = [...preview.prerequisites, preview];
-          if (
-            remote.length !== transactions.length ||
-            transactions.some((t, i) => t.data !== remote[i]?.data || t.to !== remote[i]?.to)
-          )
-            throw new Error("The API preview differs from the locally built transaction");
-          let hash: Hex = "0x";
-          for (const transaction of transactions) hash = await send(transaction);
-          const created = parseEventLogs({
-            abi: conditionalStocksAbi,
-            logs: (await client.getTransactionReceipt({ hash })).logs,
-            eventName: "MarketCreated",
-          })[0];
-          if (!created) throw new Error("No market was created");
-          record.marketId = String(created.args.market);
-          record.transactionHash = hash;
-          await save();
-          await call(
-            `/v1/admin/evidence/${record.packetHash}/reconcile`,
-            { action: "create-market", transactionHash: hash },
-            token,
-          ).catch((error) =>
-            console.warn(
-              `Market ${record.marketId} reconciled with a warning: ${error instanceof Error ? error.message : error}`,
-            ),
-          );
-        }
-        await save();
-      }
-      const rebate = record.makerRebateBps ?? event.makerRebateBps ?? plan.makerRebateBps ?? "0";
-      if (rebate !== (record.rebate ?? "0")) {
-        await send(
-          makerRebateTransaction(
-            { chainId, exchange },
-            admin.address,
-            Number(record.marketId),
-            Number(rebate),
-          ),
-        );
-        record.rebate = rebate;
-        await save();
-      }
-      if (!record.opened) {
-        await send(
-          lifecycleTransaction({ chainId, exchange }, admin.address, Number(record.marketId), 0),
-        );
-        record.opened = true;
-        await save();
-      }
-      console.info(`Market ${record.marketId}: ${ticker} · ${event.question}`);
-    } catch (error) {
-      failed++;
-      console.error(
-        `${ticker} · ${event.question}: ${error instanceof Error ? error.message : error}`,
-      );
+const results = await createMarkets(
+  admin,
+  planned.filter((p) => !p.record.marketId).map((p) => p.spec),
+);
+for (const { label, record, rebate, spec } of planned) {
+  try {
+    const result = results.find((r) => r.spec === spec);
+    if (result && "error" in result) throw new Error(result.error);
+    if (result) {
+      record.marketId = result.marketId;
+      record.rebate = rebate;
+    } else if (record.marketId && rebate !== (record.rebate ?? "0")) {
+      await admin.setMakerRebate(record.marketId, Number(rebate));
+      record.rebate = rebate;
     }
+    await save();
+    console.info(`Market ${record.marketId}: ${label}`);
+  } catch (error) {
+    failed++;
+    console.error(`${label}: ${error instanceof Error ? error.message : error}`);
   }
 }
 if (failed) {

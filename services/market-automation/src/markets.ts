@@ -1,0 +1,211 @@
+/** The operations automation jobs build on: create markets from Polymarket markets and stock
+ * tokens, and settle a market once Polymarket's payout is final. Both are idempotent, so a job
+ * may call them on every run. */
+import { type Address, getAddress } from "viem";
+import {
+  type Admin,
+  AWAITING,
+  type Evidence,
+  FROZEN,
+  type Market,
+  OPEN,
+  SCHEDULED,
+} from "./admin.ts";
+import { POLYGON_CONDITIONAL_TOKENS, type ReportedPayout } from "./polygon.ts";
+
+/** Order and exposure limits in raw units of 18-decimal stocks and 6-decimal quote: 0.001-share
+ * steps, $0.01 ticks, $1 to $10,000 orders, 1,000 shares per order, $100,000 open per wallet and
+ * $1,000,000 per market. */
+export const DEFAULT_LIMITS = {
+  baseStep: "1000000000000000",
+  priceTickRawX18: "10000",
+  minNotional: "1000000",
+  maxOrderQuantity: "1000000000000000000000",
+  maxOrderNotional: "10000000000",
+  maxWalletOpenNotional: "100000000000",
+  maxMarketOpenNotional: "1000000000000",
+};
+/** Fee rates in whole bps, as decimal strings (e.g. "25" = 0.25%), fixed at creation. */
+export interface Fees {
+  makerFeeBps: string;
+  takerFeeBps: string;
+}
+export interface MarketSpec {
+  /** The Polymarket market (Gamma id) whose YES/NO question is the market's event. */
+  gammaMarketId: string;
+  /** The stock token traded conditionally on the event. */
+  base: Address;
+  /** Trading cutoff in unix seconds; Polymarket's end time when omitted. */
+  cutoff?: number;
+  fees?: Fees;
+  /** Maker rebate in bps of the taker fee (up to 5,000), set before the market opens. */
+  makerRebateBps?: number;
+  limits?: Partial<typeof DEFAULT_LIMITS>;
+  /** Recorded with the approval. */
+  note?: string;
+}
+export type Created = { spec: MarketSpec } & (
+  | { marketId: string; created: boolean }
+  | { error: string }
+);
+
+/** Creates and opens the market of each spec, unless it exists already. One spec failing does
+ * not stop the others. */
+export async function createMarkets(admin: Admin, specs: MarketSpec[]): Promise<Created[]> {
+  const unique = [
+    ...new Map(specs.map((s) => [`${s.gammaMarketId}:${getAddress(s.base)}`, s])).values(),
+  ];
+  const [evidence, markets] = await Promise.all([admin.evidence(), admin.markets()]);
+  const results: Created[] = [];
+  for (const spec of unique) {
+    try {
+      results.push({ spec, ...(await createMarket(admin, spec, evidence, markets)) });
+    } catch (error) {
+      results.push({ spec, error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+  return results;
+}
+
+async function createMarket(
+  admin: Admin,
+  spec: MarketSpec,
+  evidence: Evidence[],
+  markets: Market[],
+) {
+  const base = getAddress(spec.base);
+  const onChain = (list: Market[], condition: string) =>
+    list.find(
+      (m) =>
+        m.polymarketConditionId.toLowerCase() === condition.toLowerCase() &&
+        getAddress(m.baseToken) === base,
+    );
+  let packet = evidence.find((e) => {
+    const p = e.envelope.packet;
+    return (
+      e.status !== "rejected" &&
+      p.kind === "market-creation" &&
+      p.polymarket.gammaMarketId === spec.gammaMarketId &&
+      getAddress(p.config.baseToken) === base
+    );
+  });
+  let existing: Market | undefined;
+  if (packet?.envelope.packet.kind === "market-creation") {
+    const executed = packet.observations.some((o) => o.marketId);
+    // A packet from an earlier run may also have been executed without being reconciled.
+    existing = onChain(
+      executed ? markets : await admin.markets(),
+      packet.envelope.packet.polymarket.conditionId,
+    );
+    if (executed && !existing) throw new Error("The created market is not indexed yet");
+  } else {
+    const snapshot = await admin.fetchMetadata(spec.gammaMarketId);
+    const { canonicalUrl, conditionId, endTime, rules } = snapshot.normalized;
+    existing = onChain(markets, conditionId);
+    if (!existing) {
+      const now = Math.floor(Date.now() / 1000);
+      const cutoff = spec.cutoff ?? Math.floor(Date.parse(endTime) / 1000);
+      if (cutoff <= now + 60) throw new Error("The market closes within a minute");
+      packet = await admin.prepare("creation", {
+        metadataSnapshotId: snapshot.snapshotId,
+        sourceUrls: [canonicalUrl],
+        attachments: [],
+        config: {
+          baseToken: base,
+          quoteToken: await admin.quote(),
+          ...DEFAULT_LIMITS,
+          ...spec.limits,
+          ...(spec.fees ?? { makerFeeBps: "0", takerFeeBps: "0" }),
+          tradingOpen: String(now - 60),
+          tradingCutoff: String(cutoff),
+          metadataUri: canonicalUrl,
+          rules,
+        },
+      });
+    }
+  }
+  let marketId = existing?.venue.marketId;
+  if (!marketId) {
+    if (!packet) throw new Error("No creation evidence");
+    if (packet.status === "prepared") packet = await admin.approve(packet, spec.note ?? "");
+    ({ marketId } = await admin.execute(packet));
+  }
+  const market = existing ?? { state: SCHEDULED, makerRebateBps: 0 };
+  if (market.state === SCHEDULED) {
+    const rebate = spec.makerRebateBps ?? 0;
+    if (rebate !== market.makerRebateBps) await admin.setMakerRebate(marketId, rebate);
+    await admin.lifecycle(marketId, 0);
+  }
+  return { marketId, created: !existing };
+}
+
+/** Advances an open, frozen or awaiting market one step toward Polymarket's final payout:
+ * freeze (at the cutoff, or early once the payout is known), commit the resolution, resolve.
+ * `evidence` is the recent packet list (`admin.evidence()`), needed past the freeze. Returns
+ * the step taken, or why none was. */
+export async function settleMarket(
+  admin: Admin,
+  market: Market,
+  reported: ReportedPayout,
+  evidence: Evidence[],
+) {
+  const id = market.venue.marketId;
+  if (market.state === OPEN) {
+    if (Date.now() / 1000 >= Number(market.tradingCutoff)) {
+      await admin.lifecycle(id, 2);
+      return "freeze-at-cutoff";
+    }
+    await admin.lifecycle(id, 1, "Polymarket settled the market before its trading cutoff");
+    return "freeze-early";
+  }
+  if (market.state !== FROZEN && market.state !== AWAITING) return "not-active";
+  const { yes, no, denominator } = reported.payout;
+  // The newest packet for this payout; the API's stored packets do not keep key order.
+  let packet = evidence.find((e) => {
+    const p = e.envelope.packet;
+    return (
+      e.status !== "rejected" &&
+      p.kind === "market-resolution" &&
+      p.localMarket.marketId === id &&
+      p.payout.yes === yes &&
+      p.payout.no === no &&
+      p.payout.denominator === denominator
+    );
+  });
+  if (!packet) {
+    const { gammaMarketId } = (await admin.polymarket(id)).normalized;
+    const snapshot = await admin.fetchMetadata(gammaMarketId);
+    const { canonicalUrl, closed, resolutionStatus } = snapshot.normalized;
+    // Polymarket's own API must agree before evidence cites it.
+    if (!closed || resolutionStatus?.toLowerCase() !== "resolved") return "awaiting-polymarket-api";
+    const observedAt = new Date().toISOString();
+    packet = await admin.prepare("resolution", {
+      marketId: id,
+      metadataSnapshotId: snapshot.snapshotId,
+      attachments: [],
+      officialStatus: resolutionStatus,
+      officialUrl: canonicalUrl,
+      payout: reported.payout,
+      polygon: {
+        chainId: "137",
+        conditionalTokensAddress: POLYGON_CONDITIONAL_TOKENS,
+        blockNumber: String(reported.blockNumber),
+        blockHash: reported.blockHash,
+        transactionHash: null,
+      },
+      sourceObservations: [
+        { observedAt, payout: reported.payout, status: resolutionStatus, url: canonicalUrl },
+        {
+          observedAt,
+          payout: reported.payout,
+          status: `payout reported on Polygon at finalized block ${reported.blockNumber}`,
+          url: `https://polygonscan.com/address/${POLYGON_CONDITIONAL_TOKENS}`,
+        },
+      ],
+      sourceReference: canonicalUrl,
+    });
+  }
+  if (packet.status === "prepared")
+    packet = await admin.approve(packet, "Polymarket's payout, read on Polygon");
+  return (await admin.execute(packet)).action;
+}
