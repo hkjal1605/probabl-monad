@@ -238,7 +238,8 @@ describe("token amount entry", () => {
     };
     expect(marketPriceBasis(m, "YES", "buy")).toBe("reference");
     expect(marketPriceBasis(market, "YES", "buy")).toBe("book");
-    expect(marketPriceBasis({ ...m, spotReference: undefined }, "YES", "buy")).toBeNull();
+    const { spotReference: _, ...unpriced } = m;
+    expect(marketPriceBasis(unpriced, "YES", "buy")).toBeNull();
     const reference = parsePriceRawX18("100", m);
     const buy = parsePriceRawX18(marketPriceBound(m, "YES", "buy"), m);
     const sell = parsePriceRawX18(marketPriceBound(m, "YES", "sell"), m);
