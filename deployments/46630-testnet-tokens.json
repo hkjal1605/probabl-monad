@@ -8,7 +8,7 @@
       "contract": "TestnetStockToken",
       "name": "United States Oil Fund • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/uso.svg",
       "underlying": "US:USO",
       "source": {
         "chainId": 4663,
@@ -33,7 +33,7 @@
       "contract": "TestnetStockToken",
       "name": "ExxonMobil Holdings Corporation • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/xom.svg",
       "underlying": "US:XOM",
       "source": {
         "chainId": 4663,
@@ -58,7 +58,7 @@
       "contract": "TestnetStockToken",
       "name": "Permian Resources • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/pr.svg",
       "underlying": "US:PR",
       "source": {
         "chainId": 4663,
@@ -83,7 +83,7 @@
       "contract": "TestnetStockToken",
       "name": "Carnival Corporation • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/ccl.svg",
       "underlying": "US:CCL",
       "source": {
         "chainId": 4663,
@@ -108,7 +108,7 @@
       "contract": "TestnetStockToken",
       "name": "Boeing • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/ba.svg",
       "underlying": "US:BA",
       "source": {
         "chainId": 4663,
@@ -133,7 +133,7 @@
       "contract": "TestnetStockToken",
       "name": "SPDR S&P 500 ETF Trust • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/spy.svg",
       "underlying": "US:SPY",
       "source": {
         "chainId": 4663,
@@ -158,7 +158,7 @@
       "contract": "TestnetStockToken",
       "name": "Invesco QQQ • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/qqq.svg",
       "underlying": "US:QQQ",
       "source": {
         "chainId": 4663,
@@ -183,7 +183,7 @@
       "contract": "TestnetStockToken",
       "name": "Strategy Inc. • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/mstr.svg",
       "underlying": "US:MSTR",
       "source": {
         "chainId": 4663,
@@ -208,7 +208,7 @@
       "contract": "TestnetStockToken",
       "name": "Coinbase • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/coin.svg",
       "underlying": "US:COIN",
       "source": {
         "chainId": 4663,
@@ -233,7 +233,7 @@
       "contract": "TestnetStockToken",
       "name": "Circle Internet Group • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/crcl.svg",
       "underlying": "US:CRCL",
       "source": {
         "chainId": 4663,
@@ -258,7 +258,7 @@
       "contract": "TestnetStockToken",
       "name": "Galaxy Digital Inc. • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/glxy.svg",
       "underlying": "US:GLXY",
       "source": {
         "chainId": 4663,
@@ -283,7 +283,7 @@
       "contract": "TestnetStockToken",
       "name": "CleanSpark • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/clsk.svg",
       "underlying": "US:CLSK",
       "source": {
         "chainId": 4663,
@@ -308,7 +308,7 @@
       "contract": "TestnetStockToken",
       "name": "IREN Limited • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/iren.svg",
       "underlying": "US:IREN",
       "source": {
         "chainId": 4663,
@@ -333,7 +333,7 @@
       "contract": "TestnetStockToken",
       "name": "TeraWulf • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/wulf.svg",
       "underlying": "US:WULF",
       "source": {
         "chainId": 4663,
@@ -358,7 +358,7 @@
       "contract": "TestnetStockToken",
       "name": "Webull • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/bull.svg",
       "underlying": "US:BULL",
       "source": {
         "chainId": 4663,
@@ -383,7 +383,7 @@
       "contract": "TestnetStockToken",
       "name": "iShares Silver Trust • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/slv.svg",
       "underlying": "US:SLV",
       "source": {
         "chainId": 4663,
@@ -408,7 +408,7 @@
       "contract": "TestnetStockToken",
       "name": "SPDR Gold Trust • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/gld.svg",
       "underlying": "US:GLD",
       "source": {
         "chainId": 4663,
@@ -433,7 +433,7 @@
       "contract": "TestnetStockToken",
       "name": "iShares 1-3 Year Treasury Bond ETF • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/shy.svg",
       "underlying": "US:SHY",
       "source": {
         "chainId": 4663,
@@ -458,7 +458,7 @@
       "contract": "TestnetStockToken",
       "name": "Vanguard Total Bond Market ETF • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/bnd.svg",
       "underlying": "US:BND",
       "source": {
         "chainId": 4663,
@@ -483,7 +483,7 @@
       "contract": "TestnetStockToken",
       "name": "Nu • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/nu.svg",
       "underlying": "US:NU",
       "source": {
         "chainId": 4663,
@@ -508,7 +508,7 @@
       "contract": "TestnetStockToken",
       "name": "SoFi Technologies • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/sofi.svg",
       "underlying": "US:SOFI",
       "source": {
         "chainId": 4663,
@@ -533,7 +533,7 @@
       "contract": "TestnetStockToken",
       "name": "NVIDIA • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/nvda.svg",
       "underlying": "US:NVDA",
       "source": {
         "chainId": 4663,
@@ -558,7 +558,7 @@
       "contract": "TestnetStockToken",
       "name": "CoreWeave • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/crwv.svg",
       "underlying": "US:CRWV",
       "source": {
         "chainId": 4663,
@@ -583,7 +583,7 @@
       "contract": "TestnetStockToken",
       "name": "Apple • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/aapl.svg",
       "underlying": "US:AAPL",
       "source": {
         "chainId": 4663,
@@ -608,7 +608,7 @@
       "contract": "TestnetStockToken",
       "name": "VanEck Semiconductor ETF • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/smh.svg",
       "underlying": "US:SMH",
       "source": {
         "chainId": 4663,
@@ -633,7 +633,7 @@
       "contract": "TestnetStockToken",
       "name": "iShares MSCI Taiwan Capped ETF • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/ewt.svg",
       "underlying": "US:EWT",
       "source": {
         "chainId": 4663,
@@ -658,7 +658,7 @@
       "contract": "TestnetStockToken",
       "name": "Trump Media & Technology Group • Robinhood Token",
       "decimals": 18,
-      "logo": "/tokens/robinhood-stock-token.png",
+      "logo": "/tokens/djt.png",
       "underlying": "US:DJT",
       "source": {
         "chainId": 4663,

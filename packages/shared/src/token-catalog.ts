@@ -19,14 +19,15 @@ export interface CatalogAsset {
   underlying?: string;
 }
 
-/** Robinhood serves one logo for every Stock Token (cdn.robinhood.com/ncw_assets/logos/). */
-const stock = (symbol: string, name: string, kind: AssetKind = "stock"): CatalogAsset => ({
-  symbol,
-  name,
-  kind,
-  logo: "/tokens/robinhood-stock-token.png",
-  underlying: `US:${symbol}`,
-});
+/** Robinhood's token list gives every Stock Token the same Robinhood logo (`logoUrl`), so each
+ * asset's own is bundled under `/tokens/<symbol>.svg`: the company's, or the fund issuer's for
+ * an ETF, from TradingView's symbol logos. */
+const stock = (
+  symbol: string,
+  name: string,
+  kind: AssetKind = "stock",
+  logo = `/tokens/${symbol.toLowerCase()}.svg`,
+): CatalogAsset => ({ symbol, name, kind, logo, underlying: `US:${symbol}` });
 
 export const ASSET_CATALOG: readonly CatalogAsset[] = Object.freeze([
   stock("NVDA", "NVIDIA"),
@@ -67,7 +68,8 @@ export const ASSET_CATALOG: readonly CatalogAsset[] = Object.freeze([
   stock("CRWV", "CoreWeave"),
   stock("SMH", "VanEck Semiconductor ETF", "etf"),
   stock("EWT", "iShares MSCI Taiwan Capped ETF", "etf"),
-  stock("DJT", "Trump Media & Technology Group"),
+  // TradingView still shows the merged SPAC's logo; this is Trump Media's own icon (tmtgcorp.com).
+  stock("DJT", "Trump Media & Technology Group", "stock", "/tokens/djt.png"),
   {
     symbol: "USDC",
     name: "USD Coin",
@@ -78,7 +80,7 @@ export const ASSET_CATALOG: readonly CatalogAsset[] = Object.freeze([
     symbol: "USDG",
     name: "Global Dollar",
     kind: "stablecoin",
-    logo: "/tokens/usdg.svg",
+    logo: "/tokens/usdg.png",
   },
   {
     symbol: "ETH",
