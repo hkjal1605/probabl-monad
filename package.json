@@ -37,6 +37,7 @@
     "deploy:exchange": "bun scripts/evm/deploy.ts",
     "deploy:mock-feeds": "bun scripts/evm/deploy-mock-feeds.ts",
     "deploy:mock-usdg": "bun scripts/evm/deploy-mock-usdg.ts",
+    "deploy:testnet-tokens": "bun scripts/evm/deploy-testnet-tokens.ts",
     "deploy:ui:cloudflare": "bun --filter @conditional-stocks/web deploy:cloudflare",
     "deploy:ui:cloudflare:strict": "bun --filter @conditional-stocks/web deploy:cloudflare:strict",
     "deploy:vault": "bun scripts/evm/deploy-vault.ts",

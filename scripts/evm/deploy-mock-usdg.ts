@@ -1,7 +1,8 @@
 /** Testnet only: deploys the mock USDG quote token (contracts/test/mocks/MockUSDG.sol) where the
  * chain has no USDG with usable liquidity, mints an initial supply to the deployer and records it
  * in deployments/<chainId>-mock-usdg.json. Pass the address as QUOTE_TOKEN to deploy.ts. Anyone
- * can mint more; stock tokens are never mocked (use the issuer's testnet tokens).
+ * can mint more. Stock tokens are the issuer's testnet tokens or the mainnet copies from
+ * deploy-testnet-tokens.ts.
  *
  *   DEPLOYER_PRIVATE_KEY=… RPC_URL=… CHAIN_ID=46630 [MINT=1000000 in whole USDG]
  *   bun scripts/evm/deploy-mock-usdg.ts */

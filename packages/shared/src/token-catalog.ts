@@ -14,16 +14,17 @@ export interface CatalogAsset {
   kind: AssetKind;
   /** Bundled logo served by the UI. */
   logo: string;
-  /** Economic asset of stocks and ETFs, `REGION:TICKER` (e.g. "US:NVDA"): shared by every
-   * issuer's token of it. */
+  /** Economic asset, `REGION:TICKER` for stocks and ETFs (e.g. "US:NVDA") and `CRYPTO:TICKER`
+   * for crypto: shared by every issuer's token of it. */
   underlying?: string;
 }
 
+/** Robinhood serves one logo for every Stock Token (cdn.robinhood.com/ncw_assets/logos/). */
 const stock = (symbol: string, name: string, kind: AssetKind = "stock"): CatalogAsset => ({
   symbol,
   name,
   kind,
-  logo: `/tokens/${symbol.toLowerCase()}.svg`,
+  logo: "/tokens/robinhood-stock-token.png",
   underlying: `US:${symbol}`,
 });
 
@@ -43,6 +44,30 @@ export const ASSET_CATALOG: readonly CatalogAsset[] = Object.freeze([
   stock("NFLX", "Netflix"),
   stock("SPY", "SPDR S&P 500 ETF Trust", "etf"),
   stock("QQQ", "Invesco QQQ Trust", "etf"),
+  // Assets with prediction markets that track them (reports/Polymarket and Kalshi market
+  // research.md, tiers 1 and 2); names as Robinhood's Stock Token list gives them.
+  stock("USO", "United States Oil Fund", "etf"),
+  stock("XOM", "ExxonMobil Holdings Corporation"),
+  stock("PR", "Permian Resources"),
+  stock("CCL", "Carnival Corporation"),
+  stock("BA", "Boeing"),
+  stock("MSTR", "Strategy Inc."),
+  stock("CRCL", "Circle Internet Group"),
+  stock("GLXY", "Galaxy Digital Inc."),
+  stock("CLSK", "CleanSpark"),
+  stock("IREN", "IREN Limited"),
+  stock("WULF", "TeraWulf"),
+  stock("BULL", "Webull"),
+  stock("SLV", "iShares Silver Trust", "etf"),
+  stock("GLD", "SPDR Gold Trust", "etf"),
+  stock("SHY", "iShares 1-3 Year Treasury Bond ETF", "etf"),
+  stock("BND", "Vanguard Total Bond Market ETF", "etf"),
+  stock("NU", "Nu"),
+  stock("SOFI", "SoFi Technologies"),
+  stock("CRWV", "CoreWeave"),
+  stock("SMH", "VanEck Semiconductor ETF", "etf"),
+  stock("EWT", "iShares MSCI Taiwan Capped ETF", "etf"),
+  stock("DJT", "Trump Media & Technology Group"),
   {
     symbol: "USDC",
     name: "USD Coin",
@@ -60,24 +85,49 @@ export const ASSET_CATALOG: readonly CatalogAsset[] = Object.freeze([
     name: "Ethereum",
     kind: "crypto",
     logo: "/tokens/eth.svg",
+    underlying: "CRYPTO:ETH",
   },
   {
     symbol: "WETH",
     name: "Wrapped Ether",
     kind: "crypto",
-    logo: "/tokens/eth.svg",
+    logo: "/tokens/weth.png",
+    underlying: "CRYPTO:ETH",
   },
   {
     symbol: "BTC",
     name: "Bitcoin",
     kind: "crypto",
     logo: "/tokens/btc.svg",
+    underlying: "CRYPTO:BTC",
   },
   {
     symbol: "cbBTC",
     name: "Coinbase Wrapped BTC",
     kind: "crypto",
-    logo: "/tokens/btc.svg",
+    logo: "/tokens/cbbtc.png",
+    underlying: "CRYPTO:BTC",
+  },
+  {
+    symbol: "SOL",
+    name: "Solana",
+    kind: "crypto",
+    logo: "/tokens/sol.png",
+    underlying: "CRYPTO:SOL",
+  },
+  {
+    symbol: "XRP",
+    name: "XRP",
+    kind: "crypto",
+    logo: "/tokens/xrp.png",
+    underlying: "CRYPTO:XRP",
+  },
+  {
+    symbol: "DOGE",
+    name: "Dogecoin",
+    kind: "crypto",
+    logo: "/tokens/doge.png",
+    underlying: "CRYPTO:DOGE",
   },
 ]);
 
