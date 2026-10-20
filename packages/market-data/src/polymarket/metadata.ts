@@ -7,7 +7,7 @@ import {
   object,
   requiredString,
 } from "../canonical.ts";
-import type { EventMarketFields, EventOutcome } from "../event-market.ts";
+import { type EventMarketFields, type EventOutcome, httpsImageUrl } from "../event-market.ts";
 
 export interface NormalizedPolymarketMarket extends EventMarketFields {
   source: "polymarket";
@@ -52,18 +52,14 @@ const optionalString = (value: unknown, name: string): string | null => {
   return requiredString(value, name);
 };
 
-/** Display-only metadata. Invalid artwork must not block market creation. */
+/** Display-only metadata: the full-size image, else the icon. Invalid artwork must not block
+ * market creation. */
 export const polymarketImageUrl = (input: unknown): string | null => {
   if (!input || typeof input !== "object" || Array.isArray(input)) return null;
   const raw = input as Record<string, unknown>;
   for (const value of [raw.imageUrl, raw.image, raw.icon]) {
-    if (typeof value !== "string" || value.length > 2048) continue;
-    try {
-      const url = new URL(value);
-      if (url.protocol === "https:" && !url.username && !url.password) return url.href;
-    } catch {
-      // Fall back to the icon when the full-size image is missing or invalid.
-    }
+    const url = httpsImageUrl(value);
+    if (url) return url;
   }
   return null;
 };

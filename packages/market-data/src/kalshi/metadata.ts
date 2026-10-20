@@ -1,6 +1,6 @@
 import { keccak256, stringToBytes } from "viem";
 import { type Hex, hashCanonical, MarketDataError, object, requiredString } from "../canonical.ts";
-import type { EventMarketFields, EventOutcome } from "../event-market.ts";
+import { type EventMarketFields, type EventOutcome, httpsImageUrl } from "../event-market.ts";
 import type { PayoutVector } from "../evidence.ts";
 
 export interface NormalizedKalshiMarket extends EventMarketFields {
@@ -28,6 +28,25 @@ export const kalshiConditionId = (ticker: string): Hex =>
 export const kalshiMarketUrl = (seriesTicker: string) =>
   `https://kalshi.com/markets/${encodeURIComponent(seriesTicker.toLowerCase())}`;
 
+/** Kalshi's generic artwork for markets without their own, e.g. every strike of a price ladder. */
+const FALLBACK_IMAGES = "kalshi-fallback-images.s3.amazonaws.com";
+
+/** A market's artwork from its event's metadata (`GET /events/{event_ticker}/metadata`): its own
+ * image (a candidate's photo, a party's logo), else the series image, never the generic icon. */
+const kalshiImageUrl = (metadata: unknown, ticker: string): string | null => {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const { image_url, market_details } = metadata as Record<string, unknown>;
+  const details = Array.isArray(market_details) ? market_details : [];
+  const own = details.find(
+    (d) => d && typeof d === "object" && (d as Record<string, unknown>).market_ticker === ticker,
+  ) as Record<string, unknown> | undefined;
+  const specific = (value: unknown) => {
+    const url = httpsImageUrl(value);
+    return url && new URL(url).hostname !== FALLBACK_IMAGES ? url : null;
+  };
+  return specific(own?.image_url) ?? specific(image_url);
+};
+
 const isoTime = (value: unknown, name: string): string => {
   const timestamp = Date.parse(requiredString(value, name, 128));
   if (!Number.isFinite(timestamp))
@@ -37,7 +56,8 @@ const isoTime = (value: unknown, name: string): string => {
 const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 
 /** Normalizes a Kalshi market and its event, as `GET /markets/{ticker}` and
- * `GET /events/{event_ticker}` return them: `{ market, event }`. */
+ * `GET /events/{event_ticker}` return them, with the event's metadata (artwork) when read:
+ * `{ market, event, eventMetadata? }`. */
 export const normalizeKalshiMarket = (input: unknown): NormalizedKalshiMarket => {
   const raw = object(input, "Kalshi snapshot");
   const market = object(raw.market, "market");
@@ -76,7 +96,7 @@ export const normalizeKalshiMarket = (input: unknown): NormalizedKalshiMarket =>
     conditionId,
     endTime: isoTime(market.close_time, "close_time"),
     eventTicker,
-    imageUrl: null,
+    imageUrl: kalshiImageUrl(raw.eventMetadata, ticker),
     mappingHash: hashCanonical({ conditionId, outcomes, ticker }),
     outcomes,
     question,

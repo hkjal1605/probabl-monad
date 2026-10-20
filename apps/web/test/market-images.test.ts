@@ -5,9 +5,13 @@ import { fixtureMarkets } from "./fixtures/protocol";
 test("market reads include saved artwork, including legacy raw snapshots, without extra requests", async () => {
   const originalFetch = globalThis.fetch;
   const image = "https://polymarket-upload.s3.us-east-2.amazonaws.com/event.png";
+  const kalshi = "https://assets.kalshi.com/series-images-webp/KXBTCD.webp";
   try {
     for (const [metadata, expected] of [
       [{ normalized: { imageUrl: image } }, image],
+      // Kalshi's artwork comes normalized; its raw payload has no image fields of its own.
+      [{ normalized: { source: "kalshi", imageUrl: kalshi }, rawPayload: { market: {} } }, kalshi],
+      [{ normalized: { imageUrl: "http://assets.kalshi.com/x.webp" } }, null],
       [{ normalized: {}, rawPayload: { image } }, image],
       [{ normalized: {}, rawPayload: { icon: image } }, image],
       [{ normalized: {}, rawPayload: { image: "javascript:alert(1)" } }, null],

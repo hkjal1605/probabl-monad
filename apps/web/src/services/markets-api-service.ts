@@ -10,6 +10,7 @@ import { type FeeRates, isFeeRate, isRebateRate } from "@conditional-stocks/evm-
 import {
   EVENT_SOURCES,
   type EventSource,
+  httpsImageUrl,
   polymarketImageUrl,
 } from "@conditional-stocks/market-data";
 import { marketTokenDisplay } from "../lib/tokens/catalog";
@@ -336,8 +337,10 @@ async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<Mar
         ordinaryReference: null,
         probability: probabilityView,
         question: text(metadata.question, `Conditional market ${id.slice(0, 8)}`),
+        // The venue's artwork as normalized (Polymarket's image, Kalshi's market or series
+        // image), else a Polymarket payload's own fields.
         imageUrl:
-          polymarketImageUrl(metadata) ??
+          httpsImageUrl(metadata.imageUrl) ??
           polymarketImageUrl(record(attachedRecord.metadata).rawPayload),
         quoteToken,
         residual: null,

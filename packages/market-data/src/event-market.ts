@@ -40,6 +40,18 @@ export interface EventMarketFields {
 /** A normalized event market from any venue, discriminated by `source`. */
 export type EventMarket = NormalizedPolymarketMarket | NormalizedKalshiMarket;
 
+/** `value` as artwork a page may load: an https URL without credentials, at most 2 KB. Display
+ * only, so anything else is dropped rather than rejected. */
+export const httpsImageUrl = (value: unknown): string | null => {
+  if (typeof value !== "string" || value.length > 2048) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password ? url.href : null;
+  } catch {
+    return null;
+  }
+};
+
 /** The venue's own id of an event market: Polymarket's Gamma market id, or the Kalshi ticker. */
 export const eventMarketId = (market: EventMarket): string =>
   market.source === "kalshi" ? market.ticker : market.gammaMarketId;

@@ -41,6 +41,27 @@ describe("Kalshi markets", () => {
     expect(eventSourceOf("https://polymarket.com/event/x")).toBe("polymarket");
   });
 
+  test("take the market's own artwork, else the series image, never Kalshi's generic icon", () => {
+    const series = "https://assets.kalshi.com/series-images-webp/KXFEDDECISION.webp";
+    const own = "https://assets.kalshi.com/market-images/KXFEDDECISION-26DEC-H25.webp";
+    const generic = "https://kalshi-fallback-images.s3.amazonaws.com/structured_icons/price.webp";
+    const imageOf = (eventMetadata?: unknown) =>
+      normalizeKalshiMarket({ ...kalshiSnapshot(), eventMetadata }).imageUrl;
+    const details = (image_url: string) => [
+      {
+        market_ticker: "KXFEDDECISION-26DEC-H50",
+        image_url: "https://assets.kalshi.com/other.webp",
+      },
+      { market_ticker: ticker, image_url },
+    ];
+    expect(imageOf({ image_url: series, market_details: details(own) })).toBe(own);
+    expect(imageOf({ image_url: series, market_details: details(generic) })).toBe(series);
+    expect(imageOf({ image_url: series, market_details: [] })).toBe(series);
+    expect(imageOf({ image_url: generic })).toBeNull();
+    expect(imageOf({ image_url: "http://assets.kalshi.com/x.webp" })).toBeNull();
+    expect(imageOf()).toBeNull();
+  });
+
   test("name the strike of ladder markets whose title is not a question", () => {
     const market = normalizeKalshiMarket(
       kalshiSnapshot({
