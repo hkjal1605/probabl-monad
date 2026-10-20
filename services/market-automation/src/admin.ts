@@ -154,8 +154,13 @@ export class Admin {
   }
 
   /** Executes the next action an approved packet authorizes (creation, a resolution commitment
-   * or the resolution itself) and reconciles it with the API. */
-  async execute(evidence: Evidence) {
+   * or the resolution itself) and reconciles it with the API. One execution runs at a time: a
+   * creation is built for the next market id, which another job's creation would take. */
+  execute(evidence: Evidence) {
+    return inTurn(this.options.marketAdmin.address, () => this.executeNow(evidence));
+  }
+
+  private async executeNow(evidence: Evidence) {
     const hash = evidence.envelope.packetHash;
     const preview = await this.request<AdminPreview & { prerequisites: AdminTransaction[] }>(
       `/v1/admin/evidence/${hash}/transaction`,
@@ -174,7 +179,7 @@ export class Admin {
     )
       throw new Error("The API preview differs from the locally built transaction");
     let transactionHash: Hex = "0x";
-    for (const transaction of transactions) transactionHash = await this.send(transaction);
+    for (const transaction of transactions) transactionHash = await this.transmit(transaction);
     const observation = await this.reconcile(hash, preview.action, transactionHash);
     return { action: preview.action, transactionHash, marketId: observation.marketId };
   }
@@ -232,22 +237,27 @@ export class Admin {
     };
   }
 
+  /** Sends a lifecycle or rebate transaction in turn with the account's other sends. */
   private send(transaction: AdminTransaction) {
+    return inTurn(transaction.from, () => this.transmit(transaction));
+  }
+
+  /** Sends a transaction; callers hold the turn of the market admin, whose turn every
+   * resolution admin send also runs in (only `execute` signs as the resolution admin). */
+  private async transmit(transaction: AdminTransaction) {
     const { client, wallet, marketAdmin, resolutionAdmin } = this.options;
     const account = [marketAdmin, resolutionAdmin].find((a) => a?.address === transaction.from);
     if (!account) throw new Error(`No key is configured for ${transaction.from}`);
-    return inTurn(account.address, async () => {
-      await preflightAdmin(client, transaction);
-      const hash = await wallet.sendTransaction({
-        account,
-        chain: client.chain,
-        to: transaction.to,
-        data: transaction.data,
-      });
-      const receipt = await client.waitForTransactionReceipt({ hash });
-      if (receipt.status !== "success") throw new Error(`Transaction ${hash} reverted`);
-      return hash;
+    await preflightAdmin(client, transaction);
+    const hash = await wallet.sendTransaction({
+      account,
+      chain: client.chain,
+      to: transaction.to,
+      data: transaction.data,
     });
+    const receipt = await client.waitForTransactionReceipt({ hash });
+    if (receipt.status !== "success") throw new Error(`Transaction ${hash} reverted`);
+    return hash;
   }
 
   /** Records an executed action; creation also starts the ingestor's odds stream, so transient
