@@ -1,8 +1,7 @@
-import { EVENT_SOURCE_NAMES } from "@conditional-stocks/market-data";
-
-("use client");
+"use client";
 
 import { formatBps } from "@conditional-stocks/evm-client";
+import { EVENT_SOURCE_NAMES } from "@conditional-stocks/market-data";
 import { InfoIcon, XIcon } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";

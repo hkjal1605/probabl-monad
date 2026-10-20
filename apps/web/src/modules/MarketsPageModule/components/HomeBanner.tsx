@@ -1,7 +1,6 @@
+"use client";
+
 import { EVENT_SOURCE_NAMES } from "@conditional-stocks/market-data";
-
-("use client");
-
 import type { UTCTimestamp } from "lightweight-charts";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
