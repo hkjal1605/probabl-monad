@@ -1,5 +1,6 @@
 /** Kalshi's public, keyless trade API (https://docs.kalshi.com), read for the ladder jobs: a
  * series' open events and an event's strikes with their quotes. */
+import { RequestPacer } from "@conditional-stocks/market-data";
 
 /** An open event of a series; strike ladders fix at `fixing`. */
 export interface KalshiEvent {
@@ -19,8 +20,14 @@ export interface KalshiStrike {
 }
 
 const PAGES = 5;
+/** Kalshi rate-limits per address, and the ingestor polls it from the same host at 6 a second;
+ * a 429 is retried after a pause. */
+const READS_PER_SECOND = 3;
+const RETRIES = 3;
 
 export class KalshiApi {
+  private readonly pacer = new RequestPacer(READS_PER_SECOND);
+
   constructor(
     private readonly base: string,
     private readonly fetcher: typeof fetch = fetch,
@@ -65,9 +72,7 @@ export class KalshiApi {
     for (let page = 0; page < PAGES; page++) {
       const params = new URLSearchParams({ ...query, limit: String(limit) });
       if (cursor) params.set("cursor", cursor);
-      const response = await this.fetcher(`${this.base}/${path}?${params}`, {
-        signal: AbortSignal.timeout(15_000),
-      });
+      const response = await this.get(`${this.base}/${path}?${params}`);
       if (!response.ok) throw new Error(`Kalshi /${path}: ${response.status}`);
       const body = (await response.json()) as Record<string, unknown>;
       const list = body[path];
@@ -76,5 +81,15 @@ export class KalshiApi {
       if (!cursor) break;
     }
     return items;
+  }
+
+  private async get(url: string) {
+    for (let attempt = 1; ; attempt++) {
+      const response = await this.pacer.run(() =>
+        this.fetcher(url, { signal: AbortSignal.timeout(15_000) }),
+      );
+      if (response.status !== 429 || attempt > RETRIES) return response;
+      await Bun.sleep(1_000 * attempt);
+    }
   }
 }

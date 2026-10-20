@@ -12,7 +12,7 @@ import {
   planLadder,
   targetEvent,
 } from "../src/ladders.ts";
-import type { KalshiApi, KalshiEvent, KalshiStrike } from "../src/venues/kalshi-api.ts";
+import { KalshiApi, type KalshiEvent, type KalshiStrike } from "../src/venues/kalshi-api.ts";
 
 const HOUR = 3_600_000;
 const MSTR = getAddress("0x00000000000000000000000000000000000000b1");
@@ -253,5 +253,50 @@ describe("ladder jobs", () => {
     } finally {
       Date.now = realNow;
     }
+  });
+});
+
+describe("Kalshi's API", () => {
+  test("reads events and strikes, retrying a rate-limited request", async () => {
+    const urls: string[] = [];
+    let limited = 1;
+    const fetcher = (async (url: string) => {
+      urls.push(url);
+      if (url.includes("/events") && limited-- > 0) return new Response("", { status: 429 });
+      return Response.json(
+        url.includes("/events")
+          ? { events: [{ event_ticker: "KXBTCD-26OCT2017", strike_date: "2026-10-20T21:00:00Z" }] }
+          : {
+              markets: [
+                {
+                  ticker: "KXBTCD-26OCT2017-T81749.99",
+                  status: "active",
+                  strike_type: "greater",
+                  yes_bid_dollars: "0.4900",
+                  yes_ask_dollars: "0.5100",
+                  open_interest_fp: "11272.33",
+                },
+              ],
+              cursor: "",
+            },
+      );
+    }) as unknown as typeof fetch;
+    const api = new KalshiApi("https://kalshi.test", fetcher);
+    expect(await api.openEvents("KXBTCD")).toEqual([event(TUESDAY)]);
+    expect(await api.strikes("KXBTCD-26OCT2017")).toEqual([
+      {
+        ticker: "KXBTCD-26OCT2017-T81749.99",
+        status: "active",
+        strikeType: "greater",
+        bid: 0.49,
+        ask: 0.51,
+        openInterest: 11272.33,
+      },
+    ]);
+    expect(urls).toEqual([
+      "https://kalshi.test/events?series_ticker=KXBTCD&status=open&limit=200",
+      "https://kalshi.test/events?series_ticker=KXBTCD&status=open&limit=200",
+      "https://kalshi.test/markets?event_ticker=KXBTCD-26OCT2017&status=open&limit=1000",
+    ]);
   });
 });
