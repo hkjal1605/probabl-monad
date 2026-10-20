@@ -28,7 +28,9 @@ const IndexStreamProvider = ({ children }: { children: ReactNode }) => {
       if (wasHealthy && !indexStreamHealthy()) {
         wasHealthy = false;
         void refreshStores(
-          [...resources.keys()].filter((name) => !["spot-prices", "probability"].includes(name)),
+          [...resources.keys()].filter(
+            (name) => !["spot-prices", "quote-prices", "probability"].includes(name),
+          ),
         );
       }
     }, 2000);
@@ -43,7 +45,8 @@ const IndexStreamProvider = ({ children }: { children: ReactNode }) => {
         setIndexStreamHealthy(Date.now() + 10_000);
         wasHealthy = true;
         for (const [name, resource] of resources) {
-          if (name === "spot-prices") continue;
+          // Prices with streams of their own.
+          if (name === "spot-prices" || name === "quote-prices") continue;
           for (const [key, active] of resource.active) {
             if (name === "positions" && wallet && key === account) {
               resource.setData(key, wallet, wallet.observedAt);

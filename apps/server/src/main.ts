@@ -291,6 +291,8 @@ const recorder = new PriceRecorder({
   indexer,
   prices,
   db,
+  // The RFQ hub is created below; the recorder first reads it a minute after start.
+  quotes: () => rfq?.prices() ?? [],
   onError: (error) => logger.warn("prices.record.failed", { error }),
 });
 recorder.start();

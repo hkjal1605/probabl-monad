@@ -2,7 +2,9 @@
  * vault's approved API key. Every request is priced from memory (`Keeper.rfqQuote`) and answered
  * at once, signed by the keeper wallet; the nonce names the vault as the maker, so the exchange
  * asks the vault to accept the fill against its own on-chain limits. A request the vault cannot
- * quote is declined straight away, so it never holds an order's window open. */
+ * quote is declined straight away, so it never holds an order's window open. While connected, the
+ * vault also posts its current prices for a standard order (`Keeper.indications`) every
+ * `INDICATION_MS`, which the app shows and charts while the books are empty. */
 import {
   contractQuoteNonce,
   packQuoteTerms,
@@ -24,6 +26,8 @@ export interface RfqSocket {
 }
 type Message = Record<string, unknown>;
 const MAX_BACKOFF_MS = 30_000;
+/** How often the vault posts its indicative prices; the API drops them after 30 s. */
+const INDICATION_MS = 10_000;
 
 export class RfqMaker {
   private socket: RfqSocket | undefined;
@@ -31,6 +35,7 @@ export class RfqMaker {
   private retryMs = 1_000;
   private minQuoteSeconds = 3;
   private ready = false;
+  private indicating: ReturnType<typeof setInterval> | undefined;
   /** Quote nonces, unique per vault: microseconds at start, then one per quote. Consecutive
    * nonces share their 256-nonce word, so most fills set a bit of a word already in use. */
   private counter = BigInt(Date.now()) * 1000n;
@@ -87,6 +92,7 @@ export class RfqMaker {
 
   stop() {
     this.stopped = true;
+    clearInterval(this.indicating);
     this.socket?.close();
   }
 
@@ -114,6 +120,12 @@ export class RfqMaker {
       this.ready = true;
       this.retryMs = 1_000;
       k.log("rfq-connected", { minQuoteSeconds: this.minQuoteSeconds });
+      this.indicate();
+      if (!this.indicating) {
+        this.indicating = setInterval(() => this.indicate(), INDICATION_MS);
+        // The connection and the rounds keep the process alive, not this timer.
+        this.indicating.unref?.();
+      }
       return;
     }
     if (m.type === "rfq") return this.respond(m);
@@ -125,6 +137,20 @@ export class RfqMaker {
     }
     if (m.type === "quote.rejected")
       k.log("rfq-quote-rejected", { rfq: m.rfqId, reason: m.reason });
+  }
+
+  /** Posts the vault's current prices (none while disconnected). */
+  indicate() {
+    if (!this.ready) return;
+    this.send({
+      type: "indications",
+      prices: this.keeper.indications(this.minQuoteSeconds).map((p) => ({
+        market: p.market,
+        branch: p.branch,
+        bid: p.bid?.toString() ?? null,
+        ask: p.ask?.toString() ?? null,
+      })),
+    });
   }
 
   /** Answers one request: a signed quote or a decline. */

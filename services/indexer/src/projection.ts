@@ -258,9 +258,8 @@ export function liveOrder(
   return true;
 }
 
-/** Each market's YES and NO book midpoints (by venue id; raw quote per raw base x 1e18): halfway
- * between the best live bid and ask, null without both or while they cross. */
-export function bookMidpoints(s: ChainState, now?: bigint) {
+/** Each market's best live bid and ask per branch (index 0 YES, 1 NO), markets with orders only. */
+export function bookTops(s: ChainState, now?: bigint) {
   const best = new Map<number, { bid?: bigint; ask?: bigint }[]>();
   for (const o of s.orders.values()) {
     if (!liveOrder(o, s, now)) continue;
@@ -274,10 +273,23 @@ export function bookMidpoints(s: ChainState, now?: bigint) {
     if (o.side === 0) book.bid = book.bid === undefined || price > book.bid ? price : book.bid;
     else book.ask = book.ask === undefined || price < book.ask ? price : book.ask;
   }
-  const mid = ({ bid, ask }: { bid?: bigint; ask?: bigint }) =>
-    bid !== undefined && ask !== undefined && ask >= bid ? (bid + ask) / 2n : null;
+  return best;
+}
+
+/** A branch's midpoint, or null unless it has an uncrossed bid and ask. */
+export const midpointOf = ({ bid, ask }: { bid?: bigint | null; ask?: bigint | null }) =>
+  bid !== undefined && bid !== null && ask !== undefined && ask !== null && ask >= bid
+    ? (bid + ask) / 2n
+    : null;
+
+/** Each market's YES and NO book midpoints (by venue id; raw quote per raw base x 1e18): halfway
+ * between the best live bid and ask, null without both or while they cross. */
+export function bookMidpoints(s: ChainState, now?: bigint) {
   return new Map(
-    [...best].map(([market, [yes, no]]) => [market, { yes: mid(yes!), no: mid(no!) }]),
+    [...bookTops(s, now)].map(([market, [yes, no]]) => [
+      market,
+      { yes: midpointOf(yes!), no: midpointOf(no!) },
+    ]),
   );
 }
 

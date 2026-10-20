@@ -348,6 +348,28 @@ describe("RFQ quoting", () => {
     expect(BigInt((await reply(sent, "10000000-0000-4000-8000-000000000004")).price)).toBe(first);
   });
 
+  test("the vault posts its prices for a $100 order on both branches: what an RFQ for it is quoted", async () => {
+    const { maker, sent, deliver } = connect();
+    fresh();
+    // Synchronous and from memory, like the quotes: posting costs no chain or API call.
+    maker.indicate();
+    const posted = sent.filter((m) => m.type === "indications").at(-1) ?? { prices: [] };
+    expect(
+      posted.prices.map((p: { market: number; branch: number }) => [p.market, p.branch]),
+    ).toEqual([
+      [1, 0],
+      [1, 1],
+    ]);
+    const yes = posted.prices[0];
+    expect(BigInt(yes.bid)).toBeLessThan(BigInt(yes.ask));
+    // $100 at the vault's $100 oracle price: one NVDA, bought at the posted ask.
+    deliver(request("50000000-0000-4000-8000-000000000001", 0, NVDA, 110n * USDC));
+    const q = await reply(sent, "50000000-0000-4000-8000-000000000001");
+    expect(q.price).toBe(yes.ask);
+    keeper.quoteOutcome("50000000-0000-4000-8000-000000000001", "lost");
+    maker.stop();
+  });
+
   test("a sell is bid for below fair, and a sell at a limit above the bid is declined", async () => {
     const { sent, deliver } = connect();
     fresh();

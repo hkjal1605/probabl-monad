@@ -308,13 +308,29 @@ function BranchDepth({
     </TableRow>
   );
   const columns = 3;
-  const emptyRow = (ask: boolean) => (
-    <TableRow key={`${ask ? "ask" : "bid"}-empty`}>
-      <TableCell colSpan={columns} className="text-muted-foreground">
-        {available ? `No ${ask ? "asks" : "bids"}` : "—"}
-      </TableCell>
-    </TableRow>
-  );
+  /** An empty side shows the RFQ makers' price for a $100 order, which a market order fills at. */
+  const emptyRow = (ask: boolean) => {
+    const quoted = ask ? book.quote?.ask : book.quote?.bid;
+    return (
+      <TableRow
+        key={`${ask ? "ask" : "bid"}-empty`}
+        className={quoted ? cn("tabular-nums", ask ? "text-danger" : "text-positive") : undefined}
+      >
+        <TableCell colSpan={columns} className={quoted ? "text-sm" : "text-muted-foreground"}>
+          {quoted ? (
+            <>
+              {formatNumber(Number(quoted))}
+              <span className="ml-2 text-xs text-muted-foreground">vault quote · $100</span>
+            </>
+          ) : available ? (
+            `No ${ask ? "asks" : "bids"}`
+          ) : (
+            "—"
+          )}
+        </TableCell>
+      </TableRow>
+    );
+  };
   return (
     <div
       ref={containerRef}

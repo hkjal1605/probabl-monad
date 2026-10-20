@@ -8,10 +8,11 @@ import type { ServerWebSocket } from "bun";
 import type { Context, Hono } from "hono";
 import { upgradeWebSocket } from "hono/bun";
 import { HTTPException } from "hono/http-exception";
+import { streamSSE } from "hono/streaming";
 import { type Address, getAddress } from "viem";
 import { type Auth, forbidden } from "../auth/routes.ts";
 import { clientIp, RateLimiter } from "../common/rate-limit.ts";
-import type { RfqHub, RfqSession } from "./hub.ts";
+import { INDICATION_TTL_MS, type RfqHub, type RfqSession } from "./hub.ts";
 
 export const API_KEY_PREFIX = "pbl_rfq_";
 const API_KEY = /^pbl_rfq_[A-Za-z0-9_-]{43}$/;
@@ -87,6 +88,50 @@ export function mountRfq(
       available: Boolean(hub),
       makers: hub?.makers() ?? 0,
       quoteWindowMs: hub?.options.windowMs ?? null,
+    });
+  });
+
+  /** The makers' current prices for a standard order, best across makers, by on-chain market
+   * and branch (0 YES, 1 NO): what the app shows as a branch's price while its book is empty. */
+  const prices = () =>
+    JSON.stringify({
+      ttlMs: INDICATION_TTL_MS,
+      prices: (hub?.prices() ?? []).map((p) => ({
+        market: p.market,
+        branch: p.branch,
+        bid: p.bid?.toString() ?? null,
+        ask: p.ask?.toString() ?? null,
+        at: p.at,
+      })),
+    });
+  app.get("/v1/rfq/prices", (c) => {
+    c.header("Cache-Control", "no-store");
+    c.header("Content-Type", "application/json");
+    return c.body(prices());
+  });
+  let streams = 0;
+  /** The same prices as they change (checked every 2 s, sent at least every 15 s). */
+  app.get("/v1/rfq/prices/stream", (c) => {
+    if (streams >= 2000) return c.json({ error: "Stream capacity reached" }, 503);
+    c.header("Cache-Control", "no-cache, no-transform");
+    c.header("X-Accel-Buffering", "no");
+    return streamSSE(c, async (stream) => {
+      streams++;
+      try {
+        let sent = "",
+          sentAt = 0;
+        while (!stream.aborted) {
+          const data = prices();
+          if (data !== sent || Date.now() - sentAt >= 15_000) {
+            await stream.writeSSE({ event: "prices", data });
+            sent = data;
+            sentAt = Date.now();
+          }
+          await stream.sleep(2_000);
+        }
+      } finally {
+        streams--;
+      }
     });
   });
 

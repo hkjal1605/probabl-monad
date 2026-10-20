@@ -36,7 +36,7 @@ import {
   type Units,
   units,
 } from "@conditional-stocks/operator";
-import type { Address, PublicClient } from "viem";
+import { type Address, type PublicClient, zeroAddress } from "viem";
 import {
   type MarketModel,
   type MarketOverride,
@@ -87,6 +87,10 @@ export const log = (event: string, detail: Record<string, unknown> = {}) =>
   );
 const seconds = () => BigInt(Math.floor(Date.now() / 1000));
 const WAD = 10n ** 18n;
+/** The order the vault's indicative prices are for, in whole quote tokens. */
+const INDICATIVE_NOTIONAL = "100";
+/** A buy's worst price that never binds. */
+const UNLIMITED = (1n << 128n) - 1n;
 
 /** The vault's live orders, optionally in one market. */
 export function vaultOrders(s: ChainState, vault: Address, market?: number) {
@@ -798,6 +802,40 @@ export class Keeper {
       minQuoteSeconds,
       allowStaleSpot: set.allowStaleSpot && TESTNETS.includes(this.chainId),
     });
+  }
+
+  /** The vault's current prices, unsigned, for an order of `INDICATIVE_NOTIONAL` on each branch of
+   * every market it holds: what an RFQ for that order would be quoted now (`rfqQuote`, from
+   * memory). A side the vault would decline is null; a branch it quotes on neither side is left
+   * out. The order is sized at the vault's oracle price. */
+  indications(minQuoteSeconds: number) {
+    const v = this.latest?.v,
+      s = this.follower.confirmed;
+    if (!v?.oraclePrice) return [];
+    let u: Units;
+    try {
+      u = this.units(s, v);
+    } catch {
+      return [];
+    }
+    const quantity = (units(INDICATIVE_NOTIONAL, u.quoteDecimals) * WAD) / v.oraclePrice;
+    const prices: { market: number; branch: 0 | 1; bid: bigint | null; ask: bigint | null }[] = [];
+    for (const { market } of v.markets)
+      for (const branch of [0, 1] as const) {
+        const price = (side: 0 | 1) => {
+          const limit = side === 0 ? UNLIMITED : 0n;
+          const q = this.rfqQuote(
+            { market, order: { branch, side, quantity, limit, taker: zeroAddress } },
+            minQuoteSeconds,
+          );
+          return "decline" in q ? null : q.price;
+        };
+        const ask = price(0),
+          bid = price(1);
+        if ((ask !== null || bid !== null) && (ask === null || bid === null || bid <= ask))
+          prices.push({ market, branch, bid, ask });
+      }
+    return prices;
   }
 
   /** What a request came to: a quote that lost (or never filled) frees its capacity at once; a

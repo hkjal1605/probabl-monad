@@ -3,7 +3,7 @@ const streams = new Map<
   string,
   { source: EventSource; listeners: Set<(value: unknown) => void>; errors: Set<() => void> }
 >();
-export function subscribeSpot(
+export function subscribePrices(
   url: string,
   update: (value: unknown) => void,
   unavailable: () => void,

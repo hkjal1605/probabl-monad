@@ -109,6 +109,7 @@ Authorization: Bearer pbl_rfq_…
   "fundingKind": 0, "expiry": "1760000030", "nonce": "17", "signature": "0x…" }
 { "type": "decline", "rfqId": "2b0c…" }
 { "type": "ping", "id": "optional-id" }
+{ "type": "indications", "prices": [{ "market": 1, "branch": 0, "bid": "99500000", "ask": "100500000" }] }
 ```
 
 **What a quote is.** A firm offer to fill up to `quantity` at `price` for this taker until `expiry`
@@ -139,6 +140,17 @@ the first nonce of each 256-nonce word costs about 17k more gas.
 
 **Updates.** Up to five quotes per request: each replaces your previous one. A `decline` withdraws
 your quote and tells the server not to wait for you.
+
+**Indications.** Your current prices for a standard $100 order on each market branch you quote:
+unsigned and not binding (a market order still asks you for a firm quote).
+- **What the app shows.** The app shows the best bid and ask across makers as a branch's price, folded
+  into its book's, and charts their midpoint once a minute. Anyone can read them at
+  `GET /v1/rfq/prices`, and as they change at `GET /v1/rfq/prices/stream` (SSE, event `prices`).
+- **Format.** Up to 256 entries per frame; `bid` and `ask` are raw prices or `null`, with `bid` at or
+  below `ask`.
+- **Replacing them.** Each frame replaces your previous one. Prices stand for 30 seconds and go when
+  your last connection closes, so post them at least every 30 seconds while you quote. Δ-vault
+  keepers post them every 10.
 
 ## Contract makers (Δ-vaults)
 

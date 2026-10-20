@@ -5,7 +5,7 @@ import { protocolConfig } from "@/config/protocol";
 import { fetchSpotPrices } from "@/modules/MarketDetailPageModule/utils/fetchSpotPrices";
 import { API_URL } from "@/services/constants";
 import { parseSpotPricesResponse, spotPricesUrl } from "@/services/spot-prices";
-import { subscribeSpot } from "@/services/spot-stream";
+import { subscribePrices } from "@/services/spot-stream";
 import { spotPricesStore } from "@/stores/useSpotPricesStore";
 import type { MarketView } from "@/types/api";
 import { useResource } from "./useResource";
@@ -22,7 +22,7 @@ export function useSpotPrices(markets: MarketView[]) {
     if (!key || tokens.length > SPOT_BATCH_SIZE) return;
     const url = new URL(spotPricesUrl(tokens, API_URL));
     url.pathname += "/stream";
-    return subscribeSpot(
+    return subscribePrices(
       url.toString(),
       (value) => {
         try {

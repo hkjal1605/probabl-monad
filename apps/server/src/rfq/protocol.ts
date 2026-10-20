@@ -5,7 +5,8 @@
  * Server to maker: `welcome` once, then `rfq` for every market order, `quote.accepted` or
  * `quote.rejected` for each quote, `rfq.result` once the order settled, `pong`, `error`.
  * Maker to server: `quote` (a signed price, replacing that maker's earlier quote for the
- * request), `decline`, `ping`. docs/rfq.md specifies every field. */
+ * request), `decline`, `ping`, and `indications` (its current prices for a standard order, which
+ * the app shows and charts). docs/rfq.md specifies every field. */
 import {
   type OrderWire,
   QUOTE_TYPES,
@@ -17,8 +18,12 @@ import type { MarketState } from "@conditional-stocks/evm-client/ledger";
 import type { Address, Hex } from "viem";
 
 export const RFQ_PROTOCOL_VERSION = 1;
-/** Longest frame a maker may send: a quote is under 500 bytes. */
-export const MAX_MAKER_FRAME = 4_096;
+/** Longest frame a maker may send: a quote is under 500 bytes, a full vault's indications
+ * (48 markets, both branches) under 10 KB. */
+export const MAX_MAKER_FRAME = 16_384;
+/** Prices one `indications` frame may carry. */
+export const MAX_INDICATIONS = 256;
+const U128_MAX = (1n << 128n) - 1n;
 const U256_MAX = (1n << 256n) - 1n;
 
 export interface MakerIdentity {
@@ -39,10 +44,21 @@ export interface MakerQuote {
   /** The maker wallet's EIP-712 signature of Quote(taker, terms, nonce). */
   signature: Hex;
 }
+/** A maker's current prices for one market branch, for a standard order: unsigned and not
+ * binding (a market order still gets a firm quote). Raw prices as on the exchange. */
+export interface MakerIndication {
+  market: number;
+  branch: 0 | 1;
+  /** What the maker pays for the branch's stock, or null when it does not buy. */
+  bid: bigint | null;
+  /** What it sells at, or null when it does not sell. */
+  ask: bigint | null;
+}
 export type MakerMessage =
   | ({ type: "quote"; rfqId: string } & MakerQuote)
   | { type: "decline"; rfqId: string }
-  | { type: "ping"; id: string | null };
+  | { type: "ping"; id: string | null }
+  | { type: "indications"; prices: MakerIndication[] };
 
 const RFQ_ID = /^[0-9a-f-]{36}$/;
 const PING_ID = /^[A-Za-z0-9_-]{1,64}$/;
@@ -66,6 +82,7 @@ export function parseMakerMessage(text: string): MakerMessage {
       throw new Error("Invalid ping id");
     return { type: "ping", id: (m.id as string | undefined) ?? null };
   }
+  if (m.type === "indications") return { type: "indications", prices: parseIndications(m.prices) };
   if (m.type !== "quote" && m.type !== "decline") throw new Error("Unknown message type");
   if (typeof m.rfqId !== "string" || !RFQ_ID.test(m.rfqId)) throw new Error("Invalid rfqId");
   if (m.type === "decline") return { type: "decline", rfqId: m.rfqId };
@@ -92,6 +109,38 @@ export function parseMakerMessage(text: string): MakerMessage {
     nonce,
     signature: m.signature as Hex,
   };
+}
+
+/** An `indications` frame's prices: every one names a market and branch, and a positive bid at or
+ * below a positive ask (either may be null). */
+function parseIndications(value: unknown): MakerIndication[] {
+  if (!Array.isArray(value) || value.length > MAX_INDICATIONS)
+    throw new Error(`prices lists at most ${MAX_INDICATIONS} market branches`);
+  const price = (v: unknown) => {
+    if (v === null) return null;
+    const raw = unsigned(v, U128_MAX);
+    if (raw === 0n) throw new Error();
+    return raw;
+  };
+  return value.map((entry) => {
+    const e = (entry ?? {}) as Record<string, unknown>;
+    if (
+      !Number.isSafeInteger(e.market) ||
+      (e.market as number) <= 0 ||
+      (e.market as number) >= 2 ** 32
+    )
+      throw new Error("Invalid indication market");
+    if (e.branch !== 0 && e.branch !== 1) throw new Error("branch is 0 (YES) or 1 (NO)");
+    let bid: bigint | null, ask: bigint | null;
+    try {
+      bid = price(e.bid ?? null);
+      ask = price(e.ask ?? null);
+    } catch {
+      throw new Error("bid and ask are positive decimal strings or null");
+    }
+    if (bid !== null && ask !== null && bid > ask) throw new Error("bid is above ask");
+    return { market: e.market as number, branch: e.branch, bid, ask };
+  });
 }
 
 /** The request every connected maker receives for one market order. */

@@ -6,6 +6,7 @@ import { fetchPriceHistory } from "@/modules/MarketsPageModule/utils/fetchPriceH
 import { fetchOrders } from "@/modules/OrdersPageModule/utils/fetchOrders";
 import { fetchPositions } from "@/modules/PortfolioPageModule/utils/fetchPositions";
 import { fetchWalletTrades } from "@/modules/PortfolioPageModule/utils/fetchWalletTrades";
+import { withQuotePrices } from "@/services/quote-prices";
 import { withMarketSpotPrices } from "@/services/spot-prices";
 import { marketsStore } from "@/stores/useMarketsStore";
 import { ordersStore } from "@/stores/useOrdersStore";
@@ -14,6 +15,7 @@ import { priceHistoryStore } from "@/stores/usePriceHistoryStore";
 import { tradesStore } from "@/stores/useTradesStore";
 import { walletTradesStore } from "@/stores/useWalletTradesStore";
 import type { MarketView } from "@/types/api";
+import { useQuotePrices } from "./useQuotePrices";
 import { useReadFreshness } from "./useReadFreshness";
 import { useResource } from "./useResource";
 import { useSpotPrices } from "./useSpotPrices";
@@ -23,8 +25,13 @@ export function useMarkets(initial: MarketView[] = [], marketId?: string) {
   const query = useResource(marketsStore, key, (force) => fetchMarkets(key, force));
   const rows = query.data?.markets ?? initial;
   const spot = useSpotPrices(rows),
+    quotes = useQuotePrices(),
     freshness = useReadFreshness(query);
-  const markets = withMarketSpotPrices(rows, spot.data, spot.now, spot.isError);
+  const markets = withQuotePrices(
+    withMarketSpotPrices(rows, spot.data, spot.now, spot.isError),
+    quotes.data,
+    quotes.fresh,
+  );
   return {
     ...query,
     ...freshness,

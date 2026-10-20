@@ -4,10 +4,12 @@
  * and stays open for the quote window, or until every recipient has quoted or declined, so a
  * fully answered request never waits out the window, and with no maker online `collect` returns
  * at once without a timer. Each quote is checked as it arrives and the maker hears whether it
- * stands; a later quote from the same maker replaces its earlier one. */
+ * stands; a later quote from the same maker replaces its earlier one. Makers also post their
+ * current prices for a standard order (`indications`), which `prices` combines across them. */
 import type { Address } from "viem";
 import {
   type MakerIdentity,
+  type MakerIndication,
   type MakerMessage,
   type MakerQuote,
   parseMakerMessage,
@@ -49,6 +51,14 @@ interface Pending {
   finish(): void;
 }
 
+/** The best indicative prices of one market branch across the makers online. */
+export interface QuotePrice extends MakerIndication {
+  /** When the newest of them arrived (ms since the epoch). */
+  at: number;
+}
+/** How long a maker's indications stand without an update (its keeper posts them every round). */
+export const INDICATION_TTL_MS = 30_000;
+
 /** Close codes (4000-4999 are the application's). */
 export const CLOSE_REVOKED = 4001;
 export const CLOSE_LIMIT = 4002;
@@ -59,6 +69,8 @@ export class RfqHub {
   private readonly sessions = new Map<string, Set<RfqSession>>();
   private readonly pending = new Map<string, Pending>();
   private readonly counters = new Map<string, MakerStats>();
+  /** Each maker's latest indications and when they arrived. */
+  private readonly indications = new Map<string, { at: number; prices: MakerIndication[] }>();
   private arrivals = 0;
 
   constructor(
@@ -111,6 +123,7 @@ export class RfqHub {
     if (!live?.delete(session)) return;
     if (live.size) return;
     this.sessions.delete(id);
+    this.indications.delete(id);
     // A maker gone mid-request cannot answer it: the request stops waiting for it.
     for (const p of this.pending.values()) if (p.recipients.has(id)) this.answered(p, id);
   }
@@ -145,6 +158,25 @@ export class RfqHub {
   /** Connections and counters per maker id, for the admin console. */
   status(makerId: string) {
     return { connections: this.sessions.get(makerId)?.size ?? 0, ...this.stats(makerId) };
+  }
+
+  /** The best indicative bid and ask of every market branch: the highest bid and lowest ask of
+   * the makers online whose indications are under `INDICATION_TTL_MS` old. */
+  prices(): QuotePrice[] {
+    const now = this.now(),
+      best = new Map<string, QuotePrice>();
+    for (const [, { at, prices }] of this.indications) {
+      if (now - at > INDICATION_TTL_MS) continue;
+      for (const p of prices) {
+        const key = `${p.market}:${p.branch}`;
+        const b = best.get(key) ?? { market: p.market, branch: p.branch, bid: null, ask: null, at };
+        if (p.bid !== null && (b.bid === null || p.bid > b.bid)) b.bid = p.bid;
+        if (p.ask !== null && (b.ask === null || p.ask < b.ask)) b.ask = p.ask;
+        b.at = Math.max(b.at, at);
+        best.set(key, b);
+      }
+    }
+    return [...best.values()].sort((a, b) => a.market - b.market || a.branch - b.branch);
   }
 
   /** Counts a quote that won part of an order. */
@@ -207,6 +239,10 @@ export class RfqHub {
     }
     if (message.type === "ping") {
       session.send({ type: "pong", id: message.id, time: this.now() });
+      return;
+    }
+    if (message.type === "indications") {
+      this.indications.set(session.maker.id, { at: this.now(), prices: message.prices });
       return;
     }
     const maker = session.maker,

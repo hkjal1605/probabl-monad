@@ -2,7 +2,7 @@
 import { expect, test } from "bun:test";
 import { getAddress } from "viem";
 import { CLOSE_LIMIT, CLOSE_REVOKED, RfqHub, type RfqSession } from "../src/rfq/hub.ts";
-import type { MakerIdentity, MakerQuote } from "../src/rfq/protocol.ts";
+import { MAX_MAKER_FRAME, type MakerIdentity, type MakerQuote } from "../src/rfq/protocol.ts";
 
 const wallet = (n: number) => getAddress(`0x${n.toString(16).padStart(40, "0")}`);
 const ids = ["a", "b", "c", "d"].map((c) => `${c.repeat(8)}-0000-4000-8000-000000000000`);
@@ -188,7 +188,7 @@ test("malformed frames are answered with an error, pings with a pong", () => {
     JSON.stringify({ type: "quote", rfqId: rfqId(6), price: "1", quantity: "1", fundingKind: 2 }),
     JSON.stringify({ ...quote(rfqId(6), "1"), nonce: undefined }),
     JSON.stringify({ ...quote(rfqId(6), "1"), signature: "0x1234" }),
-    "x".repeat(5_000),
+    "x".repeat(MAX_MAKER_FRAME + 1),
   ])
     hub.receive(s, frame);
   expect(ofType(s, "error").map((m) => m.message)).toEqual([
@@ -266,4 +266,40 @@ test("a check that resolves later still decides, and a later quote of the same m
   const quotes = await collecting;
   expect(quotes.map((q) => q.terms.price)).toEqual([101n]);
   expect(ofType(s, "quote.accepted")).toHaveLength(1);
+});
+
+test("makers' indications combine into the best bid and ask per branch, until they age or go offline", () => {
+  let now = 1_000_000;
+  const hub = new RfqHub({
+    windowMs: 500,
+    maxSessionsPerMaker: 2,
+    welcome: () => ({}),
+    now: () => now,
+  });
+  const a = session(() => hub, maker(0)),
+    b = session(() => hub, maker(1));
+  hub.attach(a);
+  hub.attach(b);
+  const post = (s: FakeSession, prices: unknown) =>
+    hub.receive(s, JSON.stringify({ type: "indications", prices }));
+  post(a, [
+    { market: 1, branch: 0, bid: "100", ask: "110" },
+    { market: 1, branch: 1, bid: "90", ask: null },
+  ]);
+  now += 5_000;
+  post(b, [{ market: 1, branch: 0, bid: "102", ask: "112" }]);
+  expect(hub.prices()).toEqual([
+    { market: 1, branch: 0, bid: 102n, ask: 110n, at: 1_005_000 },
+    { market: 1, branch: 1, bid: 90n, ask: null, at: 1_000_000 },
+  ]);
+  // A crossed or malformed frame is refused and changes nothing.
+  post(b, [{ market: 1, branch: 0, bid: "120", ask: "110" }]);
+  post(b, [{ market: 0, branch: 2, bid: "1", ask: "2" }]);
+  expect(b.sent.filter((m) => m.type === "error")).toHaveLength(2);
+  expect(hub.prices()[0]).toMatchObject({ bid: 102n, ask: 110n });
+  // Maker a's prices age out; b's go with its connection.
+  now += 26_000;
+  expect(hub.prices()).toEqual([{ market: 1, branch: 0, bid: 102n, ask: 112n, at: 1_005_000 }]);
+  hub.detach(b);
+  expect(hub.prices()).toEqual([]);
 });

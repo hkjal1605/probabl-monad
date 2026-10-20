@@ -35,6 +35,8 @@ export interface BranchBook {
   bids: BookLevel[];
   depthUsd: number;
   spread: number | null;
+  /** The RFQ makers' current prices for a $100 order, folded into the best bid and ask above. */
+  quote?: { bid: string | null; ask: string | null };
 }
 export interface ProbabilityView {
   ask: number | null;
