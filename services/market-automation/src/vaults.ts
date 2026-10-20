@@ -17,6 +17,7 @@ import {
   type WalletClient,
 } from "viem";
 import type { PrivateKeyAccount } from "viem/accounts";
+import { inTurn } from "./in-turn.ts";
 
 /** Risk limits a newly registered market gets, in whole tokens. */
 export interface RiskTemplate {
@@ -113,17 +114,19 @@ export class CuratedVault {
     return { ...this.limits, cutoffBuffer };
   }
 
-  async addMarket(market: number, risk: DeltaVaultRisk): Promise<Hex> {
+  addMarket(market: number, risk: DeltaVaultRisk): Promise<Hex> {
     const { to, data } = deltaVaultAddMarket(this.address, market, risk);
-    await this.client.call({ account: this.curator, to, data });
-    const hash = await this.wallet.sendTransaction({
-      account: this.curator,
-      chain: this.client.chain,
-      to,
-      data,
+    return inTurn(this.curator.address, async () => {
+      await this.client.call({ account: this.curator, to, data });
+      const hash = await this.wallet.sendTransaction({
+        account: this.curator,
+        chain: this.client.chain,
+        to,
+        data,
+      });
+      const receipt = await this.client.waitForTransactionReceipt({ hash });
+      if (receipt.status !== "success") throw new Error(`Transaction ${hash} reverted`);
+      return hash;
     });
-    const receipt = await this.client.waitForTransactionReceipt({ hash });
-    if (receipt.status !== "success") throw new Error(`Transaction ${hash} reverted`);
-    return hash;
   }
 }

@@ -17,6 +17,7 @@ import type { EventMarket, EventSource } from "@conditional-stocks/market-data";
 import { catalogUnderlying } from "@conditional-stocks/shared/token-catalog";
 import { type Address, erc20Abi, type Hex, type PublicClient, type WalletClient } from "viem";
 import type { PrivateKeyAccount } from "viem/accounts";
+import { inTurn } from "./in-turn.ts";
 import type { EventCondition } from "./settlement.ts";
 
 /** The API's review checklists (apps/server/src/admin/routes.ts): automation confirms each item
@@ -231,20 +232,22 @@ export class Admin {
     };
   }
 
-  private async send(transaction: AdminTransaction) {
+  private send(transaction: AdminTransaction) {
     const { client, wallet, marketAdmin, resolutionAdmin } = this.options;
     const account = [marketAdmin, resolutionAdmin].find((a) => a?.address === transaction.from);
     if (!account) throw new Error(`No key is configured for ${transaction.from}`);
-    await preflightAdmin(client, transaction);
-    const hash = await wallet.sendTransaction({
-      account,
-      chain: client.chain,
-      to: transaction.to,
-      data: transaction.data,
+    return inTurn(account.address, async () => {
+      await preflightAdmin(client, transaction);
+      const hash = await wallet.sendTransaction({
+        account,
+        chain: client.chain,
+        to: transaction.to,
+        data: transaction.data,
+      });
+      const receipt = await client.waitForTransactionReceipt({ hash });
+      if (receipt.status !== "success") throw new Error(`Transaction ${hash} reverted`);
+      return hash;
     });
-    const receipt = await client.waitForTransactionReceipt({ hash });
-    if (receipt.status !== "success") throw new Error(`Transaction ${hash} reverted`);
-    return hash;
   }
 
   /** Records an executed action; creation also starts the ingestor's odds stream, so transient
