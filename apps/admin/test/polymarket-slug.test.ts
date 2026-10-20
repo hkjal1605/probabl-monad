@@ -170,7 +170,7 @@ test("invalid source identities, malformed metadata and unsupported markets neve
     [{ ...raw, conditionId: "invalid" }, 502],
     [{ id: "158505", slug, markets: [raw] }, 502],
     [[raw], 502],
-    [{ ...raw, negRisk: true }, 422],
+    [{ ...raw, negRisk: true, negRiskOther: true }, 422],
     [{ ...raw, outcomes: '["Yes","No","Maybe"]' }, 422],
   ] as const) {
     let calls = 0;

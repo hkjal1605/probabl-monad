@@ -59,13 +59,35 @@ describe("Polymarket metadata normalization", () => {
     expect(noOutcome(reversed)).toEqual({ indexSet: "1", label: "NO", tokenId: "900" });
   });
 
-  test("rejects non-binary, duplicate-token, and negative-risk markets", () => {
+  test('rejects non-binary, duplicate-token, and negative-risk "Other" markets', () => {
     for (const input of [
       gammaMarket({ outcomes: '["Up","Down"]' }),
       gammaMarket({ clobTokenIds: '["111","111"]' }),
-      gammaMarket({ negRisk: true }),
+      gammaMarket({ negRisk: true, negRiskOther: true }),
     ]) {
       expect(() => normalizeGammaMarket(input)).toThrow(MarketDataError);
     }
+  });
+
+  test("accepts a negative-risk outcome, linked under its event's page", () => {
+    const outcome = normalizeGammaMarket(
+      gammaMarket({
+        negRisk: true,
+        negRiskOther: false,
+        slug: "fed-increases-rates-by-25-bps",
+        events: [{ slug: "fed-decision-in-december" }],
+      }),
+    );
+    expect(outcome.negRisk).toBe(true);
+    expect(outcome.canonicalUrl).toBe(
+      "https://polymarket.com/event/fed-decision-in-december/fed-increases-rates-by-25-bps",
+    );
+    expect(yesOutcome(outcome)).toEqual({ indexSet: "1", label: "YES", tokenId: "111" });
+    // A single-market event's page is the market's own.
+    const single = normalizeGammaMarket(
+      gammaMarket({ events: [{ slug: "will-the-event-occur" }] }),
+    );
+    expect(single.negRisk).toBe(false);
+    expect(single.canonicalUrl).toBe("https://polymarket.com/event/will-the-event-occur");
   });
 });

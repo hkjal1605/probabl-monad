@@ -292,6 +292,10 @@ export const buildCreationEvidence = (input: {
   preparer: Address;
   sourceUrls: unknown;
 }): EvidenceEnvelope<CreationEvidencePacket> => {
+  // Inactive: an unnamed placeholder outcome Polymarket may name later, or a market it has not
+  // opened. Resolution evidence has no such check: some resolved markets turn inactive.
+  if (!input.metadata.active)
+    throw new MarketDataError("UNSUPPORTED_MARKET", "Polymarket has not activated this market");
   const yes = yesOutcome(input.metadata);
   const no = noOutcome(input.metadata);
   const config = parseConfig(input.config, input.metadata);

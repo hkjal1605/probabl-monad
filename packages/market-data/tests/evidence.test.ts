@@ -53,6 +53,13 @@ describe("admin evidence packets", () => {
     const first = buildCreationEvidence(input);
     const second = buildCreationEvidence({ ...input, config: { ...input.config } });
     expect(first.packetHash).toBe(second.packetHash);
+    // An unnamed placeholder outcome (or a market Polymarket has not opened) is inactive.
+    expect(() =>
+      buildCreationEvidence({
+        ...input,
+        metadata: normalizeGammaMarket(gammaMarket({ negRisk: true, active: false })),
+      }),
+    ).toThrow(MarketDataError);
     expect(() =>
       buildCreationEvidence({
         ...input,

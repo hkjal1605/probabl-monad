@@ -23,7 +23,8 @@ export interface NormalizedPolymarketMarket {
   gammaMarketId: string;
   imageUrl?: string | null;
   mappingHash: Hex;
-  negRisk: false;
+  /** One outcome of a Polymarket event with exactly one winner (a YES/NO market itself). */
+  negRisk: boolean;
   outcomes: [PolymarketOutcome, PolymarketOutcome];
   question: string;
   resolutionSource: string;
@@ -90,10 +91,10 @@ export const normalizeGammaMarket = (input: unknown): NormalizedPolymarketMarket
   if (!isHex32(conditionId)) {
     throw new MarketDataError("INVALID_METADATA", "conditionId must be bytes32");
   }
-  if (raw.negRisk === true) {
+  if (raw.negRiskOther === true) {
     throw new MarketDataError(
       "UNSUPPORTED_MARKET",
-      "negative-risk markets are not supported in v1",
+      'an "Other" outcome changes meaning whenever Polymarket adds an outcome',
     );
   }
   const labels = stringArray(raw.outcomes, "outcomes");
@@ -119,20 +120,26 @@ export const normalizeGammaMarket = (input: unknown): NormalizedPolymarketMarket
     throw new MarketDataError("INVALID_METADATA", "outcome token IDs must differ");
   }
   const slug = requiredString(raw.slug, "slug", 512);
+  // A market of a multi-market event (a negative-risk outcome, a price-ladder strike) has its
+  // own page under the event's.
+  const event = Array.isArray(raw.events)
+    ? (raw.events[0] as { slug?: unknown } | undefined)
+    : undefined;
+  const eventSlug = typeof event?.slug === "string" && event.slug !== slug ? event.slug : null;
   const mapping = {
     conditionId,
     outcomes,
   };
   return {
     active: boolean(raw.active, "active"),
-    canonicalUrl: `https://polymarket.com/event/${encodeURIComponent(slug)}`,
+    canonicalUrl: `https://polymarket.com/event/${eventSlug ? `${encodeURIComponent(eventSlug)}/` : ""}${encodeURIComponent(slug)}`,
     closed: boolean(raw.closed, "closed"),
     conditionId: conditionId as Hex,
     endTime: isoTime(raw.endDate ?? raw.endDateIso, "endDate"),
     gammaMarketId: requiredString(raw.id, "id", 256),
     imageUrl: polymarketImageUrl(raw),
     mappingHash: hashCanonical(mapping),
-    negRisk: false,
+    negRisk: raw.negRisk === true,
     outcomes,
     question: requiredString(raw.question, "question"),
     resolutionSource: optionalString(raw.resolutionSource, "resolutionSource") ?? "unspecified",
