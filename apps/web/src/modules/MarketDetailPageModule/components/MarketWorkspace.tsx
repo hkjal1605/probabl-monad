@@ -281,6 +281,8 @@ function BranchDepth({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [visibleLevels, setVisibleLevels] = useState(5);
+  /** The height below the column headers and of one row, once measured. */
+  const [space, setSpace] = useState<{ body: number; row: number } | null>(null);
   useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -292,6 +294,12 @@ function BranchDepth({
       if (!header || !midpointRow || container.clientHeight <= 0) return;
       const next = visibleDepthPerSide(container.clientHeight, header, midpointRow);
       setVisibleLevels((current) => (current === next ? current : next));
+      const body = container.clientHeight - header;
+      setSpace((current) =>
+        current?.body === body && current.row === midpointRow
+          ? current
+          : { body, row: midpointRow },
+      );
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -318,6 +326,18 @@ function BranchDepth({
     </TableRow>
   );
   const columns = 3;
+  // The headers stay on top and the midpoint in the middle of the rows below them: the space
+  // a side's levels leave is filled above the asks and below the bids. Each side shows at most
+  // `visibleLevels` rows, which fit in half that space, so the book always fills its height.
+  const half = space ? (space.body - space.row) / 2 : 0;
+  const fill = (rows: number, side: "asks" | "bids") => {
+    const height = space ? half - rows * space.row : 0;
+    return height > 0 ? (
+      <tr key={`${side}-fill`} role="presentation">
+        <td colSpan={columns} style={{ height, padding: 0 }} />
+      </tr>
+    ) : null;
+  };
   /** An empty side shows the RFQ makers' price for a $100 order, which a market order fills at. */
   const emptyRow = (ask: boolean) => {
     const quoted = ask ? book.quote?.ask : book.quote?.bid;
@@ -344,7 +364,8 @@ function BranchDepth({
   return (
     <div
       ref={containerRef}
-      className="flex h-full min-h-0 min-w-0 flex-col justify-center overflow-hidden"
+      // Below xl the book's grid row sizes to its content: it keeps room for five levels a side.
+      className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden max-xl:min-h-84"
     >
       <Table aria-label={label} density="compact">
         <TableHeader className="[&_tr]:border-b-0">
@@ -355,6 +376,7 @@ function BranchDepth({
           </TableRow>
         </TableHeader>
         <TableBody className="[&_tr]:border-b-0">
+          {fill(Math.max(asks.length, 1), "asks")}
           {asks.length === 0 && emptyRow(true)}
           {[...asks].reverse().map((level) => row(level, true, askTotal))}
           <TableRow data-depth-midpoint>
@@ -367,6 +389,7 @@ function BranchDepth({
           </TableRow>
           {bids.map((level) => row(level, false, bidTotal))}
           {bids.length === 0 && emptyRow(false)}
+          {fill(Math.max(bids.length, 1), "bids")}
         </TableBody>
       </Table>
     </div>
