@@ -636,7 +636,11 @@ export class ChainFollower {
    * when the node includes them, then from known headers, then from one header per block. */
   private async blocksOf(logs: Log[], stamps: Map<Hex, bigint>): Promise<BlockEvents[]> {
     const live = logs.filter((log) => !log.removed);
-    const stamped = (log: Log) => (log as Log & { blockTimestamp?: Hex | bigint }).blockTimestamp;
+    // Some nodes (Robinhood Chain's) send `blockTimestamp: "0x0"` in logs: zero means unknown.
+    const stamped = (log: Log) => {
+      const stamp = (log as Log & { blockTimestamp?: Hex | bigint }).blockTimestamp;
+      return stamp === undefined || BigInt(stamp) === 0n ? undefined : stamp;
+    };
     const missing = [
       ...new Set(
         live

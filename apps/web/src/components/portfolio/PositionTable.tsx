@@ -1,6 +1,10 @@
 "use client";
 
-import { formatShareAmount, formatTokenAmount } from "@conditional-stocks/domain";
+import {
+  formatPriceRawX18,
+  formatShareAmount,
+  formatTokenAmount,
+} from "@conditional-stocks/domain";
 import { useRouter } from "next/navigation";
 import { useUiStore } from "@/components/providers/UiStateProvider";
 import { useWallet } from "@/components/providers/WalletProvider";
@@ -15,12 +19,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useOrders, usePositions } from "@/hooks/useProtocolData";
+import { useOrders, usePositions, useWalletTrades } from "@/hooks/useProtocolData";
 import { formatNumber, tokenAmount } from "@/lib/format/display";
 import { stepQuantity } from "@/lib/markets/base";
 import { marketPath } from "@/lib/markets/identity";
 import { midpoint } from "@/lib/markets/presentation";
-import { type ConditionalPositionRow, conditionalPositionRows } from "@/lib/portfolio/positions";
+import {
+  type ConditionalPositionRow,
+  conditionalPositionRows,
+  entryBasis,
+} from "@/lib/portfolio/positions";
 import type { MarketView } from "@/types/api";
 
 /** Close intent for a stock claim row: sell the held claims, step-aligned. */
@@ -54,6 +62,7 @@ export function PositionTable({
   const wallet = useWallet(),
     positions = usePositions(),
     orders = useOrders(),
+    trades = useWalletTrades(),
     router = useRouter();
   const setPrefill = useUiStore((s) => s.setPrefill);
   if (!wallet.account) return <EmptyState>Connect your wallet to see positions.</EmptyState>;
@@ -153,6 +162,13 @@ export function PositionTable({
       <TableBody>
         {rows.map((row) => {
           const { market, branch, kind, symbol, decimals, available, reserved, total } = row;
+          const basis =
+            kind === "stock" && wallet.account && trades.data
+              ? entryBasis(trades.trades, orders.orders, wallet.account, market.id, branch)
+              : null;
+          const entry = basis ? Number(formatPriceRawX18(basis.priceRawX18, market)) : null;
+          const mark = kind === "stock" ? tokenMark(row) : null;
+          const change = entry !== null && mark !== null ? (mark - entry) / entry : null;
           return (
             <TableRow key={row.key}>
               <TableCell
@@ -168,24 +184,53 @@ export function PositionTable({
                   </p>
                 )}
               </TableCell>
-              <TableCell className="tabular-nums text-muted-foreground">
-                <InfoTooltip content="Complete execution basis is not available from the canonical indexer.">
-                  <span>—</span>
-                </InfoTooltip>
+              <TableCell className="tabular-nums">
+                {basis && entry !== null ? (
+                  <>
+                    <InfoTooltip content="Average price paid in your fills, after fees and maker rebates. Selling held claims keeps the average.">
+                      <span>{formatNumber(entry)}</span>
+                    </InfoTooltip>
+                    {basis.shares < total && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        on {formatShareAmount(basis.shares, market)} of{" "}
+                        {formatShareAmount(total, market)}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <InfoTooltip
+                    content={
+                      kind === "quote"
+                        ? "Cash claims have no entry price."
+                        : trades.isPending
+                          ? "Loading your fills."
+                          : "No fill priced these claims: they came from a split or a transfer."
+                    }
+                  >
+                    <span className="text-muted-foreground">—</span>
+                  </InfoTooltip>
+                )}
               </TableCell>
               <TableCell className="tabular-nums text-foreground">
                 {kind === "stock" ? (
-                  formatNumber(tokenMark(row))
+                  formatNumber(mark)
                 ) : (
                   <InfoTooltip content="No direct quote-claim mark is available from the stock orderbook.">
                     <span>—</span>
                   </InfoTooltip>
                 )}
               </TableCell>
-              <TableCell className="tabular-nums text-muted-foreground">
-                <InfoTooltip content="An unknown cost basis cannot be treated as zero.">
-                  <span>—</span>
-                </InfoTooltip>
+              <TableCell className="tabular-nums">
+                {change !== null && Number.isFinite(change) ? (
+                  <span className={change >= 0 ? "text-positive" : "text-danger"}>
+                    {change >= 0 ? "+" : "−"}
+                    {formatNumber(Math.abs(change) * 100, 2)}%
+                  </span>
+                ) : (
+                  <InfoTooltip content="Needs both an entry price and a mark.">
+                    <span className="text-muted-foreground">—</span>
+                  </InfoTooltip>
+                )}
               </TableCell>
               <TableCell className={softClose ? "text-right" : undefined}>
                 {kind === "stock" && (
