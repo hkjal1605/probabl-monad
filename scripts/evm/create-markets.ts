@@ -2,10 +2,11 @@
  * automation's `createMarkets` (the API's admin evidence flow, signed by the market admin). Each
  * planned event is a Polymarket market (`gammaMarketId`) or a Kalshi market (`kalshiTicker`) and
  * lists the stock tokens it moves; every (event, stock) pair is one market, trading until the
- * event's end. A market's maker and taker fees (whole bps, fixed at creation) come from
- * its own `fees`, else its event's, else the plan's, else none; its maker rebate (bps of the taker
- * fee, up to 5,000) likewise from `makerRebateBps`, set before the market opens and updated on a
- * later run when the plan changes it. Resumable: created markets are written back to the plan.
+ * event's `cutoff` (an ISO time, for venue end times that fall after the news), else its end. A
+ * market's maker and taker fees (whole bps, fixed at creation) come from its own `fees`, else its
+ * event's, else the plan's, else none; its maker rebate (bps of the taker fee, up to 5,000)
+ * likewise from `makerRebateBps`, set before the market opens and updated on a later run when the
+ * plan changes it. Resumable: created markets are written back to the plan.
  *
  *   MARKET_ADMIN_PRIVATE_KEY=… RPC_URL=… CHAIN_ID=46630 bun scripts/evm/create-markets.ts */
 import { resolve } from "node:path";
@@ -29,6 +30,8 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 
 interface MarketRecord {
+  /** The Δ-vault keeper's gap for the market (δ₀ in bps, signed), for its config's overrides. */
+  anchorBps?: number;
   fees?: Fees;
   /** Maker rebate in bps of the taker fee, as a decimal string (e.g. "2500" = 25%). */
   makerRebateBps?: string;
@@ -47,6 +50,7 @@ interface Plan {
     makerRebateBps?: string;
     gammaMarketId?: string;
     kalshiTicker?: string;
+    cutoff?: string;
     slug: string;
     question: string;
     rationale: string;
@@ -115,11 +119,15 @@ const planned = plan.events.flatMap((event) =>
     const fees = record.fees ?? event.fees ?? plan.fees;
     if (!event.gammaMarketId === !event.kalshiTicker)
       throw new Error(`${event.question}: plan exactly one of gammaMarketId and kalshiTicker`);
+    const cutoff = event.cutoff === undefined ? undefined : Date.parse(event.cutoff) / 1000;
+    if (cutoff !== undefined && !Number.isInteger(cutoff))
+      throw new Error(`${event.question}: invalid cutoff ${event.cutoff}`);
     const spec: MarketSpec = {
       ...(event.kalshiTicker
         ? { source: "kalshi", marketId: event.kalshiTicker }
         : { source: "polymarket", marketId: event.gammaMarketId as string }),
       base,
+      ...(cutoff === undefined ? {} : { cutoff }),
       makerRebateBps: Number(rebate),
       note: `${ticker}: ${event.rationale}`,
       ...(fees ? { fees } : {}),
