@@ -7,11 +7,12 @@ import {
   deltaVaultWithdraw,
 } from "@conditional-stocks/evm-client";
 import { erc20Abi, getAddress } from "viem";
+import { readContract } from "viem/actions";
 import { useWallet } from "@/components/providers/WalletProvider";
 import { toast } from "@/components/ui/toast";
 import { deltaVaults } from "@/config/protocol";
 import { depositBounds, withdrawBounds } from "@/lib/delta-vault/amounts";
-import { publicClient } from "@/lib/trading/rpc";
+import { rpc } from "@/lib/trading/rpc";
 import type { DeltaVaultView } from "@/services/delta-vaults-api-service";
 import { refreshStores } from "@/stores/createResourceStore";
 import { useAsyncAction } from "./useAsyncAction";
@@ -42,28 +43,26 @@ export function useDeltaVaultTransfer(vault: DeltaVaultView | undefined, onSucce
       const { address, owner } = target();
       await wallet.ensureNetwork();
       assertCurrent();
-      const client = publicClient();
-      const [shares, quoteIn, baseIn] = await client
-        .readContract({
-          address,
-          abi: deltaVaultAbi,
-          functionName: "previewDeposit",
-          args: [quoteBudget, baseBudget],
-        })
-        .catch((error: unknown) => {
-          throw failed(error);
-        });
+      const client = rpc();
+      const [shares, quoteIn, baseIn] = await readContract(client, {
+        address,
+        abi: deltaVaultAbi,
+        functionName: "previewDeposit",
+        args: [quoteBudget, baseBudget],
+      }).catch((error: unknown) => {
+        throw failed(error);
+      });
       const bounds = depositBounds({ shares, quoteIn, baseIn });
       const [quote, base] = await Promise.all([
-        client.readContract({ address, abi: deltaVaultAbi, functionName: "QUOTE" }),
-        client.readContract({ address, abi: deltaVaultAbi, functionName: "BASE" }),
+        readContract(client, { address, abi: deltaVaultAbi, functionName: "QUOTE" }),
+        readContract(client, { address, abi: deltaVaultAbi, functionName: "BASE" }),
       ]);
       for (const [token, amount] of [
         [quote, bounds.maxQuote],
         [base, bounds.maxBase],
       ] as const) {
         if (amount === 0n) continue;
-        const allowance = await client.readContract({
+        const allowance = await readContract(client, {
           address: token,
           abi: erc20Abi,
           functionName: "allowance",
@@ -90,16 +89,14 @@ export function useDeltaVaultTransfer(vault: DeltaVaultView | undefined, onSucce
       if (shares <= 0n) throw new Error("Choose how many shares to withdraw.");
       await wallet.ensureNetwork();
       assertCurrent();
-      const [quoteOut, baseOut] = await publicClient()
-        .readContract({
-          address,
-          abi: deltaVaultAbi,
-          functionName: "previewWithdraw",
-          args: [shares],
-        })
-        .catch((error: unknown) => {
-          throw failed(error);
-        });
+      const [quoteOut, baseOut] = await readContract(rpc(), {
+        address,
+        abi: deltaVaultAbi,
+        functionName: "previewWithdraw",
+        args: [shares],
+      }).catch((error: unknown) => {
+        throw failed(error);
+      });
       const bounds = withdrawBounds({ quoteOut, baseOut });
       assertCurrent();
       const hash = await wallet

@@ -1,5 +1,10 @@
+import { Suspense } from "react";
 import { ResolutionClient } from "./components/ResolutionClient";
-export function ResolutionPageModule({ selected }: { selected?: string }) {
-  const markets: import("@/types/api").MarketView[] = [];
-  return <ResolutionClient markets={markets} selected={selected} />;
+// The selected market (`?market=`) is read in the browser, so the page itself is static.
+export function ResolutionPageModule() {
+  return (
+    <Suspense>
+      <ResolutionClient markets={[]} />
+    </Suspense>
+  );
 }

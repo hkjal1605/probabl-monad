@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   agentRules: false,
   reactStrictMode: true,
   transpilePackages: ["@conditional-stocks/domain", "@conditional-stocks/evm-client"],
+  experimental: {
+    optimizePackageImports: ["@conditional-stocks/evm-client", "@conditional-stocks/domain"],
+  },
   poweredByHeader: false,
   async headers() {
     return [

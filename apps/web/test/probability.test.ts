@@ -8,10 +8,11 @@ import {
   retainProbabilityDisplay,
 } from "../src/services/probability";
 
-test("probability streams use our API and canonical condition IDs", () => {
-  const condition = `0x${"AB".repeat(32)}`;
-  expect(probabilityStreamUrl(condition)).toBe(
-    apiUrl(`/v1/probabilities/${condition.toLowerCase()}/stream`),
+test("probability streams use our API and canonical condition IDs, up to 50 per stream", () => {
+  const a = `0x${"AB".repeat(32)}`,
+    b = `0x${"cd".repeat(32)}`;
+  expect(probabilityStreamUrl([a, b])).toBe(
+    apiUrl(`/v1/probabilities/stream?conditions=${a.toLowerCase()},${b}`),
   );
   for (const value of [
     "",
@@ -20,7 +21,9 @@ test("probability streams use our API and canonical condition IDs", () => {
     "../x",
     "condition/with?parts",
   ])
-    expect(() => probabilityStreamUrl(value)).toThrow();
+    expect(() => probabilityStreamUrl([a, value])).toThrow();
+  expect(() => probabilityStreamUrl([])).toThrow();
+  expect(() => probabilityStreamUrl(Array(51).fill(b))).toThrow();
 });
 
 test("cached display allows the cache window without rewriting timestamps or promoting bad quality", () => {

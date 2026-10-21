@@ -10,6 +10,7 @@ import {
 } from "@conditional-stocks/evm-client";
 import { Combine } from "lucide-react";
 import { useState } from "react";
+import { readContract } from "viem/actions";
 import { useWallet } from "@/components/providers/WalletProvider";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -30,21 +31,21 @@ import { venueDeployment } from "@/config/protocol";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { usePositions } from "@/hooks/useProtocolData";
 import { baseHalt, claimBalance } from "@/lib/markets/base";
-import { publicClient } from "@/lib/trading/rpc";
+import { rpc } from "@/lib/trading/rpc";
 import { refreshStores } from "@/stores/createResourceStore";
 import type { MarketView, PositionView } from "@/types/api";
 
 /** The finalized payout, read from the exchange itself rather than the index. */
 async function canonicalPayout(exchange: `0x${string}`, marketId: number) {
-  const client = publicClient();
+  const client = rpc();
   const [terms, book] = await Promise.all([
-    client.readContract({
+    readContract(client, {
       address: exchange,
       abi: conditionalStocksAbi,
       functionName: "terms",
       args: [marketId],
     }),
-    client.readContract({
+    readContract(client, {
       address: exchange,
       abi: conditionalStocksAbi,
       functionName: "book",

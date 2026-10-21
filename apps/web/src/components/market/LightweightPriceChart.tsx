@@ -39,9 +39,11 @@ const initialLegend = (series: LightweightChartSeries[]): LegendState => ({
   values: Object.fromEntries(series.map((item) => [item.id, item.data.at(-1)?.value ?? null])),
 });
 
-type Lines = Map<string, { api: ISeriesApi<"Line">; look: string }>;
+type Lines = Map<string, { api: ISeriesApi<"Line">; look: string; points: number }>;
 
-/** Sets each series' data on `chart`, adding, restyling and removing lines to match `series`. */
+/** Sets each series' data on `chart`, adding, restyling and removing lines to match `series`. The
+ * view refits only when lines or their point counts change (a live tick moves the last point only),
+ * so a user's pan and zoom survive live updates; the fixed banner always fits. */
 function syncSeries(
   chart: IChartApi,
   lines: Lines,
@@ -49,6 +51,7 @@ function syncSeries(
   banner: boolean,
 ) {
   const styles = getComputedStyle(document.documentElement);
+  let refit = banner;
   for (const item of series) {
     const look = `${item.colorToken}:${item.lineStyle ?? "solid"}:${item.label}`;
     let line = lines.get(item.id);
@@ -75,19 +78,30 @@ function syncSeries(
           priceLineVisible: false,
           title: banner ? "" : item.label,
         }),
+        points: -1,
       };
       lines.set(item.id, line);
     }
     line.api.setData(item.data);
+    if (line.points !== item.data.length) refit = true;
+    line.points = item.data.length;
   }
   const ids = new Set(series.map((item) => item.id));
   for (const [id, line] of lines)
     if (!ids.has(id)) {
       chart.removeSeries(line.api);
       lines.delete(id);
+      refit = true;
     }
-  if (series.some((item) => item.data.length)) chart.timeScale().fitContent();
+  if (refit && series.some((item) => item.data.length)) chart.timeScale().fitContent();
 }
+
+const priceScaleMargins = (banner: boolean, compactScale: boolean) =>
+  banner
+    ? { bottom: 0.16, top: 0.22 }
+    : compactScale
+      ? { bottom: 0.3, top: 0.3 }
+      : { bottom: 0.15, top: 0.15 };
 
 /** A line chart of prices over time. The chart is built once per theme and look; series data is
  * set in place, so live updates never rebuild it. `banner`: stepped lines with a live dot at
@@ -119,12 +133,17 @@ export function LightweightPriceChart({
   const latest = useRef(series);
   latest.current = series;
   const { resolvedTheme } = useTheme();
-  const [legend, setLegend] = useState<LegendState>(() => initialLegend(series));
+  // The hovered point's values; without a hover the legend shows each series' latest value.
+  const [hover, setHover] = useState<LegendState | null>(null);
+  const legend = hover ?? initialLegend(series);
   const format =
     formatValue ?? ((value: number) => `${formatNumber(value)}${valueSuffix === "%" ? "%" : ""}`);
+  const formatRef = useRef(format);
+  formatRef.current = format;
   const banner = variant === "banner";
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `format` derives from formatValue and valueSuffix, both listed.
+  // Built once per look and theme. Formats and margins change through `applyOptions` below, so
+  // switching what the chart shows doesn't rebuild it.
   useEffect(() => {
     const element = container.current;
     if (!element) return;
@@ -153,18 +172,8 @@ export function LightweightPriceChart({
         fontFamily: getComputedStyle(element).fontFamily,
         textColor: muted,
       },
-      localization: {
-        priceFormatter: format,
-        ...(formatTicks ? { tickmarksPriceFormatter: formatTicks } : {}),
-      },
-      rightPriceScale: {
-        borderVisible: false,
-        scaleMargins: banner
-          ? { bottom: 0.16, top: 0.22 }
-          : compactScale
-            ? { bottom: 0.3, top: 0.3 }
-            : { bottom: 0.15, top: 0.15 },
-      },
+      localization: { priceFormatter: (value: number) => formatRef.current(value) },
+      rightPriceScale: { borderVisible: false },
       timeScale: {
         borderVisible: false,
         fixLeftEdge: true,
@@ -179,7 +188,7 @@ export function LightweightPriceChart({
     syncSeries(chart, lines.current, latest.current, banner);
     const crosshair = (param: MouseEventParams) => {
       if (typeof param.time !== "number") {
-        setLegend(initialLegend(latest.current));
+        setHover(null);
         return;
       }
       const values: Record<string, number | null> = {};
@@ -189,7 +198,7 @@ export function LightweightPriceChart({
         values[item.id] =
           point && "value" in point && typeof point.value === "number" ? point.value : null;
       }
-      setLegend({ time: param.time, values });
+      setHover({ time: param.time, values });
     };
     chart.subscribeCrosshairMove(crosshair);
     return () => {
@@ -198,12 +207,22 @@ export function LightweightPriceChart({
       chartRef.current = null;
       lines.current.clear();
     };
-  }, [banner, compactScale, formatTicks, formatValue, resolvedTheme, valueSuffix]);
+  }, [banner, resolvedTheme]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `formatValue` and `valueSuffix` change what `formatRef` formats, so the axis redraws.
+  useEffect(() => {
+    chartRef.current?.applyOptions({
+      localization: {
+        priceFormatter: (value: number) => formatRef.current(value),
+        ...(formatTicks ? { tickmarksPriceFormatter: formatTicks } : {}),
+      },
+      rightPriceScale: { scaleMargins: priceScaleMargins(banner, compactScale) },
+    });
+  }, [banner, compactScale, formatTicks, formatValue, valueSuffix, resolvedTheme]);
 
   // Series data, set in place on the built chart (which syncs them itself when rebuilt).
   useEffect(() => {
     if (chartRef.current) syncSeries(chartRef.current, lines.current, series, banner);
-    setLegend(initialLegend(series));
   }, [banner, series]);
 
   return (

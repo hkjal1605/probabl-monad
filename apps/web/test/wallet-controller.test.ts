@@ -286,10 +286,7 @@ function setup(
     storage: () => shared,
     origin: () => origin,
     api: () => apiOrigin,
-    client: () =>
-      ({ waitForTransactionReceipt: async () => receipt }) as unknown as ReturnType<
-        Dependencies["client"]
-      >,
+    waitForReceipt: async () => receipt,
     request: (path, requestOptions) => api.request(path, requestOptions),
     clearCache: () => {
       calls.clears++;

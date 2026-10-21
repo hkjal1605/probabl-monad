@@ -126,20 +126,15 @@ export async function fetchSpotPrices(
 }
 
 /** Reference prices of each market. The base reference is converted to one whole token (the
- * unit the book prices): the per-share price times the issuer's live UI multiplier. */
+ * unit the book prices): the per-share price times the issuer's live UI multiplier. A price
+ * holds until it expires (`expireSpotPrice`), so a failed refresh does not blank it. */
 export function withMarketSpotPrices(
   markets: MarketView[],
   response: SpotPricesResponse | undefined,
   nowMs = Date.now(),
-  disconnected = false,
 ): MarketView[] {
   const prices = response && new Map(response.prices.map((price) => [price.token, price]));
-  const current = (price: SpotPrice | undefined) =>
-    price
-      ? disconnected
-        ? { ...price, status: "unavailable" as const }
-        : expireSpotPrice(price, nowMs)
-      : undefined;
+  const current = (price: SpotPrice | undefined) => price && expireSpotPrice(price, nowMs);
   return markets.map((market) => {
     const share = prices?.get(market.base.token);
     const multiplier = market.base.live.multiplierValue;

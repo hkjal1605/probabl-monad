@@ -1,4 +1,3 @@
-"use client";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
 export function SiteFooter() {

@@ -1,18 +1,24 @@
 "use client";
-import { useEffect, useState } from "react";
-import { type ReadState, readFreshness } from "@/services/read-policy";
+import { useEffect, useReducer } from "react";
+import { freshnessExpiry, type ReadState, readFreshness } from "@/services/read-policy";
 
+/** `readFreshness` of a read, re-evaluated when its data expires (one timer at that moment, not a
+ * clock) and when the tab regains focus. */
 export function useReadFreshness(query: ReadState, maxAgeMs = 30_000) {
-  const [, setNow] = useState(Date.now);
+  const [, recheck] = useReducer((n: number) => n + 1, 0);
+  const expiry = freshnessExpiry(query, maxAgeMs);
   useEffect(() => {
-    const tick = () => setNow(Date.now());
-    const timer = setInterval(tick, 2000);
-    window.addEventListener("focus", tick);
-    document.addEventListener("visibilitychange", tick);
+    if (expiry === null) return;
+    const timer = setTimeout(recheck, Math.max(0, expiry - Date.now()) + 1);
+    return () => clearTimeout(timer);
+  }, [expiry]);
+  useEffect(() => {
+    // Timers are throttled in background tabs; re-evaluate when the tab comes back.
+    window.addEventListener("focus", recheck);
+    document.addEventListener("visibilitychange", recheck);
     return () => {
-      clearInterval(timer);
-      window.removeEventListener("focus", tick);
-      document.removeEventListener("visibilitychange", tick);
+      window.removeEventListener("focus", recheck);
+      document.removeEventListener("visibilitychange", recheck);
     };
   }, []);
   return readFreshness(query, Date.now(), maxAgeMs);

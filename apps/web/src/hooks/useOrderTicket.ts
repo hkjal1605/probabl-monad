@@ -132,10 +132,14 @@ export function useOrderTicket({ market }: { market: MarketView }) {
   const { busy: permissionBusy, run: runPermissionAction } = useAsyncAction(
     [wallet.account, permission?.delegate].join(":"),
   );
+  // The quote expires at its deadline: one timer at that moment, not a clock.
   useEffect(() => {
     if (!preparation) return;
-    const timer = setInterval(() => setNowSeconds(Math.floor(Date.now() / 1000)), 1000);
-    return () => clearInterval(timer);
+    const tick = () => setNowSeconds(Math.floor(Date.now() / 1000));
+    const left = Number(preparation.plan.deadline) * 1000 - Date.now();
+    if (left <= 0) return tick();
+    const timer = setTimeout(tick, left + 50);
+    return () => clearTimeout(timer);
   }, [preparation]);
   const quoteExpired = preparation
     ? BigInt(preparation.plan.deadline) <= BigInt(nowSeconds)

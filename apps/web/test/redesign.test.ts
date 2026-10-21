@@ -13,17 +13,22 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { decodeFunctionData } from "viem";
 import { OutcomePrice } from "../src/components/market/OutcomePrice";
-import { executionImpact, executionPoints } from "../src/lib/markets/history";
 import {
-  groupMarkets,
-  impactPercent,
-  marketCategory,
-  marketCategoryFromPathname,
-  marketCategoryFromSlug,
-  marketCategoryPath,
-  midpoint,
-  mostTraded,
-} from "../src/lib/markets/presentation";
+  CALENDAR_TAB,
+  CATEGORY_TABS,
+  eventTime,
+  inMarketTab,
+  isPriceLadder,
+  ladderCadence,
+  marketTabFromPathname,
+  marketTabFromSlug,
+  marketTabPath,
+  marketTabSlug,
+  marketTopic,
+  visibleTabs,
+} from "../src/lib/markets/categories";
+import { impactLine } from "../src/lib/markets/history";
+import { groupMarkets, impactPercent, midpoint, mostTraded } from "../src/lib/markets/presentation";
 import { outcomeLabel, safeExternalUrl } from "../src/lib/markets/resolution";
 import { conditionalPositionRows } from "../src/lib/portfolio/positions";
 import {
@@ -40,6 +45,7 @@ import { MarketDetailPageSkeleton } from "../src/modules/MarketDetailPageModule/
 import { MarketsPageSkeleton } from "../src/modules/MarketsPageModule/components/MarketsPageSkeleton";
 import { mergeOrderPages } from "../src/services/orders";
 import { createUiStore } from "../src/stores/ui-store";
+import type { MarketView } from "../src/types/api";
 import { fixtureMarkets, fixtureState as state } from "./fixtures/protocol";
 
 const market = required(fixtureMarkets[0]);
@@ -48,20 +54,20 @@ function required<T>(value: T | undefined | null): T {
   return value;
 }
 const exchange = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
-describe("market category routes", () => {
-  test("maps every visible category to its canonical URL and rejects unknown slugs", () => {
-    expect(marketCategoryPath("All")).toBe("/");
-    for (const category of ["Macro", "Earnings", "Policy", "Other"] as const) {
-      const path = `/category/${category.toLowerCase()}`;
-      expect(marketCategoryPath(category)).toBe(path);
-      expect(marketCategoryFromSlug(category.toLowerCase())).toBe(category);
+describe("market tab routes", () => {
+  test("maps every tab to its canonical URL and back, and rejects unknown slugs", () => {
+    expect(marketTabPath("All")).toBe("/");
+    expect(marketTabPath(CALENDAR_TAB)).toBe("/calendar");
+    expect(marketTabPath("Price Ladder")).toBe("/category/price-ladder");
+    for (const tab of CATEGORY_TABS) {
+      expect(marketTabFromSlug(marketTabSlug(tab))).toBe(tab);
+      expect(marketTabFromPathname(`${marketTabPath(tab)}/`)).toBe(tab);
     }
-    expect(marketCategoryFromSlug("all")).toBeNull();
-    expect(marketCategoryFromSlug("unknown")).toBeNull();
-    expect(marketCategoryFromPathname("/")).toBe("All");
-    expect(marketCategoryFromPathname("/category/macro")).toBe("Macro");
-    expect(marketCategoryFromPathname("/category/earnings/")).toBe("Earnings");
-    expect(marketCategoryFromPathname("/markets/example")).toBeNull();
+    expect(marketTabFromSlug("all")).toBeNull();
+    expect(marketTabFromSlug("unknown")).toBeNull();
+    expect(marketTabFromPathname("/")).toBe("All");
+    expect(marketTabFromPathname("/calendar")).toBe(CALENDAR_TAB);
+    expect(marketTabFromPathname("/markets/example")).toBeNull();
   });
 });
 describe("markets loading state", () => {
@@ -100,19 +106,110 @@ describe("category featured markets", () => {
       listed("d", 9_999, 0, "resolved"),
       listed("e", null, 50),
     ]);
-    expect(ranked.map((m) => m.id)).toEqual(["b", "c", "e", "a"]);
+    expect(ranked.map((m) => m.id)).toEqual(["b", "c", "e"]);
   });
 
-  test("classifies the selected Clarity Act event as policy", () => {
-    expect(marketCategory({ ...market, question: "Clarity Act signed into law in 2026?" })).toBe(
-      "Policy",
+  test("topics, price ladders and their cadence come from the venue series and the question", () => {
+    const at = (hours: number) =>
+      new Date(Date.UTC(2026, 9, 21, 12) + hours * 3_600_000).toISOString();
+    const listed = (
+      question: string,
+      event: Partial<NonNullable<MarketView["event"]>> = {},
+      hours = 400 * 24,
+    ) => ({
+      ...market,
+      question,
+      tradingOpen: at(0),
+      cutoff: at(hours - 0.5),
+      event: { endTime: at(hours), result: null, ...event },
+    });
+    const cases: [ReturnType<typeof listed>, string, boolean, "daily" | "weekly" | null][] = [
+      [listed("Will the U.S. invade Iran before 2027?"), "Geopolitics", false, null],
+      [
+        listed("Will the Fed increase interest rates by 25 bps after the December 2026 meeting?"),
+        "Economy",
+        false,
+        null,
+      ],
+      [
+        listed("Will CPI rise more than 0.2% in October 2026?", { series: "KXCPI" }),
+        "Economy",
+        false,
+        null,
+      ],
+      [
+        listed("Will NVIDIA be the largest company in the world by market cap on December 31?"),
+        "Tech",
+        false,
+        null,
+      ],
+      [
+        listed("Will Flávio Bolsonaro win the 2026 Brazilian presidential election?", {}, 96),
+        "Politics",
+        false,
+        null,
+      ],
+      [
+        listed(
+          "Will the 7-day moving average of transit calls through the Strait of Hormuz be above 60?",
+          { series: "KXHORMUZNORM" },
+        ),
+        "Geopolitics",
+        false,
+        null,
+      ],
+      [listed("Will Nvidia beat quarterly earnings?"), "Earnings", false, null],
+      [
+        listed("Bitcoin price on Oct 22, 2026: $83,500 or above?", { series: "KXBTCD" }, 20),
+        "Crypto",
+        true,
+        "daily",
+      ],
+      [
+        listed(
+          "Will the gold close price be above 4134.99 USD/t.oz on October 23, 2026 at 5:00 PM EDT?",
+          { series: "KXGOLDW" },
+          72,
+        ),
+        "Commodities",
+        true,
+        "weekly",
+      ],
+      [
+        listed(
+          "Will the Nasdaq-100 be above 29609.99 at the end of Oct 21, 2026 at 4pm EDT?",
+          { series: "KXNASDAQ100U" },
+          20,
+        ),
+        "Stocks",
+        true,
+        "daily",
+      ],
+      [listed("Will Bitcoin reach $90,000 by December 31, 2026?"), "Crypto", true, null],
+      [
+        listed("Will the maximum WTI front month settle price reach $120.01 by Dec 31, 2026?", {
+          series: "KXWTIMAX",
+        }),
+        "Commodities",
+        true,
+        null,
+      ],
+    ];
+    for (const [m, topic, ladder, cadence] of cases) {
+      expect(marketTopic(m), m.question).toBe(topic as ReturnType<typeof marketTopic>);
+      expect(isPriceLadder(m), m.question).toBe(ladder);
+      expect(ladderCadence(m), m.question).toBe(cadence);
+    }
+    // A runoff's stale venue date (the first round's) yields to the later trading cutoff.
+    expect(eventTime({ ...listed("x", {}, 96), event: { endTime: at(-400), result: null } })).toBe(
+      Date.parse(at(95.5)),
     );
-  });
-
-  test("every seeded demo event renders under its reviewed category tab", async () => {
-    const { DEMO_MARKET_SEED } = await import("../../../scripts/evm/seed-policy.ts");
-    for (const seed of DEMO_MARKET_SEED)
-      expect(marketCategory({ ...market, question: seed.question }), seed.slug).toBe(seed.category);
+    // Daily, weekly and price-ladder tabs; the topics with markets; the calendar last.
+    const tabs = visibleTabs(cases.map(([m]) => m) as never);
+    expect(tabs.slice(0, 5)).toEqual(["All", "Daily", "Weekly", "Price Ladder", "Earnings"]);
+    expect(tabs.at(-1)).toBe(CALENDAR_TAB);
+    expect(inMarketTab(cases[7]![0], "Daily") && !inMarketTab(cases[7]![0], "Weekly")).toBe(true);
+    expect(visibleTabs([market])).not.toContain("Geopolitics");
   });
 });
 describe("canonical order windows", () => {
@@ -274,7 +371,7 @@ describe("wallet action scoping", () => {
   test("provider-scoped stores share no wallet intent or filters between requests", () => {
     const a = createUiStore(),
       b = createUiStore();
-    a.getState().setFilters({ category: "Macro", view: "Matrix" });
+    a.getState().setFilters({ category: "Economy", view: "Matrix" });
     a.getState().setPrefill({
       intent: "close",
       marketId: market.id,
@@ -284,7 +381,7 @@ describe("wallet action scoping", () => {
     });
     expect(b.getState().filters.category).toBe("All");
     expect(b.getState().prefill).toBeNull();
-    expect(a.getState().filters.category).toBe("Macro");
+    expect(a.getState().filters.category).toBe("Economy");
     expect(Object.keys(a.getState()).some((key) => /token|session|secret/i.test(key))).toBe(false);
   });
 });
@@ -549,15 +646,21 @@ describe("honest market, portfolio and evidence presentation", () => {
     const rows = walletTradeRows([makerFill, takerFill], [buy, sell], [market]);
     expect(rows.map((row) => row.side)).toEqual(["Sell", "Buy"]);
   });
-  test("historical impact waits for both branch executions and respects market and time boundaries", () => {
-    const points = [
-      { id: "a", at: 1, branch: 0, price: 200 },
-      { id: "b", at: 2, branch: 1, price: 100 },
-      { id: "c", at: 3, branch: 0, price: 210 },
-    ];
-    expect(executionImpact(points.slice(0, 1))).toEqual([]);
-    expect(executionImpact(points).map((p) => p.price)).toEqual([100, 110.00000000000001]);
-    expect(executionPoints(state.trades, { ...market, id: "different" })).toEqual([]);
-    expect(executionPoints(state.trades, market, Number.MAX_SAFE_INTEGER)).toEqual([]);
+  test("impact is YES's premium over NO at each recorded time with both prices, no trade needed", () => {
+    const impact = impactLine({
+      yes: [
+        { time: 60, value: 110 },
+        { time: 120, value: 104 },
+        { time: 180, value: 99 },
+      ],
+      no: [
+        { time: 60, value: 100 },
+        { time: 180, value: 110 },
+      ],
+    });
+    expect(impact.map((p) => p.time)).toEqual([60, 180]);
+    expect(impact[0]?.value).toBeCloseTo(10);
+    expect(impact[1]?.value).toBeCloseTo(-10);
+    expect(impactLine({ yes: [{ time: 60, value: 1 }], no: [] })).toEqual([]);
   });
 });

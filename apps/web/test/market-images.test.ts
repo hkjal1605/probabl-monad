@@ -19,7 +19,8 @@ test("market reads include saved artwork, including legacy raw snapshots, withou
     ] as const) {
       const paths: string[] = [];
       globalThis.fetch = (async (input: RequestInfo | URL) => {
-        const path = new URL(input instanceof Request ? input.url : String(input)).pathname;
+        const url = new URL(input instanceof Request ? input.url : String(input));
+        const path = url.pathname;
         paths.push(path);
         if (path === "/markets")
           return Response.json({
@@ -33,7 +34,12 @@ test("market reads include saved artwork, including legacy raw snapshots, withou
               },
             ],
           });
-        if (path.endsWith("/event")) return Response.json({ metadata });
+        if (path === "/v1/events")
+          return Response.json({
+            events: Object.fromEntries(
+              (url.searchParams.get("markets") ?? "").split(",").map((id) => [id, { metadata }]),
+            ),
+          });
         if (path === "/orderbooks") return Response.json({ books: {} });
         if (path.startsWith("/orderbook/")) return Response.json({ orders: [] });
         throw new Error(`Unexpected request: ${path}`);

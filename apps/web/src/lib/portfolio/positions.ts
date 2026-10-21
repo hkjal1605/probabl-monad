@@ -15,33 +15,24 @@ export interface ConditionalPositionRow {
   total: bigint;
 }
 
-/** Open claim-funded (fundingKind 1) reservations of one market, branch and collateral. */
-const reservedClaims = (
-  orders: IndexedOrder[],
-  marketId: string,
-  branch: 0 | 1,
-  collateral: 0 | 1,
-) =>
-  orders
-    .filter(
-      (order) =>
-        order.marketId === marketId &&
-        order.branch === branch &&
-        order.fundingKind === 1 &&
-        order.status === "open" &&
-        order.side === collateral,
-    )
-    .reduce((sum, order) => sum + BigInt(order.reserved), 0n);
-
-/** YES/NO rows of each market's base-token claims and quote claims, in raw token units. */
+/** YES/NO rows of each market's base-token claims and quote claims, in raw token units. Positions
+ * and open claim-funded (fundingKind 1) reservations are indexed once, so this is linear in the
+ * markets, positions and orders rather than their product. */
 export function conditionalPositionRows(
   markets: MarketView[],
   positions: PositionView[],
   orders: IndexedOrder[],
 ): ConditionalPositionRow[] {
+  const byMarket = new Map(positions.map((position) => [position.marketId, position]));
+  const reservations = new Map<string, bigint>();
+  for (const order of orders)
+    if (order.fundingKind === 1 && order.status === "open") {
+      const key = `${order.marketId}:${order.branch}:${order.side}`;
+      reservations.set(key, (reservations.get(key) ?? 0n) + BigInt(order.reserved));
+    }
   const rows = (collateral: 0 | 1) =>
     markets.flatMap((market) => {
-      const position = positions.find((item) => item.marketId === market.id);
+      const position = byMarket.get(market.id);
       return ([0, 1] as const).map((branch) => {
         const held =
           collateral === 0
@@ -52,7 +43,7 @@ export function conditionalPositionRows(
               ? position?.baseYes
               : position?.baseNo;
         const available = BigInt(held ?? "0");
-        const reserved = reservedClaims(orders, market.id, branch, collateral);
+        const reserved = reservations.get(`${market.id}:${branch}:${collateral}`) ?? 0n;
         return {
           available,
           branch,

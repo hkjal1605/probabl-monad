@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
 import { TokenIdentity } from "@/components/market/TokenIdentity";
 import { useUiStore } from "@/components/providers/UiStateProvider";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarLazyImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -16,14 +16,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatCompactUsd, formatUsd, shortDate } from "@/lib/format/display";
+import { marketTopic } from "@/lib/markets/categories";
 import { marketPath } from "@/lib/markets/identity";
-import {
-  eventKey,
-  eventMonogram,
-  impactPercent,
-  marketCategory,
-  midpoint,
-} from "@/lib/markets/presentation";
+import { eventKey, eventMonogram, impactPercent, midpoint } from "@/lib/markets/presentation";
 import { cn } from "@/lib/utils";
 import type { MarketView } from "@/types/api";
 
@@ -137,7 +132,7 @@ function EventRow({ market }: { market: MarketView }) {
         <div className="flex min-w-0 items-center gap-3">
           <Avatar className="size-8 rounded-md after:rounded-md">
             {market.imageUrl && (
-              <AvatarImage
+              <AvatarLazyImage
                 src={market.imageUrl}
                 alt=""
                 loading="lazy"
@@ -160,7 +155,7 @@ function EventRow({ market }: { market: MarketView }) {
             variant="outline"
             className="h-[18px] rounded-sm text-[10px] tracking-[0.06em] text-muted-foreground uppercase"
           >
-            {marketCategory(market)}
+            {marketTopic(market)}
           </Badge>
         </div>
       </TableCell>

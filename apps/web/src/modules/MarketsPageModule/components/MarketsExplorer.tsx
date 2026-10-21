@@ -1,7 +1,9 @@
 "use client";
+import { CalendarDays } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
 import { EventCard } from "@/components/market/EventCard";
 import { ProbabilityGauge } from "@/components/market/ProbabilityGauge";
 import { TokenIdentity } from "@/components/market/TokenIdentity";
@@ -29,17 +31,21 @@ import {
 } from "@/components/ui/table";
 import { useMarkets } from "@/hooks/useProtocolData";
 import { formatNumber } from "@/lib/format/display";
+import {
+  CALENDAR_TAB,
+  inMarketTab,
+  type MarketTab,
+  marketTabFromPathname,
+  marketTabPath,
+  marketTopic,
+  visibleTabs,
+} from "@/lib/markets/categories";
 import { marketPath } from "@/lib/markets/identity";
 import {
   eventKey,
   groupMarkets,
   impactPercent,
-  MARKET_CATEGORIES,
-  type MarketCategory,
   marketAssetKey,
-  marketCategory,
-  marketCategoryFromPathname,
-  marketCategoryPath,
   midpoint,
   percent,
   sortEventGroups,
@@ -50,6 +56,11 @@ import { HomeBanner } from "./HomeBanner";
 import { MarketsColumns } from "./MarketsColumns";
 import { MarketsPageSkeleton } from "./MarketsPageSkeleton";
 
+// The calendar's own code loads only when it is opened.
+const EventCalendar = dynamic(() => import("./EventCalendar").then((m) => m.EventCalendar), {
+  ssr: false,
+});
+
 export function MarketsExplorer({
   markets: initial,
   now: _now,
@@ -57,39 +68,47 @@ export function MarketsExplorer({
 }: {
   markets: MarketView[];
   now?: number;
-  category: MarketCategory;
+  category: MarketTab;
 }) {
   const pathname = usePathname(),
     query = useMarkets(initial),
     markets = query.markets;
   const filters = useUiStore((s) => s.filters),
     setFilters = useUiStore((s) => s.setFilters);
-  const pathnameCategory = marketCategoryFromPathname(pathname) ?? routeCategory;
+  const pathnameCategory = marketTabFromPathname(pathname) ?? routeCategory;
   const [category, setCategory] = useState(pathnameCategory);
   useLayoutEffect(() => {
     setCategory(pathnameCategory);
     setFilters({ category: pathnameCategory });
   }, [pathnameCategory, setFilters]);
-  // Active events never list frozen (halted or delisted) sibling markets.
-  const listed =
-    filters.lifecycle === "active" ? markets.filter((m) => m.lifecycle !== "frozen") : markets;
-  const groups = groupMarkets(listed);
-  const visible = sortEventGroups(
-    groups.filter((assets) =>
-      assets.some(
-        (m) =>
-          (category === "All" || marketCategory(m) === category) &&
-          (filters.lifecycle === "all" ||
-            (filters.lifecycle === "active" ? m.lifecycle === "open" : m.lifecycle !== "open")),
+  // Recomputed only when the markets or the filters change, so the event groups (and the cards
+  // they feed) keep their identity across unrelated renders.
+  const { listed, visible, tokens, tabs } = useMemo(() => {
+    // Active events never list frozen (halted or delisted) sibling markets.
+    const listed =
+      filters.lifecycle === "active" ? markets.filter((m) => m.lifecycle !== "frozen") : markets;
+    const visible = sortEventGroups(
+      groupMarkets(listed).filter((assets) =>
+        assets.some(
+          (m) =>
+            inMarketTab(m, category) &&
+            (filters.lifecycle === "all" ||
+              (filters.lifecycle === "active" ? m.lifecycle === "open" : m.lifecycle !== "open")),
+        ),
       ),
-    ),
-    filters.sort,
-  );
-  // Asset identity (the stock), not a token address or a
-  // potentially shared display symbol, determines matrix columns.
-  const tokens = [...new Map(listed.map((m) => [marketAssetKey(m), m])).values()].sort((a, b) =>
-    a.ticker.localeCompare(b.ticker),
-  );
+      filters.sort,
+    );
+    // Asset identity (the stock), not a token address or a potentially shared display symbol,
+    // determines matrix columns: one per stock among the events shown.
+    const tokens = [...new Map(visible.flat().map((m) => [marketAssetKey(m), m])).values()].sort(
+      (a, b) => a.ticker.localeCompare(b.ticker),
+    );
+    // The fixed tabs, each topic with markets, and the calendar; the open tab always shows.
+    const tabs = visibleTabs(markets);
+    if (!tabs.includes(category)) tabs.splice(tabs.length - 1, 0, category);
+    return { listed, visible, tokens, tabs };
+  }, [markets, filters.lifecycle, filters.sort, category]);
+  const calendar = category === CALENDAR_TAB;
   const showSkeleton = query.isPending && markets.length === 0;
   return (
     <Page
@@ -105,15 +124,25 @@ export function MarketsExplorer({
           variant="category"
           className="shrink-0"
           value={category}
-          options={MARKET_CATEGORIES}
+          options={tabs}
+          renderOption={(tab) =>
+            tab === CALENDAR_TAB ? (
+              <span className="inline-flex items-center gap-1.5">
+                <CalendarDays aria-hidden="true" className="size-3.5" />
+                {tab}
+              </span>
+            ) : (
+              tab
+            )
+          }
           onChange={(nextCategory) => {
             setCategory(nextCategory);
             setFilters({ category: nextCategory });
-            const nextPath = marketCategoryPath(nextCategory);
+            const nextPath = marketTabPath(nextCategory);
             if (window.location.pathname !== nextPath) window.history.pushState(null, "", nextPath);
           }}
         />
-        <div className="ml-auto flex shrink-0 items-center gap-1">
+        <div className={cn("ml-auto flex shrink-0 items-center gap-1", calendar && "hidden")}>
           <Select
             value={filters.lifecycle}
             items={{
@@ -165,7 +194,9 @@ export function MarketsExplorer({
       </section>
       {/* The filters stay put; the banner and the markets below it scroll. */}
       <div className="min-h-0 flex-1 overflow-y-auto pb-3">
-        {showSkeleton ? (
+        {calendar ? (
+          <EventCalendar markets={markets} loading={showSkeleton} />
+        ) : showSkeleton ? (
           <MarketsPageSkeleton view={filters.view} />
         ) : (
           <>
@@ -220,7 +251,7 @@ export function MarketsExplorer({
                               {market.question}
                             </Link>
                             <p className="mt-2 text-xs font-medium text-muted-foreground">
-                              {marketCategory(market)} · {market.lifecycle}
+                              {marketTopic(market)} · {market.lifecycle}
                             </p>
                           </TableCell>
                           {tokens.map((token) => {

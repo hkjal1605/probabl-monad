@@ -1,6 +1,15 @@
 /_next/static/*
   Cache-Control: public, max-age=31536000, immutable
 
+/tokens/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/brand/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/og.png
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
 /*
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY

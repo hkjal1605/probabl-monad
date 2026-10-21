@@ -8,17 +8,20 @@ import { Table, TableBody, TableCell, TableRow } from "../src/components/ui/tabl
 test("Aeonik uses real local faces for every supported weight, including Regular", async () => {
   const layout = await readFile(new URL("../src/app/layout.tsx", import.meta.url), "utf8");
   for (const [face, weight] of [
-    ["Light", "300"],
-    ["Regular", "400"],
-    ["Medium", "500"],
-    ["Bold", "700"],
+    ["regular", "400"],
+    ["medium", "500"],
+    ["bold", "700"],
   ]) {
-    expect(layout).toContain(`Aeonik Pro ${face}.ttf", weight: "${weight}"`);
+    expect(layout).toContain(`aeonik-pro-${face}.woff2", weight: "${weight}"`);
     const font = await readFile(
-      new URL(`../src/styles/fonts/Aeonik Pro ${face}.ttf`, import.meta.url),
+      new URL(`../src/styles/fonts/aeonik-pro-${face}.woff2`, import.meta.url),
     );
+    expect(font.subarray(0, 4).toString("latin1")).toBe("wOF2");
     expect(font.length).toBeGreaterThan(1000);
   }
+  // Light (300) is unused in the UI, so it is not shipped.
+  expect(layout).not.toContain('weight: "300"');
+  expect(layout).not.toContain(".ttf");
   expect(layout).toContain("className={aeonik.variable}");
 });
 

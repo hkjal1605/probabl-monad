@@ -5,7 +5,10 @@ export interface Resource<T> {
   data: T | undefined;
   error: Error | null;
   loading: boolean;
+  /** When `data` was read (a failed refresh leaves it, so data ages by its own read time). */
   updatedAt: number;
+  /** When the last read failed (retries back off from it). */
+  errorAt?: number;
   revision: number;
   streamUntil?: number;
 }
@@ -22,7 +25,15 @@ export const resources = new Map<string, ReturnType<typeof createResourceStore<a
 export function createResourceStore<T>(name: string) {
   const store = createStore<{ entries: Record<string, Resource<T>> }>(() => ({ entries: {} }));
   const active = new Map<string, { count: number; refresh: () => Promise<unknown> }>();
-  const pending = new Map<string, { controller: AbortController; promise: Promise<void> }>();
+  const pending = new Map<
+    string,
+    {
+      controller: AbortController;
+      promise: Promise<void>;
+      /** A forced refresh asked for while this read ran: it runs again once this one is done. */
+      rerun?: (signal: AbortSignal) => Promise<T>;
+    }
+  >();
   let generation = 0;
   const get = (key: string): Resource<T> => store.getState().entries[key] ?? emptyResource;
   const patch = (key: string, values: Partial<Resource<T>>) =>

@@ -6,44 +6,38 @@ import {
   readinessMessage,
   requireTradingReady,
 } from "../src/lib/trading/readiness";
-import { ApiError } from "../src/services/protocol-api-service";
-import {
-  readFreshness,
-  readPollInterval,
-  readRetryDelay,
-  retryAfterMs,
-  retryRead,
-} from "../src/services/read-policy";
+import { freshnessExpiry, readFreshness, retryAfterMs } from "../src/services/read-policy";
 import { fixtureMarkets } from "./fixtures/protocol";
 
-test("read retries are bounded, honor Retry-After, and never retry auth, schema or abort errors", () => {
-  for (const status of [408, 429, 502, 503, 504])
-    expect(retryRead(0, new ApiError("read", status, null))).toBe(true);
-  for (const status of [400, 401, 403, 404, 409, 422])
-    expect(retryRead(0, new ApiError("read", status, null))).toBe(false);
-  expect(retryRead(2, new ApiError("read", 503, null))).toBe(false);
-  expect(retryRead(0, new Error("malformed response"))).toBe(false);
-  expect(retryRead(0, new DOMException("cancelled", "AbortError"))).toBe(false);
-  expect(retryRead(0, new TypeError("offline"))).toBe(true);
+test("Retry-After is honored in seconds or as a date, and bounded", () => {
   expect(retryAfterMs("5")).toBe(5000);
   expect(retryAfterMs("9999999")).toBe(60_000);
   expect(retryAfterMs("bad")).toBeUndefined();
   expect(retryAfterMs("Thu, 01 Jan 1970 00:00:05 GMT", 1000)).toBe(4000);
-  expect(readRetryDelay(0, new ApiError("rate", 429, null, 5000))).toBe(5000);
-  expect(readPollInterval({ state: { status: "error", fetchFailureCount: 3 } })).toBe(30_000);
 });
 test("background errors preserve known display data but immediately block stale-data shortcuts", () => {
   const state = { data: { positions: [] }, dataUpdatedAt: 1000, isError: false, failureCount: 0 };
   expect(readFreshness(state, 1500)).toEqual({
     isInitialError: false,
     isRefreshError: false,
+    isDataCurrent: true,
     isDataFresh: true,
   });
+  // A failed refresh blocks actions at once but keeps still-young data on screen.
   expect(readFreshness({ ...state, isError: true }, 1500)).toEqual({
     isInitialError: false,
     isRefreshError: true,
+    isDataCurrent: true,
     isDataFresh: false,
   });
+  expect(readFreshness({ ...state, isError: true }, 31_001).isDataCurrent).toBe(false);
+  // Data the healthy index stream keeps current does not age; it expires at its read time + 30 s
+  // otherwise, which is when the hook re-renders.
+  expect(readFreshness({ ...state, isStreamed: true }, 99_000).isDataFresh).toBe(true);
+  expect(freshnessExpiry(state)).toBe(31_000);
+  expect(freshnessExpiry({ ...state, isStreamed: true })).toBeNull();
+  expect(freshnessExpiry({ ...state, data: { observedAt: 500 }, isStreamed: true })).toBe(30_500);
+  expect(freshnessExpiry({ ...state, data: undefined })).toBeNull();
   expect(readFreshness({ ...state, failureCount: 1 }, 1500).isDataFresh).toBe(false);
   expect(readFreshness(state, 31_001).isDataFresh).toBe(false);
   expect(readFreshness(state, 999).isDataFresh).toBe(false);

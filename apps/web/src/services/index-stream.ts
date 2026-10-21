@@ -1,5 +1,3 @@
-let healthyUntil = 0;
-
 import { SHARE_PROTOCOL_VERSION, tokenDecimals } from "@conditional-stocks/domain";
 import type { PositionView, WholeBalanceView } from "../types/api";
 
@@ -75,10 +73,48 @@ export function parsePosition(p: any): PositionView {
 }
 export const positionHasClaims = (p: PositionView) =>
   [p.quoteYes, p.quoteNo, p.baseYes, p.baseNo].some((value) => BigInt(value) > 0n);
+/** Resources the index stream keeps current: it refreshes them when a frame names them, so they
+ * neither poll nor age while the stream is healthy. */
+export const STREAMED_RESOURCES: ReadonlySet<string> = new Set([
+  "markets",
+  "wallet-orders",
+  "wallet-trades",
+  "trades",
+  "positions",
+  "whole-balances",
+  "trading-readiness",
+  "payout-credits",
+  "resolution",
+]);
+
+// The stream's health, as a store that notifies only when it flips (a frame extends it; it lapses
+// on its own when frames stop), so subscribers don't re-render per frame.
+let healthyUntil = 0,
+  healthy = false,
+  lapse: ReturnType<typeof setTimeout> | undefined;
+const healthListeners = new Set<() => void>();
+const setHealth = (next: boolean) => {
+  if (next === healthy) return;
+  healthy = next;
+  for (const listener of healthListeners) listener();
+};
 export const setIndexStreamHealthy = (until: number) => {
   healthyUntil = until;
+  clearTimeout(lapse);
+  const left = until - Date.now();
+  if (left > 0) lapse = setTimeout(() => setHealth(false), left);
+  setHealth(left > 0);
 };
 export const indexStreamHealthy = () => Date.now() < healthyUntil;
+/** For `useSyncExternalStore`: the stream's health, notified on each change. */
+export const subscribeIndexHealth = (listener: () => void) => {
+  healthListeners.add(listener);
+  return () => {
+    healthListeners.delete(listener);
+  };
+};
+export const indexHealthSnapshot = () => healthy;
+export const indexHealthServerSnapshot = () => false;
 
 export function parseIndexUpdate(raw: string) {
   const value = JSON.parse(raw);

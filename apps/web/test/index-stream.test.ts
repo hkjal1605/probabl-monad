@@ -1,33 +1,37 @@
 import { afterEach, expect, test } from "bun:test";
 import {
+  indexHealthSnapshot,
+  indexStreamHealthy,
   parseIndexUpdate,
   parsePosition,
   parseStreamWallet,
+  STREAMED_RESOURCES,
   setIndexStreamHealthy,
+  subscribeIndexHealth,
 } from "../src/services/index-stream";
-import { readPollInterval } from "../src/services/read-policy";
 import { FIXTURE_TOKENS, fixtureVenue } from "./fixtures/protocol";
 
 afterEach(() => setIndexStreamHealthy(0));
 const owner = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
-test("healthy SSE disables only covered queries; failure restores polling", () => {
-  const query = (kind: string) => ({
-    queryKey: [kind],
-    state: { status: "success", fetchFailureCount: 0 },
-  });
-  setIndexStreamHealthy(Date.now() + 10_000);
-  for (const kind of [
-    "markets",
-    "wallet-orders",
-    "trades",
-    "positions",
-    "whole-balances",
-    "trading-readiness",
-  ])
-    expect(readPollInterval(query(kind))).toBe(false);
-  expect(readPollInterval(query("unrelated"))).toBe(10_000);
-  setIndexStreamHealthy(0);
-  expect(readPollInterval(query("markets"))).toBe(10_000);
+test("the stream covers the index's resources, and its health notifies only when it flips", async () => {
+  for (const name of ["markets", "wallet-orders", "trades", "positions", "trading-readiness"])
+    expect(STREAMED_RESOURCES.has(name)).toBe(true);
+  for (const name of ["spot-prices", "quote-prices", "price-history", "delta-vaults"])
+    expect(STREAMED_RESOURCES.has(name)).toBe(false);
+  let changes = 0;
+  const stop = subscribeIndexHealth(() => changes++);
+  try {
+    setIndexStreamHealthy(Date.now() + 10_000);
+    // Each further frame extends the health without a notification.
+    setIndexStreamHealthy(Date.now() + 10_000);
+    expect([indexHealthSnapshot(), indexStreamHealthy(), changes]).toEqual([true, true, 1]);
+    // Without frames it lapses on its own.
+    setIndexStreamHealthy(Date.now() + 20);
+    await Bun.sleep(40);
+    expect([indexHealthSnapshot(), indexStreamHealthy(), changes]).toEqual([false, false, 2]);
+  } finally {
+    stop();
+  }
 });
 test("stream validation rejects stale state, malformed topics and forged readiness", () => {
   const market = "00000000000000a1";

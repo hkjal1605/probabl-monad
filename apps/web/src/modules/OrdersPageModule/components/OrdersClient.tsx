@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useWallet } from "@/components/providers/WalletProvider";
 
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +36,8 @@ import type { MarketView } from "@/types/api";
 
 const VIEWS = ["Open orders", "History", "All"] as const;
 type View = (typeof VIEWS)[number];
+/** Rows shown at first and added per "Show more": the list can hold 1,000 orders. */
+const PAGE = 50;
 
 export function OrdersClient({
   markets,
@@ -53,13 +55,20 @@ export function OrdersClient({
 }) {
   const wallet = useWallet(),
     query = useOrderRecovery();
-  const [view, setView] = useState<View>("Open orders");
+  const [view, setView] = useState<View>("Open orders"),
+    [shown, setShown] = useState(PAGE);
+  const marketsById = useMemo(() => new Map(markets.map((m) => [m.id, m])), [markets]);
+  const changeView = (next: View) => {
+    setView(next);
+    setShown(PAGE);
+  };
   if (wallet.access !== "member" && wallet.access !== "suspended")
     return <AccountStepEmpty>Connect to see canonical orders.</AccountStepEmpty>;
   const selectedView = fixedView ?? view;
-  const orders = [...query.orders].filter(
+  const scope = marketIds && new Set(marketIds);
+  const orders = query.orders.filter(
     (o) =>
-      (!marketIds || marketIds.includes(o.marketId)) &&
+      (!scope || scope.has(o.marketId)) &&
       (selectedView === "All" ||
         (selectedView === "Open orders" ? o.status === "open" : o.status !== "open")),
   );
@@ -102,8 +111,8 @@ export function OrdersClient({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {orders.map((order) => {
-              const market = markets.find((m) => m.id === order.marketId),
+            {orders.slice(0, shown).map((order) => {
+              const market = marketsById.get(order.marketId),
                 partial = BigInt(order.filled) > 0n && BigInt(order.remaining) > 0n;
               const expired = BigInt(order.expiry) <= BigInt(Math.floor(Date.now() / 1000));
               const closed = Boolean(
@@ -216,6 +225,13 @@ export function OrdersClient({
           </TableBody>
         </Table>
       )}
+      {orders.length > shown && (
+        <div className="flex justify-center border-t px-3 py-2">
+          <Button variant="ghost" size="sm" onClick={() => setShown((n) => n + PAGE)}>
+            Show {Math.min(PAGE, orders.length - shown)} more of {orders.length - shown}
+          </Button>
+        </div>
+      )}
     </>
   );
   if (plain)
@@ -224,7 +240,7 @@ export function OrdersClient({
         value={selectedView}
         onValueChange={(next) => {
           const option = VIEWS.find((item) => item === next);
-          if (option) setView(option);
+          if (option) changeView(option);
         }}
         className="min-w-0 gap-0"
         aria-label="Orders"
@@ -252,7 +268,12 @@ export function OrdersClient({
           <span className="text-xs font-medium text-muted-foreground">
             {orders.length} {selectedView.toLowerCase()}
           </span>
-          <Segmented label="Order status" value={selectedView} options={VIEWS} onChange={setView} />
+          <Segmented
+            label="Order status"
+            value={selectedView}
+            options={VIEWS}
+            onChange={changeView}
+          />
         </div>
       )}
       {body}

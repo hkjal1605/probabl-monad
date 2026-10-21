@@ -1,5 +1,6 @@
 "use client";
 import { spotUsdValue, tokenPriceUsd } from "@conditional-stocks/shared/spot-prices";
+import { useMemo } from "react";
 import { useWallet } from "@/components/providers/WalletProvider";
 import type { TokenDisplayMetadata } from "@/lib/tokens/catalog";
 import type { MarketView } from "@/types/api";
@@ -39,12 +40,17 @@ export function assetsForMarkets(markets: MarketView[]): WalletAssetDescriptor[]
 }
 export function useWalletAssets(markets: MarketView[]) {
   const { account } = useWallet(),
-    query = usePositions(),
-    assets = assetsForMarkets(markets);
-  const balances = assets.flatMap((asset) => {
-    const balance = query.data?.owner === account ? query.data.balances[asset.token] : undefined;
-    return balance && balance.decimals === asset.decimals ? [{ ...asset, balance }] : [];
-  });
+    query = usePositions();
+  const assets = useMemo(() => assetsForMarkets(markets), [markets]);
+  const balances = useMemo(
+    () =>
+      assets.flatMap((asset) => {
+        const balance =
+          query.data?.owner === account ? query.data.balances[asset.token] : undefined;
+        return balance && balance.decimals === asset.decimals ? [{ ...asset, balance }] : [];
+      }),
+    [assets, query.data, account],
+  );
   return { ...query, assets, balances };
 }
 

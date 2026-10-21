@@ -86,15 +86,22 @@ test("catalogue reads all books in one indexed batch and keeps one-sided executa
           ),
         });
       }
-      if (path.endsWith("/event"))
+      if (path === "/v1/events")
         return Response.json({
-          metadata: {
-            fetchedAtMs: String(Date.UTC(2026, 8, 14)),
-            rawPayload: {
-              outcomes: '["Yes","No"]',
-              outcomePrices: '["0.42","0.58"]',
-            },
-          },
+          events: Object.fromEntries(
+            (url.searchParams.get("markets") ?? "").split(",").map((id) => [
+              id,
+              {
+                metadata: {
+                  fetchedAtMs: String(Date.UTC(2026, 8, 14)),
+                  rawPayload: {
+                    outcomes: '["Yes","No"]',
+                    outcomePrices: '["0.42","0.58"]',
+                  },
+                },
+              },
+            ]),
+          ),
         });
       throw new Error(`Unexpected request: ${path}`);
     }) as typeof fetch;
@@ -104,7 +111,8 @@ test("catalogue reads all books in one indexed batch and keeps one-sided executa
     expect(read.map((m) => m.createdAt)).toEqual(markets.map((m) => m.createdAt));
     expect(paths.filter((path) => path === "/orderbooks")).toHaveLength(1);
     expect(orderbookView.value).toBe("levels");
-    expect(paths.filter((path) => path.endsWith("/event"))).toHaveLength(1);
+    // Both markets share one event, read once in one batch.
+    expect(paths.filter((path) => path === "/v1/events")).toHaveLength(1);
     expect(paths.some((path) => path.startsWith("/orderbook/"))).toBe(false);
     expect(read.every((market) => market.probability.value === 0.42)).toBe(true);
     // The indexer serves each market's 24-hour volume: no trade history is read for it.
@@ -179,7 +187,7 @@ async function readOne(market: unknown) {
       const url = new URL(input instanceof Request ? input.url : String(input));
       if (url.pathname === "/markets") return Response.json({ markets: [market] });
       if (url.pathname === "/orderbooks") return Response.json({ books: {} });
-      if (url.pathname.endsWith("/event")) return Response.json({});
+      if (url.pathname === "/v1/events") return Response.json({ events: {} });
       throw new Error(`Unexpected request: ${url.pathname}`);
     }) as typeof fetch;
     return await marketsApi.liveMarkets();
@@ -270,4 +278,42 @@ test("depth aggregates price levels and full orders in token units", () => {
   expect(book.bids).toEqual([{ priceExact: "9", price: 9, quantity: 4 }]);
   expect(book.bestAskExact).toBe("10");
   expect(book.spread).toBe(1);
+});
+
+test("a catalogue read reads its events in batches of 50, one market per event", async () => {
+  const originalFetch = globalThis.fetch;
+  const markets = (count: number) =>
+    Array.from({ length: count }, (_, i) => ({
+      ...fixtureMarkets[0]!,
+      id: `0000000000000${i.toString(16).padStart(3, "0")}`,
+      venue: { ...fixtureMarkets[0]!.venue, marketId: String(i + 1) },
+      mapping: {
+        ...fixtureMarkets[0]!.mapping,
+        conditionId: `0x${(i + 1).toString(16).padStart(64, "0")}`,
+      },
+    }));
+  try {
+    for (const [count, batches] of [
+      [20, [20]],
+      [120, [50, 50, 20]],
+    ] as const) {
+      const listed = markets(count);
+      const reads: number[] = [];
+      globalThis.fetch = (async (input: RequestInfo | URL) => {
+        const url = new URL(input instanceof Request ? input.url : String(input));
+        if (url.pathname === "/markets")
+          return Response.json({ markets: listed.map((m) => indexed(m)) });
+        if (url.pathname === "/orderbooks") return Response.json({ books: {} });
+        if (url.pathname === "/v1/events") {
+          reads.push((url.searchParams.get("markets") ?? "").split(",").length);
+          return Response.json({ events: {} });
+        }
+        throw new Error(`Unexpected request: ${url.pathname}`);
+      }) as typeof fetch;
+      expect(await marketsApi.liveMarkets()).toHaveLength(count);
+      expect(reads).toEqual([...batches]);
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

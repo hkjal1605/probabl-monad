@@ -2,6 +2,7 @@
 
 import { Avatar as AvatarPrimitive } from "@base-ui/react/avatar";
 import type * as React from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 function Avatar({
@@ -34,12 +35,46 @@ function AvatarImage({ className, ...props }: AvatarPrimitive.Image.Props) {
   );
 }
 
+/** A remote avatar image that loads only as it nears the viewport (Base UI's `AvatarImage`
+ * preloads every image on mount, so a page of cards fetched all of them at once). It fades in
+ * once loaded, hiding the fallback, and removes itself if it fails, leaving the fallback. */
+function AvatarLazyImage({ className, src, alt = "", ...props }: React.ComponentProps<"img">) {
+  const ref = useRef<HTMLImageElement>(null);
+  const [state, setState] = useState<"loading" | "loaded" | "error">("loading");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new `src` is a new image to check.
+  useEffect(() => {
+    // A cached image may have loaded before React attached its handlers.
+    const image = ref.current;
+    setState(image?.complete ? (image.naturalWidth ? "loaded" : "error") : "loading");
+  }, [src]);
+  if (!src || state === "error") return null;
+  return (
+    // biome-ignore lint/performance/noImgElement: next/image would proxy and resize remote event art the app does not host; a plain lazy img is what is needed.
+    <img
+      ref={ref}
+      src={src}
+      alt={alt}
+      loading="lazy"
+      decoding="async"
+      data-slot="avatar-image"
+      data-loaded={state === "loaded" ? "" : undefined}
+      onLoad={() => setState("loaded")}
+      onError={() => setState("error")}
+      className={cn(
+        "absolute inset-0 aspect-square size-full rounded-full object-cover opacity-0 transition-opacity data-loaded:opacity-100",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
 function AvatarFallback({ className, ...props }: AvatarPrimitive.Fallback.Props) {
   return (
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"
       className={cn(
-        "flex size-full items-center justify-center rounded-full bg-muted text-sm text-muted-foreground group-data-[size=sm]/avatar:text-xs",
+        "flex size-full items-center justify-center rounded-full bg-muted text-sm text-muted-foreground group-data-[size=sm]/avatar:text-xs group-has-[img[data-loaded]]/avatar:invisible",
         className,
       )}
       {...props}
@@ -89,4 +124,12 @@ function AvatarGroupCount({ className, ...props }: React.ComponentProps<"div">) 
   );
 }
 
-export { Avatar, AvatarBadge, AvatarFallback, AvatarGroup, AvatarGroupCount, AvatarImage };
+export {
+  Avatar,
+  AvatarBadge,
+  AvatarFallback,
+  AvatarGroup,
+  AvatarGroupCount,
+  AvatarImage,
+  AvatarLazyImage,
+};

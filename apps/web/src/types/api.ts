@@ -113,6 +113,16 @@ export interface MarketView extends ShareUnits {
   quoteSpotReference?: SpotPrice;
   probability: ProbabilityView;
   question: string;
+  /** The venue event's schedule and series (display only: categories and the calendar). */
+  event?: {
+    /** When the venue's event resolves or fixes, ISO; null when it doesn't say. */
+    endTime: string | null;
+    /** Kalshi's series and event tickers: a price ladder's strikes share an event. */
+    series?: string;
+    eventTicker?: string;
+    /** The side the venue settled to, once known (Kalshi). */
+    result: "yes" | "no" | null;
+  };
   imageUrl?: string | null;
   quoteToken: string;
   residual: number | null;

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useReducer } from "react";
 import { apiUrl } from "@/services/constants";
 import { parseQuotePrices, QUOTE_PRICES_PATH, readQuotePrices } from "@/services/quote-prices";
 import { subscribePrices } from "@/services/spot-stream";
@@ -31,6 +31,14 @@ export function useQuotePrices() {
       ),
     [],
   );
-  const ttlMs = query.data?.ttlMs ?? 0;
-  return { ...query, fresh: Date.now() - query.dataUpdatedAt <= ttlMs };
+  // Fresh until the API's ttl after this copy arrived: one timer at that moment.
+  const freshUntil = query.data ? query.dataUpdatedAt + query.data.ttlMs : 0;
+  const [, expired] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => {
+    const left = freshUntil - Date.now();
+    if (left <= 0) return;
+    const timer = setTimeout(expired, left + 1);
+    return () => clearTimeout(timer);
+  }, [freshUntil]);
+  return { ...query, fresh: Date.now() <= freshUntil };
 }

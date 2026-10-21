@@ -197,19 +197,36 @@ export function aggregateBook(
   };
 }
 
+/** Markets per `/v1/events` read (the API's limit). */
+const EVENT_BATCH_SIZE = 50;
+type Book = { orders: Record<string, unknown>[]; truncated?: boolean; unavailable?: boolean };
+const UNAVAILABLE_BOOK: Book = { orders: [], unavailable: true, truncated: false };
+
+/** The market list (or one market by its URL segment) with each market's book and event. A list
+ * read costs three requests: the markets, all their books, and their events in batches of 50
+ * (one market per event: sibling markets share their event). A single market's three reads start
+ * together, as the indexer and the API resolve the segment themselves. */
 async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<MarketView[]> {
   const json = <T>(url: string): Promise<T> =>
     requestJson<T>(new URL(url).pathname + new URL(url).search, signal ? { signal } : {});
-  // Start the all-books projection with the market list. Once market identities
-  // arrive, their metadata reads can overlap the remaining orderbook transfer.
+  const events = (ids: string[]) =>
+    json<{ events: Record<string, unknown> }>(
+      `${upstreamUrl("api")}/v1/events?markets=${ids.map(encodeURIComponent).join(",")}`,
+    )
+      .then((response) => record(response.events))
+      .catch(() => ({}) as Record<string, unknown>);
+  const singleEvent = marketId ? events([marketId]) : undefined;
+  const singleBook = marketId
+    ? json<Book>(
+        `${upstreamUrl("indexer")}/orderbook/${encodeURIComponent(marketId)}?limit=2000`,
+      ).catch(() => UNAVAILABLE_BOOK)
+    : undefined;
+  // The list's books come in one projection, overlapping the market list.
   const batchPromise = marketId
     ? Promise.resolve(null)
-    : json<{
-        books: Record<
-          string,
-          { orders: Record<string, unknown>[]; truncated?: boolean; unavailable?: boolean }
-        >;
-      }>(`${upstreamUrl("indexer")}/orderbooks?view=levels`).catch(() => null);
+    : json<{ books: Record<string, Book> }>(
+        `${upstreamUrl("indexer")}/orderbooks?view=levels`,
+      ).catch(() => null);
   const marketResponse = marketId
     ? {
         markets: [
@@ -219,21 +236,30 @@ async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<Mar
         ],
       }
     : await json<{ markets: Record<string, unknown>[] }>(`${upstreamUrl("indexer")}/markets`);
-  // Sibling asset markets share one immutable event (a Polymarket or Kalshi market). Fetch its
+  // Sibling asset markets share one immutable event (a Polymarket or Kalshi market). Read its
   // metadata/probability once so one event cannot randomly diverge per asset.
-  const attachments = new Map<string, Promise<Record<string, unknown>>>();
+  const representative = new Map<string, string>();
   for (const market of marketResponse.markets) {
     const condition = text(market.eventConditionId).toLowerCase();
-    if (!attachments.has(condition)) {
-      const id = text(market.id);
-      attachments.set(
-        condition,
-        json<Record<string, unknown>>(`${upstreamUrl("api")}/v1/markets/${id}/event`).catch(
-          () => ({}),
-        ),
-      );
-    }
+    if (!representative.has(condition)) representative.set(condition, text(market.id));
   }
+  const ids = [...representative.values()];
+  const reads: Promise<Record<string, unknown>>[] = singleEvent
+    ? [singleEvent.then((read) => ({ [ids[0] ?? ""]: read[marketId ?? ""] }))]
+    : Array.from({ length: Math.ceil(ids.length / EVENT_BATCH_SIZE) }, (_, i) =>
+        events(ids.slice(i * EVENT_BATCH_SIZE, (i + 1) * EVENT_BATCH_SIZE)),
+      );
+  const attachments = new Map<string, Promise<Record<string, unknown>>>();
+  for (const [i, [condition, id]] of [...representative].entries())
+    attachments.set(
+      condition,
+      (
+        reads[Math.floor(i / EVENT_BATCH_SIZE)] ?? Promise.resolve<Record<string, unknown>>({})
+      ).then((read) => {
+        const event = record(read[id]);
+        return "error" in event ? {} : event;
+      }),
+    );
   const batch = await batchPromise;
   return Promise.all(
     marketResponse.markets.map(async (market): Promise<MarketView> => {
@@ -248,13 +274,7 @@ async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<Mar
       const condition = text(market.eventConditionId).toLowerCase();
       const [attached, book] = await Promise.all([
         attachments.get(condition) ?? Promise.resolve({}),
-        marketId
-          ? json<{ orders: Record<string, unknown>[]; truncated?: boolean; unavailable?: boolean }>(
-              `${upstreamUrl("indexer")}/orderbook/${id}?limit=2000`,
-            ).catch(() => ({ orders: [], unavailable: true, truncated: false }))
-          : Promise.resolve(
-              batch?.books?.[id] ?? { orders: [], unavailable: true, truncated: false },
-            ),
+        singleBook ?? Promise.resolve(batch?.books?.[id] ?? UNAVAILABLE_BOOK),
       ]);
       const attachedRecord = record(attached);
       const metadata = record(record(attachedRecord.metadata).normalized);
@@ -337,6 +357,14 @@ async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<Mar
         ordinaryReference: null,
         probability: probabilityView,
         question: text(metadata.question, `Conditional market ${id.slice(0, 8)}`),
+        event: {
+          endTime: Number.isFinite(Date.parse(text(metadata.endTime)))
+            ? new Date(text(metadata.endTime)).toISOString()
+            : null,
+          ...(text(metadata.seriesTicker) ? { series: text(metadata.seriesTicker) } : {}),
+          ...(text(metadata.eventTicker) ? { eventTicker: text(metadata.eventTicker) } : {}),
+          result: metadata.result === "yes" || metadata.result === "no" ? metadata.result : null,
+        },
         // The venue's artwork as normalized (Polymarket's image, Kalshi's market or series
         // image), else a Polymarket payload's own fields.
         imageUrl:

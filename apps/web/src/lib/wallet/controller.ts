@@ -1,14 +1,6 @@
 import { assertSignInChallenge } from "@conditional-stocks/evm-client";
 import { normalizeInviteCode } from "@conditional-stocks/shared/invites";
-import {
-  type Address,
-  getAddress,
-  type Hex,
-  isAddress,
-  type PublicClient,
-  stringToHex,
-  toHex,
-} from "viem";
+import { type Address, getAddress, type Hex, isAddress, stringToHex, toHex } from "viem";
 import { connectWallet, findWallet, type WalletHandle, type WalletSources } from "./injected";
 import {
   announcedSession,
@@ -83,8 +75,8 @@ interface Dependencies {
   origin(): string;
   /** The API's origin as requests reach it: whether cookies get there is checked per API. */
   api(): string;
-  /** Reads receipts from the deployment's RPC, not the wallet's. */
-  client(): Pick<PublicClient, "waitForTransactionReceipt">;
+  /** Waits for a transaction's receipt on the deployment's RPC, not the wallet's. */
+  waitForReceipt(hash: Hex): Promise<{ status: "success" | "reverted" }>;
   request: Request;
   clearCache(): void;
 }
@@ -605,7 +597,7 @@ export function createWalletController(deps: Dependencies) {
           },
         ],
       })) as Hex;
-      const receipt = await deps.client().waitForTransactionReceipt({ hash, timeout: 180_000 });
+      const receipt = await deps.waitForReceipt(hash);
       if (receipt.status !== "success")
         throw new Error("Transaction failed. Its state changes were rolled back.");
       return hash;

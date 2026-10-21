@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { LifecycleBadge } from "@/components/data/StatusBadge";
 import { PriceChart } from "@/components/market/PriceChart";
 import { ProbabilityGauge } from "@/components/market/ProbabilityGauge";
@@ -9,7 +9,7 @@ import { SpotReference } from "@/components/market/SpotReference";
 import { TokenIdentity } from "@/components/market/TokenIdentity";
 import { ClaimTable } from "@/components/portfolio/ClaimTable";
 import { PositionTable } from "@/components/portfolio/PositionTable";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarLazyImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -36,6 +36,7 @@ import { midpoint, percent, spotImpactPercent } from "@/lib/markets/presentation
 import { type DepthLevel, depthLevels, visibleDepthPerSide } from "@/lib/markets/visible-depth";
 import { cn } from "@/lib/utils";
 import { OrdersClient } from "@/modules/OrdersPageModule/components/OrdersClient";
+import { marketsStore } from "@/stores/useMarketsStore";
 import type { BranchBook, MarketView, TradeView } from "@/types/api";
 import { MarketAssetSwitcher } from "./MarketAssetSwitcher";
 import { MarketDetailPageSkeleton } from "./MarketDetailPageSkeleton";
@@ -92,11 +93,17 @@ export function MarketWorkspace({
   // The segment is a slug or public id; an older numeric link is resolved by the API, which
   // answers with that one market.
   const publicId = publicIdOf(marketId);
-  const query = useMarkets(
-      initialMarkets.filter((m) => m.id === publicId),
-      marketId,
+  // Reads are keyed by the public id, as the index stream names markets, so its frames refresh
+  // them. The page starts from the market list the header already read, and its own read
+  // refreshes that, so a market opens without a skeleton.
+  const key = publicId ?? marketId;
+  const [seed] = useState(() =>
+    (initialMarkets.length ? initialMarkets : (marketsStore.get("all").data?.markets ?? [])).filter(
+      (m) => m.id === publicId,
     ),
-    tradeQuery = useTrades(marketId);
+  );
+  const query = useMarkets(seed, key),
+    tradeQuery = useTrades(key);
   const indexedMarket = publicId
     ? query.markets.find((m) => m.id === publicId)
     : query.markets.length === 1
@@ -111,7 +118,10 @@ export function MarketWorkspace({
     indexedMarket?.mapping.conditionId ?? "",
     indexedMarket?.probability ?? EMPTY_PROBABILITY,
   );
-  const market = indexedMarket ? { ...indexedMarket, probability: stream.probability } : undefined;
+  const market = useMemo(
+    () => (indexedMarket ? { ...indexedMarket, probability: stream.probability } : undefined),
+    [indexedMarket, stream.probability],
+  );
   const [tab, setTab] = useState("positions"),
     [bookBranch, setBookBranch] = useState<"YES" | "NO">("YES");
   if (!market)
@@ -150,7 +160,7 @@ export function MarketWorkspace({
           <div className="flex items-center gap-3">
             <Avatar size="lg" className="rounded-xl after:rounded-xl">
               {market.imageUrl && (
-                <AvatarImage
+                <AvatarLazyImage
                   src={market.imageUrl}
                   alt=""
                   className="rounded-xl"
@@ -189,7 +199,7 @@ export function MarketWorkspace({
           )}
         </div>
         <div className="market-workspace-chart min-h-0 min-w-0 overflow-hidden rounded-[4px]">
-          <PriceChart market={market} initialTrades={trades} />
+          <PriceChart market={market} />
         </div>
         <Card
           variant="panel"
