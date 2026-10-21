@@ -17,13 +17,25 @@ import {
 import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
 import { formatNumber } from "@/lib/format/display";
+import { LevelLines } from "./levelLines";
 
 export interface LightweightChartSeries {
-  colorToken: "danger" | "positive" | "primary" | "info" | "foreground";
+  colorToken: "danger" | "positive" | "primary" | "info" | "foreground" | "warning";
   data: LineData<UTCTimestamp>[];
   id: string;
   label: string;
   lineStyle?: "solid" | "dashed";
+}
+
+/** A short horizontal line at `price` on series `seriesId` (so on its price scale): a box at its
+ * left end shows `tag` and `label`, and the axis its price. The scale keeps it in view. */
+export interface LightweightChartLevel {
+  colorToken: LightweightChartSeries["colorToken"];
+  label: string;
+  lineStyle: "dashed" | "dotted";
+  price: number;
+  seriesId: string;
+  tag: string;
 }
 
 interface LegendState {
@@ -39,7 +51,11 @@ const initialLegend = (series: LightweightChartSeries[]): LegendState => ({
   values: Object.fromEntries(series.map((item) => [item.id, item.data.at(-1)?.value ?? null])),
 });
 
-type Lines = Map<string, { api: ISeriesApi<"Line">; look: string; points: number }>;
+type Lines = Map<
+  string,
+  { api: ISeriesApi<"Line">; look: string; points: number; levels?: LevelLines }
+>;
+const NO_LEVELS: LightweightChartLevel[] = [];
 
 /** Sets each series' data on `chart`, adding, restyling and removing lines to match `series`. The
  * view refits only when lines or their point counts change (a live tick moves the last point only),
@@ -96,6 +112,39 @@ function syncSeries(
   if (refit && series.some((item) => item.data.length)) chart.timeScale().fitContent();
 }
 
+/** Draws each series' `levels` on it, attaching their primitive when it first has some. */
+function syncLevels(
+  chart: IChartApi,
+  lines: Lines,
+  levels: LightweightChartLevel[],
+  format: (value: number) => string,
+) {
+  const styles = getComputedStyle(document.documentElement);
+  const textColor = styles.getPropertyValue("--background").trim();
+  const tagColor = styles.getPropertyValue("--secondary").trim();
+  const tagTextColor = styles.getPropertyValue("--foreground").trim();
+  for (const [id, line] of lines) {
+    const own = levels.filter((level) => level.seriesId === id);
+    if (!line.levels) {
+      if (!own.length) continue;
+      line.levels = new LevelLines(chart.options().layout.fontFamily, format);
+      line.api.attachPrimitive(line.levels);
+    }
+    line.levels.set(
+      own.map((level) => ({
+        price: level.price,
+        dashed: level.lineStyle === "dashed",
+        tag: level.tag,
+        tagColor,
+        tagTextColor,
+        label: level.label,
+        color: tokenColor(styles, level.colorToken),
+        textColor,
+      })),
+    );
+  }
+}
+
 const priceScaleMargins = (banner: boolean, compactScale: boolean) =>
   banner
     ? { bottom: 0.16, top: 0.22 }
@@ -111,6 +160,7 @@ export function LightweightPriceChart({
   compactScale = false,
   emptyMessage,
   series,
+  levels = NO_LEVELS,
   valueSuffix = " USDC",
   formatValue,
   formatTicks,
@@ -120,6 +170,8 @@ export function LightweightPriceChart({
   compactScale?: boolean;
   emptyMessage?: string | undefined;
   series: LightweightChartSeries[];
+  /** Short horizontal lines (average entries, resting orders) on the series. */
+  levels?: LightweightChartLevel[];
   valueSuffix?: "%" | " USDC";
   /** Formats axis and legend values (pass a stable function); else numbers with `valueSuffix`. */
   formatValue?: (value: number) => string;
@@ -132,6 +184,8 @@ export function LightweightPriceChart({
   const lines = useRef<Lines>(new Map());
   const latest = useRef(series);
   latest.current = series;
+  const latestLevels = useRef(levels);
+  latestLevels.current = levels;
   const { resolvedTheme } = useTheme();
   // The hovered point's values; without a hover the legend shows each series' latest value.
   const [hover, setHover] = useState<LegendState | null>(null);
@@ -195,6 +249,7 @@ export function LightweightPriceChart({
     });
     chartRef.current = chart;
     syncSeries(chart, lines.current, latest.current, banner);
+    syncLevels(chart, lines.current, latestLevels.current, (value) => formatRef.current(value));
     const crosshair = (param: MouseEventParams) => {
       if (typeof param.time !== "number") {
         setHover(null);
@@ -229,10 +284,13 @@ export function LightweightPriceChart({
     });
   }, [banner, compactScale, formatTicks, formatValue, valueSuffix, resolvedTheme]);
 
-  // Series data, set in place on the built chart (which syncs them itself when rebuilt).
+  // Series data and levels, set in place on the built chart (which syncs them itself when rebuilt).
   useEffect(() => {
-    if (chartRef.current) syncSeries(chartRef.current, lines.current, series, banner);
-  }, [banner, series]);
+    const chart = chartRef.current;
+    if (!chart) return;
+    syncSeries(chart, lines.current, series, banner);
+    syncLevels(chart, lines.current, levels, (value) => formatRef.current(value));
+  }, [banner, series, levels]);
 
   return (
     <div className="relative size-full overflow-hidden" role="img" aria-label={ariaLabel}>
