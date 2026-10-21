@@ -14,6 +14,7 @@ import {
   formatBps,
   type OrderWire,
 } from "@conditional-stocks/evm-client";
+import { decimalInput } from "@/lib/format/amount-input";
 
 export interface OrderFormValues extends ShareUnits {
   baseStep?: string;
@@ -38,8 +39,9 @@ export const previewOrder = (
 ) => {
   try {
     assertShareUnits(units);
-    const quantityRaw = parseShareAmount(quantity, units);
-    const priceRawX18 = parsePriceRawX18(price, units);
+    // Typed text as people write numbers ("1,000", ".5"); anything else is not a number.
+    const quantityRaw = parseShareAmount(decimalInput(quantity) ?? quantity, units);
+    const priceRawX18 = parsePriceRawX18(decimalInput(price) ?? price, units);
     if (quantityRaw <= 0n || quantityRaw >= 1n << 96n) throw new Error("invalid quantity");
     if (
       units.baseStep !== undefined &&

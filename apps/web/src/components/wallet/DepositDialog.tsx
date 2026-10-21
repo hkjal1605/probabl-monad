@@ -87,7 +87,7 @@ export function DepositDialog({
   let amountError: string | null = null;
   if (amount.trim()) {
     try {
-      const raw = vaultAmount(amount, asset?.decimals ?? 0);
+      const raw = vaultAmount(amount, asset?.decimals ?? 0, asset?.symbol);
       if (walletRaw !== null && raw > walletRaw)
         amountError = "Amount exceeds your wallet balance.";
     } catch (error) {

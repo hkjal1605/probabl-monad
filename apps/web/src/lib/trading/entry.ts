@@ -3,21 +3,41 @@ import {
   formatShareAmount,
   MAX_ORDER_UINT128,
   parsePriceRawX18,
-  parseTokenAmount,
+  priceExponent,
 } from "@conditional-stocks/domain";
+import { decimalInput, decimalPlaces, parseAmountInput } from "@/lib/format/amount-input";
 import { currentSpotUsd } from "@/lib/markets/presentation";
 import type { MarketView } from "@/types/api";
 
-/** Round down to an onchain share step; never exceed the entered quote budget. */
+/** A typed price as the market's exact decimal, or null while there is none (not yet loaded or
+ * typed). Throws when it has more decimal places than the market's prices take. */
+export function priceInput(text: string, market: MarketView): string | null {
+  const value = decimalInput(text);
+  if (value === null) return null;
+  const places = priceExponent(market);
+  if (decimalPlaces(value) > places)
+    throw new Error(`Prices allow at most ${places} decimal places.`);
+  return value;
+}
+
+/** Shares a spend of the quote token buys at `price`, rounded down to an onchain share step, so
+ * the order never exceeds the budget. Throws a message a person can act on; callers wait for a
+ * price rather than call this without one. */
 export function quantityForSpend(spend: string, price: string, market: MarketView): string {
-  const budget = parseTokenAmount(spend, market.quoteTokenDecimals);
-  const rawPrice = parsePriceRawX18(price, market);
+  const symbol = market.quoteTokenMetadata?.symbol ?? "USDC";
+  const budget = parseAmountInput(spend, market.quoteTokenDecimals, symbol);
+  if (budget <= 0n) throw new Error("Enter an amount above 0.");
+  const exact = priceInput(price, market);
+  if (exact === null) throw new Error("Set a price first.");
+  const rawPrice = parsePriceRawX18(exact, market);
   const step = BigInt(market.baseStep);
-  if (budget <= 0n || rawPrice <= 0n || step <= 0n)
-    throw new Error("Enter a positive budget and price");
+  if (step <= 0n) throw new Error("This market has no share step.");
   const raw = ((budget * 10n ** 18n) / rawPrice / step) * step;
-  if (raw <= 0n || raw >= 1n << 96n)
-    throw new Error("Budget is outside the supported quantity range");
+  if (raw <= 0n)
+    throw new Error(
+      `That buys less than the smallest step (${formatShareAmount(step, market)} ${market.ticker}) at this price.`,
+    );
+  if (raw >= 1n << 96n) throw new Error("That amount is too large.");
   return formatShareAmount(raw, market);
 }
 

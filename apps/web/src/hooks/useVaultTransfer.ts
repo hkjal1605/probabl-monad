@@ -39,7 +39,7 @@ export function useVaultTransfer({
       if (!wallet.account || !selection || !balance || !fresh)
         throw new Error("Wait for a fresh vault balance");
       const owner = wallet.account;
-      const raw = vaultAmount(amount, selection.asset.decimals);
+      const raw = vaultAmount(amount, selection.asset.decimals, selection.asset.symbol);
       await wallet.ensureNetwork();
       assertCurrent();
       const session = wallet.sessionId ?? (await wallet.authenticate());

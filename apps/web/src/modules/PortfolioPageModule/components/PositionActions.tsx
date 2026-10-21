@@ -1,6 +1,6 @@
 "use client";
 
-import { formatTokenAmount, parseTokenAmount } from "@conditional-stocks/domain";
+import { formatTokenAmount } from "@conditional-stocks/domain";
 import {
   conditionalStocksAbi,
   planRedemption,
@@ -30,6 +30,7 @@ import { toast } from "@/components/ui/toast";
 import { venueDeployment } from "@/config/protocol";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { usePositions } from "@/hooks/useProtocolData";
+import { parseAmountInput } from "@/lib/format/amount-input";
 import { baseHalt, claimBalance } from "@/lib/markets/base";
 import { rpc } from "@/lib/trading/rpc";
 import { refreshStores } from "@/stores/createResourceStore";
@@ -109,7 +110,7 @@ export function PositionActions({
   const allClaims = kind === "Redeem" && branch === "All";
   let raw = 0n;
   try {
-    raw = parseTokenAmount(amount.trim(), decimals);
+    raw = parseAmountInput(amount, decimals);
   } catch {
     /* Invalid input is not actionable. */
   }

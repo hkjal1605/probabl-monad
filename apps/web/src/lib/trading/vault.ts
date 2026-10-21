@@ -1,4 +1,3 @@
-import { parseTokenAmount } from "@conditional-stocks/domain";
 import {
   approve,
   deposit,
@@ -8,15 +7,17 @@ import {
 } from "@conditional-stocks/evm-client";
 import { getAddress, maxUint256 } from "viem";
 import { protocolConfig } from "@/config/protocol";
+import { parseAmountInput } from "@/lib/format/amount-input";
 import type { WholeBalanceView } from "@/types/api";
 
 /** The API's prepared transfer: a deposit may be preceded by an allowance approval. */
 export interface VaultQuote {
   transactions: unknown[];
 }
-export function vaultAmount(text: string, decimals: number) {
-  const amount = parseTokenAmount(text.trim(), decimals);
-  if (amount <= 0n || amount >= 1n << 96n) throw new Error("Enter a positive token amount");
+export function vaultAmount(text: string, decimals: number, symbol?: string) {
+  const amount = parseAmountInput(text, decimals, symbol);
+  if (amount <= 0n) throw new Error("Enter an amount above 0.");
+  if (amount >= 1n << 96n) throw new Error("That amount is too large.");
   return amount;
 }
 /** The wallet signs only transactions built locally from the selected token and amount; the

@@ -1,6 +1,5 @@
 "use client";
 
-import { parseTokenAmount } from "@conditional-stocks/domain";
 import { useState } from "react";
 import { useWallet } from "@/components/providers/WalletProvider";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import { Segmented } from "@/components/ui/segmented";
 import { Spinner } from "@/components/ui/spinner";
 import { useDeltaVaultTransfer } from "@/hooks/useDeltaVaultTransfer";
 import { sharesFor, tokenText } from "@/lib/delta-vault/amounts";
+import { parseAmountInput } from "@/lib/format/amount-input";
 import type { DeltaVaultAccountView, DeltaVaultView } from "@/services/delta-vaults-api-service";
 import { baseHigh, quoteHigh } from "../utils/holdings";
 
@@ -41,7 +41,7 @@ export function VaultTransfer({
     bh = baseHigh(vault);
   let quote: bigint | null = null;
   try {
-    quote = amount ? parseTokenAmount(amount, q) : null;
+    quote = amount.trim() ? parseAmountInput(amount, q) : null;
   } catch {
     quote = null;
   }

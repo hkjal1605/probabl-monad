@@ -1,7 +1,7 @@
-import { parseTokenAmount } from "@conditional-stocks/domain";
 import { approveDelegate, DELEGATE_TRADE, MAX_FEE_BPS } from "@conditional-stocks/evm-client";
 import { getAddress } from "viem";
 import { protocolConfig } from "@/config/protocol";
+import { parseAmountInput } from "@/lib/format/amount-input";
 import type { TradingPermission } from "@/services/trading-permissions";
 
 export const DEFAULT_MAX_ORDER_QUOTE = "1000";
@@ -35,23 +35,27 @@ export function tradingPermissionApproval(input: {
   )
     throw new Error("Trading approval is not available for this deployment");
   if (permission.active) throw new Error("Trading is already enabled");
-  const maxOrderQuote = parseTokenAmount(
-    (input.perOrder ?? DEFAULT_MAX_ORDER_QUOTE).trim(),
+  const maxOrderQuote = parseAmountInput(
+    input.perOrder ?? DEFAULT_MAX_ORDER_QUOTE,
     permission.quoteDecimals,
+    "The per-order limit",
   );
-  const totalQuote = parseTokenAmount(
-    (input.total ?? DEFAULT_TOTAL_QUOTE).trim(),
+  const totalQuote = parseAmountInput(
+    input.total ?? DEFAULT_TOTAL_QUOTE,
     permission.quoteDecimals,
+    "The lifetime limit",
   );
   if (maxOrderQuote <= 0n || totalQuote < maxOrderQuote || totalQuote > MAX_QUOTE)
     throw new Error("Set a positive per-order limit and a larger lifetime limit");
-  const maxOrderBase = parseTokenAmount(
-    (input.perOrderShares ?? DEFAULT_MAX_ORDER_SHARES).trim(),
+  const maxOrderBase = parseAmountInput(
+    input.perOrderShares ?? DEFAULT_MAX_ORDER_SHARES,
     permission.baseDecimals,
+    "The per-order share limit",
   );
-  const totalBase = parseTokenAmount(
-    (input.totalShares ?? DEFAULT_TOTAL_SHARES).trim(),
+  const totalBase = parseAmountInput(
+    input.totalShares ?? DEFAULT_TOTAL_SHARES,
     permission.baseDecimals,
+    "The lifetime share limit",
   );
   if (maxOrderBase <= 0n || totalBase < maxOrderBase || totalBase > MAX_BASE)
     throw new Error("Set a positive per-order share limit and a larger lifetime share limit");

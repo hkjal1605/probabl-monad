@@ -117,6 +117,32 @@ export function OrderTicket({ market }: { market: MarketView }) {
     const exact = bestPriceFor(market, branch, t.side);
     return exact === null ? null : Number(exact);
   };
+  // A market order's worst price comes from the order book or the reference price, which can
+  // load after the ticket opens: it fills in as soon as they do. It then moves only when the
+  // branch, side or order type changes, since every price change re-reviews the order.
+  const pendingMarketPrice = kind === "Market" && !t.price.trim();
+  const loadedMarketPrice = pendingMarketPrice ? priceFor(t.branch, t.side, "Market") : "";
+  useEffect(() => {
+    if (loadedMarketPrice && !t.busy) t.setPrice(loadedMarketPrice);
+  }, [loadedMarketPrice, t.busy, t.setPrice]);
+  // A spend becomes a quantity at the order's price, again whenever either changes, and only
+  // once there is a price: a spend typed before the market price loaded converts when it does.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the market's units convert the spend, not its streamed object.
+  useEffect(() => {
+    if (entry !== "Spend" || t.side !== "buy") return;
+    if (!spend.trim() || !t.price.trim()) {
+      t.setQuantity("");
+      setEntryError(null);
+      return;
+    }
+    try {
+      t.setQuantity(quantityForSpend(spend, t.price, market));
+      setEntryError(null);
+    } catch (error) {
+      t.setQuantity("");
+      setEntryError(error instanceof Error ? error.message : "Enter a valid amount.");
+    }
+  }, [entry, spend, t.price, t.side, market.id, t.setQuantity]);
   const unitSymbol = market.ticker;
   const quoteSymbol = t.quoteSymbol;
   const outcome = (wins: boolean) =>
@@ -144,6 +170,14 @@ export function OrderTicket({ market }: { market: MarketView }) {
   const maxQuantity = () =>
     edit(() => {
       if (available === null || balanceError) return;
+      if (t.side === "buy" && !t.price.trim()) {
+        setEntryError(
+          kind === "Market"
+            ? "Waiting for the market price. Try again in a moment."
+            : "Enter a limit price first.",
+        );
+        return;
+      }
       try {
         const value =
           t.side === "buy"
@@ -270,19 +304,9 @@ export function OrderTicket({ market }: { market: MarketView }) {
                             value={entry === "Spend" && t.side === "buy" ? spend : t.quantity}
                             onChange={(event) =>
                               edit(() => {
-                                if (entry === "Spend" && t.side === "buy") {
+                                if (entry === "Spend" && t.side === "buy")
                                   setSpend(event.target.value);
-                                  try {
-                                    t.setQuantity(
-                                      quantityForSpend(event.target.value, t.price, market),
-                                    );
-                                  } catch (error) {
-                                    t.setQuantity("");
-                                    setEntryError(
-                                      error instanceof Error ? error.message : "Invalid amount",
-                                    );
-                                  }
-                                } else t.setQuantity(event.target.value);
+                                else t.setQuantity(event.target.value);
                               })
                             }
                           />
@@ -350,26 +374,18 @@ export function OrderTicket({ market }: { market: MarketView }) {
                             placeholder="0"
                             readOnly={kind === "Market"}
                             value={t.price}
-                            onChange={(event) =>
-                              edit(() => {
-                                t.setPrice(event.target.value);
-                                if (entry === "Spend") {
-                                  try {
-                                    t.setQuantity(
-                                      quantityForSpend(spend, event.target.value, market),
-                                    );
-                                  } catch {
-                                    t.setQuantity("");
-                                  }
-                                }
-                              })
-                            }
+                            onChange={(event) => edit(() => t.setPrice(event.target.value))}
                           />
                           <InputGroupAddon align="inline-end">
                             <InputGroupText>{quoteSymbol}</InputGroupText>
                           </InputGroupAddon>
                         </InputGroup>
                       </Field>
+                      {pendingMarketPrice && (
+                        <p role="status" className="text-xs leading-4 text-muted-foreground">
+                          Waiting for the market price…
+                        </p>
+                      )}
                       {entryError && (
                         <Alert variant="destructive">
                           <AlertDescription>{entryError}</AlertDescription>
