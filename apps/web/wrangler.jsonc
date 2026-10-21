@@ -18,7 +18,10 @@
     // The Robinhood Chain testnet app: `opennextjs-cloudflare deploy --env rh-testnet`.
     "rh-testnet": {
       "name": "probabl-ui-rh-testnet",
-      "routes": [{ "pattern": "rh-testnet.probabl.trade", "custom_domain": true }],
+      "routes": [
+        { "pattern": "probabl.trade", "custom_domain": true },
+        { "pattern": "rh-testnet.probabl.trade", "custom_domain": true }
+      ],
       "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "probabl-ui-rh-testnet" }]
     }
   }
