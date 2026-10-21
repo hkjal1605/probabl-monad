@@ -87,6 +87,10 @@ test("streamed positions name their public market and the venue holding their cl
     quoteNo: "0",
     baseYes: "0",
     baseNo: "0",
+    pricedYes: "0",
+    pricedNo: "0",
+    costYes: "0",
+    costNo: "0",
   };
   expect(parsePosition(position)).toEqual(position);
   for (const change of [

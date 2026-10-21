@@ -64,7 +64,10 @@ export function parsePosition(p: any): PositionView {
     p.protocolVersion !== SHARE_PROTOCOL_VERSION ||
     !address(p.baseToken) ||
     p.baseTokenDecimals !== p.shareDecimals ||
-    [p.quoteYes, p.quoteNo, p.baseYes, p.baseNo].some((n) => !amount(n, 96))
+    [p.quoteYes, p.quoteNo, p.baseYes, p.baseNo, p.pricedYes, p.pricedNo].some(
+      (n) => !amount(n, 96),
+    ) ||
+    [p.costYes, p.costNo].some((n) => !amount(n, 128))
   )
     throw new Error("Invalid streamed position");
   tokenDecimals(p.shareDecimals);

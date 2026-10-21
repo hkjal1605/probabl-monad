@@ -19,16 +19,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useOrders, usePositions, useWalletTrades } from "@/hooks/useProtocolData";
+import { useOrders, usePositions } from "@/hooks/useProtocolData";
 import { formatNumber, tokenAmount } from "@/lib/format/display";
 import { stepQuantity } from "@/lib/markets/base";
 import { marketPath } from "@/lib/markets/identity";
 import { midpoint } from "@/lib/markets/presentation";
-import {
-  type ConditionalPositionRow,
-  conditionalPositionRows,
-  entryBasis,
-} from "@/lib/portfolio/positions";
+import { type ConditionalPositionRow, conditionalPositionRows } from "@/lib/portfolio/positions";
 import type { MarketView } from "@/types/api";
 
 /** Close intent for a stock claim row: sell the held claims, step-aligned. */
@@ -62,7 +58,6 @@ export function PositionTable({
   const wallet = useWallet(),
     positions = usePositions(),
     orders = useOrders(),
-    trades = useWalletTrades(),
     router = useRouter();
   const setPrefill = useUiStore((s) => s.setPrefill);
   if (!wallet.account) return <EmptyState>Connect your wallet to see positions.</EmptyState>;
@@ -162,11 +157,11 @@ export function PositionTable({
       <TableBody>
         {rows.map((row) => {
           const { market, branch, kind, symbol, decimals, available, reserved, total } = row;
-          const basis =
-            kind === "stock" && wallet.account && trades.data
-              ? entryBasis(trades.trades, orders.orders, wallet.account, market.id, branch)
+          // The indexer prices claims bought in fills (cost / priced, the exchange's price format).
+          const entry =
+            row.priced > 0n
+              ? Number(formatPriceRawX18((row.cost * 10n ** 18n) / row.priced, market))
               : null;
-          const entry = basis ? Number(formatPriceRawX18(basis.priceRawX18, market)) : null;
           const mark = kind === "stock" ? tokenMark(row) : null;
           const change = entry !== null && mark !== null ? (mark - entry) / entry : null;
           return (
@@ -185,14 +180,14 @@ export function PositionTable({
                 )}
               </TableCell>
               <TableCell className="tabular-nums">
-                {basis && entry !== null ? (
+                {entry !== null ? (
                   <>
                     <InfoTooltip content="Average price paid in your fills, after fees and maker rebates. Selling held claims keeps the average.">
                       <span>{formatNumber(entry)}</span>
                     </InfoTooltip>
-                    {basis.shares < total && (
+                    {row.priced < total && (
                       <p className="mt-1 text-xs text-muted-foreground">
-                        on {formatShareAmount(basis.shares, market)} of{" "}
+                        on {formatShareAmount(row.priced, market)} of{" "}
                         {formatShareAmount(total, market)}
                       </p>
                     )}
@@ -202,9 +197,7 @@ export function PositionTable({
                     content={
                       kind === "quote"
                         ? "Cash claims have no entry price."
-                        : trades.isPending
-                          ? "Loading your fills."
-                          : "No fill priced these claims: they came from a split or a transfer."
+                        : "No fill priced these claims: they came from a split or a transfer."
                     }
                   >
                     <span className="text-muted-foreground">—</span>

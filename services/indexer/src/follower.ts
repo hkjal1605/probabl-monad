@@ -33,6 +33,7 @@ import {
   isFill,
   type OrderState,
   restoreState,
+  StaleCheckpointError,
   type Touched,
   type TradeDetails,
   touched,
@@ -221,8 +222,16 @@ export class ChainFollower {
   async start() {
     const { db, domain } = this.options;
     const checkpoint = await db?.checkpoint(domain);
-    if (checkpoint) {
-      const restored = readCheckpoint(checkpoint.state);
+    // A checkpoint from an older replica lacks state it now keeps: the replica is rebuilt from
+    // the deployment block (persisting history again is idempotent).
+    let restored: ChainState | undefined;
+    try {
+      restored = checkpoint ? readCheckpoint(checkpoint.state) : undefined;
+    } catch (error) {
+      if (!(error instanceof StaleCheckpointError)) throw error;
+      this.options.onError?.(new Error(`Replaying from the deployment block: ${error.message}`));
+    }
+    if (restored) {
       if (getAddress(restored.quote) !== getAddress(this.options.quote))
         throw new Error("Checkpoint belongs to another deployment");
       this.base = restored;

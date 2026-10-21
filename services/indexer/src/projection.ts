@@ -342,6 +342,8 @@ export function positionsOf(s: ChainState, owner: Address, deployment: Deploymen
       baseYes = yes?.base ?? 0n,
       baseNo = no?.base ?? 0n;
     if (!quoteYes && !quoteNo && !baseYes && !baseNo) continue;
+    const costYes = s.bases.get(accountKey(m.id, 0, owner)),
+      costNo = s.bases.get(accountKey(m.id, 1, owner));
     result.push({
       marketId: marketIdentity(s, m).id,
       venue: venueOf(deployment, m.id),
@@ -355,6 +357,11 @@ export function positionsOf(s: ChainState, owner: Address, deployment: Deploymen
       quoteNo: quoteNo.toString(),
       baseYes: baseYes.toString(),
       baseNo: baseNo.toString(),
+      // Stock claims bought in fills (incl. reserved ones) and the quote paid for them.
+      pricedYes: (costYes?.priced ?? 0n).toString(),
+      pricedNo: (costNo?.priced ?? 0n).toString(),
+      costYes: (costYes?.cost ?? 0n).toString(),
+      costNo: (costNo?.cost ?? 0n).toString(),
       protocolVersion: PROTOCOL_VERSION,
     });
   }

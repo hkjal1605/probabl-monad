@@ -207,6 +207,12 @@ export interface PositionView {
   quoteNo: string;
   baseYes: string;
   baseNo: string;
+  /** Stock claims bought in fills (including reserved ones) and the raw quote paid for them,
+   * net of maker rebates: their average entry is cost / priced. The rest came with no price. */
+  pricedYes: string;
+  pricedNo: string;
+  costYes: string;
+  costNo: string;
   redeemable: boolean;
 }
 export interface TradeView {
