@@ -32,25 +32,39 @@
       "rationale": "An invasion lifts oil (USO, XOM, PR) and sinks fuel-hungry CCL and BA and the indexes: USO's daily return tracks its odds with r 0.43 (t 7.4, 238 days).",
       "markets": {
         "USO": {
-          "anchorBps": 1200
+          "anchorBps": 1200,
+          "marketId": "39",
+          "rebate": "0"
         },
         "XOM": {
-          "anchorBps": 1200
+          "anchorBps": 1200,
+          "marketId": "40",
+          "rebate": "0"
         },
         "PR": {
-          "anchorBps": 1200
+          "anchorBps": 1200,
+          "marketId": "41",
+          "rebate": "0"
         },
         "CCL": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "42",
+          "rebate": "0"
         },
         "BA": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "43",
+          "rebate": "0"
         },
         "QQQ": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "44",
+          "rebate": "0"
         },
         "SPY": {
-          "anchorBps": -910
+          "anchorBps": -910,
+          "marketId": "45",
+          "rebate": "0"
         }
       }
     },
@@ -61,22 +75,34 @@
       "rationale": "An end to the blockade reopens oil supply: oil names fall (USO r -0.59), CCL, BA and SPY rise.",
       "markets": {
         "USO": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "46",
+          "rebate": "0"
         },
         "XOM": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "47",
+          "rebate": "0"
         },
         "PR": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "48",
+          "rebate": "0"
         },
         "CCL": {
-          "anchorBps": 1200
+          "anchorBps": 1200,
+          "marketId": "49",
+          "rebate": "0"
         },
         "BA": {
-          "anchorBps": 1200
+          "anchorBps": 1200,
+          "marketId": "50",
+          "rebate": "0"
         },
         "SPY": {
-          "anchorBps": 550
+          "anchorBps": 550,
+          "marketId": "51",
+          "rebate": "0"
         }
       }
     },
@@ -87,13 +113,19 @@
       "rationale": "A ceasefire that holds keeps oil down and the indexes up (USO r -0.50, SPY r 0.54, 22 days).",
       "markets": {
         "USO": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "52",
+          "rebate": "0"
         },
         "QQQ": {
-          "anchorBps": 1120
+          "anchorBps": 1120,
+          "marketId": "53",
+          "rebate": "0"
         },
         "SPY": {
-          "anchorBps": 650
+          "anchorBps": 650,
+          "marketId": "54",
+          "rebate": "0"
         }
       }
     },
@@ -105,25 +137,39 @@
       "rationale": "WTI above $120 is an oil shock: USO tracks it with r 0.73 (t 13.1); oil producers rise, CCL, BA and the indexes fall.",
       "markets": {
         "USO": {
-          "anchorBps": 1200
+          "anchorBps": 1200,
+          "marketId": "55",
+          "rebate": "0"
         },
         "XOM": {
-          "anchorBps": 1200
+          "anchorBps": 1200,
+          "marketId": "56",
+          "rebate": "0"
         },
         "PR": {
-          "anchorBps": 1200
+          "anchorBps": 1200,
+          "marketId": "57",
+          "rebate": "0"
         },
         "CCL": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "58",
+          "rebate": "0"
         },
         "BA": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "59",
+          "rebate": "0"
         },
         "QQQ": {
-          "anchorBps": -960
+          "anchorBps": -960,
+          "marketId": "60",
+          "rebate": "0"
         },
         "SPY": {
-          "anchorBps": -720
+          "anchorBps": -720,
+          "marketId": "61",
+          "rebate": "0"
         }
       }
     },
@@ -134,25 +180,39 @@
       "rationale": "Normal Hormuz traffic ends the oil shock: USO r -0.53 (t -7.5, measured on the Jan 2027 date); CCL, BA and the indexes rise.",
       "markets": {
         "USO": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "62",
+          "rebate": "0"
         },
         "XOM": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "63",
+          "rebate": "0"
         },
         "PR": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "64",
+          "rebate": "0"
         },
         "CCL": {
-          "anchorBps": 1200
+          "anchorBps": 1200,
+          "marketId": "65",
+          "rebate": "0"
         },
         "BA": {
-          "anchorBps": 1200
+          "anchorBps": 1200,
+          "marketId": "66",
+          "rebate": "0"
         },
         "QQQ": {
-          "anchorBps": 1190
+          "anchorBps": 1190,
+          "marketId": "67",
+          "rebate": "0"
         },
         "SPY": {
-          "anchorBps": 770
+          "anchorBps": 770,
+          "marketId": "68",
+          "rebate": "0"
         }
       }
     },
@@ -163,22 +223,34 @@
       "rationale": "Bitcoin-linked stocks and Ether move with Bitcoin's 2026 ladder (r 0.40-0.55, t 6.6-11.8).",
       "markets": {
         "MSTR": {
-          "anchorBps": 1200
+          "anchorBps": 1200,
+          "marketId": "69",
+          "rebate": "0"
         },
         "COIN": {
-          "anchorBps": 1200
+          "anchorBps": 1200,
+          "marketId": "70",
+          "rebate": "0"
         },
         "CRCL": {
-          "anchorBps": 1200
+          "anchorBps": 1200,
+          "marketId": "71",
+          "rebate": "0"
         },
         "GLXY": {
-          "anchorBps": 1200
+          "anchorBps": 1200,
+          "marketId": "72",
+          "rebate": "0"
         },
         "CLSK": {
-          "anchorBps": 1200
+          "anchorBps": 1200,
+          "marketId": "73",
+          "rebate": "0"
         },
         "WETH": {
-          "anchorBps": 1200
+          "anchorBps": 1200,
+          "marketId": "74",
+          "rebate": "0"
         }
       }
     },
@@ -189,22 +261,34 @@
       "rationale": "A dip to $70k drags Bitcoin-linked stocks and Ether down (r -0.45 to -0.65 on the $55k low).",
       "markets": {
         "MSTR": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "75",
+          "rebate": "0"
         },
         "COIN": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "76",
+          "rebate": "0"
         },
         "CRCL": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "77",
+          "rebate": "0"
         },
         "GLXY": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "78",
+          "rebate": "0"
         },
         "CLSK": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "79",
+          "rebate": "0"
         },
         "WETH": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "80",
+          "rebate": "0"
         }
       }
     },
@@ -215,16 +299,24 @@
       "rationale": "Coinbase, Circle, Strategy and Galaxy move with Ether's 2026 ladder (r 0.48-0.61).",
       "markets": {
         "COIN": {
-          "anchorBps": 1200
+          "anchorBps": 1200,
+          "marketId": "81",
+          "rebate": "0"
         },
         "CRCL": {
-          "anchorBps": 1200
+          "anchorBps": 1200,
+          "marketId": "82",
+          "rebate": "0"
         },
         "MSTR": {
-          "anchorBps": 1200
+          "anchorBps": 1200,
+          "marketId": "83",
+          "rebate": "0"
         },
         "GLXY": {
-          "anchorBps": 1200
+          "anchorBps": 1200,
+          "marketId": "84",
+          "rebate": "0"
         }
       }
     },
@@ -235,16 +327,24 @@
       "rationale": "A dip in Ether drags Coinbase, Circle, Strategy and Galaxy down (r -0.48 to -0.61 on the $1,500 low).",
       "markets": {
         "COIN": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "85",
+          "rebate": "0"
         },
         "CRCL": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "86",
+          "rebate": "0"
         },
         "MSTR": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "87",
+          "rebate": "0"
         },
         "GLXY": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "88",
+          "rebate": "0"
         }
       }
     },
@@ -256,19 +356,29 @@
       "rationale": "A December hike weighs on metals, bonds and rate-sensitive fintechs (SLV r -0.46, GLD r -0.44, 56 days).",
       "markets": {
         "SLV": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "89",
+          "rebate": "0"
         },
         "NU": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "90",
+          "rebate": "0"
         },
         "SOFI": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "91",
+          "rebate": "0"
         },
         "GLD": {
-          "anchorBps": -1200
+          "anchorBps": -1200,
+          "marketId": "92",
+          "rebate": "0"
         },
         "BND": {
-          "anchorBps": -370
+          "anchorBps": -370,
+          "marketId": "93",
+          "rebate": "0"
         }
       }
     },
@@ -280,7 +390,9 @@
       "rationale": "Silver moves 1.89 times gold, so SLV follows gold's year-end close.",
       "markets": {
         "SLV": {
-          "anchorBps": 1200
+          "anchorBps": 1200,
+          "marketId": "94",
+          "rebate": "0"
         }
       }
     },
@@ -292,10 +404,14 @@
       "rationale": "Hot inflation is hawkish: gold and silver fall on an upside CPI surprise.",
       "markets": {
         "GLD": {
-          "anchorBps": -200
+          "anchorBps": -200,
+          "marketId": "95",
+          "rebate": "0"
         },
         "SLV": {
-          "anchorBps": -400
+          "anchorBps": -400,
+          "marketId": "96",
+          "rebate": "0"
         }
       }
     },
@@ -307,10 +423,14 @@
       "rationale": "NVIDIA and the chip ETF move with NVIDIA's odds of ending the year largest (NVDA r 0.43, t 7.1).",
       "markets": {
         "NVDA": {
-          "anchorBps": 1200
+          "anchorBps": 1200,
+          "marketId": "97",
+          "rebate": "0"
         },
         "SMH": {
-          "anchorBps": 1200
+          "anchorBps": 1200,
+          "marketId": "98",
+          "rebate": "0"
         }
       }
     },
@@ -322,7 +442,9 @@
       "rationale": "Apple moves with its odds of ending the year largest (r 0.26, t 4.2).",
       "markets": {
         "AAPL": {
-          "anchorBps": 1200
+          "anchorBps": 1200,
+          "marketId": "99",
+          "rebate": "0"
         }
       }
     },
@@ -334,7 +456,9 @@
       "rationale": "Nubank, Brazil's largest digital bank, moved +13% on the first-round result; trading stops before the Oct 25 runoff polls close.",
       "markets": {
         "NU": {
-          "anchorBps": 1200
+          "anchorBps": 1200,
+          "marketId": "100",
+          "rebate": "0"
         }
       }
     }
