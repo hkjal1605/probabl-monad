@@ -8,7 +8,7 @@ import {
   SPOT_BATCH_SIZE,
   tokenPriceUsd,
 } from "@conditional-stocks/shared/spot-prices";
-import type { Hono } from "hono";
+import type { Context, Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { streamSSE } from "hono/streaming";
 import { type Address, getAddress } from "viem";
@@ -17,6 +17,10 @@ import { HISTORY_RANGES, type HistoryRange, priceHistory } from "./history.ts";
 import type { SpotPriceSource } from "./robinhood.ts";
 
 export const PROBABILITY_CACHE_TTL_SECONDS = 60;
+/** Markets per `/v1/events` read. */
+export const EVENT_BATCH_SIZE = 50;
+/** Conditions per shared probability stream: 50 keep its request line under 4 KB. */
+export const PROBABILITY_BATCH_SIZE = 50;
 
 /** Validated probability ticks shared through Redis by every API process. */
 export class CachedProbability {
@@ -141,31 +145,49 @@ export function mountMarketData(
   // Metadata changes at most once per ingestor poll (minutes); every market list refresh reads
   // it for every condition, so one read per condition serves all of them for a while.
   const metadataReads = new ReadCache(30_000, 1_024);
-  // A market's event (Polymarket or Kalshi): its metadata and latest probability. The
-  // `/polymarket` path predates Kalshi.
-  for (const path of ["/v1/markets/:id/event", "/v1/markets/:id/polymarket"])
-    app.get(path, async (c) => {
-      const m = marketCondition(c.req.param("id") ?? "");
-      const metadata = await metadataReads.get(m.condition.toLowerCase(), () =>
-        options.events().metadata(m.condition),
-      );
-      if (
-        metadata.normalized.conditionId.toLowerCase() !== m.condition.toLowerCase() ||
-        yesOutcome(metadata.normalized).indexSet !== String(m.yesIndex) ||
-        noOutcome(metadata.normalized).indexSet !== String(m.noIndex)
-      )
-        throw new HTTPException(409, {
-          message: "External snapshot does not match immutable market orientation",
-        });
-      return c.json({
-        informationalOnly: true,
-        localMarketId: String(m.id),
-        source: metadata.normalized.source,
-        metadata,
-        probability: await probabilities.get(m.condition).catch(() => null),
-        settlementAuthority: "manual-admin-only",
+  // A market's event (Polymarket or Kalshi): its metadata and latest probability.
+  const eventOf = async (id: string) => {
+    const m = marketCondition(id);
+    const metadata = await metadataReads.get(m.condition.toLowerCase(), () =>
+      options.events().metadata(m.condition),
+    );
+    if (
+      metadata.normalized.conditionId.toLowerCase() !== m.condition.toLowerCase() ||
+      yesOutcome(metadata.normalized).indexSet !== String(m.yesIndex) ||
+      noOutcome(metadata.normalized).indexSet !== String(m.noIndex)
+    )
+      throw new HTTPException(409, {
+        message: "External snapshot does not match immutable market orientation",
       });
-    });
+    return {
+      informationalOnly: true,
+      localMarketId: String(m.id),
+      source: metadata.normalized.source,
+      metadata,
+      probability: await probabilities.get(m.condition).catch(() => null),
+      settlementAuthority: "manual-admin-only",
+    };
+  };
+  // The `/polymarket` path predates Kalshi.
+  for (const path of ["/v1/markets/:id/event", "/v1/markets/:id/polymarket"])
+    app.get(path, async (c) => c.json(await eventOf(c.req.param("id") ?? "")));
+  // Many markets' events in one read (a market list reads one market per event), each its event
+  // or the reason it has none.
+  app.get("/v1/events", async (c) => {
+    const ids = [...new Set((c.req.query("markets") ?? "").split(",").filter(Boolean))];
+    if (!ids.length || ids.length > EVENT_BATCH_SIZE)
+      throw new HTTPException(400, {
+        message: `Supply 1-${EVENT_BATCH_SIZE} market ids in markets`,
+      });
+    const events = await Promise.all(
+      ids.map((id) =>
+        eventOf(id).catch((error: unknown) => ({
+          error: error instanceof Error ? error.message : "Event unavailable",
+        })),
+      ),
+    );
+    return c.json({ events: Object.fromEntries(ids.map((id, i) => [id, events[i]])) });
+  });
   app.get("/v1/markets/:id/probability", async (c) => {
     const m = marketCondition(c.req.param("id"));
     return c.json({
@@ -176,9 +198,9 @@ export function mountMarketData(
   });
 
   let probabilityStreams = 0;
-  app.get("/v1/probabilities/:conditionId/stream", (c) => {
-    const condition = c.req.param("conditionId").toLowerCase();
-    if (!isHex32(condition)) return c.json({ error: "Invalid condition ID" }, 400);
+  /** Each condition's probability every minute, as a `probability` event (`unavailable` with its
+   * condition when it has none), with heartbeats in between. */
+  const streamProbabilities = (c: Context, conditions: string[]) => {
     if (probabilityStreams >= 2000) return c.json({ error: "Stream capacity reached" }, 503);
     c.header("Cache-Control", "no-cache, no-transform");
     c.header("X-Accel-Buffering", "no");
@@ -186,17 +208,18 @@ export function mountMarketData(
       probabilityStreams++;
       try {
         while (!stream.aborted) {
-          try {
-            await stream.writeSSE({
-              event: "probability",
-              data: JSON.stringify({
-                topic: `probability.${condition}`,
-                value: await probabilities.get(condition),
-              }),
-            });
-          } catch {
+          const ticks = await Promise.allSettled(conditions.map((id) => probabilities.get(id)));
+          for (const [i, tick] of ticks.entries()) {
             if (stream.aborted) break;
-            await stream.writeSSE({ event: "unavailable", data: "{}" });
+            const condition = conditions[i];
+            await stream.writeSSE(
+              tick.status === "fulfilled"
+                ? {
+                    event: "probability",
+                    data: JSON.stringify({ topic: `probability.${condition}`, value: tick.value }),
+                  }
+                : { event: "unavailable", data: JSON.stringify({ conditionId: condition }) },
+            );
           }
           for (let i = 0; i < 4 && !stream.aborted; i++) {
             await stream.sleep(15_000);
@@ -207,5 +230,26 @@ export function mountMarketData(
         probabilityStreams--;
       }
     });
+  };
+  // A page's conditions share one stream, so the cards on it hold one connection, not one each.
+  app.get("/v1/probabilities/stream", (c) => {
+    const conditions = [
+      ...new Set((c.req.query("conditions") ?? "").toLowerCase().split(",").filter(Boolean)),
+    ];
+    if (
+      !conditions.length ||
+      conditions.length > PROBABILITY_BATCH_SIZE ||
+      !conditions.every(isHex32)
+    )
+      return c.json(
+        { error: `Supply 1-${PROBABILITY_BATCH_SIZE} condition IDs in conditions` },
+        400,
+      );
+    return streamProbabilities(c, conditions);
+  });
+  app.get("/v1/probabilities/:conditionId/stream", (c) => {
+    const condition = c.req.param("conditionId").toLowerCase();
+    if (!isHex32(condition)) return c.json({ error: "Invalid condition ID" }, 400);
+    return streamProbabilities(c, [condition]);
   });
 }
