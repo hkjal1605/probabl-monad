@@ -374,6 +374,13 @@ const faucet = mountFaucet(app, {
   db,
   domain,
   auth,
+  prices,
+  tokens: (process.env.FAUCET_TOKENS ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map((value) => getAddress(value)),
+  gasEth: process.env.FAUCET_GAS_ETH?.trim() || undefined,
 });
 if (faucet) logger.info("faucet.enabled", { faucet });
 const payoutKey = process.env.REFERRAL_PAYOUT_PRIVATE_KEY?.trim();

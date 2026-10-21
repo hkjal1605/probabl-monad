@@ -11,6 +11,7 @@ import {
   type Address,
   createWalletClient,
   encodeFunctionData,
+  erc20Abi,
   http,
   keccak256,
   stringToBytes,
@@ -199,6 +200,7 @@ beforeAll(async () => {
       TRADING_DELEGATE_PRIVATE_KEY: key(5),
       TRADING_DELEGATE_ADDRESS: delegate,
       FAUCET_PRIVATE_KEY: key(4),
+      FAUCET_GAS_ETH: "0.002",
       REFERRAL_PAYOUT_PRIVATE_KEY: key(6),
       INVITE_CODES_PER_MEMBER: "2",
       FINALITY_DEPTH: "2",
@@ -1041,12 +1043,25 @@ test("testnet faucet delivers once per wallet", async () => {
   expect((await call("/v1/faucet/status")).available).toBe(true);
   expect((await refused(`/v1/faucet/status?owner=${carol}`)).status).toBe(401);
   expect((await call(`/v1/faucet/status?owner=${carol}`, undefined, token)).claimed).toBe(false);
+  // A member is known; a wallet that never joined is not (the app guides it in).
+  expect((await call(`/v1/auth/known?wallet=${carol}`)).known).toBe(true);
+  expect((await call(`/v1/auth/known?wallet=${"0x".padEnd(42, "7")}`)).known).toBe(false);
+  const balance = (wallet: string, asset: string) =>
+    node.client.readContract({
+      address: asset as `0x${string}`,
+      abi: erc20Abi,
+      functionName: "balanceOf",
+      args: [wallet as `0x${string}`],
+    });
+  const before = await balance(carol, protocol.usdc);
   const claim = await call("/v1/faucet/claim", {}, token);
   expect(claim.sent.map((s: { symbol: string }) => s.symbol).sort()).toEqual([
     "ETH",
     "NVDA",
     "USDC",
   ]);
+  // Tokens are minted (the faucet holds no reserve): the quote's fixed amount reached the wallet.
+  expect((await balance(carol, protocol.usdc)) - before).toBe(10_000n * 10n ** 6n);
   expect((await call(`/v1/faucet/status?owner=${carol}`, undefined, token)).claimed).toBe(true);
   await expect(call("/v1/faucet/claim", {}, token)).rejects.toThrow("409");
 }, 60_000);

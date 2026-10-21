@@ -163,6 +163,7 @@ export function mountAuthentication(
   const signIns = new RateLimiter(30, 60_000);
   const redemptions = new RateLimiter(10, 60_000);
   const walletRedemptions = new RateLimiter(10, 3_600_000);
+  const lookups = new RateLimiter(60, 60_000);
 
   const resolve = async (token: string, via: Session["via"]): Promise<Session> => {
     const tokenHash = hash(token);
@@ -386,6 +387,17 @@ export function mountAuthentication(
     c.header("Cache-Control", "no-store");
     const s = await session(c);
     return c.json(await view({ owner: s.owner, expiresAtMs: await renew(c, s) }));
+  });
+
+  /** Whether a wallet has joined: the app guides a wallet that has not through its first steps.
+   * Membership shows on chain once a wallet trades, so this reveals little. */
+  app.get("/v1/auth/known", async (c) => {
+    lookups.enforce(c, `known:${clientIp(c, trustedHops)}`);
+    c.header("Cache-Control", "no-store");
+    const wallet = c.req.query("wallet");
+    if (!wallet || !isAddress(wallet))
+      throw new HTTPException(400, { message: "Invalid wallet address" });
+    return c.json({ known: (await memberOf(getAddress(wallet))) !== null });
   });
 
   /** Whether this page's cookies reach the API: they do not from a page on another site, or in a
