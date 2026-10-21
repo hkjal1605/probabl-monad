@@ -2,6 +2,7 @@
 import { formatInviteCode } from "@conditional-stocks/shared/invites";
 import { KeyRound, WalletCards } from "lucide-react";
 import type { ReactNode } from "react";
+import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 import { useWallet } from "@/components/providers/WalletProvider";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/page";
@@ -23,6 +24,7 @@ export function useAccountStep(): {
   const wallet = useWallet();
   const login = useWalletLogin();
   const openInvite = useInviteDialog();
+  const onboarding = useOnboarding();
   const busy = wallet.restoring || wallet.status === "connecting" || wallet.status === "signing";
   switch (wallet.access) {
     case "member":
@@ -59,7 +61,8 @@ export function useAccountStep(): {
       return {
         kind: "invite",
         label: "Enter invite code",
-        action: openInvite,
+        // The setup guide opens at its sign-in step, which takes the code (testnets).
+        action: onboarding.enabled ? onboarding.show : openInvite,
         disabled: busy,
         busy,
       };

@@ -38,6 +38,8 @@ const OnboardingDialog = dynamic(
 );
 
 export interface OnboardingValue {
+  /** The guide runs on this deployment (testnets). */
+  enabled: boolean;
   /** The connected wallet's next step, or null without a wallet (or before its network is
    * known). Only on testnets. */
   step: OnboardingStep | null;
@@ -214,6 +216,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<OnboardingValue>(
     () => ({
+      enabled: ENABLED,
       step,
       faucet: status,
       claim: claimed,
