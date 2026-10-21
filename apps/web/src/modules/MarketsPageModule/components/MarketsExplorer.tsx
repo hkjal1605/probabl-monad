@@ -117,31 +117,35 @@ export function MarketsExplorer({
     >
       <section
         aria-label="Market filters"
-        className="mb-4 flex min-h-8 shrink-0 items-center gap-4 overflow-x-auto"
+        className="mb-4 flex min-h-8 shrink-0 items-center gap-4"
       >
-        <Segmented
-          label="Market category"
-          variant="category"
-          className="shrink-0"
-          value={category}
-          options={tabs}
-          renderOption={(tab) =>
-            tab === CALENDAR_TAB ? (
-              <span className="inline-flex items-center gap-1.5">
-                <CalendarDays aria-hidden="true" className="size-3.5" />
-                {tab}
-              </span>
-            ) : (
-              tab
-            )
-          }
-          onChange={(nextCategory) => {
-            setCategory(nextCategory);
-            setFilters({ category: nextCategory });
-            const nextPath = marketTabPath(nextCategory);
-            if (window.location.pathname !== nextPath) window.history.pushState(null, "", nextPath);
-          }}
-        />
+        {/* The tabs scroll on their own, so the view controls stay in reach. */}
+        <div className="-mb-2 min-w-0 flex-1 overflow-x-auto pb-2 [scrollbar-width:none]">
+          <Segmented
+            label="Market category"
+            variant="category"
+            className="shrink-0"
+            value={category}
+            options={tabs}
+            renderOption={(tab) =>
+              tab === CALENDAR_TAB ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <CalendarDays aria-hidden="true" className="size-3.5" />
+                  {tab}
+                </span>
+              ) : (
+                tab
+              )
+            }
+            onChange={(nextCategory) => {
+              setCategory(nextCategory);
+              setFilters({ category: nextCategory });
+              const nextPath = marketTabPath(nextCategory);
+              if (window.location.pathname !== nextPath)
+                window.history.pushState(null, "", nextPath);
+            }}
+          />
+        </div>
         <div className={cn("ml-auto flex shrink-0 items-center gap-1", calendar && "hidden")}>
           <Select
             value={filters.lifecycle}

@@ -50,6 +50,10 @@ const SERIES_TITLES: Record<string, string> = {
 const amount = (digits: string) =>
   Number(digits.replace(/,/g, "")).toLocaleString("en-US", { maximumFractionDigits: 2 });
 
+/** A ladder's title from one strike's question: without its "…: $83,500 or above?" level. */
+const ladderTitle = (question: string) =>
+  /^(.+?):\s*\$[\d,.]+\s*or\s*(above|below)\??$/i.exec(question)?.[1] ?? question;
+
 /** A ladder strike's level, as a compact label. */
 export function strikeLabel(question: string): string | null {
   let match = /\$([\d,]+(?:\.\d+)?)\s*or\s*(above|below)/i.exec(question);
@@ -59,7 +63,10 @@ export function strikeLabel(question: string): string | null {
   match = /\bdip to\s+\$?([\d,]+(?:\.\d+)?)/i.exec(question);
   if (match?.[1]) return `↓ $${amount(match[1])}`;
   match = /\b(above|below)\s+\$?([\d,]+(?:\.\d+)?)/i.exec(question);
-  if (match?.[2]) return `${match[1]?.toLowerCase() === "above" ? ">" : "<"} $${amount(match[2])}`;
+  // Index levels are points, not dollars.
+  const unit = /\$|\bUSD\b/.test(question) ? "$" : "";
+  if (match?.[2])
+    return `${match[1]?.toLowerCase() === "above" ? ">" : "<"} ${unit}${amount(match[2])}`;
   return null;
 }
 
@@ -114,7 +121,7 @@ export function calendarEvents(markets: readonly MarketView[]): CalendarEvent[] 
         closesAt: Math.min(...all.map((m) => Date.parse(m.cutoff))),
         title:
           groups.length > 1 || (ladder && first.mapping.source === "kalshi")
-            ? ((series && SERIES_TITLES[series]) ?? first.question.split(":")[0] ?? first.question)
+            ? ((series && SERIES_TITLES[series]) ?? ladderTitle(first.question))
             : first.question,
         topic: marketTopic(first),
         kind: cadence ?? (ladder ? "level" : "event"),

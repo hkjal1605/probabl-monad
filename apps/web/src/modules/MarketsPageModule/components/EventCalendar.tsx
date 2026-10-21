@@ -161,6 +161,14 @@ const StockChip = memo(function StockChip({ market }: { market: MarketView }) {
   );
 });
 
+/** Each stock the event moves once (a ladder repeats it per strike), from its first strike. */
+function firstPerStock(event: CalendarEvent): MarketView[] {
+  const first = new Map<string, MarketView>();
+  for (const market of event.strikes.flatMap((strike) => strike.markets))
+    if (!first.has(market.ticker)) first.set(market.ticker, market);
+  return [...first.values()];
+}
+
 /** A strike's live probability, as text. */
 function StrikeOdds({ market }: { market: MarketView }) {
   const { probability } = useProbabilityStream(market.mapping.conditionId, market.probability);
@@ -502,8 +510,7 @@ function NextUp({ events, now }: { events: CalendarEvent[]; now: number }) {
                 </div>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {event.strikes
-                  .flatMap((s) => s.markets)
+                {firstPerStock(event)
                   .slice(0, 4)
                   .map((market) => (
                     <StockChip key={market.id} market={market} />

@@ -24,7 +24,7 @@ function EventCardView({ markets }: { markets: MarketView[] }) {
   return (
     <Card variant="market" className="min-w-0">
       <CardHeader className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
-        <Avatar className="aspect-square h-full min-h-12 w-auto self-stretch rounded-xl after:rounded-xl">
+        <Avatar className="size-12 self-start rounded-xl after:rounded-xl">
           {market.imageUrl && (
             <AvatarLazyImage
               src={market.imageUrl}
