@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { OnboardingProvider } from "@/components/onboarding/OnboardingProvider";
 import { Toaster } from "@/components/ui/toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { WalletLoginProvider } from "@/components/wallet/WalletLoginProvider";
@@ -15,9 +16,11 @@ export function AppProviders({ children }: { children: ReactNode }) {
       <WalletProvider>
         <TooltipProvider delay={250}>
           <WalletLoginProvider>
-            <IndexStreamProvider>
-              <UiStateProvider>{children}</UiStateProvider>
-            </IndexStreamProvider>
+            <OnboardingProvider>
+              <IndexStreamProvider>
+                <UiStateProvider>{children}</UiStateProvider>
+              </IndexStreamProvider>
+            </OnboardingProvider>
           </WalletLoginProvider>
           <Toaster />
         </TooltipProvider>

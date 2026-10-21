@@ -2,9 +2,9 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import type { ReactNode } from "react";
 import "@/styles/global.css";
-import { DevnetFaucetBanner } from "@/components/faucet/DevnetFaucetBanner";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
+import { TestnetBanner } from "@/components/onboarding/TestnetBanner";
 import { AppProviders } from "@/components/providers/AppProviders";
 import { API_URL } from "@/services/constants";
 
@@ -48,7 +48,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
       <body className="flex min-h-dvh flex-col text-sm">
         <AppProviders>
           <SiteHeader />
-          <DevnetFaucetBanner />
+          <TestnetBanner />
           {children}
           <SiteFooter />
         </AppProviders>

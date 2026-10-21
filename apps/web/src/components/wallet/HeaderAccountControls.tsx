@@ -35,7 +35,11 @@ export function HeaderAccountControls() {
           disabled={step.disabled}
           onClick={step.action}
         >
-          {wallet.access === "invite-required" ? "Join with invite" : "Sign in"}
+          {step.kind === "invite"
+            ? "Join with invite"
+            : step.kind === "network"
+              ? "Switch network"
+              : "Sign in"}
         </Button>
         <WalletButton />
       </div>
