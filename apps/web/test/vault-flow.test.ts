@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { approve, deposit, withdraw } from "@conditional-stocks/evm-client";
+import { maxUint256 } from "viem";
 import { protocolConfig } from "../src/config/protocol";
 import { vaultAmount, verifiedVaultTransactions } from "../src/lib/trading/vault";
 import type { WholeBalanceView } from "../src/types/api";
@@ -25,17 +26,23 @@ test("only positive uint96-precision vault amounts are accepted", () => {
 
 test("deposits sign only the locally built approval and deposit", () => {
   const b = balance(1_000n, 500n);
-  const both = { transactions: [approve(token, exchange, 600n), deposit(exchange, token, 600n)] };
-  expect(
-    verifiedVaultTransactions({
-      action: "deposit",
-      owner,
-      token,
-      amount: 600n,
-      balance: b,
-      quote: both,
-    }),
-  ).toEqual(both.transactions);
+  // A token's first deposit approves the exchange without limit; an exact approval (an older
+  // API) is accepted too.
+  for (const allowance of [maxUint256, 600n]) {
+    const both = {
+      transactions: [approve(token, exchange, allowance), deposit(exchange, token, 600n)],
+    };
+    expect(
+      verifiedVaultTransactions({
+        action: "deposit",
+        owner,
+        token,
+        amount: 600n,
+        balance: b,
+        quote: both,
+      }),
+    ).toEqual(both.transactions);
+  }
   const only = { transactions: [deposit(exchange, token, 600n)] };
   expect(
     verifiedVaultTransactions({
@@ -51,6 +58,9 @@ test("deposits sign only the locally built approval and deposit", () => {
   for (const transactions of [
     [deposit(exchange, token, 599n)],
     [approve(token, owner, 600n), deposit(exchange, token, 600n)],
+    [approve(token, owner, maxUint256), deposit(exchange, token, 600n)],
+    [approve(token, exchange, 599n), deposit(exchange, token, 600n)],
+    [approve(exchange, exchange, maxUint256), deposit(exchange, token, 600n)],
     [approve(token, exchange, 600n), withdraw(exchange, token, 600n, owner)],
   ])
     expect(() =>

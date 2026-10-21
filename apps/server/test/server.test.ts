@@ -478,6 +478,13 @@ test("custody, owner-signed and delegated trading", async () => {
     expect(transactions).toHaveLength(2);
     for (const envelope of transactions) await send(index, envelope);
   }
+  // The first deposit approved the exchange without limit: the next one is a single transaction.
+  const again = await call(
+    "/v1/vault/deposit/prepare",
+    { asset: usdc, amount: (10n ** 6n).toString() },
+    aliceToken,
+  );
+  expect(again.transactions).toHaveLength(1);
   await settle(
     async () =>
       (await call(`/balances/${bob}?token=${stock}`, undefined, bobToken)).vaultAvailable ===
