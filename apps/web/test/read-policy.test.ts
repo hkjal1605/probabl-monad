@@ -36,7 +36,13 @@ test("background errors preserve known display data but immediately block stale-
   expect(readFreshness({ ...state, isStreamed: true }, 99_000).isDataFresh).toBe(true);
   expect(freshnessExpiry(state)).toBe(31_000);
   expect(freshnessExpiry({ ...state, isStreamed: true })).toBeNull();
-  expect(freshnessExpiry({ ...state, data: { observedAt: 500 }, isStreamed: true })).toBe(30_500);
+  // Nor does its source's observation time: a wallet read 10 minutes ago that no frame has named
+  // since is still current (the stream rereads it when it changes). Only unstreamed data ages.
+  expect(freshnessExpiry({ ...state, data: { observedAt: 500 }, isStreamed: true })).toBeNull();
+  expect(
+    readFreshness({ ...state, data: { observedAt: 500 }, isStreamed: true }, 600_000).isDataFresh,
+  ).toBe(true);
+  expect(freshnessExpiry({ ...state, data: { observedAt: 500 } })).toBe(30_500);
   expect(freshnessExpiry({ ...state, data: undefined })).toBeNull();
   expect(readFreshness({ ...state, failureCount: 1 }, 1500).isDataFresh).toBe(false);
   expect(readFreshness(state, 31_001).isDataFresh).toBe(false);

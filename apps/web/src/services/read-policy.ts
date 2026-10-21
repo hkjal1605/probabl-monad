@@ -22,7 +22,10 @@ export function readFreshness(query: ReadState, now = Date.now(), maxAgeMs = 30_
     query.data && typeof query.data === "object" && "observedAt" in query.data
       ? query.data.observedAt
       : undefined;
+  // Neither the read's time nor its source's observation ages data the healthy index stream keeps
+  // current: it is not read again while nothing changed (a frame naming it rereads it).
   const sourceExpired =
+    !query.isStreamed &&
     observedAt !== undefined &&
     (typeof observedAt !== "number" ||
       !Number.isSafeInteger(observedAt) ||
@@ -51,7 +54,7 @@ export function freshnessExpiry(query: ReadState, maxAgeMs = 30_000): number | n
       ? query.data.observedAt
       : undefined;
   const times = [
-    typeof observedAt === "number" ? observedAt + maxAgeMs : null,
+    typeof observedAt === "number" && !query.isStreamed ? observedAt + maxAgeMs : null,
     query.isStreamed || query.dataUpdatedAt <= 0 ? null : query.dataUpdatedAt + maxAgeMs,
   ].filter((t): t is number => t !== null);
   return times.length ? Math.min(...times) : null;
