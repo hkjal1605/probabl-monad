@@ -1,8 +1,11 @@
-import { expect, test } from "bun:test";
+import { beforeEach, expect, test } from "bun:test";
 import { parsePriceRawX18, parseShareAmount } from "@conditional-stocks/domain";
 import { groupMarkets, sortEventGroups } from "../src/lib/markets/presentation";
-import { aggregateBook, marketsApi } from "../src/services/markets-api-service";
+import { aggregateBook, forgetEvents, marketsApi } from "../src/services/markets-api-service";
 import { fixtureMarkets } from "./fixtures/protocol";
+
+// Each test reads its own event data; the app keeps events between list reads.
+beforeEach(forgetEvents);
 
 /** A market exactly as the indexer serves it (`marketView`). */
 const indexed = (m = fixtureMarkets[0]!, patch: Record<string, unknown> = {}) => ({

@@ -140,6 +140,12 @@ export function LightweightPriceChart({
     formatValue ?? ((value: number) => `${formatNumber(value)}${valueSuffix === "%" ? "%" : ""}`);
   const formatRef = useRef(format);
   formatRef.current = format;
+  const ticksRef = useRef(formatTicks);
+  ticksRef.current = formatTicks;
+  // The axis labels always go through the refs: the chart merges options and keeps an omitted
+  // formatter, so leaving one out would keep the last mode's labels (dollars in Impact %).
+  const tickLabels = (values: number[]) =>
+    ticksRef.current ? ticksRef.current(values) : values.map((value) => formatRef.current(value));
   const banner = variant === "banner";
 
   // Built once per look and theme. Formats and margins change through `applyOptions` below, so
@@ -172,7 +178,10 @@ export function LightweightPriceChart({
         fontFamily: getComputedStyle(element).fontFamily,
         textColor: muted,
       },
-      localization: { priceFormatter: (value: number) => formatRef.current(value) },
+      localization: {
+        priceFormatter: (value: number) => formatRef.current(value),
+        tickmarksPriceFormatter: tickLabels,
+      },
       rightPriceScale: { borderVisible: false },
       timeScale: {
         borderVisible: false,
@@ -214,7 +223,7 @@ export function LightweightPriceChart({
     chartRef.current?.applyOptions({
       localization: {
         priceFormatter: (value: number) => formatRef.current(value),
-        ...(formatTicks ? { tickmarksPriceFormatter: formatTicks } : {}),
+        tickmarksPriceFormatter: tickLabels,
       },
       rightPriceScale: { scaleMargins: priceScaleMargins(banner, compactScale) },
     });

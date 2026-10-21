@@ -199,6 +199,19 @@ export function aggregateBook(
 
 /** Markets per `/v1/events` read (the API's limit). */
 const EVENT_BATCH_SIZE = 50;
+/** Events (a market's off-chain metadata and its latest probability) as last read, by market.
+ * Chain frames cannot change them and probability has its own stream, so a list refreshed by a
+ * frame reuses one read within a minute. A failed read falls back on one up to 30 minutes old
+ * rather than leaving markets without their question, art and rules. */
+const EVENT_FRESH_MS = 60_000;
+const EVENT_KEPT_MS = 30 * 60_000;
+const eventCache = new Map<string, { event: Record<string, unknown>; at: number }>();
+/** Forgets the kept events (tests that reuse market ids with other event data). */
+export const forgetEvents = () => eventCache.clear();
+/** Whether a read could not get every event it needed (the caller reads again later). */
+export interface MarketsReadReport {
+  eventsFailed: boolean;
+}
 type Book = { orders: Record<string, unknown>[]; truncated?: boolean; unavailable?: boolean };
 const UNAVAILABLE_BOOK: Book = { orders: [], unavailable: true, truncated: false };
 
@@ -206,15 +219,49 @@ const UNAVAILABLE_BOOK: Book = { orders: [], unavailable: true, truncated: false
  * read costs three requests: the markets, all their books, and their events in batches of 50
  * (one market per event: sibling markets share their event). A single market's three reads start
  * together, as the indexer and the API resolve the segment themselves. */
-async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<MarketView[]> {
+async function liveMarkets(
+  marketId?: string,
+  signal?: AbortSignal,
+  report?: MarketsReadReport,
+): Promise<MarketView[]> {
   const json = <T>(url: string): Promise<T> =>
     requestJson<T>(new URL(url).pathname + new URL(url).search, signal ? { signal } : {});
-  const events = (ids: string[]) =>
-    json<{ events: Record<string, unknown> }>(
-      `${upstreamUrl("api")}/v1/events?markets=${ids.map(encodeURIComponent).join(",")}`,
-    )
-      .then((response) => record(response.events))
-      .catch(() => ({}) as Record<string, unknown>);
+  /** The events of `ids`: kept ones within a minute, the rest read in batches of 50 (each batch
+   * tried twice). An entry the API could not produce, or a batch that failed, keeps the last
+   * good event and is reported so the list is read again. */
+  const events = async (ids: string[]): Promise<Record<string, unknown>> => {
+    const now = Date.now();
+    const due = ids.filter((id) => (eventCache.get(id)?.at ?? 0) <= now - EVENT_FRESH_MS);
+    const read = (batch: string[]) =>
+      json<{ events: Record<string, unknown> }>(
+        `${upstreamUrl("api")}/v1/events?markets=${batch.map(encodeURIComponent).join(",")}`,
+      ).then((response) => record(response.events));
+    await Promise.all(
+      Array.from({ length: Math.ceil(due.length / EVENT_BATCH_SIZE) }, async (_, i) => {
+        const batch = due.slice(i * EVENT_BATCH_SIZE, (i + 1) * EVENT_BATCH_SIZE);
+        const result = await read(batch)
+          .catch(async () => {
+            if (signal?.aborted) return null;
+            await new Promise((resolve) => setTimeout(resolve, 1_500));
+            return signal?.aborted ? null : read(batch);
+          })
+          .catch(() => null);
+        for (const id of batch) {
+          const event = result ? record(result[id]) : {};
+          if (result && Object.keys(event).length && !("error" in event))
+            eventCache.set(id, { event, at: Date.now() });
+          else if (report && !signal?.aborted) report.eventsFailed = true;
+        }
+      }),
+    );
+    const kept = Date.now() - EVENT_KEPT_MS;
+    return Object.fromEntries(
+      ids.flatMap((id) => {
+        const entry = eventCache.get(id);
+        return entry && entry.at > kept ? [[id, entry.event]] : [];
+      }),
+    );
+  };
   const singleEvent = marketId ? events([marketId]) : undefined;
   const singleBook = marketId
     ? json<Book>(
@@ -244,21 +291,14 @@ async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<Mar
     if (!representative.has(condition)) representative.set(condition, text(market.id));
   }
   const ids = [...representative.values()];
-  const reads: Promise<Record<string, unknown>>[] = singleEvent
-    ? [singleEvent.then((read) => ({ [ids[0] ?? ""]: read[marketId ?? ""] }))]
-    : Array.from({ length: Math.ceil(ids.length / EVENT_BATCH_SIZE) }, (_, i) =>
-        events(ids.slice(i * EVENT_BATCH_SIZE, (i + 1) * EVENT_BATCH_SIZE)),
-      );
+  const read: Promise<Record<string, unknown>> = singleEvent
+    ? singleEvent.then((found) => ({ [ids[0] ?? ""]: found[marketId ?? ""] }))
+    : events(ids);
   const attachments = new Map<string, Promise<Record<string, unknown>>>();
-  for (const [i, [condition, id]] of [...representative].entries())
+  for (const [condition, id] of representative)
     attachments.set(
       condition,
-      (
-        reads[Math.floor(i / EVENT_BATCH_SIZE)] ?? Promise.resolve<Record<string, unknown>>({})
-      ).then((read) => {
-        const event = record(read[id]);
-        return "error" in event ? {} : event;
-      }),
+      read.then((found) => record(found[id])),
     );
   const batch = await batchPromise;
   return Promise.all(

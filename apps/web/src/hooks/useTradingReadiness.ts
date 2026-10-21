@@ -6,6 +6,7 @@ import { api } from "@/services/protocol-api-service";
 import { readinessStore } from "@/stores/useReadinessStore";
 import type { MarketView } from "@/types/api";
 import { useReadFreshness } from "./useReadFreshness";
+import { useRerenderAt } from "./useRerenderAt";
 import { useResource } from "./useResource";
 
 export function useTradingReadiness(market: MarketView) {
@@ -17,6 +18,8 @@ export function useTradingReadiness(market: MarketView) {
     configured,
   );
   const freshness = useReadFreshness(query, 15_000);
+  // Opening and cutoff change the local status with no data changing.
+  useRerenderAt([Date.parse(market.tradingOpen), Date.parse(market.cutoff)]);
   const local = localTradingStatus(market);
   const ready =
     configured && freshness.isDataFresh && query.data?.healthy === true && local === "ready";

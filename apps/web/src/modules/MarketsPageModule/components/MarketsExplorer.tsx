@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/table";
 import { useMarkets } from "@/hooks/useProtocolData";
 import { formatNumber } from "@/lib/format/display";
+import { loadChunk } from "@/lib/load-chunk";
 import {
   CALENDAR_TAB,
   inMarketTab,
@@ -57,9 +58,12 @@ import { MarketsColumns } from "./MarketsColumns";
 import { MarketsPageSkeleton } from "./MarketsPageSkeleton";
 
 // The calendar's own code loads only when it is opened.
-const EventCalendar = dynamic(() => import("./EventCalendar").then((m) => m.EventCalendar), {
-  ssr: false,
-});
+const EventCalendar = dynamic(
+  () => loadChunk(() => import("./EventCalendar").then((m) => m.EventCalendar)),
+  {
+    ssr: false,
+  },
+);
 
 export function MarketsExplorer({
   markets: initial,

@@ -87,6 +87,11 @@ export const STREAMED_RESOURCES: ReadonlySet<string> = new Set([
   "resolution",
 ]);
 
+/** Streamed resources that still change without a frame naming them, and how often they are read
+ * anyway while the stream is healthy: a wallet's token balances outside the exchange move with
+ * transfers and mints the index never sees. */
+export const STREAM_BACKSTOP_MS: Readonly<Record<string, number>> = { positions: 30_000 };
+
 // The stream's health, as a store that notifies only when it flips (a frame extends it; it lapses
 // on its own when frames stop), so subscribers don't re-render per frame.
 let healthyUntil = 0,

@@ -43,6 +43,8 @@ export function retainBookDisplays(previous: unknown, next: { markets: MarketVie
         probability:
           !hasProbability(stable) && hasProbability(prior) ? prior.probability : stable.probability,
         question: metadataUnavailable ? prior.question : stable.question,
+        // The event's end time, series and result sort the market's tabs and calendar entry.
+        ...(metadataUnavailable && prior.event ? { event: prior.event } : {}),
       };
     }),
   };

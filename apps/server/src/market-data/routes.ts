@@ -19,6 +19,8 @@ import type { SpotPriceSource } from "./robinhood.ts";
 export const PROBABILITY_CACHE_TTL_SECONDS = 60;
 /** Markets per `/v1/events` read. */
 export const EVENT_BATCH_SIZE = 50;
+/** How long one market's event may take in a batch (the app gives the whole read 10 s). */
+const EVENT_DEADLINE_MS = 6_000;
 /** Conditions per shared probability stream: 50 keep its request line under 4 KB. */
 export const PROBABILITY_BATCH_SIZE = 50;
 
@@ -148,6 +150,7 @@ export function mountMarketData(
   // A market's event (Polymarket or Kalshi): its metadata and latest probability.
   const eventOf = async (id: string) => {
     const m = marketCondition(id);
+    const probability = probabilities.get(m.condition).catch(() => null);
     const metadata = await metadataReads.get(m.condition.toLowerCase(), () =>
       options.events().metadata(m.condition),
     );
@@ -164,7 +167,7 @@ export function mountMarketData(
       localMarketId: String(m.id),
       source: metadata.normalized.source,
       metadata,
-      probability: await probabilities.get(m.condition).catch(() => null),
+      probability: await probability,
       settlementAuthority: "manual-admin-only",
     };
   };
@@ -179,9 +182,16 @@ export function mountMarketData(
       throw new HTTPException(400, {
         message: `Supply 1-${EVENT_BATCH_SIZE} market ids in markets`,
       });
+    // A slow source answers for its own market only; the app keeps its last copy and reads it
+    // again later, rather than the whole batch outlasting its request.
     const events = await Promise.all(
       ids.map((id) =>
-        eventOf(id).catch((error: unknown) => ({
+        Promise.race([
+          eventOf(id),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Event read timed out")), EVENT_DEADLINE_MS),
+          ),
+        ]).catch((error: unknown) => ({
           error: error instanceof Error ? error.message : "Event unavailable",
         })),
       ),

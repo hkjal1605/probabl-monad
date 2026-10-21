@@ -11,6 +11,7 @@ import {
 } from "react";
 import { useWallet } from "@/components/providers/WalletProvider";
 import { protocolConfig } from "@/config/protocol";
+import { loadChunk } from "@/lib/load-chunk";
 import {
   type OnboardingProgress,
   type OnboardingStep,
@@ -33,7 +34,7 @@ import { refreshStores } from "@/stores/createResourceStore";
 
 // Loaded when a wallet first needs it, so the guide's art and steps stay out of every page.
 const OnboardingDialog = dynamic(
-  () => import("./OnboardingDialog").then((m) => m.OnboardingDialog),
+  () => loadChunk(() => import("./OnboardingDialog").then((m) => m.OnboardingDialog)),
   { ssr: false },
 );
 

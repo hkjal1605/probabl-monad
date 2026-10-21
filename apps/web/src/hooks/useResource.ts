@@ -5,6 +5,7 @@ import {
   indexHealthServerSnapshot,
   indexHealthSnapshot,
   indexStreamHealthy,
+  STREAM_BACKSTOP_MS,
   STREAMED_RESOURCES,
   subscribeIndexHealth,
 } from "@/services/index-stream";
@@ -39,8 +40,12 @@ export function useResource<T>(
         indexStreamHealthy() &&
         !current.error &&
         current.data !== undefined
-      )
+      ) {
+        const backstop = STREAM_BACKSTOP_MS[resource.name];
+        if (backstop !== undefined && Date.now() - current.updatedAt >= backstop)
+          void latest.current(true);
         return;
+      }
       const since = current.error ? (current.errorAt ?? 0) : current.updatedAt;
       if (Date.now() - since >= (current.error ? 30_000 : refreshMs)) void latest.current(true);
     }, 10_000);

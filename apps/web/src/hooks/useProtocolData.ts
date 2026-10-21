@@ -46,7 +46,8 @@ export function useMarkets(initial: MarketView[] = NO_MARKETS, marketId?: string
     );
     return current ? merged : merged.map((m) => ({ ...m, bookQuality: "unavailable" as const }));
   }, [rows, spot.data, spot.epoch, quotes.data, quotes.fresh, current]);
-  return { ...query, ...freshness, markets };
+  // Spot prices value stock tokens: until they arrive, totals that need them are still loading.
+  return { ...query, ...freshness, markets, spotPending: spot.isPending };
 }
 /** The member's own data: read only once its wallet signed in and joined. */
 export function useOrders() {

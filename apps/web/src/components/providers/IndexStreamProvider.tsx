@@ -15,6 +15,33 @@ import { useMemberAccount, useWallet } from "./WalletProvider";
 const OWN_STREAMS = ["spot-prices", "quote-prices", "probability"];
 /** The last block a frame reported, across reconnects: a reset at the same block missed nothing. */
 let lastBlock = -1n;
+/** How long the stream stays healthy without a frame. The server sends one at least every 5 s,
+ * but a heartbeat skipped right after a frame can leave a gap of nearly 10 s. */
+const HEALTHY_FOR_MS = 15_000;
+/** Whole lists ("all": every market or trade) are read again at most this often when frames
+ * name their items. Any market's activity names it, so busy markets would otherwise reread the
+ * whole list back to back. A single market's or wallet's read follows its frames at once. */
+const LIST_REFRESH_MS = 15_000;
+const listRefreshes = new Map<
+  string,
+  { at: number; timer?: ReturnType<typeof setTimeout> | undefined }
+>();
+function refreshList(id: string, refresh: () => Promise<unknown>) {
+  const last = listRefreshes.get(id) ?? { at: 0 };
+  listRefreshes.set(id, last);
+  if (last.timer) return; // A refresh is already due; it reads whatever changed by then.
+  const wait = last.at + LIST_REFRESH_MS - Date.now();
+  if (wait <= 0) {
+    last.at = Date.now();
+    void refresh();
+    return;
+  }
+  last.timer = setTimeout(() => {
+    last.timer = undefined;
+    last.at = Date.now();
+    void refresh();
+  }, wait);
+}
 
 const IndexStreamProvider = ({ children }: { children: ReactNode }) => {
   // A wallet's own updates ride its member session's cookie. A bearer session (an API on another
@@ -61,7 +88,7 @@ const IndexStreamProvider = ({ children }: { children: ReactNode }) => {
         block = at;
         lastBlock = at;
         failures.current = 0;
-        setIndexStreamHealthy(Date.now() + 10_000);
+        setIndexStreamHealthy(Date.now() + HEALTHY_FOR_MS);
         for (const [name, resource] of resources) {
           if (OWN_STREAMS.includes(name)) continue;
           for (const [key, active] of resource.active) {
@@ -77,16 +104,20 @@ const IndexStreamProvider = ({ children }: { children: ReactNode }) => {
               if (next) continue;
             }
             const entry = resource.get(key);
-            const changed =
-              (missed &&
-                !resource.pending.has(key) &&
-                (!first || entry.updatedAt < openedAt - 5_000)) ||
+            // A read still running when a reset reports a new block may predate it: it reads
+            // again when done. A finished one is skipped only on the first connection, right
+            // after the page read it.
+            const missedRead =
+              missed && (resource.pending.has(key) || !first || entry.updatedAt < openedAt - 5_000);
+            const named =
               (name === "markets" && update.markets.some((m) => key === "all" || key === m)) ||
               (["trades", "resolution"].includes(name) &&
                 (key === "all" ? update.markets.length > 0 : update.markets.includes(key))) ||
               (["wallet-orders", "wallet-trades", "payout-credits", "positions"].includes(name) &&
                 update.owners.includes(key));
-            if (changed) void active.refresh();
+            if (missedRead) void active.refresh();
+            else if (named && key === "all") refreshList(`${name}:all`, active.refresh);
+            else if (named) void active.refresh();
           }
         }
       } catch {
@@ -107,8 +138,10 @@ const IndexStreamProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       stopped = true;
       clearTimeout(retry);
+      // Closed only to reopen (a new wallet or a retry): the next stream's reset rereads what it
+      // missed, and health lapses by itself if none follows. Marking it unhealthy here would
+      // reread every resource on each account switch.
       stream.close();
-      setIndexStreamHealthy(0);
     };
   }, [account, attempt]);
   return children;

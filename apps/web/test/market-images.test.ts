@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { marketsApi } from "../src/services/markets-api-service";
+import { forgetEvents, marketsApi } from "../src/services/markets-api-service";
 import { fixtureMarkets } from "./fixtures/protocol";
 
 test("market reads include saved artwork, including legacy raw snapshots, without extra requests", async () => {
@@ -17,6 +17,8 @@ test("market reads include saved artwork, including legacy raw snapshots, withou
       [{ normalized: {}, rawPayload: { image: "javascript:alert(1)" } }, null],
       [{ normalized: {} }, null],
     ] as const) {
+      // Each case reads its own event data; the app keeps events between list reads.
+      forgetEvents();
       const paths: string[] = [];
       globalThis.fetch = (async (input: RequestInfo | URL) => {
         const url = new URL(input instanceof Request ? input.url : String(input));

@@ -10,14 +10,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useMarkets, useOrders } from "@/hooks/useProtocolData";
 import { useWalletAssets } from "@/hooks/useWalletAssets";
 import { formatCompactUsd } from "@/lib/format/display";
+import { loadChunk } from "@/lib/load-chunk";
 import { headerPortfolioSummary } from "@/lib/portfolio/summary";
 import { useAccountStep } from "./AccountGate";
 import { WalletButton } from "./WalletButton";
 
 // Loaded the first time it opens, so its form and vault code aren't in every page's bundle.
-const DepositDialog = dynamic(() => import("./DepositDialog").then((m) => m.DepositDialog), {
-  ssr: false,
-});
+const DepositDialog = dynamic(
+  () => loadChunk(() => import("./DepositDialog").then((m) => m.DepositDialog)),
+  {
+    ssr: false,
+  },
+);
 
 const formatHeaderUsd = (value: number) => (value === 0 ? "$0.00" : formatCompactUsd(value));
 
@@ -58,7 +62,7 @@ function MemberAccountControls() {
   const balancesFresh = assets.isDataFresh && !catalogue.isError;
   const valuationFresh = balancesFresh && orders.isDataFresh && orders.data?.openTruncated !== true;
   const balancesLoading = assets.isPending || catalogue.isPending;
-  const valuationLoading = balancesLoading || orders.isPending;
+  const valuationLoading = balancesLoading || orders.isPending || catalogue.spotPending;
   const summary = useMemo(
     () =>
       headerPortfolioSummary(catalogue.markets, assets.balances, assets.positions, orders.orders),
@@ -80,7 +84,7 @@ function MemberAccountControls() {
               <span className="text-sm font-medium tabular-nums text-positive">
                 {valuationFresh && summary.netPortfolioValue !== null
                   ? formatHeaderUsd(summary.netPortfolioValue)
-                  : "$0.00"}
+                  : "—"}
               </span>
             )}
           </Link>

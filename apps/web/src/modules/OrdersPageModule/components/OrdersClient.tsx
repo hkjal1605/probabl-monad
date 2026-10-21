@@ -23,6 +23,7 @@ import {
 import { Tabs } from "@/components/ui/tabs";
 import { AccountStepEmpty } from "@/components/wallet/AccountGate";
 import { useOrderRecovery } from "@/hooks/useOrderRecovery";
+import { useRerenderAt } from "@/hooks/useRerenderAt";
 import {
   displayPrice,
   formatNumber,
@@ -58,6 +59,10 @@ export function OrdersClient({
   const [view, setView] = useState<View>("Open orders"),
     [shown, setShown] = useState(PAGE);
   const marketsById = useMemo(() => new Map(markets.map((m) => [m.id, m])), [markets]);
+  // An open order's expiry turns its "Cancel" into "Release escrow" with no data changing.
+  useRerenderAt(
+    query.orders.filter((o) => o.status === "open").map((o) => Number(o.expiry) * 1000),
+  );
   const changeView = (next: View) => {
     setView(next);
     setShown(PAGE);
