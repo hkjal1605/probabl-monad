@@ -17,7 +17,7 @@ const FEED_CARDS = [0, 1, 2, 3, 4, 5] as const;
 const MATRIX_ROWS = [0, 1, 2, 3, 4, 5] as const;
 const COLUMN_EVENTS = [0, 1, 2, 3] as const;
 
-/** The banner's shape: the featured event card (two thirds) and the most traded list. */
+/** The banner's shape: the featured event card (two thirds) and the markets resolving soon. */
 function FeaturedBannerSkeleton() {
   return (
     <div className="mb-3 grid gap-3 lg:h-[28rem] lg:grid-cols-3" aria-hidden="true">
@@ -64,6 +64,7 @@ function FeaturedBannerSkeleton() {
             </div>
           </div>
         ))}
+        <Skeleton className="mt-auto h-9 w-full rounded-lg" />
       </Card>
     </div>
   );

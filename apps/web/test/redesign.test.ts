@@ -13,6 +13,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { decodeFunctionData } from "viem";
 import { OutcomePrice } from "../src/components/market/OutcomePrice";
+import { resolvingSoon } from "../src/lib/markets/calendar";
 import {
   CALENDAR_TAB,
   CATEGORY_TABS,
@@ -28,7 +29,7 @@ import {
   visibleTabs,
 } from "../src/lib/markets/categories";
 import { impactLine } from "../src/lib/markets/history";
-import { groupMarkets, impactPercent, midpoint, mostTraded } from "../src/lib/markets/presentation";
+import { groupMarkets, impactPercent, midpoint } from "../src/lib/markets/presentation";
 import { outcomeLabel, safeExternalUrl } from "../src/lib/markets/resolution";
 import { conditionalPositionRows } from "../src/lib/portfolio/positions";
 import {
@@ -89,24 +90,50 @@ describe("markets loading state", () => {
   });
 });
 describe("category featured markets", () => {
-  test("the most traded are the open markets with the most 24-hour volume, then book depth", () => {
-    const listed = (id: string, volume24h: number | null, depthUsd: number, lifecycle = "open") =>
+  test("resolving soon: the next three calendar entries still trading, each its most traded market", () => {
+    const now = Date.UTC(2026, 9, 22, 12);
+    const at = (hours: number) => new Date(now + hours * 3_600_000).toISOString();
+    const listed = (
+      id: string,
+      hours: number,
+      patch: Partial<MarketView> = {},
+      event: Partial<NonNullable<MarketView["event"]>> = {},
+    ) =>
       ({
         ...market,
         id,
-        volume24h,
-        lifecycle,
-        yes: { ...market.yes, depthUsd },
-        no: { ...market.no, depthUsd: 0 },
-      }) as typeof market;
-    const ranked = mostTraded([
-      listed("a", 0, 10),
-      listed("b", 500, 0),
-      listed("c", 0, 99),
-      listed("d", 9_999, 0, "resolved"),
-      listed("e", null, 50),
-    ]);
-    expect(ranked.map((m) => m.id)).toEqual(["b", "c", "e"]);
+        lifecycle: "open",
+        cutoff: at(hours - 0.5),
+        event: { endTime: at(hours), result: null, ...event },
+        mapping: { ...market.mapping, conditionId: `0x${id.padStart(64, "0")}` },
+        ...patch,
+      }) as MarketView;
+    // Two strikes of one Kalshi ladder fix together: one calendar entry, shown by its busier strike.
+    const ladder = (id: string, level: string, volume24h: number) =>
+      listed(
+        id,
+        2,
+        {
+          question: `Bitcoin price on Oct 22, 2026: $${level} or above?`,
+          volume24h,
+          mapping: {
+            ...market.mapping,
+            source: "kalshi",
+            conditionId: `0x${id.padStart(64, "0")}`,
+          },
+        },
+        { series: "KXBTCD", eventTicker: "KXBTCD-26OCT2217" },
+      );
+    const markets = [
+      listed("a1", 30),
+      ladder("b1", "84,500", 10),
+      ladder("b2", "85,250", 90),
+      listed("c1", 5),
+      listed("d1", -1),
+      listed("e1", 1, { lifecycle: "awaiting-resolution" }),
+      listed("f1", 50),
+    ];
+    expect(resolvingSoon(markets, now).map((m) => m.id)).toEqual(["b2", "c1", "a1"]);
   });
 
   test("topics, price ladders and their cadence come from the venue series and the question", () => {

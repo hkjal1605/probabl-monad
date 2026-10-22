@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, CalendarDays } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { LazyPriceChart } from "@/components/market/LazyPriceChart";
@@ -13,8 +13,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { usePriceHistory } from "@/hooks/useProtocolData";
-import { formatCompactUsd } from "@/lib/format/display";
-import { type MarketTab, marketTopic } from "@/lib/markets/categories";
+import { shortTime } from "@/lib/format/display";
+import { resolvingSoon } from "@/lib/markets/calendar";
+import { eventTime, type MarketTab, marketTopic } from "@/lib/markets/categories";
 import { priceLines } from "@/lib/markets/history";
 import { marketPath } from "@/lib/markets/identity";
 import {
@@ -23,7 +24,6 @@ import {
   eventKey,
   eventMonogram,
   midpoint,
-  mostTraded,
   spotImpactPercent,
 } from "@/lib/markets/presentation";
 import { cn } from "@/lib/utils";
@@ -272,7 +272,7 @@ function BuyPrice({ market, branch }: { market: MarketView; branch: "YES" | "NO"
   );
 }
 
-function TradedMarket({ market }: { market: MarketView }) {
+function ResolvingMarket({ market }: { market: MarketView }) {
   return (
     <li className="flex flex-col gap-2 max-md:w-[80%] max-md:shrink-0 max-md:snap-start max-md:justify-between max-md:rounded-xl max-md:bg-card max-md:p-3">
       <div className="flex items-start gap-3">
@@ -291,7 +291,7 @@ function TradedMarket({ market }: { market: MarketView }) {
             {market.question}
           </Link>
           <p className="mt-1 text-muted-foreground text-xs tabular-nums">
-            {market.ticker} · {formatCompactUsd(market.volume24h ?? 0)} vol
+            {market.ticker} · Resolves {shortTime(new Date(eventTime(market)).toISOString())}
           </p>
         </div>
       </div>
@@ -303,48 +303,60 @@ function TradedMarket({ market }: { market: MarketView }) {
   );
 }
 
-/** The markets traded most in the last 24 hours, whatever the category. */
-function MostTraded({ markets }: { markets: MarketView[] }) {
+/** The events resolving next, whatever the category (each as its most traded market), and the
+ * way to the full calendar. */
+function ResolvingSoon({
+  markets,
+  onViewCalendar,
+}: {
+  markets: MarketView[];
+  onViewCalendar: () => void;
+}) {
   return (
     <Card
       variant="market"
       className="flex min-w-0 flex-col p-4 max-md:overflow-visible max-md:rounded-none max-md:bg-transparent max-md:p-0 sm:p-5"
     >
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="font-semibold text-foreground text-lg tracking-tight">Most Traded</h2>
-        <span className="text-muted-foreground text-xs">Last 24 hours</span>
-      </div>
+      <h2 className="font-semibold text-foreground text-lg tracking-tight">Resolving soon</h2>
       {markets.length ? (
         // On a phone the markets are cards in a row that swipes sideways, the next one peeking in.
         <ul className="mt-4 flex min-h-0 flex-1 flex-col justify-between gap-4 max-md:-mx-4 max-md:mt-3 max-md:snap-x max-md:snap-mandatory max-md:scroll-px-4 max-md:flex-row max-md:justify-start max-md:gap-3 max-md:overflow-x-auto max-md:px-4 max-md:[scrollbar-width:none]">
           {markets.map((market) => (
-            <TradedMarket key={market.id} market={market} />
+            <ResolvingMarket key={market.id} market={market} />
           ))}
         </ul>
       ) : (
         <p className="m-auto py-10 text-center text-muted-foreground text-sm">
-          No market is trading yet.
+          No market resolves soon.
         </p>
       )}
+      <Button variant="outline" className="mt-4 w-full max-md:mt-3" onClick={onViewCalendar}>
+        <CalendarDays data-icon="inline-start" />
+        View Calendar
+      </Button>
     </Card>
   );
 }
 
 /** The top of the markets page, on the market grid's columns and gaps: the selected category's
- * leading event with its price chart across two columns, and the most traded markets in the
+ * leading event with its price chart across two columns, and the events resolving next in the
  * third, lined up with the cards below. */
 export function HomeBanner({
   featured,
   category,
   markets,
+  onViewCalendar,
 }: {
   /** The first event of the selected category (its markets), if any. */
   featured: MarketView[] | undefined;
   category: MarketTab;
-  /** Every listed market: the most traded do not depend on the category. */
+  /** Every listed market: what resolves next does not depend on the category. */
   markets: MarketView[];
+  /** Opens the calendar, as its category tab does. */
+  onViewCalendar: () => void;
 }) {
-  const traded = useMemo(() => mostTraded(markets), [markets]);
+  // Read when the markets change, not on a clock: the list refreshes, and so does this.
+  const resolving = useMemo(() => resolvingSoon(markets, Date.now()), [markets]);
   const event = featured?.[0];
   return (
     <section aria-label="Featured markets" className="mb-3 grid gap-3 lg:h-[28rem] lg:grid-cols-3">
@@ -358,7 +370,7 @@ export function HomeBanner({
           <p className="text-muted-foreground text-sm">No {category} markets are listed yet.</p>
         </Card>
       )}
-      <MostTraded markets={traded} />
+      <ResolvingSoon markets={resolving} onViewCalendar={onViewCalendar} />
     </section>
   );
 }

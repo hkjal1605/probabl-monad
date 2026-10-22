@@ -1,7 +1,7 @@
 import type { EventSource } from "@conditional-stocks/market-data";
 import type { MarketView } from "@/types/api";
 import { eventTime, isPriceLadder, ladderCadence, marketTopic, type Topic } from "./categories";
-import { eventKey } from "./presentation";
+import { byTrading, eventKey } from "./presentation";
 
 /** One strike of an event (a single venue question) and the stock markets conditioned on it. */
 export interface CalendarStrike {
@@ -135,6 +135,16 @@ export function calendarEvents(markets: readonly MarketView[]): CalendarEvent[] 
       };
     })
     .sort((a, b) => a.at - b.at || a.title.localeCompare(b.title));
+}
+
+/** The `count` calendar entries resolving next (still trading, their resolution ahead of `now`),
+ * each as its most traded market: a ladder's strikes count once, as the calendar lists them. */
+export function resolvingSoon(markets: readonly MarketView[], now: number, count = 3) {
+  return calendarEvents(markets.filter((market) => market.lifecycle === "open"))
+    .filter((event) => event.at > now)
+    .slice(0, count)
+    .map((event) => event.strikes.flatMap((strike) => strike.markets).sort(byTrading)[0])
+    .filter((market): market is MarketView => market !== undefined);
 }
 
 /** A local calendar day as `YYYY-MM-DD`. */

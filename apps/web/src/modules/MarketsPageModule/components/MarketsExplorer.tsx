@@ -121,6 +121,14 @@ export function MarketsExplorer({
       list.getBoundingClientRect().top + window.scrollY - bar.getBoundingClientRect().bottom;
     if (window.scrollY > top) window.scrollTo({ top });
   };
+  /** A category tab's action, which the banner's calendar button shares. */
+  const selectCategory = (nextCategory: MarketTab) => {
+    showFromStart();
+    setCategory(nextCategory);
+    setFilters({ category: nextCategory });
+    const nextPath = marketTabPath(nextCategory);
+    if (window.location.pathname !== nextPath) window.history.pushState(null, "", nextPath);
+  };
   // Recomputed only when the markets or the filters change, so the event groups (and the cards
   // they feed) keep their identity across unrelated renders.
   const { listed, visible, tokens, tabs } = useMemo(() => {
@@ -206,14 +214,7 @@ export function MarketsExplorer({
                 tab
               )
             }
-            onChange={(nextCategory) => {
-              showFromStart();
-              setCategory(nextCategory);
-              setFilters({ category: nextCategory });
-              const nextPath = marketTabPath(nextCategory);
-              if (window.location.pathname !== nextPath)
-                window.history.pushState(null, "", nextPath);
-            }}
+            onChange={selectCategory}
           />
         </div>
       </section>
@@ -225,8 +226,13 @@ export function MarketsExplorer({
           <MarketsPageSkeleton view={filters.view} />
         ) : (
           <>
-            {/* The selected category's first event leads; the most traded span every category. */}
-            <HomeBanner featured={visible[0]} category={category} markets={listed} />
+            {/* The selected category's first event leads; what resolves next spans every category. */}
+            <HomeBanner
+              featured={visible[0]}
+              category={category}
+              markets={listed}
+              onViewCalendar={() => selectCategory(CALENDAR_TAB)}
+            />
             <MarketsToolbar filters={filters} setFilters={setFilters} events={visible.length} />
             {query.isInitialError && (
               <DataError
