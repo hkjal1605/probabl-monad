@@ -13,6 +13,7 @@ import {
   httpsImageUrl,
   polymarketImageUrl,
 } from "@conditional-stocks/market-data";
+import { venueImageUrl } from "../lib/markets/venue-images";
 import { marketTokenDisplay } from "../lib/tokens/catalog";
 import type {
   BaseLiveView,
@@ -407,9 +408,10 @@ async function liveMarkets(
         },
         // The venue's artwork as normalized (Polymarket's image, Kalshi's market or series
         // image), else a Polymarket payload's own fields.
-        imageUrl:
+        imageUrl: venueImageUrl(
           httpsImageUrl(metadata.imageUrl) ??
-          polymarketImageUrl(record(attachedRecord.metadata).rawPayload),
+            polymarketImageUrl(record(attachedRecord.metadata).rawPayload),
+        ),
         quoteToken,
         residual: null,
         ticker: display.ticker,

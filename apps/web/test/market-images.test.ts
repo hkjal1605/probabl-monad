@@ -7,13 +7,20 @@ test("market reads include saved artwork, including legacy raw snapshots, withou
   const image = "https://polymarket-upload.s3.us-east-2.amazonaws.com/event.png";
   const kalshi = "https://assets.kalshi.com/series-images-webp/KXBTCD.webp";
   try {
+    // The venues' images load through this site's /media route (venue-images.ts).
+    const proxied = "/media/polymarket/event.png";
+    const other = "https://cdn.example.com/event.png";
     for (const [metadata, expected] of [
-      [{ normalized: { imageUrl: image } }, image],
+      [{ normalized: { imageUrl: image } }, proxied],
       // Kalshi's artwork comes normalized; its raw payload has no image fields of its own.
-      [{ normalized: { source: "kalshi", imageUrl: kalshi }, rawPayload: { market: {} } }, kalshi],
+      [
+        { normalized: { source: "kalshi", imageUrl: kalshi }, rawPayload: { market: {} } },
+        "/media/kalshi/series-images-webp/KXBTCD.webp",
+      ],
       [{ normalized: { imageUrl: "http://assets.kalshi.com/x.webp" } }, null],
-      [{ normalized: {}, rawPayload: { image } }, image],
-      [{ normalized: {}, rawPayload: { icon: image } }, image],
+      [{ normalized: { imageUrl: other } }, other],
+      [{ normalized: {}, rawPayload: { image } }, proxied],
+      [{ normalized: {}, rawPayload: { icon: image } }, proxied],
       [{ normalized: {}, rawPayload: { image: "javascript:alert(1)" } }, null],
       [{ normalized: {} }, null],
     ] as const) {

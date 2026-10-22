@@ -1,7 +1,8 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "probabl-ui",
-  "main": ".open-next/worker.js",
+  // The OpenNext app behind a small entry that serves venue images itself (worker.ts).
+  "main": "worker.ts",
   // Runs before every `wrangler deploy` (and so `opennextjs-cloudflare deploy`), whichever build
   // came first: OpenNext copies every monorepo .env value, backend secrets included, into the
   // Worker's environment module, and this empties it.

@@ -15,4 +15,5 @@ test("every Wrangler deploy empties OpenNext's copy of the .env files first", as
   expect(wrangler).toMatch(
     /"build":\s*\{\s*"command":\s*"bun scripts\/cloudflare-sanitize\.ts"\s*\}/,
   );
+  expect(wrangler).toMatch(/"main":\s*"worker\.ts"/);
 });
