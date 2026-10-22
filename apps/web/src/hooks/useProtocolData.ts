@@ -1,7 +1,6 @@
 "use client";
 import { useMemo } from "react";
 import { useMemberAccount } from "@/components/providers/WalletProvider";
-import { fetchTrades } from "@/modules/MarketDetailPageModule/utils/fetchTrades";
 import { fetchMarkets } from "@/modules/MarketsPageModule/utils/fetchMarkets";
 import { fetchPriceHistory } from "@/modules/MarketsPageModule/utils/fetchPriceHistory";
 import { fetchOrders } from "@/modules/OrdersPageModule/utils/fetchOrders";
@@ -14,7 +13,6 @@ import { marketsStore } from "@/stores/useMarketsStore";
 import { ordersStore } from "@/stores/useOrdersStore";
 import { positionsStore } from "@/stores/usePositionsStore";
 import { priceHistoryStore } from "@/stores/usePriceHistoryStore";
-import { tradesStore } from "@/stores/useTradesStore";
 import { walletTradesStore } from "@/stores/useWalletTradesStore";
 import type { MarketView } from "@/types/api";
 import { useQuotePrices } from "./useQuotePrices";
@@ -71,16 +69,6 @@ export function useWalletTrades() {
     key,
     (force) => fetchWalletTrades(key, force),
     !!account,
-  );
-  return { ...query, ...useReadFreshness(query), trades: query.data?.trades ?? NONE };
-}
-export function useTrades(marketId?: string) {
-  const key = marketId ?? "all";
-  const query = useResource(
-    tradesStore,
-    key,
-    (force) => fetchTrades(key, force),
-    marketId === undefined || !!marketId,
   );
   return { ...query, ...useReadFreshness(query), trades: query.data?.trades ?? NONE };
 }

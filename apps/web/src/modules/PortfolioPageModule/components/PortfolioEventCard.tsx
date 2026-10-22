@@ -43,9 +43,9 @@ export function PortfolioEventCard({
       </CardHeader>
       <CardContent className="min-w-0 overflow-x-auto px-2.5 pb-0">
         {view === "positions" ? (
-          <PositionTable markets={markets} softClose />
+          <PositionTable markets={markets} softClose showTitles={markets.length > 1} />
         ) : (
-          <ClaimTable markets={markets} />
+          <ClaimTable markets={markets} showTitles={markets.length > 1} />
         )}
       </CardContent>
     </Card>

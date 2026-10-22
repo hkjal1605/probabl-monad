@@ -1,15 +1,16 @@
 "use client";
-import Link from "next/link";
 import { useMemo, useState } from "react";
+import {
+  BranchToken,
+  EmptyCurrentGroup,
+  GROUP_BODY,
+  MarketGroupHeader,
+} from "@/components/portfolio/MarketGroup";
 import { useWallet } from "@/components/providers/WalletProvider";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
-import { LineTabsList, LineTabsTrigger } from "@/components/ui/line-tabs";
 import { DataError, EmptyState, LoadingState } from "@/components/ui/page";
-import { Progress } from "@/components/ui/progress";
 import { Segmented } from "@/components/ui/segmented";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -20,7 +21,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs } from "@/components/ui/tabs";
 import { AccountStepEmpty } from "@/components/wallet/AccountGate";
 import { useOrderRecovery } from "@/hooks/useOrderRecovery";
 import { useRerenderAt } from "@/hooks/useRerenderAt";
@@ -28,59 +28,81 @@ import {
   displayPrice,
   formatNumber,
   shareAmount,
-  shortAddress,
+  shortTime,
   tokenAmount,
 } from "@/lib/format/display";
-import { marketPath } from "@/lib/markets/identity";
+import { groupByMarket } from "@/lib/portfolio/positions";
 import { cn } from "@/lib/utils";
-import type { MarketView } from "@/types/api";
+import type { IndexedOrder, MarketView } from "@/types/api";
 
-const VIEWS = ["Open orders", "History", "All"] as const;
+const VIEWS = ["Open", "History", "All"] as const;
 type View = (typeof VIEWS)[number];
 /** Rows shown at first and added per "Show more": the list can hold 1,000 orders. */
 const PAGE = 50;
+/** Lifecycles whose open orders can only release their escrow. */
+const CLOSED = new Set(["frozen", "awaiting-resolution", "resolved", "redeemable", "archived"]);
+const placedAt = (order: IndexedOrder) => (order.createdAt ? Date.parse(order.createdAt) : 0);
 
+/** The member's orders grouped by market: `currentMarketId`'s (the market on screen) first, then
+ * the market with the latest order. Open orders by default; History holds the closed ones. */
 export function OrdersClient({
   markets,
-  marketIds,
+  currentMarketId,
   embedded = false,
-  plain = false,
-  fixedView,
 }: {
   markets: MarketView[];
-  marketIds?: string[];
+  currentMarketId?: string;
+  /** Inside a panel that already frames it (a market's tabs, the portfolio). */
   embedded?: boolean;
-  /** No container or count: line tabs for the status, as under a market's chart. */
-  plain?: boolean;
-  fixedView?: View;
 }) {
   const wallet = useWallet(),
     query = useOrderRecovery();
-  const [view, setView] = useState<View>("Open orders"),
+  const [view, setView] = useState<View>("Open"),
     [shown, setShown] = useState(PAGE);
   const marketsById = useMemo(() => new Map(markets.map((m) => [m.id, m])), [markets]);
   // An open order's expiry turns its "Cancel" into "Release escrow" with no data changing.
   useRerenderAt(
     query.orders.filter((o) => o.status === "open").map((o) => Number(o.expiry) * 1000),
   );
-  const changeView = (next: View) => {
-    setView(next);
-    setShown(PAGE);
-  };
   if (wallet.access !== "member" && wallet.access !== "suspended")
-    return <AccountStepEmpty>Connect to see canonical orders.</AccountStepEmpty>;
-  const selectedView = fixedView ?? view;
-  const scope = marketIds && new Set(marketIds);
-  const orders = query.orders.filter(
-    (o) =>
-      (!scope || scope.has(o.marketId)) &&
-      (selectedView === "All" ||
-        (selectedView === "Open orders" ? o.status === "open" : o.status !== "open")),
+    return <AccountStepEmpty>Connect to see your orders.</AccountStepEmpty>;
+  const openCount = query.orders.filter((o) => o.status === "open").length;
+  const orders = query.orders
+    .filter((o) => view === "All" || (view === "Open") === (o.status === "open"))
+    .sort((a, b) => placedAt(b) - placedAt(a));
+  const groups = groupByMarket(
+    orders.slice(0, shown),
+    (order) => marketsById.get(order.marketId),
+    currentMarketId,
+    (items) => Math.max(...items.map(placedAt)),
   );
-  const body = (
-    <>
+  const columns = view === "Open" ? 6 : 7;
+  const current = currentMarketId ? marketsById.get(currentMarketId) : undefined;
+  return (
+    <section aria-label="Orders" className={cn("min-w-0", !embedded && "rounded-xl border")}>
+      <div className="flex items-center gap-3 border-b px-3 py-2 sm:px-4">
+        <Segmented
+          label="Order status"
+          variant="timeframe"
+          value={view}
+          options={VIEWS}
+          onChange={(next) => {
+            setView(next);
+            setShown(PAGE);
+          }}
+          renderOption={(option) =>
+            option === "Open" && openCount > 0 ? (
+              <>
+                Open <span className="text-muted-foreground tabular-nums">{openCount}</span>
+              </>
+            ) : (
+              option
+            )
+          }
+        />
+      </div>
       {(query.data?.truncated || query.data?.openTruncated) && (
-        <p role="status" className="border-b px-3 py-2 text-xs font-medium text-warning">
+        <p role="status" className="border-b px-3 py-2 text-xs font-medium text-warning sm:px-4">
           {query.data.openTruncated
             ? "The open-order limit was reached. This list and reservation totals may be incomplete."
             : "Showing the most recent order history plus older open orders. Earlier closed orders are not included."}
@@ -95,139 +117,59 @@ export function OrdersClient({
         />
       ) : query.isPending ? (
         <LoadingState />
-      ) : !orders.length ? (
+      ) : !groups.length ? (
         <EmptyState>
-          {selectedView === "Open orders"
-            ? "No open orders. Your next opportunity is in Markets."
-            : "No closed orders yet."}
+          {view === "Open"
+            ? "No open orders. Limit orders rest here until they fill or you cancel them."
+            : "No past orders yet."}
         </EmptyState>
       ) : (
-        <Table>
-          <TableHeader>
+        <Table className="sm:min-w-[38rem]">
+          <TableHeader className="sticky top-0 z-10 bg-card">
             <TableRow>
-              {!embedded && <TableHead>Market</TableHead>}
-              <TableHead>Token / side</TableHead>
-              <TableHead>Limit</TableHead>
-              <TableHead>Filled / qty</TableHead>
-              <TableHead>TIF · Funding</TableHead>
-              <TableHead>Reserved</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead />
+              <TableHead className="pl-3 sm:pl-4">Order</TableHead>
+              <TableHead className="px-2 text-right sm:px-3">Price</TableHead>
+              <TableHead className="px-2 text-right sm:px-3">Filled</TableHead>
+              <TableHead className="hidden text-right sm:table-cell">
+                <InfoTooltip content="What the order holds until it fills or is cancelled: tokens, or claims for an order that sells or spends claims.">
+                  <span>Reserved</span>
+                </InfoTooltip>
+              </TableHead>
+              {view !== "Open" && <TableHead className="hidden sm:table-cell">Status</TableHead>}
+              <TableHead>
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
-            {orders.slice(0, shown).map((order) => {
-              const market = marketsById.get(order.marketId),
-                partial = BigInt(order.filled) > 0n && BigInt(order.remaining) > 0n;
-              const expired = BigInt(order.expiry) <= BigInt(Math.floor(Date.now() / 1000));
-              const closed = Boolean(
-                market &&
-                  ["frozen", "awaiting-resolution", "resolved", "redeemable", "archived"].includes(
-                    market.lifecycle,
-                  ),
-              );
-              return (
-                <TableRow key={order.id}>
-                  {!embedded && (
-                    <TableCell className="max-w-52 whitespace-normal">
-                      <Link
-                        href={market ? marketPath(market) : `/markets/${order.marketId}`}
-                        className="line-clamp-2 font-medium"
-                      >
-                        {market?.question ?? shortAddress(order.marketId)}
-                      </Link>
-                      <InfoTooltip content={order.id}>
-                        <code className="mt-1 block text-muted-foreground">
-                          {shortAddress(order.id)}
-                        </code>
-                      </InfoTooltip>
-                    </TableCell>
-                  )}
-                  <TableCell>
-                    <span
-                      className={cn(
-                        "font-semibold",
-                        order.branch === 0 ? "text-positive" : "text-danger",
-                      )}
-                    >
-                      {market?.ticker ?? "Stock"}-{order.branch === 0 ? "YES" : "NO"}
-                    </span>
-                    <p className="mt-1 text-muted-foreground">
-                      {order.side === 0 ? "Buy" : "Sell"}
-                    </p>
-                  </TableCell>
-                  <TableCell className="tabular-nums">
-                    {market ? formatNumber(displayPrice(order.limitPriceRawX18, market)) : "—"}
-                  </TableCell>
-                  <TableCell className="tabular-nums">
-                    {market
-                      ? `${formatNumber(shareAmount(order.filled, market), 3)} / ${formatNumber(shareAmount(order.quantity, market), 3)}`
-                      : "—"}
-                    <Progress
-                      className="mt-2"
-                      aria-label="Order filled"
-                      value={
-                        BigInt(order.quantity) > 0n
-                          ? Math.max(
-                              0,
-                              Math.min(
-                                100,
-                                Number((BigInt(order.filled) * 10000n) / BigInt(order.quantity)) /
-                                  100,
-                              ),
-                            )
-                          : 0
-                      }
-                    />
-                  </TableCell>
-                  <TableCell className="text-foreground">
-                    {order.tif === 0 ? "GTC" : "IOC"} ·{" "}
-                    {order.fundingKind === 0 ? "Whole" : "Active claim"}
-                  </TableCell>
-                  <TableCell className="tabular-nums">
-                    {market
-                      ? order.side === 0
-                        ? `${formatNumber(tokenAmount(order.reserved, market.quoteTokenDecimals), 4)} ${market.quoteTokenMetadata?.symbol ?? "USDC"}`
-                        : `${formatNumber(tokenAmount(order.reserved, market.base.decimals), 4)} ${market.ticker}`
-                      : "—"}
-                    {order.fundingKind === 1 && `-${order.branch === 0 ? "YES" : "NO"}`}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        partial ? "warning" : order.status === "open" ? "positive" : "secondary"
-                      }
-                    >
-                      {partial ? "Partially filled" : order.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className={embedded ? "text-right" : undefined}>
-                    {order.status === "open" && (
-                      <Button
-                        size="sm"
-                        variant={embedded ? "ghost" : "link"}
-                        className={cn(
-                          embedded &&
-                            "border-0 bg-danger-soft px-3 text-destructive hover:bg-danger-soft hover:text-destructive",
-                        )}
-                        disabled={query.canceling !== null || query.pending.has(order.id)}
-                        onClick={() =>
-                          query.cancel(order.id, expired ? "expired" : closed ? "closed" : "cancel")
-                        }
-                      >
-                        {query.canceling === order.id && <Spinner className="animate-spin" />}
-                        {query.pending.has(order.id)
-                          ? "Pending chain"
-                          : expired || closed
-                            ? "Release escrow"
-                            : "Cancel"}
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
+          {current && groups[0]?.market.id !== current.id && (
+            <EmptyCurrentGroup market={current} columns={columns}>
+              {view === "Open" ? "No open orders in this market." : "No orders in this market."}
+            </EmptyCurrentGroup>
+          )}
+          {groups.map(({ market, items }) => (
+            <TableBody
+              key={market.id}
+              className={GROUP_BODY}
+              aria-label={`${market.ticker}: ${market.question}`}
+            >
+              <MarketGroupHeader
+                market={market}
+                columns={columns}
+                current={market.id === currentMarketId}
+              />
+              {items.map((order) => (
+                <OrderRow
+                  key={order.id}
+                  order={order}
+                  market={market}
+                  showStatus={view !== "Open"}
+                  canceling={query.canceling}
+                  pending={query.pending.has(order.id)}
+                  cancel={query.cancel}
+                />
+              ))}
+            </TableBody>
+          ))}
         </Table>
       )}
       {orders.length > shown && (
@@ -237,51 +179,98 @@ export function OrdersClient({
           </Button>
         </div>
       )}
-    </>
+    </section>
   );
-  if (plain)
-    return (
-      <Tabs
-        value={selectedView}
-        onValueChange={(next) => {
-          const option = VIEWS.find((item) => item === next);
-          if (option) changeView(option);
-        }}
-        className="min-w-0 gap-0"
-        aria-label="Orders"
-      >
-        {!fixedView && (
-          <LineTabsList aria-label="Order status">
-            {VIEWS.map((option) => (
-              <LineTabsTrigger key={option} value={option}>
-                {option}
-              </LineTabsTrigger>
-            ))}
-          </LineTabsList>
-        )}
-        {body}
-      </Tabs>
-    );
+}
+
+function OrderRow({
+  order,
+  market,
+  showStatus,
+  canceling,
+  pending,
+  cancel,
+}: {
+  order: IndexedOrder;
+  market: MarketView;
+  showStatus: boolean;
+  canceling: string | null;
+  pending: boolean;
+  cancel: ReturnType<typeof useOrderRecovery>["cancel"];
+}) {
+  const filled = BigInt(order.filled),
+    quantity = BigInt(order.quantity);
+  const partial = filled > 0n && BigInt(order.remaining) > 0n;
+  const expired = BigInt(order.expiry) <= BigInt(Math.floor(Date.now() / 1000));
+  const closed = CLOSED.has(market.lifecycle);
+  const branch = order.branch === 0 ? "YES" : "NO";
+  const percent = quantity > 0n ? Number((filled * 10_000n) / quantity) / 100 : 0;
   return (
-    <Card
-      variant="panel"
-      className={embedded ? "min-w-0 data-[variant=panel]:bg-transparent" : "border"}
-      aria-label="Orders"
-    >
-      {!fixedView && (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b px-3 py-2">
-          <span className="text-xs font-medium text-muted-foreground">
-            {orders.length} {selectedView.toLowerCase()}
-          </span>
-          <Segmented
-            label="Order status"
-            value={selectedView}
-            options={VIEWS}
-            onChange={changeView}
+    <TableRow className="h-12">
+      <TableCell className="h-12 py-2 pr-2 pl-3 sm:pr-3 sm:pl-4">
+        <BranchToken
+          symbol={market.ticker}
+          branch={order.branch}
+          action={order.side === 0 ? "Buy" : "Sell"}
+        />
+        <p className="pl-2.5 text-xs text-muted-foreground">
+          {order.tif === 0 ? "Limit" : "IOC"}
+          {placedAt(order) > 0 && ` · ${shortTime(order.createdAt ?? "")}`}
+        </p>
+      </TableCell>
+      <TableCell className="h-12 px-2 py-2 text-right tabular-nums sm:px-3">
+        {formatNumber(displayPrice(order.limitPriceRawX18, market))}
+      </TableCell>
+      <TableCell className="h-12 px-2 py-2 text-right tabular-nums sm:px-3">
+        {formatNumber(shareAmount(order.filled, market), 2)}
+        <span className="text-muted-foreground">
+          {" / "}
+          {formatNumber(shareAmount(order.quantity, market), 2)}
+        </span>
+        <span
+          aria-hidden="true"
+          className="mt-1 ml-auto block h-0.5 w-16 overflow-hidden rounded-full bg-muted"
+        >
+          <span
+            className="block h-full rounded-full bg-foreground/60"
+            style={{ width: `${percent}%` }}
           />
-        </div>
+        </span>
+      </TableCell>
+      <TableCell className="hidden h-12 py-2 text-right tabular-nums sm:table-cell">
+        {order.status === "open" ? (
+          order.side === 0 ? (
+            `${formatNumber(tokenAmount(order.reserved, market.quoteTokenDecimals))} ${market.quoteTokenMetadata?.symbol ?? "USDC"}${order.fundingKind === 1 ? `-${branch}` : ""}`
+          ) : (
+            `${formatNumber(tokenAmount(order.reserved, market.base.decimals), 4)} ${market.ticker}${order.fundingKind === 1 ? `-${branch}` : ""}`
+          )
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )}
+      </TableCell>
+      {showStatus && (
+        <TableCell className="hidden h-12 py-2 sm:table-cell">
+          <Badge
+            variant={partial ? "warning" : order.status === "open" ? "positive" : "secondary"}
+            className="capitalize"
+          >
+            {partial ? "Partially filled" : order.status}
+          </Badge>
+        </TableCell>
       )}
-      {body}
-    </Card>
+      <TableCell className="h-12 py-2 pr-3 pl-2 text-right sm:pr-4 sm:pl-3">
+        {order.status === "open" && (
+          <Button
+            size="xs"
+            variant="outline"
+            disabled={canceling !== null || pending}
+            onClick={() => cancel(order.id, expired ? "expired" : closed ? "closed" : "cancel")}
+          >
+            {canceling === order.id && <Spinner className="animate-spin" />}
+            {pending ? "Pending chain" : expired || closed ? "Release escrow" : "Cancel"}
+          </Button>
+        )}
+      </TableCell>
+    </TableRow>
   );
 }

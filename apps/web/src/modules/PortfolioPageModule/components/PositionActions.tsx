@@ -196,16 +196,7 @@ export function PositionActions({
         }
       }}
     >
-      <DialogTrigger
-        render={
-          <Button
-            variant="ghost"
-            size="sm"
-            className="border-0 bg-primary/10 px-3 text-primary hover:bg-primary/10 hover:text-primary"
-            disabled={disabled}
-          />
-        }
-      >
+      <DialogTrigger render={<Button variant="outline" size="xs" disabled={disabled} />}>
         <Combine />
         {position.redeemable ? "Redeem" : "Manage"}
       </DialogTrigger>

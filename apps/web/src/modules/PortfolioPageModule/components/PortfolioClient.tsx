@@ -187,7 +187,7 @@ export function PortfolioClient({ markets: initial }: { markets: MarketView[] })
                   {eventCards(positionEvents, "positions", "No event positions yet.")}
                 </section>
               )}
-              {tab === "Orders" && <OrdersClient markets={markets} plain />}
+              {tab === "Orders" && <OrdersClient markets={markets} embedded />}
               {tab === "Claims" && (
                 <section aria-label="Claims" className="flex min-w-0 flex-col gap-5">
                   {eventCards(claimGroups, "claims", "No claims yet.")}

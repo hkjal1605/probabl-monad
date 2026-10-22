@@ -82,7 +82,6 @@ export const STREAMED_RESOURCES: ReadonlySet<string> = new Set([
   "markets",
   "wallet-orders",
   "wallet-trades",
-  "trades",
   "positions",
   "whole-balances",
   "trading-readiness",

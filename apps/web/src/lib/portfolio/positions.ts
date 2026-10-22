@@ -1,3 +1,5 @@
+import { tokenAmount } from "@/lib/format/display";
+import { midpoint } from "@/lib/markets/presentation";
 import type { IndexedOrder, MarketView, PositionView } from "@/types/api";
 
 export interface ConditionalPositionRow {
@@ -70,4 +72,69 @@ export function conditionalPositionRows(
       });
     });
   return [...rows(1), ...rows(0)].filter((row) => row.total > 0n);
+}
+
+/** Groups items by market: `firstId`'s market first (the one on screen), then by `rank` (largest
+ * first), then by question. Items keep their order within a group; unknown markets are left out. */
+export function groupByMarket<T>(
+  items: T[],
+  marketOf: (item: T) => MarketView | undefined,
+  firstId?: string,
+  rank: (items: T[]) => number = () => 0,
+) {
+  const groups = new Map<string, { market: MarketView; items: T[] }>();
+  for (const item of items) {
+    const market = marketOf(item);
+    if (!market) continue;
+    const group = groups.get(market.id);
+    if (group) group.items.push(item);
+    else groups.set(market.id, { market, items: [item] });
+  }
+  return [...groups.values()]
+    .map((group) => ({ ...group, rank: rank(group.items) }))
+    .sort(
+      (a, b) =>
+        Number(b.market.id === firstId) - Number(a.market.id === firstId) ||
+        b.rank - a.rank ||
+        a.market.question.localeCompare(b.market.question),
+    );
+}
+
+/** One market's position: its stock claims (YES, then NO) and its cash claims beside them. */
+export interface PositionGroup {
+  market: MarketView;
+  stock: ConditionalPositionRow[];
+  cash: ConditionalPositionRow[];
+  /** The stock claims at their book midpoints, approximate quote units (unmarked ones count 0). */
+  value: number;
+}
+
+/** A stock row's book midpoint per whole token. */
+export const rowMark = (row: ConditionalPositionRow) =>
+  row.kind === "stock" ? midpoint(row.branch === 0 ? row.market.yes : row.market.no) : null;
+
+/** Stock rows at their book midpoints (unmarked ones count 0). */
+const markedValue = (rows: ConditionalPositionRow[]) =>
+  rows.reduce(
+    (total, row) =>
+      row.kind === "stock"
+        ? total + tokenAmount(row.total.toString(), row.decimals) * (rowMark(row) ?? 0)
+        : total,
+    0,
+  );
+
+/** The rows grouped by market: `firstMarketId`'s first (the market on screen), then the largest
+ * by value at mark, then by question. */
+export function positionGroups(
+  rows: ConditionalPositionRow[],
+  firstMarketId?: string,
+): PositionGroup[] {
+  return groupByMarket(rows, (row) => row.market, firstMarketId, markedValue).map(
+    ({ market, items, rank }) => ({
+      market,
+      stock: items.filter((row) => row.kind === "stock"),
+      cash: items.filter((row) => row.kind === "quote"),
+      value: rank,
+    }),
+  );
 }

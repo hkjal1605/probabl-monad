@@ -6,6 +6,12 @@ import {
   formatTokenAmount,
 } from "@conditional-stocks/domain";
 import { useRouter } from "next/navigation";
+import {
+  BranchToken,
+  EmptyCurrentGroup,
+  GROUP_BODY,
+  MarketGroupHeader,
+} from "@/components/portfolio/MarketGroup";
 import { useUiStore } from "@/components/providers/UiStateProvider";
 import { useWallet } from "@/components/providers/WalletProvider";
 import { Button } from "@/components/ui/button";
@@ -20,11 +26,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useOrders, usePositions } from "@/hooks/useProtocolData";
-import { formatNumber, tokenAmount } from "@/lib/format/display";
+import { formatNumber, formatUsd, tokenAmount } from "@/lib/format/display";
 import { stepQuantity } from "@/lib/markets/base";
 import { marketPath } from "@/lib/markets/identity";
-import { midpoint } from "@/lib/markets/presentation";
-import { type ConditionalPositionRow, conditionalPositionRows } from "@/lib/portfolio/positions";
+import {
+  type ConditionalPositionRow,
+  conditionalPositionRows,
+  positionGroups,
+  rowMark,
+} from "@/lib/portfolio/positions";
 import type { MarketView } from "@/types/api";
 
 /** Close intent for a stock claim row: sell the held claims, step-aligned. */
@@ -40,20 +50,24 @@ export function closePrefill(row: ConditionalPositionRow) {
   };
 }
 
-/** Book midpoint per whole token. */
-const tokenMark = (row: ConditionalPositionRow) =>
-  midpoint(row.branch === 0 ? row.market.yes : row.market.no);
+const COLUMNS = 7;
+const signed = (value: number, format: (value: number) => string) =>
+  `${value > 0 ? "+" : value < 0 ? "−" : ""}${format(Math.abs(value))}`;
 
+/** The member's positions grouped by market: a header row per market (the market, linking to its
+ * page, and its cash claims beside it), then a row per stock claim. `currentMarketId`'s market, the one
+ * on screen, comes first and is marked; closing one of its claims fills the ticket beside it. */
 export function PositionTable({
   markets,
-  inline = false,
+  currentMarketId,
   softClose = false,
-  variant = "table",
+  showTitles = true,
 }: {
   markets: MarketView[];
-  inline?: boolean;
+  currentMarketId?: string;
   softClose?: boolean;
-  variant?: "table" | "portfolio";
+  /** Each market's question in its header row (a card already titled by it can leave it out). */
+  showTitles?: boolean;
 }) {
   const wallet = useWallet(),
     positions = usePositions(),
@@ -79,185 +93,197 @@ export function PositionTable({
       </EmptyState>
     );
   if (positions.isPending || orders.isPending) return <LoadingState />;
-  const rows = conditionalPositionRows(markets, positions.positions, orders.orders);
-  if (!rows.length) return <EmptyState>No conditional positions in this event yet.</EmptyState>;
-  if (variant === "portfolio")
+  const groups = positionGroups(
+    conditionalPositionRows(markets, positions.positions, orders.orders),
+    currentMarketId,
+  );
+  const current = markets.find((market) => market.id === currentMarketId);
+  if (!groups.length) {
     return (
-      <ul className="flex list-none flex-col gap-2" aria-label="Open positions">
-        {rows.map((row) => {
-          const { market, branch, kind, symbol, decimals, available, reserved, total } = row;
-          const mark = kind === "stock" ? tokenMark(row) : null;
-          return (
-            <li
-              className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-xl bg-card px-4 py-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(7rem,.6fr)_minmax(6rem,.45fr)_auto]"
-              key={row.key}
-            >
-              <div className="min-w-0">
-                <p
-                  className={`text-base font-medium ${branch === 0 ? "text-positive" : "text-danger"}`}
-                >
-                  {symbol}-{branch === 0 ? "YES" : "NO"}
-                </p>
-                <p className="mt-1 truncate text-sm font-medium text-muted-foreground">
-                  {market.question}
-                </p>
-              </div>
-              <div className="text-right sm:text-left">
-                <p className="text-base font-medium tabular-nums">
-                  {formatNumber(tokenAmount(total.toString(), decimals), 4)}
-                </p>
-                <p className="mt-1 text-sm font-normal text-muted-foreground">
-                  {reserved > 0n
-                    ? `${formatTokenAmount(reserved, decimals)} reserved`
-                    : "Available"}
-                </p>
-              </div>
-              <div className="hidden sm:block">
-                <p className="text-base font-medium tabular-nums">{formatNumber(mark)}</p>
-                <p className="mt-1 text-sm font-normal text-muted-foreground">Mark</p>
-              </div>
-              {kind === "stock" ? (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="col-start-2 row-start-2 justify-self-end bg-danger-soft px-3 text-destructive hover:bg-danger-soft hover:text-destructive sm:col-start-4 sm:row-start-1"
-                  disabled={
-                    available === 0n ||
-                    market.lifecycle !== "open" ||
-                    !positions.isDataFresh ||
-                    !orders.isDataFresh
-                  }
-                  onClick={() => {
-                    setPrefill(closePrefill(row));
-                    router.push(marketPath(market));
-                  }}
-                >
-                  Close
-                </Button>
-              ) : (
-                <span />
-              )}
-            </li>
-          );
-        })}
-      </ul>
+      <EmptyState>
+        {current
+          ? `No open positions. Buy ${current.ticker}-YES or ${current.ticker}-NO in the ticket to open one.`
+          : "No open positions yet."}
+      </EmptyState>
     );
+  }
+  const closable = positions.isDataFresh && orders.isDataFresh;
+  const close = (row: ConditionalPositionRow) => {
+    setPrefill(closePrefill(row));
+    if (row.market.id === currentMarketId)
+      document
+        .getElementById("trade-ticket")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    else router.push(marketPath(row.market));
+  };
   return (
-    <Table>
-      <TableHeader>
+    <Table className="sm:min-w-[38rem]">
+      <TableHeader className="sticky top-0 z-10 bg-card">
         <TableRow>
-          <TableHead>Token</TableHead>
-          <TableHead>Size incl. reserved</TableHead>
-          <TableHead>Avg entry</TableHead>
-          <TableHead>Mark</TableHead>
-          <TableHead>Mark-to-entry</TableHead>
-          <TableHead />
+          <TableHead className="pl-3 sm:pl-4">Position</TableHead>
+          <TableHead className="px-2 text-right sm:px-3">Size</TableHead>
+          <TableHead className="hidden text-right sm:table-cell">Value</TableHead>
+          <TableHead className="hidden text-right sm:table-cell">Avg entry</TableHead>
+          <TableHead className="hidden text-right sm:table-cell">Mark</TableHead>
+          <TableHead className="px-2 text-right sm:px-3">
+            <InfoTooltip content="Mark-to-entry on the claims bought in fills: their value at the book midpoint less what they cost.">
+              <span>PnL</span>
+            </InfoTooltip>
+          </TableHead>
+          <TableHead>
+            <span className="sr-only">Actions</span>
+          </TableHead>
         </TableRow>
       </TableHeader>
-      <TableBody>
-        {rows.map((row) => {
-          const { market, branch, kind, symbol, decimals, available, reserved, total } = row;
-          // The indexer prices claims bought in fills (cost / priced, the exchange's price format).
-          const entry =
-            row.priced > 0n
-              ? Number(formatPriceRawX18((row.cost * 10n ** 18n) / row.priced, market))
-              : null;
-          const mark = kind === "stock" ? tokenMark(row) : null;
-          const change = entry !== null && mark !== null ? (mark - entry) / entry : null;
-          return (
-            <TableRow key={row.key}>
-              <TableCell
-                className={`font-semibold ${branch === 0 ? "text-positive" : "text-danger"}`}
-              >
-                {symbol}-{branch === 0 ? "YES" : "NO"}
-              </TableCell>
-              <TableCell className="tabular-nums">
-                {formatNumber(tokenAmount(total.toString(), decimals), 4)}
-                {reserved > 0n && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {formatTokenAmount(reserved, decimals)} reserved
-                  </p>
-                )}
-              </TableCell>
-              <TableCell className="tabular-nums">
-                {entry !== null ? (
-                  <>
-                    <InfoTooltip content="Average price paid in your fills, after fees and maker rebates. Selling held claims keeps the average.">
-                      <span>{formatNumber(entry)}</span>
-                    </InfoTooltip>
-                    {row.priced < total && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        on {formatShareAmount(row.priced, market)} of{" "}
-                        {formatShareAmount(total, market)}
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <InfoTooltip
-                    content={
-                      kind === "quote"
-                        ? "Cash claims have no entry price."
-                        : "No fill priced these claims: they came from a split or a transfer."
-                    }
-                  >
-                    <span className="text-muted-foreground">—</span>
-                  </InfoTooltip>
-                )}
-              </TableCell>
-              <TableCell className="tabular-nums text-foreground">
-                {kind === "stock" ? (
-                  formatNumber(mark)
-                ) : (
-                  <InfoTooltip content="No direct quote-claim mark is available from the stock orderbook.">
-                    <span>—</span>
-                  </InfoTooltip>
-                )}
-              </TableCell>
-              <TableCell className="tabular-nums">
-                {change !== null && Number.isFinite(change) ? (
-                  <span className={change >= 0 ? "text-positive" : "text-danger"}>
-                    {change >= 0 ? "+" : "−"}
-                    {formatNumber(Math.abs(change) * 100, 2)}%
-                  </span>
-                ) : (
-                  <InfoTooltip content="Needs both an entry price and a mark.">
-                    <span className="text-muted-foreground">—</span>
-                  </InfoTooltip>
-                )}
-              </TableCell>
-              <TableCell className={softClose ? "text-right" : undefined}>
-                {kind === "stock" && (
-                  <Button
-                    size="sm"
-                    variant={softClose ? "ghost" : "outline"}
-                    className={
-                      softClose
-                        ? "border-0 bg-danger-soft px-3 text-destructive hover:bg-danger-soft hover:text-destructive"
-                        : undefined
-                    }
-                    disabled={
-                      available === 0n ||
-                      market.lifecycle !== "open" ||
-                      !positions.isDataFresh ||
-                      !orders.isDataFresh
-                    }
-                    onClick={() => {
-                      setPrefill(closePrefill(row));
-                      if (inline)
-                        document
-                          .getElementById("trade-ticket")
-                          ?.scrollIntoView({ behavior: "smooth", block: "center" });
-                      else router.push(marketPath(market));
-                    }}
-                  >
-                    Close
-                  </Button>
-                )}
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
+      {current && groups[0]?.market.id !== current.id && (
+        <EmptyCurrentGroup market={current} columns={COLUMNS}>
+          No position in this market.
+        </EmptyCurrentGroup>
+      )}
+      {groups.map((group) => (
+        <TableBody
+          key={group.market.id}
+          className={GROUP_BODY}
+          aria-label={`${group.market.ticker}: ${group.market.question}`}
+        >
+          <MarketGroupHeader
+            market={group.market}
+            columns={COLUMNS}
+            current={group.market.id === currentMarketId}
+            showTitle={showTitles}
+          >
+            {group.cash.length > 0 && <CashClaims rows={group.cash} />}
+          </MarketGroupHeader>
+          {group.stock.map((row) => (
+            <StockRow
+              key={row.key}
+              row={row}
+              softClose={softClose}
+              closable={closable}
+              onClose={() => close(row)}
+            />
+          ))}
+        </TableBody>
+      ))}
     </Table>
+  );
+}
+
+/** A market's cash (quote) claims, as compact amounts rather than rows of their own. */
+function CashClaims({ rows }: { rows: ConditionalPositionRow[] }) {
+  return (
+    <span className="flex shrink-0 items-center gap-1.5 text-xs font-normal">
+      <span className="hidden text-muted-foreground md:inline">Cash</span>
+      {rows.map((row) => {
+        const branch = row.branch === 0 ? "YES" : "NO";
+        const amount = formatNumber(tokenAmount(row.total.toString(), row.decimals));
+        return (
+          <InfoTooltip
+            key={row.key}
+            content={`${amount} ${row.symbol} paid out if the event resolves ${branch}. A YES and NO pair merges back into ${row.symbol} in the Claims tab.`}
+          >
+            <span className="inline-flex items-center gap-1 rounded-sm bg-background/70 px-1.5 py-0.5 tabular-nums">
+              <span className={row.branch === 0 ? "text-positive" : "text-danger"}>
+                {row.symbol}-{branch}
+              </span>
+              <span className="font-medium text-foreground">{amount}</span>
+            </span>
+          </InfoTooltip>
+        );
+      })}
+    </span>
+  );
+}
+
+function StockRow({
+  row,
+  softClose,
+  closable,
+  onClose,
+}: {
+  row: ConditionalPositionRow;
+  softClose: boolean;
+  closable: boolean;
+  onClose: () => void;
+}) {
+  const { market, branch, symbol, decimals, available, reserved, total, priced, cost } = row;
+  const size = tokenAmount(total.toString(), decimals);
+  const mark = rowMark(row);
+  // The indexer prices claims bought in fills (cost / priced, the exchange's price format).
+  const entry =
+    priced > 0n ? Number(formatPriceRawX18((cost * 10n ** 18n) / priced, market)) : null;
+  const pricedSize = tokenAmount(priced.toString(), decimals);
+  const pnl = entry !== null && mark !== null ? pricedSize * (mark - entry) : null;
+  return (
+    <TableRow className="h-12">
+      <TableCell className="h-12 py-2 pr-2 pl-3 sm:pr-3 sm:pl-4">
+        <BranchToken symbol={symbol} branch={branch} />
+        {/* The columns a phone leaves out. */}
+        <p className="pl-2.5 text-xs text-muted-foreground tabular-nums sm:hidden">
+          {entry === null ? "No entry" : `Entry ${formatNumber(entry)}`}
+          <br />
+          Mark {formatNumber(mark)}
+        </p>
+      </TableCell>
+      <TableCell className="h-12 px-2 py-2 text-right tabular-nums sm:px-3">
+        {formatNumber(size, 4)}
+        {reserved > 0n && (
+          <p className="text-xs text-muted-foreground">
+            {formatTokenAmount(reserved, decimals)} in orders
+          </p>
+        )}
+      </TableCell>
+      <TableCell className="hidden h-12 py-2 text-right tabular-nums sm:table-cell">
+        {mark === null ? <span className="text-muted-foreground">—</span> : formatUsd(size * mark)}
+      </TableCell>
+      <TableCell className="hidden h-12 py-2 text-right tabular-nums sm:table-cell">
+        {entry !== null ? (
+          <>
+            <InfoTooltip content="Average price paid in your fills, after fees and maker rebates. Selling held claims keeps the average.">
+              <span>{formatNumber(entry)}</span>
+            </InfoTooltip>
+            {priced < total && (
+              <p className="text-xs text-muted-foreground">
+                on {formatShareAmount(priced, market)} of {formatShareAmount(total, market)}
+              </p>
+            )}
+          </>
+        ) : (
+          <InfoTooltip content="No fill priced these claims: they came from a split or a transfer.">
+            <span className="text-muted-foreground">—</span>
+          </InfoTooltip>
+        )}
+      </TableCell>
+      <TableCell className="hidden h-12 py-2 text-right tabular-nums sm:table-cell">
+        {formatNumber(mark)}
+      </TableCell>
+      <TableCell className="h-12 px-2 py-2 text-right tabular-nums sm:px-3">
+        {pnl !== null && entry !== null && mark !== null && Number.isFinite(pnl) ? (
+          <span className={pnl > 0 ? "text-positive" : pnl < 0 ? "text-danger" : undefined}>
+            {signed(pnl, formatUsd)}
+            <p className="text-xs">{signed(((mark - entry) / entry) * 100, formatNumber)}%</p>
+          </span>
+        ) : (
+          <InfoTooltip content="Needs an entry price and a mark.">
+            <span className="text-muted-foreground">—</span>
+          </InfoTooltip>
+        )}
+      </TableCell>
+      <TableCell className="h-12 py-2 pr-3 pl-2 text-right sm:pr-4 sm:pl-3">
+        <Button
+          size="xs"
+          variant={softClose ? "ghost" : "outline"}
+          className={
+            softClose
+              ? "border-0 bg-danger-soft px-2.5 text-destructive hover:bg-danger-soft hover:text-destructive"
+              : undefined
+          }
+          disabled={available === 0n || market.lifecycle !== "open" || !closable}
+          onClick={onClose}
+        >
+          Close
+        </Button>
+      </TableCell>
+    </TableRow>
   );
 }

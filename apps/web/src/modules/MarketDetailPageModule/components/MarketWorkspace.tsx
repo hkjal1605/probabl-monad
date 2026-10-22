@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { LifecycleBadge } from "@/components/data/StatusBadge";
 import { PriceChart } from "@/components/market/PriceChart";
 import { ProbabilityGauge } from "@/components/market/ProbabilityGauge";
@@ -9,6 +9,8 @@ import { SpotReference } from "@/components/market/SpotReference";
 import { TokenIdentity } from "@/components/market/TokenIdentity";
 import { ClaimTable } from "@/components/portfolio/ClaimTable";
 import { PositionTable } from "@/components/portfolio/PositionTable";
+import { WalletTradeTable } from "@/components/portfolio/WalletTradeTable";
+import { useMemberAccount } from "@/components/providers/WalletProvider";
 import { Avatar, AvatarFallback, AvatarLazyImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,7 +31,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { useProbabilityStream } from "@/hooks/useProbabilityStream";
-import { useMarkets, useTrades } from "@/hooks/useProtocolData";
+import { useMarkets } from "@/hooks/useProtocolData";
 import { formatNumber, formatTime } from "@/lib/format/display";
 import { marketPath, publicIdOf } from "@/lib/markets/identity";
 import { midpoint, percent, spotImpactPercent } from "@/lib/markets/presentation";
@@ -37,12 +39,11 @@ import { type DepthLevel, depthLevels, visibleDepthPerSide } from "@/lib/markets
 import { cn } from "@/lib/utils";
 import { OrdersClient } from "@/modules/OrdersPageModule/components/OrdersClient";
 import { marketsStore } from "@/stores/useMarketsStore";
-import type { BranchBook, MarketView, TradeView } from "@/types/api";
+import type { BranchBook, MarketView } from "@/types/api";
 import { MarketAssetSwitcher } from "./MarketAssetSwitcher";
 import { MarketDetailPageSkeleton } from "./MarketDetailPageSkeleton";
 import { MarketRulesDialog } from "./MarketRulesDialog";
 import { OrderTicket } from "./OrderTicket";
-import { TradeTable } from "./TradeTable";
 
 const EMPTY_PROBABILITY: MarketView["probability"] = {
   ask: null,
@@ -84,11 +85,9 @@ function OutcomeStat({ market, branch }: { market: MarketView; branch: "YES" | "
 export function MarketWorkspace({
   marketId,
   initialMarkets = [],
-  initialTrades = [],
 }: {
   marketId: string;
   initialMarkets?: MarketView[];
-  initialTrades?: TradeView[];
 }) {
   // The segment is a slug or public id; an older numeric link is resolved by the API, which
   // answers with that one market.
@@ -102,8 +101,7 @@ export function MarketWorkspace({
       (m) => m.id === publicId,
     ),
   );
-  const query = useMarkets(seed, key),
-    tradeQuery = useTrades(key);
+  const query = useMarkets(seed, key);
   const indexedMarket = publicId
     ? query.markets.find((m) => m.id === publicId)
     : query.markets.length === 1
@@ -145,11 +143,6 @@ export function MarketWorkspace({
         )}
       </Page>
     );
-  const trades = tradeQuery.data
-    ? tradeQuery.trades
-    : tradeQuery.trades.length
-      ? tradeQuery.trades
-      : initialTrades;
   return (
     <Page
       variant="terminal"
@@ -232,8 +225,8 @@ export function MarketWorkspace({
           <Tabs value={tab} onValueChange={setTab} className="min-h-0 flex-1 gap-0 overflow-hidden">
             <TabsList aria-label="Market information">
               {[
-                ["positions", "Your positions"],
-                ["orders", "Open orders"],
+                ["positions", "Positions"],
+                ["orders", "Orders"],
                 ["claims", "Claims"],
                 ["trades", "Trades"],
               ].map(
@@ -246,29 +239,62 @@ export function MarketWorkspace({
               )}
             </TabsList>
             <TabsContent value="positions" className="min-h-0 overflow-auto overscroll-contain">
-              <PositionTable markets={[market]} inline />
+              <AccountMarkets market={market}>
+                {(markets) => <PositionTable markets={markets} currentMarketId={market.id} />}
+              </AccountMarkets>
             </TabsContent>
             <TabsContent value="orders" className="min-h-0 overflow-auto overscroll-contain">
-              <OrdersClient markets={query.markets} marketIds={[market.id]} embedded />
+              <AccountMarkets market={market}>
+                {(markets) => (
+                  <OrdersClient markets={markets} currentMarketId={market.id} embedded />
+                )}
+              </AccountMarkets>
             </TabsContent>
             <TabsContent value="claims" className="min-h-0 overflow-auto overscroll-contain">
-              <div className="eyebrow px-3 pt-3 text-muted-foreground">
-                Available conditional claims
-              </div>
-              <ClaimTable markets={[market]} />
+              <AccountMarkets market={market}>
+                {(markets) => <ClaimTable markets={markets} currentMarketId={market.id} />}
+              </AccountMarkets>
             </TabsContent>
             <TabsContent value="trades" className="min-h-0 overflow-auto overscroll-contain">
-              {tradeQuery.isInitialError ? (
-                <DataError message="Trade history is unavailable." />
-              ) : (
-                <TradeTable market={market} trades={trades} />
-              )}
+              <AccountMarkets market={market}>
+                {(markets) => <WalletTradeTable markets={markets} />}
+              </AccountMarkets>
             </TabsContent>
           </Tabs>
         </Card>
       </div>
     </Page>
   );
+}
+/** The markets the account tabs show: every market for a member, this page's own live read in
+ * place of its list entry. The list is the one the header reads for members, so this adds no
+ * request; anyone else gets this market alone (and the tabs' sign-in prompts). */
+function AccountMarkets({
+  market,
+  children,
+}: {
+  market: MarketView;
+  children: (markets: MarketView[]) => ReactNode;
+}) {
+  return useMemberAccount() ? (
+    <MemberMarkets market={market}>{children}</MemberMarkets>
+  ) : (
+    children([market])
+  );
+}
+function MemberMarkets({
+  market,
+  children,
+}: {
+  market: MarketView;
+  children: (markets: MarketView[]) => ReactNode;
+}) {
+  const catalogue = useMarkets().markets;
+  const markets = useMemo(
+    () => [market, ...catalogue.filter((m) => m.id !== market.id)],
+    [market, catalogue],
+  );
+  return children(markets);
 }
 function BranchDepth({
   book,

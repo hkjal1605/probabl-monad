@@ -53,6 +53,19 @@ export const shortAddress = (value: string, size = 4) =>
   value.length <= size * 2 + 2 ? value : `${value.slice(0, size + 2)}…${value.slice(-size)}`;
 export const formatTime = (value: string | null) =>
   value ? dateTime.format(new Date(value)) : "Not available";
+const monthDayTime = new Intl.DateTimeFormat("en-US", {
+  day: "numeric",
+  month: "short",
+  hour: "numeric",
+  minute: "2-digit",
+});
+/** A short local time for tables, "Oct 22, 3:22 AM", in full when it is not this year's. */
+export const shortTime = (value: string, now = new Date()) => {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "—"
+    : (date.getFullYear() === now.getFullYear() ? monthDayTime : dateTime).format(date);
+};
 /** A short local date, "Dec 31", with the year when it is not this year's. */
 export const shortDate = (value: string, now = new Date()) => {
   const date = new Date(value);

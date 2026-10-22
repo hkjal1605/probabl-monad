@@ -14,7 +14,13 @@ import { FIXTURE_TOKENS, fixtureVenue } from "./fixtures/protocol";
 afterEach(() => setIndexStreamHealthy(0));
 const owner = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
 test("the stream covers the index's resources, and its health notifies only when it flips", async () => {
-  for (const name of ["markets", "wallet-orders", "trades", "positions", "trading-readiness"])
+  for (const name of [
+    "markets",
+    "wallet-orders",
+    "wallet-trades",
+    "positions",
+    "trading-readiness",
+  ])
     expect(STREAMED_RESOURCES.has(name)).toBe(true);
   for (const name of ["spot-prices", "quote-prices", "price-history", "delta-vaults"])
     expect(STREAMED_RESOURCES.has(name)).toBe(false);

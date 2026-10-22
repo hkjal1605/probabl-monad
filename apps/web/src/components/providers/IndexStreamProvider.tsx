@@ -111,7 +111,7 @@ const IndexStreamProvider = ({ children }: { children: ReactNode }) => {
               missed && (resource.pending.has(key) || !first || entry.updatedAt < openedAt - 5_000);
             const named =
               (name === "markets" && update.markets.some((m) => key === "all" || key === m)) ||
-              (["trades", "resolution"].includes(name) &&
+              (name === "resolution" &&
                 (key === "all" ? update.markets.length > 0 : update.markets.includes(key))) ||
               (["wallet-orders", "wallet-trades", "payout-credits", "positions"].includes(name) &&
                 update.owners.includes(key));
