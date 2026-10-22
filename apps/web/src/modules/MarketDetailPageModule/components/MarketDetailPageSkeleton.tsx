@@ -56,52 +56,71 @@ export function MarketDetailPageSkeleton() {
         </div>
 
         <div className="market-workspace-grid grid min-h-0 flex-1 items-stretch gap-0.5 bg-secondary p-0.5 xl:overflow-hidden">
-          <div className="market-workspace-stats overflow-hidden rounded-[4px] bg-background">
-            <div className="flex flex-wrap items-start gap-x-6 gap-y-3 border-y px-3 py-3">
-              <StatSkeleton />
-              <StatSkeleton />
-              <StatSkeleton />
-            </div>
-          </div>
-
-          <div className="market-workspace-chart flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[4px] bg-background p-3">
-            <div className="flex items-center justify-between gap-4">
-              <Skeleton className="h-8 w-64 max-w-[55%] rounded-lg" />
-              <Skeleton className="h-8 w-44 max-w-[40%] rounded-lg" />
-            </div>
-            <div className="mt-4 flex min-h-44 flex-1 items-end gap-5 border-b border-l border-border/50 px-4 pb-4">
-              {CHART_BARS.map(([id, height]) => (
-                <Skeleton
-                  key={id}
-                  className="min-w-1 flex-1 rounded-sm"
-                  style={{ height: `${height}%` }}
-                />
-              ))}
-            </div>
-          </div>
-
-          <Card
-            variant="panel"
-            className="market-workspace-book min-h-0 min-w-0 data-[variant=panel]:rounded-[4px]"
-          >
-            <CardHeader className="flex flex-wrap items-center justify-between gap-3">
-              <Skeleton className="h-8 w-48 rounded-lg" />
-            </CardHeader>
-            <CardContent className="flex min-h-0 flex-1 flex-col justify-center overflow-hidden px-0">
-              <div className="grid grid-cols-3 gap-5 px-3 py-2">
-                <Skeleton className="h-3 w-10" />
-                <Skeleton className="ml-auto h-3 w-20" />
-                <Skeleton className="ml-auto h-3 w-20" />
+          <div className="market-workspace-main gap-0.5">
+            <div className="market-workspace-stats overflow-hidden rounded-[4px] bg-background">
+              <div className="flex flex-wrap items-start gap-x-6 gap-y-3 border-y px-3 py-3">
+                <StatSkeleton />
+                <StatSkeleton />
+                <StatSkeleton />
               </div>
-              {BOOK_ROWS.map((row) => (
-                <div key={row} className="grid grid-cols-3 gap-5 px-3 py-1.5">
-                  <Skeleton className="h-4 w-14" />
-                  <Skeleton className="ml-auto h-4 w-16" />
-                  <Skeleton className="ml-auto h-4 w-16" />
+            </div>
+
+            <div className="market-workspace-chart flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[4px] bg-background p-3">
+              <div className="flex items-center justify-between gap-4">
+                <Skeleton className="h-8 w-64 max-w-[55%] rounded-lg" />
+                <Skeleton className="h-8 w-44 max-w-[40%] rounded-lg" />
+              </div>
+              <div className="mt-4 flex min-h-44 flex-1 items-end gap-5 border-b border-l border-border/50 px-4 pb-4">
+                {CHART_BARS.map(([id, height]) => (
+                  <Skeleton
+                    key={id}
+                    className="min-w-1 flex-1 rounded-sm"
+                    style={{ height: `${height}%` }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <Card
+              variant="panel"
+              className="market-workspace-book min-h-0 min-w-0 data-[variant=panel]:rounded-[4px]"
+            >
+              <CardHeader className="flex flex-wrap items-center justify-between gap-3">
+                <Skeleton className="h-8 w-48 rounded-lg" />
+              </CardHeader>
+              <CardContent className="flex min-h-0 flex-1 flex-col justify-center overflow-hidden px-0">
+                <div className="grid grid-cols-3 gap-5 px-3 py-2">
+                  <Skeleton className="h-3 w-10" />
+                  <Skeleton className="ml-auto h-3 w-20" />
+                  <Skeleton className="ml-auto h-3 w-20" />
                 </div>
-              ))}
-            </CardContent>
-          </Card>
+                {BOOK_ROWS.map((row) => (
+                  <div key={row} className="grid grid-cols-3 gap-5 px-3 py-1.5">
+                    <Skeleton className="h-4 w-14" />
+                    <Skeleton className="ml-auto h-4 w-16" />
+                    <Skeleton className="ml-auto h-4 w-16" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card
+              variant="panel"
+              className="market-workspace-information min-h-0 min-w-0 overflow-hidden data-[variant=panel]:rounded-[4px]"
+            >
+              <div className="flex gap-6 px-3 py-2">
+                {DETAIL_ROWS.map((tab) => (
+                  <Skeleton key={tab} className="h-4 w-20" />
+                ))}
+                <Skeleton className="h-4 w-12" />
+              </div>
+              <div className="grid grid-cols-4 gap-6 px-3 py-4">
+                {BOOK_ROWS.slice(0, 8).map((cell) => (
+                  <Skeleton key={cell} className="h-4 w-full" />
+                ))}
+              </div>
+            </Card>
+          </div>
 
           <div className="market-workspace-ticket min-h-0 min-w-0 overflow-hidden rounded-[4px] bg-card">
             <div className="grid grid-cols-2 border-b border-border">
@@ -129,23 +148,6 @@ export function MarketDetailPageSkeleton() {
               </div>
             </div>
           </div>
-
-          <Card
-            variant="panel"
-            className="market-workspace-information min-h-0 min-w-0 overflow-hidden data-[variant=panel]:rounded-[4px]"
-          >
-            <div className="flex gap-6 px-3 py-2">
-              {DETAIL_ROWS.map((tab) => (
-                <Skeleton key={tab} className="h-4 w-20" />
-              ))}
-              <Skeleton className="h-4 w-12" />
-            </div>
-            <div className="grid grid-cols-4 gap-6 px-3 py-4">
-              {BOOK_ROWS.slice(0, 8).map((cell) => (
-                <Skeleton key={cell} className="h-4 w-full" />
-              ))}
-            </div>
-          </Card>
         </div>
       </div>
     </Page>

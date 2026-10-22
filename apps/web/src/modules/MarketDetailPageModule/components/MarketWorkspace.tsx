@@ -56,10 +56,6 @@ const EMPTY_PROBABILITY: MarketView["probability"] = {
   value: null,
 };
 type WorkspaceView = "chart" | "trade";
-/** An account tab's content. From xl the workspace fills the window and its panels scroll on
- * their own; below that the page scrolls, so a panel only scrolls its wide tables sideways (a
- * vertical scroller there would catch the swipes meant for the page). */
-const PANEL_SCROLL = "min-h-0 xl:overflow-auto xl:overscroll-contain";
 /** Where the workspace is one column (global.css): the chart and ticket views, no book. */
 const PHONE = "(max-width: 899px)";
 function OutcomeStat({ market, branch }: { market: MarketView; branch: "YES" | "NO" }) {
@@ -208,97 +204,101 @@ export function MarketWorkspace({
         data-view={view.name}
         className="market-workspace-grid grid min-h-0 flex-1 items-stretch gap-0.5 bg-secondary p-0.5 xl:overflow-hidden"
       >
-        <div className="market-workspace-stats overflow-hidden rounded-[4px] bg-background">
-          <div className="@container/prices flex flex-wrap items-center gap-x-6 gap-y-3 border-y px-3 py-3">
-            <OutcomeStat market={market} branch="YES" />
-            <SpotReference price={market.spotReference} variant="market" />
-            <OutcomeStat market={market} branch="NO" />
-            <BaseToken market={market} />
+        {/* The prices, chart, book and account tabs. From xl they scroll together as one column
+            beside the ticket (global.css); below that they are items of the grid itself. */}
+        <div className="market-workspace-main gap-0.5">
+          <div className="market-workspace-stats overflow-hidden rounded-[4px] bg-background">
+            <div className="@container/prices flex flex-wrap items-center gap-x-6 gap-y-3 border-y px-3 py-3">
+              <OutcomeStat market={market} branch="YES" />
+              <SpotReference price={market.spotReference} variant="market" />
+              <OutcomeStat market={market} branch="NO" />
+              <BaseToken market={market} />
+            </div>
+            <QuotePauseNotice market={market} />
+            {market.bookQuality === "truncated" && (
+              <DataError
+                message={
+                  "Book display limit reached. Best-price and depth indicators are withheld; the API still reviews against its full candidate book."
+                }
+              />
+            )}
           </div>
-          <QuotePauseNotice market={market} />
-          {market.bookQuality === "truncated" && (
-            <DataError
-              message={
-                "Book display limit reached. Best-price and depth indicators are withheld; the API still reviews against its full candidate book."
-              }
-            />
-          )}
+          <div
+            ref={chartRef}
+            className="market-workspace-chart min-h-0 min-w-0 scroll-mb-16 overflow-hidden rounded-[4px]"
+          >
+            <PriceChart market={market} />
+          </div>
+          <Card
+            variant="panel"
+            className="market-workspace-book min-h-0 min-w-0 data-[variant=panel]:rounded-[4px]"
+          >
+            <CardHeader className="flex flex-wrap items-center justify-between gap-3">
+              <Segmented
+                label="Order book outcome"
+                variant="chart"
+                options={[`${market.ticker}-YES`, `${market.ticker}-NO`]}
+                value={`${market.ticker}-${bookBranch}`}
+                onChange={(value) => setBookBranch(value === `${market.ticker}-YES` ? "YES" : "NO")}
+              />
+            </CardHeader>
+            <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden px-0">
+              <BranchDepth
+                book={bookBranch === "YES" ? market.yes : market.no}
+                label={`${market.ticker}-${bookBranch}`}
+                available={market.bookQuality === "available"}
+              />
+            </CardContent>
+          </Card>
+          <Card
+            variant="panel"
+            className="market-workspace-information min-h-0 min-w-0 overflow-hidden data-[variant=panel]:rounded-[4px]"
+          >
+            <Tabs value={tab} onValueChange={setTab} className="flex-1 gap-0">
+              <TabsList aria-label="Market information">
+                {[
+                  ["positions", "Positions"],
+                  ["orders", "Orders"],
+                  ["claims", "Claims"],
+                  ["trades", "Trades"],
+                ].map(
+                  ([value, label]) =>
+                    value && (
+                      <TabsTrigger key={value} value={value}>
+                        {label}
+                      </TabsTrigger>
+                    ),
+                )}
+              </TabsList>
+              <TabsContent value="positions">
+                <AccountMarkets market={market}>
+                  {(markets) => <PositionTable markets={markets} currentMarketId={market.id} />}
+                </AccountMarkets>
+              </TabsContent>
+              <TabsContent value="orders">
+                <AccountMarkets market={market}>
+                  {(markets) => <OrderTable markets={markets} currentMarketId={market.id} />}
+                </AccountMarkets>
+              </TabsContent>
+              <TabsContent value="claims">
+                <AccountMarkets market={market}>
+                  {(markets) => <ClaimTable markets={markets} currentMarketId={market.id} />}
+                </AccountMarkets>
+              </TabsContent>
+              <TabsContent value="trades">
+                <AccountMarkets market={market}>
+                  {(markets) => <WalletTradeTable markets={markets} />}
+                </AccountMarkets>
+              </TabsContent>
+            </Tabs>
+          </Card>
         </div>
-        <div
-          ref={chartRef}
-          className="market-workspace-chart min-h-0 min-w-0 scroll-mb-16 overflow-hidden rounded-[4px]"
-        >
-          <PriceChart market={market} />
-        </div>
-        <Card
-          variant="panel"
-          className="market-workspace-book min-h-0 min-w-0 data-[variant=panel]:rounded-[4px]"
-        >
-          <CardHeader className="flex flex-wrap items-center justify-between gap-3">
-            <Segmented
-              label="Order book outcome"
-              variant="chart"
-              options={[`${market.ticker}-YES`, `${market.ticker}-NO`]}
-              value={`${market.ticker}-${bookBranch}`}
-              onChange={(value) => setBookBranch(value === `${market.ticker}-YES` ? "YES" : "NO")}
-            />
-          </CardHeader>
-          <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden px-0">
-            <BranchDepth
-              book={bookBranch === "YES" ? market.yes : market.no}
-              label={`${market.ticker}-${bookBranch}`}
-              available={market.bookQuality === "available"}
-            />
-          </CardContent>
-        </Card>
         <div
           ref={ticketRef}
           className="market-workspace-ticket min-h-0 min-w-0 scroll-mb-16 rounded-[4px] bg-card xl:overflow-y-auto xl:overscroll-contain"
         >
           <OrderTicket key={market.id} market={market} />
         </div>
-        <Card
-          variant="panel"
-          className="market-workspace-information min-h-0 min-w-0 overflow-hidden data-[variant=panel]:rounded-[4px]"
-        >
-          <Tabs value={tab} onValueChange={setTab} className="min-h-0 flex-1 gap-0 overflow-hidden">
-            <TabsList aria-label="Market information">
-              {[
-                ["positions", "Positions"],
-                ["orders", "Orders"],
-                ["claims", "Claims"],
-                ["trades", "Trades"],
-              ].map(
-                ([value, label]) =>
-                  value && (
-                    <TabsTrigger key={value} value={value}>
-                      {label}
-                    </TabsTrigger>
-                  ),
-              )}
-            </TabsList>
-            <TabsContent value="positions" className={PANEL_SCROLL}>
-              <AccountMarkets market={market}>
-                {(markets) => <PositionTable markets={markets} currentMarketId={market.id} />}
-              </AccountMarkets>
-            </TabsContent>
-            <TabsContent value="orders" className={PANEL_SCROLL}>
-              <AccountMarkets market={market}>
-                {(markets) => <OrderTable markets={markets} currentMarketId={market.id} />}
-              </AccountMarkets>
-            </TabsContent>
-            <TabsContent value="claims" className={PANEL_SCROLL}>
-              <AccountMarkets market={market}>
-                {(markets) => <ClaimTable markets={markets} currentMarketId={market.id} />}
-              </AccountMarkets>
-            </TabsContent>
-            <TabsContent value="trades" className={PANEL_SCROLL}>
-              <AccountMarkets market={market}>
-                {(markets) => <WalletTradeTable markets={markets} />}
-              </AccountMarkets>
-            </TabsContent>
-          </Tabs>
-        </Card>
       </div>
       <nav
         aria-label="Market view"

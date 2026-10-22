@@ -509,8 +509,17 @@
       animation: none;
     }
   }
+  /* A market's prices, chart, book and account tabs: items of the workspace grid until xl, where
+     they become one column of their own. */
+  .market-workspace-main {
+    display: contents;
+  }
   /* One column: no order book, and the chart or the ticket, as the bar fixed below picks. */
   @media (max-width: 899px) {
+    /* The account tabs come after the ticket, which follows them in the markup. */
+    .market-workspace-information {
+      order: 1;
+    }
     .market-workspace-book,
     .market-workspace-grid:not([data-view="trade"]) .market-workspace-ticket,
     .market-workspace-grid[data-view="trade"] .market-workspace-chart {
@@ -550,10 +559,24 @@
       grid-row: 1 / 5;
     }
   }
+  /* From xl the workspace fills the window, which holds still (the grid's size containment keeps
+     its content from stretching the page). The prices, chart, book and account tabs scroll as one
+     column beside the ticket: the chart's height follows the window's, and the tabs fill the rest
+     of the screen on every tab, growing, and the column scrolling, only when a tab holds more. */
   @media (min-width: 1280px) {
     .market-workspace-grid {
-      grid-template-columns: minmax(0, 1fr) 280px 320px;
-      grid-template-rows: auto minmax(0, 3fr) minmax(0, 2fr);
+      contain: size;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      grid-template-rows: minmax(0, 1fr);
+    }
+    .market-workspace-main {
+      display: grid;
+      grid-column: 1;
+      grid-row: 1;
+      min-height: 0;
+      overflow-y: auto;
+      grid-template-columns: minmax(0, 1fr) 280px;
+      grid-template-rows: max-content max(16rem, calc(60dvh - 8rem)) minmax(max-content, 1fr);
     }
     .market-workspace-stats {
       grid-column: 1 / 3;
@@ -567,8 +590,8 @@
       grid-row: 3;
     }
     .market-workspace-ticket {
-      grid-column: 3;
-      grid-row: 1 / 4;
+      grid-column: 2;
+      grid-row: 1;
     }
   }
   .price-grid {
