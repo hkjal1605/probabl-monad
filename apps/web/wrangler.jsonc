@@ -2,6 +2,10 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "probabl-ui",
   "main": ".open-next/worker.js",
+  // Runs before every `wrangler deploy` (and so `opennextjs-cloudflare deploy`), whichever build
+  // came first: OpenNext copies every monorepo .env value, backend secrets included, into the
+  // Worker's environment module, and this empties it.
+  "build": { "command": "bun scripts/cloudflare-sanitize.ts" },
   // Current UTC date supported by the pinned workerd runtime.
   "compatibility_date": "2026-09-07",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],

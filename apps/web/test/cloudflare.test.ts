@@ -1,6 +1,14 @@
 import { describe, expect, test } from "bun:test";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { validateCloudflareEnvironment } from "../scripts/cloudflare-preflight";
-import { sanitizedEnvironmentModule } from "../scripts/cloudflare-sanitize";
+import {
+  filesWithSecrets,
+  isSecretValue,
+  sanitizedEnvironmentModule,
+  secretValues,
+} from "../scripts/cloudflare-sanitize";
 
 const valid = {
   NEXT_PUBLIC_APP_URL: "https://probabl-ui.account.workers.dev",
@@ -61,6 +69,54 @@ describe("Workers deployment guard", () => {
       expect(
         validateCloudflareEnvironment({ ...valid, [key as string]: value }).length,
       ).toBeGreaterThan(0);
+    }
+  });
+  test("keys, tokens, private keys and credentialed or keyed URLs are secret; public settings not", () => {
+    for (const value of [
+      "sk-or-v1-0123456789abcdef0123456789abcdef",
+      "0x4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318",
+      "postgres://app:hunter2@localhost:5432/probabl",
+      "https://robinhood-testnet.g.alchemy.com/v2/AbCdEfGhIjKlMnOpQrStUvWx",
+      "wss://stream.example.com/socket?apiKey=AbCdEfGhIjKlMnOpQrStUvWx",
+    ])
+      expect(isSecretValue(value)).toBe(true);
+    for (const value of [
+      "api.probabl.trade",
+      "https://api.probabl.trade",
+      "https://rpc.testnet.chain.robinhood.com",
+      "https://api.robinhood.com/rhj/assets",
+      "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+      "4000",
+      "true",
+    ])
+      expect(isSecretValue(value)).toBe(false);
+  });
+  test("secret values come from every .env file, public settings aside", () => {
+    const env = [
+      'CLOUDFLARE_API_TOKEN="cf-0123456789abcdef0123456789"\nNEXT_PUBLIC_RPC_URL=https://rpc.example.com/v2/AbCdEfGhIjKlMnOpQrStUvWx',
+      "export DATABASE_URL=postgres://app:hunter2@db:5432/probabl\nRPC_URL=https://rpc.example.com/v2/AbCdEfGhIjKlMnOpQrStUvWx",
+    ];
+    // RPC_URL holds what NEXT_PUBLIC_RPC_URL already publishes.
+    expect(secretValues(env).sort()).toEqual([
+      "cf-0123456789abcdef0123456789",
+      "postgres://app:hunter2@db:5432/probabl",
+    ]);
+  });
+  test("the build check finds a secret in any file of the build, browser assets included", async () => {
+    const build = await mkdtemp(join(tmpdir(), "probabl-build-"));
+    try {
+      await mkdir(join(build, "assets/_next"), { recursive: true });
+      await writeFile(join(build, "worker.js"), "export default {}");
+      await writeFile(
+        join(build, "assets/_next/chunk.js"),
+        'const k="cf-0123456789abcdef0123456789"',
+      );
+      expect(await filesWithSecrets(build, ["cf-0123456789abcdef0123456789"])).toEqual([
+        join("assets", "_next", "chunk.js"),
+      ]);
+      expect(await filesWithSecrets(build, ["sk-not-in-this-build-0123456789"])).toEqual([]);
+    } finally {
+      await rm(build, { recursive: true, force: true });
     }
   });
   test("sanitized environment cannot provide local or backend-secret fallbacks", () => {
