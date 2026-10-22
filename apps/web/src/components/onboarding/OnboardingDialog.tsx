@@ -37,6 +37,7 @@ import { tokenDisplay } from "@/lib/tokens/catalog";
 import { rpc } from "@/lib/trading/rpc";
 import { cn } from "@/lib/utils";
 import type { FaucetDelivery } from "@/services/faucet";
+import { skipFirstTradeTour, startFirstTradeTour } from "@/stores/first-trade-tour";
 import { useOnboarding } from "./OnboardingProvider";
 
 const STEPS: Record<(typeof ONBOARDING_STEPS)[number], { label: string; hint: string }> = {
@@ -493,41 +494,48 @@ function Received({ sent }: { sent: FaucetDelivery[] }) {
 function DoneStep({ balance }: { balance: bigint | null }) {
   const { claim, finish } = useOnboarding();
   const transaction = claim?.transactions.at(-1);
+  // The trading guide is offered here, as a choice: either answer is final for this browser.
+  const close = (tour: boolean) => {
+    if (tour) startFirstTradeTour();
+    else skipFirstTradeTour();
+    finish();
+  };
   return (
     <StepBody
       title="You're all set"
       description={`Your wallet is ready to trade on ${protocolConfig.chainName}.`}
       action={
         <>
-          <Button size="lg" className="w-full sm:w-auto" onClick={finish}>
-            Start trading
+          <Button size="lg" className="w-full sm:w-auto" onClick={() => close(true)}>
+            Show me how to trade
             <ArrowRight data-icon="inline-end" />
           </Button>
-          {transaction && protocolConfig.explorerUrl && (
-            <Button
-              variant="ghost"
-              size="lg"
-              className="w-full sm:w-auto"
-              nativeButton={false}
-              render={
-                <a
-                  href={`${protocolConfig.explorerUrl}/tx/${transaction}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              }
-            >
-              View transaction
-              <ExternalLink data-icon="inline-end" />
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            size="lg"
+            className="w-full sm:w-auto"
+            onClick={() => close(false)}
+          >
+            I'll explore on my own
+          </Button>
         </>
       }
     >
       {claim && claim.sent.length > 0 && (
         <div className="flex flex-col gap-2">
-          <p className="text-xs font-medium text-muted-foreground">
+          <p className="flex items-center justify-between gap-3 text-xs font-medium text-muted-foreground">
             Sent to your wallet · {claim.sent.length} tokens
+            {transaction && protocolConfig.explorerUrl && (
+              <a
+                href={`${protocolConfig.explorerUrl}/tx/${transaction}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 hover:text-foreground"
+              >
+                View transaction
+                <ExternalLink aria-hidden="true" className="size-3" />
+              </a>
+            )}
           </p>
           <Received sent={claim.sent} />
         </div>

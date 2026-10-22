@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { FirstTradeTour } from "@/components/onboarding/FirstTradeTour";
 import { OnboardingProvider } from "@/components/onboarding/OnboardingProvider";
 import { Toaster } from "@/components/ui/toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -22,6 +23,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
               </IndexStreamProvider>
             </OnboardingProvider>
           </WalletLoginProvider>
+          <FirstTradeTour />
           <Toaster />
         </TooltipProvider>
       </WalletProvider>

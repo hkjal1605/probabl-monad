@@ -231,6 +231,18 @@
   }
 }
 
+@keyframes tour-pulse {
+  0% {
+    box-shadow:
+      0 0 0 2px var(--brand-strong),
+      0 0 0 0 color-mix(in oklab, var(--brand-strong) 45%, transparent);
+  }
+  100% {
+    box-shadow:
+      0 0 0 2px var(--brand-strong),
+      0 0 0 14px color-mix(in oklab, var(--brand-strong) 0%, transparent);
+  }
+}
 @keyframes market-ticker {
   to {
     transform: translateX(-50%);
@@ -484,6 +496,18 @@
       0 1px var(--card),
       inset 1px 0 var(--border),
       inset -1px 0 var(--border);
+  }
+  /* The first-trade guide's ring: a few pulses to draw the eye, then still. */
+  .tour-ring {
+    box-shadow:
+      0 0 0 2px var(--brand-strong),
+      0 0 0 6px color-mix(in oklab, var(--brand-strong) 18%, transparent);
+    animation: tour-pulse 1.6s ease-out 3;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tour-ring {
+      animation: none;
+    }
   }
   /* One column: no order book, and the chart or the ticket, as the bar fixed below picks. */
   @media (max-width: 899px) {

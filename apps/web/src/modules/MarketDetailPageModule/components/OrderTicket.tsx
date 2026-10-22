@@ -200,7 +200,14 @@ export function OrderTicket({ market }: { market: MarketView }) {
       }
     });
   return (
-    <Card variant="sidebar" id="trade-ticket" aria-label="Trade conditional stock" className="pt-0">
+    <Card
+      variant="sidebar"
+      id="trade-ticket"
+      aria-label="Trade conditional stock"
+      className="pt-0"
+      data-market-id={market.id}
+      data-ticker={market.ticker}
+    >
       <Segmented
         variant="trade"
         disabled={t.busy}
@@ -227,6 +234,7 @@ export function OrderTicket({ market }: { market: MarketView }) {
               spacing={2}
               disabled={t.busy}
               className="trade-branch-selector grid w-full grid-cols-2"
+              data-tour="side"
               onValueChange={(values) => {
                 const branch = values[0];
                 if (branch !== "YES" && branch !== "NO") return;
@@ -291,7 +299,11 @@ export function OrderTicket({ market }: { market: MarketView }) {
                   </div>
                   <Card className="trade-entry-card">
                     <CardContent>
-                      <Field data-invalid={Boolean(entryError)} className="trade-entry-field">
+                      <Field
+                        data-invalid={Boolean(entryError)}
+                        className="trade-entry-field"
+                        data-tour="amount"
+                      >
                         <InputGroup className="trade-amount-input">
                           <InputGroupInput
                             id="ticket-quantity"
@@ -341,7 +353,7 @@ export function OrderTicket({ market }: { market: MarketView }) {
                           <span>Order value</span>
                         </div>
                       </Field>
-                      <Field className="trade-entry-field">
+                      <Field className="trade-entry-field" data-tour="price">
                         <div className="trade-entry-heading">
                           <Label htmlFor="ticket-price">
                             {kind === "Market"
@@ -407,6 +419,7 @@ export function OrderTicket({ market }: { market: MarketView }) {
                       <Button
                         variant={t.side === "buy" ? "buy" : "sell"}
                         className="trade-entry-submit w-full"
+                        data-tour="submit"
                         size="lg"
                         disabled={
                           step

@@ -62,7 +62,11 @@ function EventCardView({ markets }: { markets: MarketView[] }) {
             {markets.map((asset) => {
               const spot = currentSpotUsd(asset);
               return (
-                <TableRow key={asset.id} className="relative border-0">
+                <TableRow
+                  key={asset.id}
+                  className="relative border-0"
+                  data-tour-market={asset.venue.marketId}
+                >
                   <TableCell className="w-px px-2">
                     <Link
                       href={marketPath(asset)}
