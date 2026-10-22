@@ -46,6 +46,7 @@ import { MarketAssetSwitcher } from "./MarketAssetSwitcher";
 import { MarketDetailPageSkeleton } from "./MarketDetailPageSkeleton";
 import { MarketRulesDialog } from "./MarketRulesDialog";
 import { OrderTicket } from "./OrderTicket";
+import { QuotePauseNotice } from "./QuotePauseNotice";
 
 const EMPTY_PROBABILITY: MarketView["probability"] = {
   ask: null,
@@ -214,6 +215,7 @@ export function MarketWorkspace({
             <OutcomeStat market={market} branch="NO" />
             <BaseToken market={market} />
           </div>
+          <QuotePauseNotice market={market} />
           {market.bookQuality === "truncated" && (
             <DataError
               message={
