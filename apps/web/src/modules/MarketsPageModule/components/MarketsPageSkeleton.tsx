@@ -212,6 +212,11 @@ export function MarketsPageSkeleton({ view }: { view: DiscoveryFilters["view"] }
   return (
     <div role="status" aria-label="Loading markets" aria-busy="true">
       <FeaturedBannerSkeleton />
+      {/* The filters' row: status and sort, then the view (one button on a phone). */}
+      <div className="mb-3 flex items-center justify-between gap-1">
+        <Skeleton className="h-6 w-56 max-md:h-9 max-md:w-48" />
+        <Skeleton className="h-6 w-44 max-md:hidden" />
+      </div>
       {view === "Feed" ? (
         <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {FEED_CARDS.map((card) => (

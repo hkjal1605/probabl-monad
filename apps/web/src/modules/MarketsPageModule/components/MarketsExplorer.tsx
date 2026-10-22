@@ -14,14 +14,6 @@ import { Masonry } from "@/components/ui/masonry";
 import { DataError, EmptyState, Page } from "@/components/ui/page";
 import { Segmented } from "@/components/ui/segmented";
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -54,9 +46,9 @@ import {
 import { cn } from "@/lib/utils";
 import type { MarketView } from "@/types/api";
 import { HomeBanner } from "./HomeBanner";
-import { HomeFilterSheet } from "./HomeFilterSheet";
 import { MarketsColumns } from "./MarketsColumns";
 import { MarketsPageSkeleton } from "./MarketsPageSkeleton";
+import { MarketsToolbar } from "./MarketsToolbar";
 
 // The calendar's own code loads only when it is opened.
 const EventCalendar = dynamic(
@@ -65,6 +57,10 @@ const EventCalendar = dynamic(
     ssr: false,
   },
 );
+
+/** The matrix's event and probability columns stay in view while the asset columns between them
+ * scroll sideways. They are opaque, so they take the row's hover colour too. */
+const MATRIX_PINNED = "sticky z-10 bg-background transition-colors [tr:hover>&]:bg-accent";
 
 export function MarketsExplorer({
   markets: initial,
@@ -182,15 +178,14 @@ export function MarketsExplorer({
     >
       <section
         ref={filtersRef}
-        aria-label="Market filters"
-        className="sticky top-(--home-chrome) z-30 -mx-4 flex min-h-16 shrink-0 items-center gap-4 bg-background px-4 py-4 max-md:min-h-0 max-md:gap-1 max-md:border-b max-md:py-0 max-md:pr-1 lg:-mx-6 lg:px-6"
+        aria-label="Market categories"
+        className="sticky top-(--home-chrome) z-30 -mx-4 flex min-h-16 shrink-0 items-center bg-background px-4 py-4 max-md:min-h-0 max-md:border-b max-md:py-0 lg:-mx-6 lg:px-6"
       >
-        {/* The tabs scroll on their own, so the view controls stay in reach. On a phone the row
-            runs to the screen's edges and fades out at them, and the controls sit behind one
-            button. */}
+        {/* The categories have the row to themselves and scroll in it when they outgrow it. On a
+            phone the row runs to the screen's edges and fades out at them. */}
         <div
           ref={tabsRef}
-          className="home-category-tabs -mb-2 min-w-0 flex-1 overflow-x-auto pb-2 [scrollbar-width:none] max-md:-ml-4 max-md:mb-0 max-md:pb-0 max-md:pl-4 max-md:[mask-image:linear-gradient(to_right,transparent,black_1rem,black_calc(100%-2.5rem),transparent)]"
+          className="home-category-tabs -mb-2 min-w-0 flex-1 overflow-x-auto pb-2 [scrollbar-width:none] max-md:-mx-4 max-md:mb-0 max-md:px-4 max-md:pb-0 max-md:[mask-image:linear-gradient(to_right,transparent,black_1rem,black_calc(100%-1rem),transparent)]"
         >
           <Segmented
             label="Market category"
@@ -218,60 +213,8 @@ export function MarketsExplorer({
             }}
           />
         </div>
-        <div className={cn("ml-auto hidden shrink-0 items-center gap-1", !calendar && "md:flex")}>
-          <Select
-            value={filters.lifecycle}
-            items={{
-              active: "Active markets",
-              resolving: "Resolution",
-              all: "All lifecycle states",
-            }}
-            onValueChange={(value) => {
-              if (value === "active" || value === "resolving" || value === "all")
-                setFilters({ lifecycle: value });
-            }}
-          >
-            <SelectTrigger aria-label="Lifecycle" size="xs" variant="filter-chip">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="active">Active markets</SelectItem>
-                <SelectItem value="resolving">Resolution</SelectItem>
-                <SelectItem value="all">All lifecycle states</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-          <Select
-            value={filters.sort}
-            items={{ newest: "Newest first", oldest: "Oldest first" }}
-            onValueChange={(value) => {
-              if (value === "newest" || value === "oldest") setFilters({ sort: value });
-            }}
-          >
-            <SelectTrigger aria-label="Sort markets" size="xs" variant="filter">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="newest">Newest first</SelectItem>
-                <SelectItem value="oldest">Oldest first</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-          <Segmented
-            label="Market view"
-            variant="compact"
-            value={filters.view}
-            options={["Feed", "Columns", "Matrix"]}
-            onChange={(view) => setFilters({ view })}
-          />
-        </div>
-        {!calendar && (
-          <HomeFilterSheet filters={filters} setFilters={setFilters} events={visible.length} />
-        )}
       </section>
-      {/* The filters stay put; the banner and the markets below it scroll under them. */}
+      {/* The categories stay put; the banner, the filters and the markets scroll under them. */}
       <div ref={listRef} className="flex-1 pb-3 max-md:pt-3">
         {calendar ? (
           <EventCalendar markets={markets} loading={showSkeleton} />
@@ -281,6 +224,7 @@ export function MarketsExplorer({
           <>
             {/* The selected category's first event leads; the most traded span every category. */}
             <HomeBanner featured={visible[0]} category={category} markets={listed} />
+            <MarketsToolbar filters={filters} setFilters={setFilters} events={visible.length} />
             {query.isInitialError && (
               <DataError
                 retry={() => {
@@ -303,7 +247,14 @@ export function MarketsExplorer({
                 <Table>
                   <TableHeader className="[&_tr]:border-b-0">
                     <TableRow className="border-b-0 hover:bg-transparent [&_th]:py-3">
-                      <TableHead>Event</TableHead>
+                      <TableHead
+                        className={cn(
+                          MATRIX_PINNED,
+                          "left-0 shadow-[inset_-1px_0_0_var(--border)]",
+                        )}
+                      >
+                        Event
+                      </TableHead>
                       {tokens.map((token) => (
                         <TableHead key={marketAssetKey(token)} className="text-foreground">
                           <TokenIdentity
@@ -314,7 +265,12 @@ export function MarketsExplorer({
                           />
                         </TableHead>
                       ))}
-                      <TableHead className="text-center font-medium text-foreground">
+                      <TableHead
+                        className={cn(
+                          MATRIX_PINNED,
+                          "right-0 text-center font-medium text-foreground shadow-[inset_1px_0_0_var(--border)]",
+                        )}
+                      >
                         Probability
                       </TableHead>
                     </TableRow>
@@ -325,7 +281,12 @@ export function MarketsExplorer({
                       if (!market) return null;
                       return (
                         <TableRow key={eventKey(market)} className="border-b-0">
-                          <TableCell className="min-w-52 max-w-80 whitespace-normal">
+                          <TableCell
+                            className={cn(
+                              MATRIX_PINNED,
+                              "left-0 min-w-52 max-w-80 whitespace-normal shadow-[inset_-1px_0_0_var(--border)] max-md:min-w-36 max-md:max-w-40",
+                            )}
+                          >
                             <Link href={marketPath(market)} className="font-semibold">
                               {market.question}
                             </Link>
@@ -372,7 +333,12 @@ export function MarketsExplorer({
                               </TableCell>
                             );
                           })}
-                          <TableCell className="[&>[role=img]]:mx-auto">
+                          <TableCell
+                            className={cn(
+                              MATRIX_PINNED,
+                              "right-0 shadow-[inset_1px_0_0_var(--border)] [&>[role=img]]:mx-auto",
+                            )}
+                          >
                             <ProbabilityGauge
                               probability={market.probability}
                               conditionId={market.mapping.conditionId}

@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { useMemberAccount } from "@/components/providers/WalletProvider";
 import { fetchMarkets } from "@/modules/MarketsPageModule/utils/fetchMarkets";
 import { fetchPriceHistory } from "@/modules/MarketsPageModule/utils/fetchPriceHistory";
-import { fetchOrders } from "@/modules/OrdersPageModule/utils/fetchOrders";
+import { fetchOrders } from "@/modules/PortfolioPageModule/utils/fetchOrders";
 import { fetchPositions } from "@/modules/PortfolioPageModule/utils/fetchPositions";
 import { fetchWalletTrades } from "@/modules/PortfolioPageModule/utils/fetchWalletTrades";
 import type { PriceHistoryRange } from "@/services/price-history";

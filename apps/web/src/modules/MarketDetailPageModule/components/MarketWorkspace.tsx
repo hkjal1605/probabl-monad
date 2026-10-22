@@ -9,6 +9,7 @@ import { ProbabilityGauge } from "@/components/market/ProbabilityGauge";
 import { SpotReference } from "@/components/market/SpotReference";
 import { TokenIdentity } from "@/components/market/TokenIdentity";
 import { ClaimTable } from "@/components/portfolio/ClaimTable";
+import { OrderTable } from "@/components/portfolio/OrderTable";
 import { PositionTable } from "@/components/portfolio/PositionTable";
 import { WalletTradeTable } from "@/components/portfolio/WalletTradeTable";
 import { useUiStore } from "@/components/providers/UiStateProvider";
@@ -39,7 +40,6 @@ import { marketPath, publicIdOf } from "@/lib/markets/identity";
 import { midpoint, percent, spotImpactPercent } from "@/lib/markets/presentation";
 import { type DepthLevel, depthLevels, visibleDepthPerSide } from "@/lib/markets/visible-depth";
 import { cn } from "@/lib/utils";
-import { OrdersClient } from "@/modules/OrdersPageModule/components/OrdersClient";
 import { marketsStore } from "@/stores/useMarketsStore";
 import type { BranchBook, MarketView } from "@/types/api";
 import { MarketAssetSwitcher } from "./MarketAssetSwitcher";
@@ -284,9 +284,7 @@ export function MarketWorkspace({
             </TabsContent>
             <TabsContent value="orders" className={PANEL_SCROLL}>
               <AccountMarkets market={market}>
-                {(markets) => (
-                  <OrdersClient markets={markets} currentMarketId={market.id} embedded />
-                )}
+                {(markets) => <OrderTable markets={markets} currentMarketId={market.id} />}
               </AccountMarkets>
             </TabsContent>
             <TabsContent value="claims" className={PANEL_SCROLL}>
@@ -312,19 +310,21 @@ export function MarketWorkspace({
             ["trade", "Trade", ArrowLeftRight],
           ] as const
         ).map(([name, label, Icon]) => (
-          <button
+          <Button
             key={name}
-            type="button"
+            variant="ghost"
             aria-pressed={view.name === name}
             onClick={() => showView(name)}
             className={cn(
-              "flex h-14 items-center justify-center gap-2 text-sm font-medium outline-none focus-visible:bg-accent",
-              view.name === name ? "text-brand-strong" : "text-muted-foreground",
+              "h-14 gap-2 rounded-none hover:bg-transparent focus-visible:border-transparent focus-visible:bg-accent focus-visible:ring-0 dark:hover:bg-transparent",
+              view.name === name
+                ? "text-brand-strong hover:text-brand-strong"
+                : "text-muted-foreground hover:text-muted-foreground",
             )}
           >
             <Icon aria-hidden="true" className="size-4.5" />
             {label}
-          </button>
+          </Button>
         ))}
       </nav>
     </Page>

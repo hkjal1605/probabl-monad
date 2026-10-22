@@ -32,7 +32,6 @@ import {
   tokenAmount,
 } from "@/lib/format/display";
 import { groupByMarket } from "@/lib/portfolio/positions";
-import { cn } from "@/lib/utils";
 import type { IndexedOrder, MarketView } from "@/types/api";
 
 const VIEWS = ["Open", "History", "All"] as const;
@@ -45,15 +44,12 @@ const placedAt = (order: IndexedOrder) => (order.createdAt ? Date.parse(order.cr
 
 /** The member's orders grouped by market: `currentMarketId`'s (the market on screen) first, then
  * the market with the latest order. Open orders by default; History holds the closed ones. */
-export function OrdersClient({
+export function OrderTable({
   markets,
   currentMarketId,
-  embedded = false,
 }: {
   markets: MarketView[];
   currentMarketId?: string;
-  /** Inside a panel that already frames it (a market's tabs, the portfolio). */
-  embedded?: boolean;
 }) {
   const wallet = useWallet(),
     query = useOrderRecovery();
@@ -79,7 +75,7 @@ export function OrdersClient({
   const columns = view === "Open" ? 6 : 7;
   const current = currentMarketId ? marketsById.get(currentMarketId) : undefined;
   return (
-    <section aria-label="Orders" className={cn("min-w-0", !embedded && "rounded-xl border")}>
+    <section aria-label="Orders" className="min-w-0">
       <div className="flex items-center gap-3 border-b px-3 py-2 sm:px-4">
         <Segmented
           label="Order status"

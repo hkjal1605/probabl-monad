@@ -14,7 +14,9 @@ test("the removed Funds modal leaves no triggers or global modal state", async (
   expect(await readFile(join(root, "components/layout/SiteHeader.tsx"), "utf8")).not.toContain(
     '"/funds"',
   );
-  await expect(access(join(root, "app/funds/page.tsx")).then(() => true)).resolves.toBe(true);
+  // The portfolio holds what the Funds and Orders pages showed, so both pages are gone too.
+  for (const page of ["app/funds/page.tsx", "app/orders/page.tsx"])
+    await expect(access(join(root, page))).rejects.toThrow();
 });
 
 test("main UI has no Radix, legacy toast, custom panel, or native confirmation consumers", async () => {

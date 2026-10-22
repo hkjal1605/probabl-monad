@@ -487,13 +487,14 @@ function Coachmark({
           </p>
         </div>
         <div className="flex items-center justify-between gap-3">
-          <button
-            type="button"
+          <Button
+            variant="link"
+            size="xs"
             onClick={skipFirstTradeTour}
-            className="rounded-sm text-xs font-medium text-muted-foreground underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+            className="h-auto px-0 text-muted-foreground hover:text-foreground"
           >
             Skip guide
-          </button>
+          </Button>
           {action}
         </div>
       </div>

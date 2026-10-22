@@ -3,8 +3,6 @@ import {
   BriefcaseBusiness,
   CheckCircle2,
   Gift,
-  Landmark,
-  ListOrdered,
   LogOut,
   Moon,
   Network,
@@ -145,18 +143,6 @@ export function WalletButton({ compact = false }: { compact?: boolean }) {
                 className="gap-3 px-3 py-2.5 font-medium"
               >
                 <BriefcaseBusiness /> Portfolio
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                render={<Link href="/orders" />}
-                className="gap-3 px-3 py-2.5 font-medium"
-              >
-                <ListOrdered /> Open orders
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                render={<Link href="/funds" />}
-                className="gap-3 px-3 py-2.5 font-medium"
-              >
-                <Landmark /> Funds
               </DropdownMenuItem>
               <DropdownMenuItem
                 render={<Link href="/vaults" />}

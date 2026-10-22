@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { OrderTable } from "@/components/portfolio/OrderTable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DataError, EmptyState, Page } from "@/components/ui/page";
@@ -14,7 +15,6 @@ import { formatNumber, tokenAmount } from "@/lib/format/display";
 import { groupMarkets, sortEventGroups } from "@/lib/markets/presentation";
 import { conditionalPositionRows } from "@/lib/portfolio/positions";
 import { walletTradeRows } from "@/lib/portfolio/presentation";
-import { OrdersClient } from "@/modules/OrdersPageModule/components/OrdersClient";
 import { positionHasClaims } from "@/services/index-stream";
 import type { MarketView } from "@/types/api";
 import { PortfolioEventCard } from "./PortfolioEventCard";
@@ -187,7 +187,7 @@ export function PortfolioClient({ markets: initial }: { markets: MarketView[] })
                   {eventCards(positionEvents, "positions", "No event positions yet.")}
                 </section>
               )}
-              {tab === "Orders" && <OrdersClient markets={markets} embedded />}
+              {tab === "Orders" && <OrderTable markets={markets} />}
               {tab === "Claims" && (
                 <section aria-label="Claims" className="flex min-w-0 flex-col gap-5">
                   {eventCards(claimGroups, "claims", "No claims yet.")}

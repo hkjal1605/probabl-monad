@@ -47,8 +47,8 @@ function Choice<K extends string>({
   );
 }
 
-/** On a phone the category tabs take the filter row, so status, sort and view sit behind one
- * button (marked when any differs from the default) in a sheet from the bottom of the screen. */
+/** A phone has no room for status, sort and view side by side, so they sit behind one button,
+ * which names the current choices, in a sheet from the bottom of the screen. */
 export function HomeFilterSheet({
   filters,
   setFilters,
@@ -62,25 +62,22 @@ export function HomeFilterSheet({
   const changed = (["lifecycle", "sort", "view"] as const).filter(
     (key) => filters[key] !== defaultFilters[key],
   ).length;
+  const status = STATUS[filters.lifecycle],
+    sort = SORT[filters.sort],
+    view = VIEW[filters.view];
   return (
     <Sheet>
       <SheetTrigger
         render={
           <Button
-            variant="ghost"
-            size="icon-lg"
-            aria-label={changed ? `Filters, ${changed} changed` : "Filters"}
-            className="relative shrink-0 md:hidden"
+            variant="secondary"
+            aria-label={`Filters: ${status}, ${sort}, ${view}`}
+            className="md:hidden"
           />
         }
       >
         <SlidersHorizontal aria-hidden="true" />
-        {changed > 0 && (
-          <span
-            aria-hidden="true"
-            className="absolute top-2 right-2 size-2 rounded-full bg-brand ring-2 ring-background"
-          />
-        )}
+        {status} · {sort} · {view}
       </SheetTrigger>
       <SheetContent side="bottom" className="gap-0 rounded-t-2xl">
         <SheetHeader>
