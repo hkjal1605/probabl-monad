@@ -47,8 +47,11 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
       </head>
       <body className="flex min-h-dvh flex-col text-sm">
         <AppProviders>
-          <SiteHeader />
-          <TestnetBanner />
+          {/* Pages can pin the header and the testnet banner (global.css). */}
+          <div data-site-chrome>
+            <SiteHeader />
+            <TestnetBanner />
+          </div>
           {children}
           <SiteFooter />
         </AppProviders>

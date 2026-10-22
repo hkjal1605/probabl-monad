@@ -359,7 +359,11 @@ function DaySection({ day, now }: { day: AgendaDay; now: number }) {
   const isToday = label === "Today";
   const upcomingIndex = isToday ? day.events.findIndex((e) => e.at > now) : -1;
   return (
-    <section id={`day-${day.key}`} data-day={day.key} className="scroll-mt-28">
+    <section
+      id={`day-${day.key}`}
+      data-day={day.key}
+      className="scroll-mt-[calc(var(--home-sticky,0px)+1rem)]"
+    >
       <h2 className="flex items-baseline gap-3 border-border border-b pb-2">
         <span className="text-lg font-semibold tracking-tight text-foreground">{label}</span>
         <span className="text-sm text-muted-foreground">{longDay.format(day.start)}</span>
@@ -627,12 +631,16 @@ export function EventCalendar({ markets, loading }: { markets: MarketView[]; loa
     };
   }, [events, laid, now]);
 
-  // The day in view follows the scroll: the top-most day section on screen.
+  // The day in view follows the scroll: the top-most day section on screen below the page's
+  // pinned header and filters.
   // biome-ignore lint/correctness/useExhaustiveDependencies: new day sections render when `laid` changes, and are observed then.
   useEffect(() => {
     const sections = root.current?.querySelectorAll<HTMLElement>("[data-day]");
     if (!sections?.length) return;
     const visible = new Map<string, number>();
+    const pinned = Number.parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue("--home-sticky"),
+    );
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
@@ -643,7 +651,7 @@ export function EventCalendar({ markets, loading }: { markets: MarketView[]; loa
         const top = [...visible].sort((a, b) => a[1] - b[1])[0];
         if (top) setActive(top[0]);
       },
-      { rootMargin: "-120px 0px -55% 0px" },
+      { rootMargin: `-${Math.round(pinned || 120)}px 0px -55% 0px` },
     );
     for (const section of sections) observer.observe(section);
     return () => observer.disconnect();

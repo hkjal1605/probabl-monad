@@ -2,7 +2,7 @@
 
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { LazyPriceChart } from "@/components/market/LazyPriceChart";
 import type { LightweightChartSeries } from "@/components/market/LightweightPriceChart";
 import { ProbabilityGauge } from "@/components/market/ProbabilityGauge";
@@ -169,15 +169,30 @@ function StockPicker({
 
 /** The event leading the selected category: its question and probability, one of its stocks'
  * prices if YES, if NO and spot, and their chart. */
+/** Whether the screen is md wide or wider, read once mounted: a phone leaves the featured event
+ * out (the feed's first card is the same event), so its chart and price history never load there. */
+function useWide() {
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    const query = matchMedia("(min-width: 48rem)");
+    const update = () => setWide(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  return wide;
+}
+
 function FeaturedEvent({ assets }: { assets: MarketView[] }) {
   const event = assets[0] as MarketView;
   const [selected, setSelected] = useState(() => ([...assets].sort(byTrading)[0] ?? event).id);
   const market = assets.find((asset) => asset.id === selected) ?? event;
   const live = { yes: midpoint(market.yes), no: midpoint(market.no), spot: currentSpotUsd(market) };
+  const wide = useWide();
   return (
     <Card
       variant="market"
-      className="fade-in-0 flex min-h-0 animate-in flex-col p-4 duration-500 motion-reduce:animate-none sm:p-5 lg:col-span-2"
+      className="fade-in-0 flex min-h-0 animate-in flex-col p-4 duration-500 motion-reduce:animate-none max-md:hidden sm:p-5 lg:col-span-2"
     >
       <header className="flex items-start gap-4">
         <EventImage market={event} className="size-14" />
@@ -229,7 +244,7 @@ function FeaturedEvent({ assets }: { assets: MarketView[] }) {
             <ArrowRight data-icon="inline-end" aria-hidden="true" />
           </Button>
         </div>
-        <EventChart market={market} live={live} />
+        {wide ? <EventChart market={market} live={live} /> : <div className="min-w-0" />}
       </div>
     </Card>
   );
@@ -259,7 +274,7 @@ function BuyPrice({ market, branch }: { market: MarketView; branch: "YES" | "NO"
 
 function TradedMarket({ market }: { market: MarketView }) {
   return (
-    <li className="flex flex-col gap-2">
+    <li className="flex flex-col gap-2 max-md:w-[80%] max-md:shrink-0 max-md:snap-start max-md:justify-between max-md:rounded-xl max-md:bg-card max-md:p-3">
       <div className="flex items-start gap-3">
         <div className="relative shrink-0">
           <EventImage market={market} className="size-11" />
@@ -291,13 +306,17 @@ function TradedMarket({ market }: { market: MarketView }) {
 /** The markets traded most in the last 24 hours, whatever the category. */
 function MostTraded({ markets }: { markets: MarketView[] }) {
   return (
-    <Card variant="market" className="flex flex-col p-4 sm:p-5">
+    <Card
+      variant="market"
+      className="flex min-w-0 flex-col p-4 max-md:overflow-visible max-md:rounded-none max-md:bg-transparent max-md:p-0 sm:p-5"
+    >
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="font-semibold text-foreground text-lg tracking-tight">Most Traded</h2>
         <span className="text-muted-foreground text-xs">Last 24 hours</span>
       </div>
       {markets.length ? (
-        <ul className="mt-4 flex min-h-0 flex-1 flex-col justify-between gap-4">
+        // On a phone the markets are cards in a row that swipes sideways, the next one peeking in.
+        <ul className="mt-4 flex min-h-0 flex-1 flex-col justify-between gap-4 max-md:-mx-4 max-md:mt-3 max-md:snap-x max-md:snap-mandatory max-md:scroll-px-4 max-md:flex-row max-md:justify-start max-md:gap-3 max-md:overflow-x-auto max-md:px-4 max-md:[scrollbar-width:none]">
           {markets.map((market) => (
             <TradedMarket key={market.id} market={market} />
           ))}
@@ -334,7 +353,7 @@ export function HomeBanner({
       ) : (
         <Card
           variant="market"
-          className="flex min-h-80 items-center justify-center p-6 lg:col-span-2"
+          className="flex min-h-80 items-center justify-center p-6 max-md:hidden lg:col-span-2"
         >
           <p className="text-muted-foreground text-sm">No {category} markets are listed yet.</p>
         </Card>

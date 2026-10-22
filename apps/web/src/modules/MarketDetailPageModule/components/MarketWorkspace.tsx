@@ -1,4 +1,5 @@
 "use client";
+import { ArrowLeftRight, ChartLine } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -10,6 +11,7 @@ import { TokenIdentity } from "@/components/market/TokenIdentity";
 import { ClaimTable } from "@/components/portfolio/ClaimTable";
 import { PositionTable } from "@/components/portfolio/PositionTable";
 import { WalletTradeTable } from "@/components/portfolio/WalletTradeTable";
+import { useUiStore } from "@/components/providers/UiStateProvider";
 import { useMemberAccount } from "@/components/providers/WalletProvider";
 import { Avatar, AvatarFallback, AvatarLazyImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +54,13 @@ const EMPTY_PROBABILITY: MarketView["probability"] = {
   quality: "disconnected",
   value: null,
 };
+type WorkspaceView = "chart" | "trade";
+/** An account tab's content. From xl the workspace fills the window and its panels scroll on
+ * their own; below that the page scrolls, so a panel only scrolls its wide tables sideways (a
+ * vertical scroller there would catch the swipes meant for the page). */
+const PANEL_SCROLL = "min-h-0 xl:overflow-auto xl:overscroll-contain";
+/** Where the workspace is one column (global.css): the chart and ticket views, no book. */
+const PHONE = "(max-width: 899px)";
 function OutcomeStat({ market, branch }: { market: MarketView; branch: "YES" | "NO" }) {
   const impact = spotImpactPercent(market, branch);
   return (
@@ -122,6 +131,25 @@ export function MarketWorkspace({
   );
   const [tab, setTab] = useState("positions"),
     [bookBranch, setBookBranch] = useState<"YES" | "NO">("YES");
+  // On a phone the chart and the ticket are two views of one slot (the book is left out). Each
+  // switch brings the view into sight, as the account tables below can be scrolled to.
+  const [view, setView] = useState<{ name: WorkspaceView; at: number }>({ name: "chart", at: 0 });
+  const chartRef = useRef<HTMLDivElement>(null),
+    ticketRef = useRef<HTMLDivElement>(null);
+  const showView = (name: WorkspaceView) => setView({ name, at: Date.now() });
+  useEffect(() => {
+    if (view.at)
+      (view.name === "trade" ? ticketRef : chartRef).current?.scrollIntoView({
+        block: "nearest",
+        behavior: "smooth",
+      });
+  }, [view]);
+  // A trade handed to this market's ticket (a position's Close, a Buy on the markets list) opens it.
+  const prefill = useUiStore((s) => s.prefill);
+  useEffect(() => {
+    if (prefill && prefill.marketId === indexedMarket?.id && matchMedia(PHONE).matches)
+      setView({ name: "trade", at: Date.now() });
+  }, [prefill, indexedMarket?.id]);
   if (!market)
     return query.isPending ? (
       <MarketDetailPageSkeleton />
@@ -175,7 +203,10 @@ export function MarketWorkspace({
         </div>
         <MarketAssetSwitcher market={market} />
       </div>
-      <div className="market-workspace-grid grid min-h-0 flex-1 items-stretch gap-0.5 bg-secondary p-0.5 xl:overflow-hidden">
+      <div
+        data-view={view.name}
+        className="market-workspace-grid grid min-h-0 flex-1 items-stretch gap-0.5 bg-secondary p-0.5 xl:overflow-hidden"
+      >
         <div className="market-workspace-stats overflow-hidden rounded-[4px] bg-background">
           <div className="@container/prices flex flex-wrap items-center gap-x-6 gap-y-3 border-y px-3 py-3">
             <OutcomeStat market={market} branch="YES" />
@@ -191,7 +222,10 @@ export function MarketWorkspace({
             />
           )}
         </div>
-        <div className="market-workspace-chart min-h-0 min-w-0 overflow-hidden rounded-[4px]">
+        <div
+          ref={chartRef}
+          className="market-workspace-chart min-h-0 min-w-0 scroll-mb-16 overflow-hidden rounded-[4px]"
+        >
           <PriceChart market={market} />
         </div>
         <Card
@@ -215,7 +249,10 @@ export function MarketWorkspace({
             />
           </CardContent>
         </Card>
-        <div className="market-workspace-ticket min-h-0 min-w-0 overflow-y-auto overscroll-contain rounded-[4px] bg-card">
+        <div
+          ref={ticketRef}
+          className="market-workspace-ticket min-h-0 min-w-0 scroll-mb-16 rounded-[4px] bg-card xl:overflow-y-auto xl:overscroll-contain"
+        >
           <OrderTicket key={market.id} market={market} />
         </div>
         <Card
@@ -238,24 +275,24 @@ export function MarketWorkspace({
                   ),
               )}
             </TabsList>
-            <TabsContent value="positions" className="min-h-0 overflow-auto overscroll-contain">
+            <TabsContent value="positions" className={PANEL_SCROLL}>
               <AccountMarkets market={market}>
                 {(markets) => <PositionTable markets={markets} currentMarketId={market.id} />}
               </AccountMarkets>
             </TabsContent>
-            <TabsContent value="orders" className="min-h-0 overflow-auto overscroll-contain">
+            <TabsContent value="orders" className={PANEL_SCROLL}>
               <AccountMarkets market={market}>
                 {(markets) => (
                   <OrdersClient markets={markets} currentMarketId={market.id} embedded />
                 )}
               </AccountMarkets>
             </TabsContent>
-            <TabsContent value="claims" className="min-h-0 overflow-auto overscroll-contain">
+            <TabsContent value="claims" className={PANEL_SCROLL}>
               <AccountMarkets market={market}>
                 {(markets) => <ClaimTable markets={markets} currentMarketId={market.id} />}
               </AccountMarkets>
             </TabsContent>
-            <TabsContent value="trades" className="min-h-0 overflow-auto overscroll-contain">
+            <TabsContent value="trades" className={PANEL_SCROLL}>
               <AccountMarkets market={market}>
                 {(markets) => <WalletTradeTable markets={markets} />}
               </AccountMarkets>
@@ -263,6 +300,31 @@ export function MarketWorkspace({
           </Tabs>
         </Card>
       </div>
+      <nav
+        aria-label="Market view"
+        className="market-view-bar fixed inset-x-0 bottom-0 z-40 grid grid-cols-2 border-t bg-background pb-[env(safe-area-inset-bottom)] min-[900px]:hidden"
+      >
+        {(
+          [
+            ["chart", "Chart", ChartLine],
+            ["trade", "Trade", ArrowLeftRight],
+          ] as const
+        ).map(([name, label, Icon]) => (
+          <button
+            key={name}
+            type="button"
+            aria-pressed={view.name === name}
+            onClick={() => showView(name)}
+            className={cn(
+              "flex h-14 items-center justify-center gap-2 text-sm font-medium outline-none focus-visible:bg-accent",
+              view.name === name ? "text-brand-strong" : "text-muted-foreground",
+            )}
+          >
+            <Icon aria-hidden="true" className="size-4.5" />
+            {label}
+          </button>
+        ))}
+      </nav>
     </Page>
   );
 }

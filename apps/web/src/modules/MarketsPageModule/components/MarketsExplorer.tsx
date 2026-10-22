@@ -3,7 +3,7 @@ import { CalendarDays } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useLayoutEffect, useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { EventCard } from "@/components/market/EventCard";
 import { ProbabilityGauge } from "@/components/market/ProbabilityGauge";
 import { TokenIdentity } from "@/components/market/TokenIdentity";
@@ -54,6 +54,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { MarketView } from "@/types/api";
 import { HomeBanner } from "./HomeBanner";
+import { HomeFilterSheet } from "./HomeFilterSheet";
 import { MarketsColumns } from "./MarketsColumns";
 import { MarketsPageSkeleton } from "./MarketsPageSkeleton";
 
@@ -85,6 +86,44 @@ export function MarketsExplorer({
     setCategory(pathnameCategory);
     setFilters({ category: pathnameCategory });
   }, [pathnameCategory, setFilters]);
+  const filtersRef = useRef<HTMLElement>(null),
+    tabsRef = useRef<HTMLDivElement>(null),
+    listRef = useRef<HTMLDivElement>(null);
+  // The filters stick under the header and testnet banner, whose height varies (the banner wraps,
+  // and comes and goes; a phone pins the header alone); what sticks or is scrolled to below the
+  // filters goes under both.
+  useLayoutEffect(() => {
+    const chrome = document.querySelector<HTMLElement>("[data-site-chrome]"),
+      header = chrome?.querySelector("header"),
+      bar = filtersRef.current;
+    if (!chrome || !header || !bar) return;
+    const style = document.documentElement.style;
+    const measure = () => {
+      const pinned =
+        getComputedStyle(chrome).display === "contents" ? header.offsetHeight : chrome.offsetHeight;
+      style.setProperty("--home-chrome", `${pinned}px`);
+      style.setProperty("--home-sticky", `${pinned + bar.offsetHeight}px`);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    for (const element of [chrome, header, bar]) observer.observe(element);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+      style.removeProperty("--home-chrome");
+      style.removeProperty("--home-sticky");
+    };
+  }, []);
+  /** A new category's markets show from their start, the filters staying where they are. */
+  const showFromStart = () => {
+    const list = listRef.current,
+      bar = filtersRef.current;
+    if (!list || !bar) return;
+    const top =
+      list.getBoundingClientRect().top + window.scrollY - bar.getBoundingClientRect().bottom;
+    if (window.scrollY > top) window.scrollTo({ top });
+  };
   // Recomputed only when the markets or the filters change, so the event groups (and the cards
   // they feed) keep their identity across unrelated renders.
   const { listed, visible, tokens, tabs } = useMemo(() => {
@@ -112,19 +151,47 @@ export function MarketsExplorer({
     if (!tabs.includes(category)) tabs.splice(tabs.length - 1, 0, category);
     return { listed, visible, tokens, tabs };
   }, [markets, filters.lifecycle, filters.sort, category]);
+  // The chosen category stays in sight in its scrolling row, centred where it can be so its
+  // neighbours show too (a link can open one past the screen's edge). The row settles when the
+  // full market list adds tabs and when the web font loads, so it centres again then.
+  const tabKey = tabs.join("|");
+  const centred = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new category or tab list moves the pressed tab, read from the row.
+  useLayoutEffect(() => {
+    const centre = (smooth: boolean) => {
+      const row = tabsRef.current,
+        tab = row?.querySelector<HTMLElement>('[aria-pressed="true"]');
+      if (!row || !tab) return;
+      const r = row.getBoundingClientRect(),
+        t = tab.getBoundingClientRect();
+      row.scrollBy({
+        left: t.left + t.width / 2 - (r.left + r.width / 2),
+        behavior: smooth ? "smooth" : "auto",
+      });
+    };
+    centre(centred.current && !matchMedia("(prefers-reduced-motion: reduce)").matches);
+    centred.current = true;
+    if (document.fonts.status !== "loaded") void document.fonts.ready.then(() => centre(false));
+  }, [category, tabKey]);
   const calendar = category === CALENDAR_TAB;
   const showSkeleton = query.isPending && markets.length === 0;
   return (
     <Page
       variant="terminal"
-      className="page-scrollbars-hidden markets-viewport flex min-h-0 max-w-[1350px] flex-col overflow-hidden px-4 pt-4 pb-0 lg:px-6"
+      className="page-scrollbars-hidden markets-viewport flex max-w-[1350px] flex-col px-4 py-0 lg:px-6"
     >
       <section
+        ref={filtersRef}
         aria-label="Market filters"
-        className="mb-4 flex min-h-8 shrink-0 items-center gap-4"
+        className="sticky top-(--home-chrome) z-30 -mx-4 flex min-h-16 shrink-0 items-center gap-4 bg-background px-4 py-4 max-md:min-h-0 max-md:gap-1 max-md:border-b max-md:py-0 max-md:pr-1 lg:-mx-6 lg:px-6"
       >
-        {/* The tabs scroll on their own, so the view controls stay in reach. */}
-        <div className="-mb-2 min-w-0 flex-1 overflow-x-auto pb-2 [scrollbar-width:none]">
+        {/* The tabs scroll on their own, so the view controls stay in reach. On a phone the row
+            runs to the screen's edges and fades out at them, and the controls sit behind one
+            button. */}
+        <div
+          ref={tabsRef}
+          className="home-category-tabs -mb-2 min-w-0 flex-1 overflow-x-auto pb-2 [scrollbar-width:none] max-md:-ml-4 max-md:mb-0 max-md:pb-0 max-md:pl-4 max-md:[mask-image:linear-gradient(to_right,transparent,black_1rem,black_calc(100%-2.5rem),transparent)]"
+        >
           <Segmented
             label="Market category"
             variant="category"
@@ -142,6 +209,7 @@ export function MarketsExplorer({
               )
             }
             onChange={(nextCategory) => {
+              showFromStart();
               setCategory(nextCategory);
               setFilters({ category: nextCategory });
               const nextPath = marketTabPath(nextCategory);
@@ -150,7 +218,7 @@ export function MarketsExplorer({
             }}
           />
         </div>
-        <div className={cn("ml-auto flex shrink-0 items-center gap-1", calendar && "hidden")}>
+        <div className={cn("ml-auto hidden shrink-0 items-center gap-1", !calendar && "md:flex")}>
           <Select
             value={filters.lifecycle}
             items={{
@@ -199,9 +267,12 @@ export function MarketsExplorer({
             onChange={(view) => setFilters({ view })}
           />
         </div>
+        {!calendar && (
+          <HomeFilterSheet filters={filters} setFilters={setFilters} events={visible.length} />
+        )}
       </section>
-      {/* The filters stay put; the banner and the markets below it scroll. */}
-      <div className="min-h-0 flex-1 overflow-y-auto pb-3">
+      {/* The filters stay put; the banner and the markets below it scroll under them. */}
+      <div ref={listRef} className="flex-1 pb-3 max-md:pt-3">
         {calendar ? (
           <EventCalendar markets={markets} loading={showSkeleton} />
         ) : showSkeleton ? (

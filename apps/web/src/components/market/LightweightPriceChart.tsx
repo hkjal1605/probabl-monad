@@ -225,7 +225,8 @@ export function LightweightPriceChart({
         vertLines: { visible: false },
       },
       handleScale: false,
-      handleScroll: !banner,
+      // A sideways drag pans the chart; an up-or-down one scrolls the page, as the chart sits in it.
+      handleScroll: banner ? false : { vertTouchDrag: false },
       layout: {
         attributionLogo: true,
         background: { color: "transparent", type: ColorType.Solid },

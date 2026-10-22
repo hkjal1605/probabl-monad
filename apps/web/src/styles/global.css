@@ -266,16 +266,51 @@
   .page-scrollbars-hidden *::-webkit-scrollbar {
     display: none;
   }
-  /* The markets page: the window never scrolls, only the banner and markets below the filters. */
-  body:has(.markets-viewport) {
-    height: 100dvh;
-    overflow: hidden;
+  /* The markets page: the header, testnet banner, filters and footer stay put while the banner and
+     markets scroll. The window scrolls under them, so a swipe or wheel anywhere moves the list. */
+  body:has(.markets-viewport) [data-site-chrome] {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: var(--background);
   }
+  body:has(.markets-viewport) > footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 30;
+    background: var(--background);
+  }
+  /* A phone pins only the header and the category row: the testnet banner and the footer scroll
+     away, leaving the screen to the markets. */
+  @media (width < 48rem) {
+    body:has(.markets-viewport) [data-site-chrome] {
+      display: contents;
+    }
+    body:has(.markets-viewport) [data-site-chrome] > header {
+      position: sticky;
+      top: 0;
+    }
+    body:has(.markets-viewport) > footer {
+      position: static;
+    }
+    /* Category tabs a thumb can hit, underlined at the row's foot. */
+    .home-category-tabs [data-slot="toggle-group-item"] {
+      height: 3rem;
+    }
+    .home-category-tabs [data-slot="segmented-indicator"] {
+      bottom: 0;
+    }
+  }
+  /* A market's page scrolls without showing scrollbars, the window's included. */
+  html:has(.market-workspace-scrollbars-hidden),
+  body:has(.market-workspace-scrollbars-hidden),
   .market-workspace-scrollbars-hidden,
   .market-workspace-scrollbars-hidden * {
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
+  html:has(.market-workspace-scrollbars-hidden)::-webkit-scrollbar,
+  body:has(.market-workspace-scrollbars-hidden)::-webkit-scrollbar,
   .market-workspace-scrollbars-hidden::-webkit-scrollbar,
   .market-workspace-scrollbars-hidden *::-webkit-scrollbar {
     display: none;
@@ -449,6 +484,21 @@
       0 1px var(--card),
       inset 1px 0 var(--border),
       inset -1px 0 var(--border);
+  }
+  /* One column: no order book, and the chart or the ticket, as the bar fixed below picks. */
+  @media (max-width: 899px) {
+    .market-workspace-book,
+    .market-workspace-grid:not([data-view="trade"]) .market-workspace-ticket,
+    .market-workspace-grid[data-view="trade"] .market-workspace-chart {
+      display: none;
+    }
+    /* The full-width ticket splits Buy and Sell in halves. */
+    .market-workspace-ticket .trade-side-selector [data-slot="toggle-group-item"] {
+      flex: 1;
+    }
+    body:has(.market-view-bar) {
+      padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
+    }
   }
   @media (min-width: 900px) {
     .market-workspace-grid {
