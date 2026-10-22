@@ -23,21 +23,35 @@ export function quotePause(
 export const eventVenue = (source: MarketView["mapping"]["source"]) =>
   source === "kalshi" ? "Kalshi" : "Polymarket";
 
-/** `markets` without the open ones the vaults stopped quoting because their event market gives no
- * usable price, as when its event is all but decided and one side of the venue's book is empty or
- * too thin: the markets list leaves them out. The API withholds an unusable price rather than say
- * why, so while a venue gives no market a usable price its feed is down, and none of its markets
- * is left out. All of this arrives with the list (a quote only brings a market back), so a market
- * never shows and then disappears. */
+/** The vaults' own limits on an event market's price (the keeper's defaults, `probabilityFloorX6`
+ * and `maxProbabilitySpreadX6` in packages/operator reference.ts): no quote within 2% of either
+ * outcome, or across a venue spread wider than 5 points. */
+const DECIDED = 0.02,
+  MAX_SPREAD = 0.05;
+/** A price the vaults quote from: usable, the event still open to either outcome, the book tight. */
+const quotable = ({ quality, value, bid, ask }: MarketView["probability"]) =>
+  quality === "valid" &&
+  value !== null &&
+  value >= DECIDED &&
+  value <= 1 - DECIDED &&
+  (bid === null || ask === null || ask - bid <= MAX_SPREAD + 1e-9);
+
+/** `markets` without the open ones the vaults stopped quoting because their event is all but
+ * decided: its price within 2% of either outcome, one side of the venue's book empty or too thin,
+ * or no usable price at all. The markets list leaves them out. The API withholds an unusable price
+ * rather than say why, so while a venue gives no market a usable price its feed is down, and none
+ * of its markets is left out. All of this arrives with the list (a quote only brings a market
+ * back), so a market never shows and then disappears. */
 export function withoutUnpricedMarkets(markets: MarketView[]): MarketView[] {
-  const priced = (m: MarketView) => m.probability.quality === "valid";
   const live = new Set(
-    markets.filter((m) => m.lifecycle === "open" && priced(m)).map((m) => m.mapping.source),
+    markets
+      .filter((m) => m.lifecycle === "open" && m.probability.quality === "valid")
+      .map((m) => m.mapping.source),
   );
   const listed = markets.filter(
     (m) =>
       m.lifecycle !== "open" ||
-      priced(m) ||
+      quotable(m.probability) ||
       Boolean(m.yes.quote || m.no.quote) ||
       !live.has(m.mapping.source),
   );

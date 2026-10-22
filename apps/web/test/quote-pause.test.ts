@@ -7,7 +7,9 @@ const base = fixtureMarkets[0] as MarketView;
 const market = (patch: Partial<MarketView>): MarketView => ({ ...base, ...patch });
 const quoted = { ...base.yes, quote: { bid: "15.27", ask: "15.59" } };
 const { quote: _, ...unquoted } = base.yes;
-const valid = { ...base.probability, quality: "valid" as const, value: 0.79 };
+const valid = { ...base.probability, quality: "valid" as const, value: 0.79, bid: 0.78, ask: 0.8 };
+const decided = { ...valid, value: 0.985, bid: 0.98, ask: 0.99 };
+const wide = { ...valid, value: 0.5, bid: 0.45, ask: 0.55 };
 const oneSided = { ...base.probability, quality: "one-sided" as const, value: null };
 const live = { live: true, quoted: 150 };
 
@@ -52,12 +54,17 @@ test("the markets list leaves out open markets with no usable event price and no
     }),
     // The price is usable, so whatever stops the vaults, the market stays listed.
     kalshi("vault-paused", { probability: valid, yes: unquoted, no: unquoted }),
+    // Usable, but the event all but decided (the vaults quote 2% to 98%) or its book too wide.
+    kalshi("decided", { probability: decided, yes: unquoted, no: unquoted }),
+    kalshi("wide", { probability: wide, yes: unquoted, no: unquoted }),
+    kalshi("decided-quoted", { probability: decided, yes: quoted, no: unquoted }),
   ];
   expect(withoutUnpricedMarkets(markets).map((m) => m.id)).toEqual([
     "priced",
     "still-quoted",
     "resolving",
     "vault-paused",
+    "decided-quoted",
   ]);
 });
 
