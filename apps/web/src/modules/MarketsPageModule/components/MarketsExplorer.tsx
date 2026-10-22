@@ -43,6 +43,7 @@ import {
   percent,
   sortEventGroups,
 } from "@/lib/markets/presentation";
+import { withoutUnpricedMarkets } from "@/lib/markets/quote-pause";
 import { cn } from "@/lib/utils";
 import type { MarketView } from "@/types/api";
 import { HomeBanner } from "./HomeBanner";
@@ -123,9 +124,11 @@ export function MarketsExplorer({
   // Recomputed only when the markets or the filters change, so the event groups (and the cards
   // they feed) keep their identity across unrelated renders.
   const { listed, visible, tokens, tabs } = useMemo(() => {
-    // Active events never list frozen (halted or delisted) sibling markets.
+    // Markets the vaults stopped quoting as their event is all but decided are left out, and
+    // active events never list frozen (halted or delisted) sibling markets.
+    const priced = withoutUnpricedMarkets(markets);
     const listed =
-      filters.lifecycle === "active" ? markets.filter((m) => m.lifecycle !== "frozen") : markets;
+      filters.lifecycle === "active" ? priced.filter((m) => m.lifecycle !== "frozen") : priced;
     const visible = sortEventGroups(
       groupMarkets(listed).filter((assets) =>
         assets.some(

@@ -22,3 +22,24 @@ export function quotePause(
 /** The event market's venue, as people know it. */
 export const eventVenue = (source: MarketView["mapping"]["source"]) =>
   source === "kalshi" ? "Kalshi" : "Polymarket";
+
+/** `markets` without the open ones the vaults stopped quoting because their event market gives no
+ * usable price, as when its event is all but decided and one side of the venue's book is empty or
+ * too thin: the markets list leaves them out. The API withholds an unusable price rather than say
+ * why, so while a venue gives no market a usable price its feed is down, and none of its markets
+ * is left out. All of this arrives with the list (a quote only brings a market back), so a market
+ * never shows and then disappears. */
+export function withoutUnpricedMarkets(markets: MarketView[]): MarketView[] {
+  const priced = (m: MarketView) => m.probability.quality === "valid";
+  const live = new Set(
+    markets.filter((m) => m.lifecycle === "open" && priced(m)).map((m) => m.mapping.source),
+  );
+  const listed = markets.filter(
+    (m) =>
+      m.lifecycle !== "open" ||
+      priced(m) ||
+      Boolean(m.yes.quote || m.no.quote) ||
+      !live.has(m.mapping.source),
+  );
+  return listed.length === markets.length ? markets : listed;
+}
