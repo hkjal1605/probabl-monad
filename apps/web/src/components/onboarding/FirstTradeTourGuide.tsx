@@ -13,7 +13,13 @@ import {
 } from "react";
 import { Button } from "@/components/ui/button";
 import { useQuotePrices } from "@/hooks/useQuotePrices";
-import { fullyQuoted, pickTourMarket, TOUR_STEPS, type TourStep } from "@/lib/first-trade-tour";
+import {
+  fullyQuoted,
+  pickTourMarket,
+  TOUR_STEPS,
+  type TourStep,
+  tourPage,
+} from "@/lib/first-trade-tour";
 import { cn } from "@/lib/utils";
 import { finishFirstTradeTour, reachTourStep, skipFirstTradeTour } from "@/stores/first-trade-tour";
 
@@ -68,13 +74,13 @@ const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").match
  * ticket. The step shown follows the page, so leaving for another page only hides it. */
 export function FirstTradeTourGuide({ reached }: { reached: TourStep }) {
   const pathname = usePathname();
-  const onMarket = pathname.startsWith("/markets/"),
-    onList = pathname === "/" || pathname.startsWith("/category/");
+  const page = tourPage(pathname),
+    onMarket = page === "market";
   const step: TourStep | null = onMarket
     ? reached === "market"
       ? "side"
       : reached
-    : onList
+    : page === "list"
       ? "market"
       : null;
   useEffect(() => {

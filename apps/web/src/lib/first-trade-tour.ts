@@ -37,6 +37,13 @@ export function writeTour(storage: Storage | null, state: TourState) {
   }
 }
 
+/** The pages the tour has a step on: the markets list (all and the category tabs; the calendar
+ * lists no markets) and a market's page. Anywhere else it waits, hidden. */
+export function tourPage(pathname: string): "list" | "market" | null {
+  if (pathname.startsWith("/markets/")) return "market";
+  return pathname === "/" || pathname.startsWith("/category/") ? "list" : null;
+}
+
 /** The step after (or before) `step`, or null past either end. */
 export function stepBeside(step: TourStep, by: 1 | -1): TourStep | null {
   return TOUR_STEPS[TOUR_STEPS.indexOf(step) + by] ?? null;

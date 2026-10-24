@@ -5,8 +5,15 @@ import {
   readTour,
   stepBeside,
   TOUR_KEY,
+  tourPage,
   writeTour,
 } from "../src/lib/first-trade-tour";
+import {
+  finishFirstTradeTour,
+  skipFirstTradeTour,
+  startFirstTradeTour,
+  tourStore,
+} from "../src/stores/first-trade-tour";
 
 const memory = (initial?: string) => {
   const values = new Map<string, string>(initial ? [[TOUR_KEY, initial]] : []);
@@ -62,4 +69,25 @@ test("the tour points at the first market quoted on both branches, else the firs
   expect(pickTourMarket(rows, quoted)).toEqual({ marketId: "7" });
   expect(pickTourMarket(rows, new Set())).toEqual({ marketId: "3" });
   expect(pickTourMarket([], quoted)).toBeNull();
+});
+
+test("asking for the tour starts it from the top, even after an earlier finish or skip", () => {
+  skipFirstTradeTour();
+  startFirstTradeTour();
+  expect(tourStore.get()).toEqual({ status: "active", step: "market" });
+  finishFirstTradeTour();
+  startFirstTradeTour();
+  expect(tourStore.get()).toEqual({ status: "active", step: "market" });
+  // Declining never undoes a finished tour.
+  finishFirstTradeTour();
+  skipFirstTradeTour();
+  expect(tourStore.get()).toEqual({ status: "done" });
+});
+
+test("the tour has steps on the markets list and market pages only", () => {
+  expect(tourPage("/")).toBe("list");
+  expect(tourPage("/category/daily")).toBe("list");
+  expect(tourPage("/markets/nu-2105f594a980763f")).toBe("market");
+  for (const page of ["/calendar", "/portfolio", "/vaults", "/learn", "/invites"])
+    expect(tourPage(page)).toBeNull();
 });

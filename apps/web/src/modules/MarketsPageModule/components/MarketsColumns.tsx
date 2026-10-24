@@ -174,7 +174,7 @@ function EventRow({ market }: { market: MarketView }) {
 
 function AssetRow({ market }: { market: MarketView }) {
   return (
-    <TableRow className="group/row relative">
+    <TableRow className="group/row relative" data-tour-market={market.venue.marketId}>
       {/* Indented to the event's title: its image (2rem) and gap (0.75rem) past the padding. */}
       <TableCell className="pl-[3.75rem]">
         <Link

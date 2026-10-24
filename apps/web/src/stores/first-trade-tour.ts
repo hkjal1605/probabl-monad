@@ -50,9 +50,11 @@ function onStorage(event: StorageEvent) {
   notify();
 }
 
-/** Starts the tour for a browser that never had it: the onboarding guide offers it as it ends. */
+/** Starts the tour from its first step. The onboarding guide offers it as it ends, and asking
+ * for it there always starts it, even in a browser that finished or skipped it before (another
+ * wallet set up here); it never starts unasked. */
 export function startFirstTradeTour() {
-  if (tourStore.get() === null) tourStore.set({ status: "active", step: "market" });
+  tourStore.set({ status: "active", step: "market" });
 }
 /** Ends the tour for good (or declines it before it starts). */
 export function skipFirstTradeTour() {

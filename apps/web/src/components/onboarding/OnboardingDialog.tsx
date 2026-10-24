@@ -10,6 +10,7 @@ import {
   PenLine,
   XIcon,
 } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useState } from "react";
 import { type Address, formatUnits } from "viem";
 import { getBalance } from "viem/actions";
@@ -32,6 +33,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { InviteForm } from "@/components/wallet/InviteForm";
 import { protocolConfig } from "@/config/protocol";
+import { tourPage } from "@/lib/first-trade-tour";
 import { GAS_FAUCETS, networkName, ONBOARDING_STEPS, type OnboardingStep } from "@/lib/onboarding";
 import { tokenDisplay } from "@/lib/tokens/catalog";
 import { rpc } from "@/lib/trading/rpc";
@@ -493,11 +495,16 @@ function Received({ sent }: { sent: FaucetDelivery[] }) {
 
 function DoneStep({ balance }: { balance: bigint | null }) {
   const { claim, finish } = useOnboarding();
+  const router = useRouter(),
+    pathname = usePathname();
   const transaction = claim?.transactions.at(-1);
-  // The trading guide is offered here, as a choice: either answer is final for this browser.
+  // The trading guide is offered here, as a choice. It starts on the markets list (or the market
+  // page open), so from any other page (portfolio, calendar, vaults) it goes to the list.
   const close = (tour: boolean) => {
-    if (tour) startFirstTradeTour();
-    else skipFirstTradeTour();
+    if (tour) {
+      startFirstTradeTour();
+      if (!tourPage(pathname)) router.push("/");
+    } else skipFirstTradeTour();
     finish();
   };
   return (

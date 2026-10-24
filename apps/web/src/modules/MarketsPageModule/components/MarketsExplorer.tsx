@@ -291,6 +291,7 @@ export function MarketsExplorer({
                       return (
                         <TableRow key={eventKey(market)} className="border-b-0">
                           <TableCell
+                            data-tour-market={market.venue.marketId}
                             className={cn(
                               MATRIX_PINNED,
                               "left-0 min-w-52 max-w-80 whitespace-normal shadow-[inset_-1px_0_0_var(--border)] max-md:min-w-36 max-md:max-w-40",
