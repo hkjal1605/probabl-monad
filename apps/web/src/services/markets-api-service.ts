@@ -366,6 +366,7 @@ async function liveMarkets(
         protocolVersion: market.protocolVersion,
         priceFormat: market.priceFormat,
         baseStep: text(market.baseStep),
+        minNotional: text(market.minNotional, "0"),
         priceTickRawX18: text(market.priceTickRawX18, "1"),
         fees,
         makerRebateBps,

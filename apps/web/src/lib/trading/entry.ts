@@ -1,9 +1,11 @@
 import {
   formatPriceRawX18,
   formatShareAmount,
+  formatTokenAmount,
   MAX_ORDER_UINT128,
   parsePriceRawX18,
   priceExponent,
+  quoteForReservation,
 } from "@conditional-stocks/domain";
 import { decimalInput, decimalPlaces, parseAmountInput } from "@/lib/format/amount-input";
 import { currentSpotUsd } from "@/lib/markets/presentation";
@@ -20,6 +22,16 @@ export function priceInput(text: string, market: MarketView): string | null {
   return value;
 }
 
+/** The least an order in `market` can spend at `rawPrice` (raw quote units): the value of the
+ * fewest whole steps reaching the market's minimum order value, which the exchange checks at the
+ * order's price, rounded up; at least one step. */
+export function leastSpend(market: MarketView, rawPrice: bigint): bigint {
+  const step = BigInt(market.baseStep),
+    minimum = BigInt(market.minNotional ?? "0");
+  const shares = minimum > 0n ? ((minimum - 1n) * 10n ** 18n) / rawPrice + 1n : 1n;
+  return quoteForReservation(((shares + step - 1n) / step) * step, rawPrice);
+}
+
 /** Shares a spend of the quote token buys at `price`, rounded down to an onchain share step, so
  * the order never exceeds the budget. Throws a message a person can act on; callers wait for a
  * price rather than call this without one. */
@@ -33,10 +45,14 @@ export function quantityForSpend(spend: string, price: string, market: MarketVie
   const step = BigInt(market.baseStep);
   if (step <= 0n) throw new Error("This market has no share step.");
   const raw = ((budget * 10n ** 18n) / rawPrice / step) * step;
-  if (raw <= 0n)
+  // Rounding down to whole steps can take a spend below the market's minimum order value.
+  if (raw <= 0n || quoteForReservation(raw, rawPrice) < BigInt(market.minNotional ?? "0")) {
+    const cents = 10n ** BigInt(Math.max(0, market.quoteTokenDecimals - 2));
+    const least = ((leastSpend(market, rawPrice) + cents - 1n) / cents) * cents;
     throw new Error(
-      `That buys less than the smallest step (${formatShareAmount(step, market)} ${market.ticker}) at this price.`,
+      `The smallest order here is ${formatTokenAmount(least, market.quoteTokenDecimals)} ${symbol} at this price.`,
     );
+  }
   if (raw >= 1n << 96n) throw new Error("That amount is too large.");
   return formatShareAmount(raw, market);
 }

@@ -73,6 +73,8 @@ export interface VenueView {
 export interface MarketView extends ShareUnits {
   /** Quantity step in raw base units. */
   baseStep: string;
+  /** The least an order may be worth at its own price, in raw quote units (fixed at creation). */
+  minNotional?: string;
   priceTickRawX18?: string;
   /** Fee rates in bps, fixed when the market was created: resting orders pay the maker rate
    * and incoming ones the taker rate, on what they receive. */

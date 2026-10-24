@@ -302,6 +302,21 @@ describe("token amount entry", () => {
     expect(previewOrder("0.0000001", "1", { ...m, baseStep: "1" }).valid).toBe(false);
     expect(parseShareAmount(quantityForSpend("1", "3", m), m) % BigInt(m.baseStep)).toBe(0n);
   });
+  test("a spend that rounds below the market's minimum order value names the least that works", () => {
+    const m = { ...market, baseStep: "1000000000000000", minNotional: "1000000" };
+    const symbol = m.quoteTokenMetadata?.symbol ?? "USDC";
+    // 1 at a 52.24 worst price buys 0.019 shares, worth 0.99256: under the minimum of 1.
+    expect(() => quantityForSpend("1", "52.24", m)).toThrow(
+      `The smallest order here is 1.05 ${symbol} at this price.`,
+    );
+    expect(quantityForSpend("1.05", "52.24", m)).toBe(quantityForSpend("1.0448", "52.24", m));
+    expect(quantityForSpend("2", "52.24", m)).toBe("0.038");
+    expect(quantityForSpend("1", "52.24", { ...m, minNotional: "100000" })).toBe("0.019");
+    // Without a minimum, the least is one step's value.
+    expect(() => quantityForSpend("0.05", "52.24", { ...m, minNotional: "0" })).toThrow(
+      `The smallest order here is 0.06 ${symbol} at this price.`,
+    );
+  });
   test("invalid input, uint128 overflow, and insufficient budgets are rejected", () => {
     for (const spend of [
       "-1",

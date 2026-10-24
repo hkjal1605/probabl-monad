@@ -1,4 +1,5 @@
 "use client";
+import { formatTokenAmount } from "@conditional-stocks/domain";
 import {
   type AtomicPlan,
   formatBps,
@@ -155,6 +156,12 @@ export function useOrderTicket({ market }: { market: MarketView }) {
     )
       throw new Error("Deposit assets and enable trading in Portfolio before placing an order.");
     if (legError) throw new Error(legError);
+    // The exchange refuses an order worth less than the market's minimum at the order's price.
+    const minimum = BigInt(market.minNotional ?? "0");
+    if (minimum > 0n && BigInt(preview.costRaw) < minimum)
+      throw new Error(
+        `Orders here must be worth at least ${formatTokenAmount(minimum, market.quoteTokenDecimals)} ${quoteSymbol} at the order's price.`,
+      );
     if (permission.grant.maxFeeBps < maxFeeBps)
       throw new Error(
         `This market's ${formatBps(maxFeeBps)} fee is above your trading permission's ${formatBps(permission.grant.maxFeeBps)} fee cap. Revoke the trading permission in Portfolio and approve it again to raise the cap.`,

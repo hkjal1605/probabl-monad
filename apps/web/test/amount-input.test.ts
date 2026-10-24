@@ -48,5 +48,7 @@ test("a spend converts at the order's price, never with a parser's error", () =>
   expect(() => quantityForSpend("", "158.12", market)).toThrow("Enter an amount.");
   expect(() => quantityForSpend("0", "158.12", market)).toThrow("Enter an amount above 0.");
   expect(() => quantityForSpend("10", "158.1234567891", market)).toThrow("Prices allow at most");
-  expect(() => quantityForSpend("0.000001", "158.12", market)).toThrow("smallest step");
+  expect(() => quantityForSpend("0.000001", "158.12", market)).toThrow(
+    "The smallest order here is 0.16 USDC",
+  );
 });
