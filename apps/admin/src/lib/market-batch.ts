@@ -168,7 +168,7 @@ export function resolveRows(
 }
 
 /** Human defaults: step 0.001 token, max 1000 tokens per order, tick 0.01 quote per token, and
- * 1 / 10k / 100k / 1M quote notional caps. Clamped to the contract's integer domains. */
+ * 0.1 / 10k / 100k / 1M quote notional caps. Clamped to the contract's integer domains. */
 export function defaultMarketCaps(baseDecimals: number, quoteDecimals: number): MarketCaps {
   for (const d of [baseDecimals, quoteDecimals])
     if (!Number.isInteger(d) || d < 0 || d > 36) throw new Error("Invalid token decimals");
@@ -181,7 +181,7 @@ export function defaultMarketCaps(baseDecimals: number, quoteDecimals: number): 
     baseStep: String(step),
     priceTickRawX18: String(tick),
     maxOrderQuantity: String((min(1000n * base, step * U32) / step) * step),
-    minNotional: String(min(quote, U64 / 4n)),
+    minNotional: String(min(quote >= 10n ? quote / 10n : 1n, U64 / 4n)),
     maxOrderNotional: String(min(10000n * quote, U64)),
     maxWalletOpenNotional: String(min(100000n * quote, U64)),
     maxMarketOpenNotional: String(min(1000000n * quote, U64)),

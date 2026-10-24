@@ -17,12 +17,12 @@ import { kalshiResolution } from "./venues/kalshi.ts";
 import { polymarketResolution } from "./venues/polymarket.ts";
 
 /** Order and exposure limits in raw units of 18-decimal stocks and 6-decimal quote: 0.001-share
- * steps, $0.01 ticks, $1 to $10,000 orders, 1,000 shares per order, $100,000 open per wallet and
+ * steps, $0.01 ticks, $0.10 to $10,000 orders, 1,000 shares per order, $100,000 open per wallet and
  * $1,000,000 per market. */
 export const DEFAULT_LIMITS = {
   baseStep: "1000000000000000",
   priceTickRawX18: "10000",
-  minNotional: "1000000",
+  minNotional: "100000",
   maxOrderQuantity: "1000000000000000000000",
   maxOrderNotional: "10000000000",
   maxWalletOpenNotional: "100000000000",
