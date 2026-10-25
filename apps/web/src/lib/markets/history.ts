@@ -9,7 +9,8 @@ export interface LinePoint {
 }
 /** A market's YES, NO and spot lines from its recorded prices (display units, the stock's spot per
  * whole token), each ending at its live value when that is newer than the last record. A minute
- * without a value has no point. */
+ * without a value has no point, and spot is drawn only where YES or NO has one: alone (an empty
+ * book, the vaults paused near the result) it would run on past them and cross them. */
 export function priceLines(
   history: readonly PriceHistoryPoint[],
   market: MarketView,
@@ -20,13 +21,16 @@ export function priceLines(
   for (const p of history) {
     if (p.yes !== null) lines.yes.push({ time: p.time, value: displayPrice(p.yes, market) });
     if (p.no !== null) lines.no.push({ time: p.time, value: displayPrice(p.no, market) });
-    if (p.spot !== null) lines.spot.push({ time: p.time, value: p.spot });
+    if (p.spot !== null && (p.yes !== null || p.no !== null))
+      lines.spot.push({ time: p.time, value: p.spot });
   }
+  const priced = (value: number | null): value is number =>
+    value !== null && Number.isFinite(value);
   for (const key of ["yes", "no", "spot"] as const) {
     const value = live[key],
       line = lines[key];
-    if (value !== null && Number.isFinite(value) && (line.at(-1)?.time ?? 0) < now)
-      line.push({ time: now, value });
+    if (key === "spot" && !priced(live.yes) && !priced(live.no)) continue;
+    if (priced(value) && (line.at(-1)?.time ?? 0) < now) line.push({ time: now, value });
   }
   return lines;
 }
