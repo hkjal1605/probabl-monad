@@ -84,14 +84,13 @@ export function PositionActions({
   const [collateral, setCollateral] = useState<0 | 1>(
       () => initialCollateral ?? (held(1) > 0n || held(0) === 0n ? 1 : 0),
     ),
-    [branch, setBranch] = useState<"All" | "YES" | "NO">("All"),
     [amount, setAmount] = useState("");
   const [review, setReview] = useState<{
     scope: string;
     plan?: RedemptionPlan;
     payouts?: readonly [number, number];
   } | null>(null);
-  const scope = [wallet.account, market.id, kind, collateral, branch, amount, open].join(":");
+  const scope = [wallet.account, market.id, kind, collateral, amount, open].join(":");
   const { busy, run } = useAsyncAction(scope);
   const reviewed = review?.scope === scope ? review : null;
   const decimals = collateral === 1 ? market.base.decimals : market.quoteTokenDecimals,
@@ -105,9 +104,11 @@ export function PositionActions({
       ? (walletData.data.balances[wholeToken]?.vaultAvailable ?? "0")
       : "0",
   );
-  const available = kind === "Merge" ? (yes < no ? yes : no) : branch === "YES" ? yes : no;
+  const available = yes < no ? yes : no;
   const redeemable = position.redeemable;
-  const allClaims = kind === "Redeem" && branch === "All";
+  // A redemption takes every claim of the collateral: once the result is final, keeping some
+  // gains nothing.
+  const allClaims = kind === "Redeem";
   let raw = 0n;
   try {
     raw = parseAmountInput(amount, decimals);
@@ -129,10 +130,6 @@ export function PositionActions({
     setReview(null);
     action();
   };
-  const redeemAmounts = () => ({
-    yes: allClaims ? yes : branch === "YES" ? raw : 0n,
-    no: allClaims ? no : branch === "NO" ? raw : 0n,
-  });
   const prepareReview = () =>
     run(async (assertCurrent) => {
       if (!wallet.account || !valid) throw new Error("Choose a valid claim action first.");
@@ -145,8 +142,7 @@ export function PositionActions({
         Number(market.venue.marketId),
       );
       assertCurrent();
-      const { yes: y, no: n } = redeemAmounts();
-      setReview({ scope, payouts, plan: planRedemption(y, n, payouts) });
+      setReview({ scope, payouts, plan: planRedemption(yes, no, payouts) });
     });
   const plan = reviewed?.plan;
   const nothingToBurn = !!plan && plan.redeemYes + plan.redeemNo === 0n;
@@ -244,23 +240,13 @@ export function PositionActions({
                 ? `1 deposited ${symbol} → 1 YES + 1 NO claim. Available in vault: ${formatTokenAmount(wholeAvailable, decimals)} ${symbol}.`
                 : kind === "Merge"
                   ? `1 YES + 1 NO claim → 1 whole ${symbol}.`
-                  : "Redeem claims at the finalized payout. An INVALID resolution pays half per claim and keeps an odd raw unit rather than rounding its value away. Losing claims pay zero."}
+                  : `All your ${symbol} claims, at the final payout. Losing claims pay nothing.`}
             </p>
-            {kind === "Redeem" && (
-              <Segmented
-                disabled={busy}
-                label="Redeem branch"
-                value={branch}
-                options={["All", "YES", "NO"]}
-                onChange={(value) => edit(() => setBranch(value))}
-              />
-            )}
             {allClaims ? (
               <Alert role="status">
                 <AlertDescription>
-                  Available: {formatTokenAmount(yes, decimals)} YES and{" "}
-                  {formatTokenAmount(no, decimals)} NO claims. Review will show the exact payout,
-                  quantities burned and any retained claim.
+                  You hold {formatTokenAmount(yes, decimals)} YES and{" "}
+                  {formatTokenAmount(no, decimals)} NO claims. Review shows what they pay.
                 </AlertDescription>
               </Alert>
             ) : (
@@ -330,13 +316,8 @@ export function PositionActions({
                 <Alert role="status">
                   <AlertDescription>
                     Review: {kind} {formatTokenAmount(raw, decimals)} {symbol}
-                    {kind === "Redeem"
-                      ? `-${branch} claims`
-                      : kind === "Merge"
-                        ? " claim pairs"
-                        : ""}
-                    . Returned assets belong to your connected wallet. Network gas applies;
-                    confirmed transactions cannot be undone.
+                    {kind === "Merge" ? " claim pairs" : ""}. Returned assets belong to your
+                    connected wallet. Network gas applies; confirmed transactions cannot be undone.
                   </AlertDescription>
                 </Alert>
               )
