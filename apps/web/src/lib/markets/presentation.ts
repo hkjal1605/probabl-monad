@@ -32,6 +32,13 @@ export function spotImpactPercent(
   return Number.isFinite(impact) ? impact : null;
 }
 
+/** Whether a market's result is final (resolved, redeemable or archived): its claims are
+ * redeemed rather than traded, so they are no longer an open position. */
+export const isResolved = (market: Pick<MarketView, "lifecycle">) =>
+  market.lifecycle === "resolved" ||
+  market.lifecycle === "redeemable" ||
+  market.lifecycle === "archived";
+
 export function midpoint(book: BranchBook): number | null {
   const { bestBid, bestAsk } = book;
   return bestBid !== null && bestAsk !== null && bestBid > 0 && bestAsk >= bestBid

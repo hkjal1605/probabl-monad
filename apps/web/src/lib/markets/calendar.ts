@@ -1,7 +1,7 @@
 import type { EventSource } from "@conditional-stocks/market-data";
 import type { MarketView } from "@/types/api";
 import { eventTime, isPriceLadder, ladderCadence, marketTopic, type Topic } from "./categories";
-import { byTrading, eventKey } from "./presentation";
+import { byTrading, eventKey, isResolved } from "./presentation";
 
 /** One strike of an event (a single venue question) and the stock markets conditioned on it. */
 export interface CalendarStrike {
@@ -30,8 +30,6 @@ export interface CalendarEvent {
   resolved: boolean;
   result: "yes" | "no" | null;
 }
-
-const RESOLVED = new Set(["resolved", "redeemable", "archived"]);
 
 /** Readable names of Kalshi's ladder series (each strike's question repeats the date). */
 const SERIES_TITLES: Record<string, string> = {
@@ -130,7 +128,7 @@ export function calendarEvents(markets: readonly MarketView[]): CalendarEvent[] 
         imageUrl: all.find((m) => m.imageUrl)?.imageUrl ?? null,
         strikes: entryStrikes,
         tickers: [...new Set(all.map((m) => m.ticker))].sort(),
-        resolved: all.every((m) => RESOLVED.has(m.lifecycle)),
+        resolved: all.every(isResolved),
         result: results.size === 1 ? ([...results][0] ?? null) : null,
       };
     })

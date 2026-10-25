@@ -29,6 +29,7 @@ import { useOrders, usePositions } from "@/hooks/useProtocolData";
 import { formatNumber, formatUsd, tokenAmount } from "@/lib/format/display";
 import { stepQuantity } from "@/lib/markets/base";
 import { marketPath } from "@/lib/markets/identity";
+import { isResolved } from "@/lib/markets/presentation";
 import {
   type ConditionalPositionRow,
   conditionalPositionRows,
@@ -93,17 +94,25 @@ export function PositionTable({
       </EmptyState>
     );
   if (positions.isPending || orders.isPending) return <LoadingState />;
+  // Open positions only: a resolved market's claims are redeemed in Claims.
   const groups = positionGroups(
-    conditionalPositionRows(markets, positions.positions, orders.orders),
+    conditionalPositionRows(
+      markets.filter((market) => !isResolved(market)),
+      positions.positions,
+      orders.orders,
+    ),
     currentMarketId,
   );
   const current = markets.find((market) => market.id === currentMarketId);
+  const resolvedNote = "This market has resolved. Redeem its claims in Claims.";
   if (!groups.length) {
     return (
       <EmptyState>
-        {current
-          ? `No open positions. Buy ${current.ticker}-YES or ${current.ticker}-NO in the ticket to open one.`
-          : "No open positions yet."}
+        {current && isResolved(current)
+          ? resolvedNote
+          : current
+            ? `No open positions. Buy ${current.ticker}-YES or ${current.ticker}-NO in the ticket to open one.`
+            : "No open positions yet."}
       </EmptyState>
     );
   }
@@ -137,7 +146,7 @@ export function PositionTable({
       </TableHeader>
       {current && groups[0]?.market.id !== current.id && (
         <EmptyCurrentGroup market={current} columns={COLUMNS}>
-          No position in this market.
+          {isResolved(current) ? resolvedNote : "No position in this market."}
         </EmptyCurrentGroup>
       )}
       {groups.map((group) => (

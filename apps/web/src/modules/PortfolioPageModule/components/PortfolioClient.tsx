@@ -12,7 +12,7 @@ import { AccountGate } from "@/components/wallet/AccountGate";
 import { useMarkets, useOrders, usePositions, useWalletTrades } from "@/hooks/useProtocolData";
 import { useWalletAssets } from "@/hooks/useWalletAssets";
 import { formatNumber, tokenAmount } from "@/lib/format/display";
-import { groupMarkets, sortEventGroups } from "@/lib/markets/presentation";
+import { groupMarkets, isResolved, sortEventGroups } from "@/lib/markets/presentation";
 import { conditionalPositionRows } from "@/lib/portfolio/positions";
 import { walletTradeRows } from "@/lib/portfolio/presentation";
 import { positionHasClaims } from "@/services/index-stream";
@@ -57,10 +57,15 @@ export function PortfolioClient({ markets: initial }: { markets: MarketView[] })
       )
     : null;
   const eventGroups = sortEventGroups(groupMarkets(markets), "newest");
-  // Events holding claims or claims reserved by open orders.
+  // Unresolved events holding claims or claims reserved by open orders (a resolved event's
+  // claims are redeemed in Claims).
   const positionEvents = eventGroups.filter(
     (group) =>
-      conditionalPositionRows(group, positionsQuery.positions, ordersQuery.orders).length > 0,
+      conditionalPositionRows(
+        group.filter((market) => !isResolved(market)),
+        positionsQuery.positions,
+        ordersQuery.orders,
+      ).length > 0,
   );
   const claimMarketIds = new Set(claims.map((position) => position.marketId));
   const claimGroups = eventGroups.filter((group) =>
