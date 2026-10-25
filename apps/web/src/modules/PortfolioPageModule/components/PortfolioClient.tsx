@@ -1,15 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { OrderTable } from "@/components/portfolio/OrderTable";
+import { type ReactNode, useMemo, useState } from "react";
+import { ClaimTable } from "@/components/portfolio/ClaimTable";
+import { OrderList } from "@/components/portfolio/OrderTable";
+import { PositionTable } from "@/components/portfolio/PositionTable";
+import { WalletTradeTable } from "@/components/portfolio/WalletTradeTable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DataError, EmptyState, Page } from "@/components/ui/page";
 import { Segmented } from "@/components/ui/segmented";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AccountGate } from "@/components/wallet/AccountGate";
-import { useMarkets, useOrders, usePositions, useWalletTrades } from "@/hooks/useProtocolData";
+import { useOrderRecovery } from "@/hooks/useOrderRecovery";
+import { useMarkets, usePositions, useWalletTrades } from "@/hooks/useProtocolData";
 import { useWalletAssets } from "@/hooks/useWalletAssets";
 import { formatNumber } from "@/lib/format/display";
 import { groupMarkets, isResolved, sortEventGroups } from "@/lib/markets/presentation";
@@ -20,7 +24,6 @@ import { positionHasClaims } from "@/services/index-stream";
 import type { MarketView } from "@/types/api";
 import { PortfolioEventCard } from "./PortfolioEventCard";
 import { PortfolioEventSkeleton } from "./PortfolioEventSkeleton";
-import { PortfolioTradeHistory } from "./PortfolioTradeHistory";
 import { PortfolioVault } from "./PortfolioVault";
 import { TradingPermissionCard } from "./TradingPermissionCard";
 
@@ -28,11 +31,27 @@ const hasClaims = positionHasClaims;
 const TABS = ["Trading Account", "Positions", "Orders", "Claims", "Trade History"] as const;
 type Tab = (typeof TABS)[number];
 
+/** The latest time per market id (a missing time counts as the earliest). */
+function latestPerMarket(entries: [marketId: string, time: number][]) {
+  const latest = new Map<string, number>();
+  for (const [id, time] of entries) latest.set(id, Math.max(latest.get(id) ?? 0, time || 0));
+  return latest;
+}
+/** The events with a market in `latest`, the one with the latest time first. */
+function byLatest(groups: MarketView[][], latest: Map<string, number>) {
+  return groups
+    .map((group) => ({ group, at: Math.max(...group.map((m) => latest.get(m.id) ?? -1)) }))
+    .filter(({ at }) => at >= 0)
+    .sort((a, b) => b.at - a.at)
+    .map(({ group }) => group);
+}
+
 export function PortfolioClient({ markets: initial }: { markets: MarketView[] }) {
   const [tab, setTab] = useState<Tab>("Trading Account");
   const marketQuery = useMarkets(initial);
   const { markets } = marketQuery;
-  const ordersQuery = useOrders();
+  // One cancel state for every event's orders, so a single cancellation runs at a time.
+  const ordersQuery = useOrderRecovery();
   const positionsQuery = usePositions();
   const tradesQuery = useWalletTrades();
   const assetQuery = useWalletAssets(markets);
@@ -71,11 +90,33 @@ export function PortfolioClient({ markets: initial }: { markets: MarketView[] })
     group.some((market) => claimMarketIds.has(market.id)),
   );
   const claimEvents = claimGroups.length;
-  const tradeRows = walletTradeRows(tradesQuery.trades, ordersQuery.orders, markets);
-  const eventsPending = marketQuery.isPending || ordersQuery.isPending || positionsQuery.isPending;
-  const tradesPending = eventsPending || tradesQuery.isPending;
-  const eventCards = (groups: MarketView[][], view: "positions" | "claims", empty: string) =>
-    groups.length === 0 && eventsPending ? (
+  // Orders and trades: the events with the latest activity first.
+  const orderEvents = byLatest(
+    eventGroups,
+    latestPerMarket(
+      activeOrders.map((order) => [order.marketId, Date.parse(order.createdAt ?? "")]),
+    ),
+  );
+  const tradeEvents = byLatest(
+    eventGroups,
+    latestPerMarket(
+      walletTradeRows(tradesQuery.trades, ordersQuery.orders, markets).map(({ trade }) => [
+        trade.marketId,
+        Number(trade.blockTimestamp),
+      ]),
+    ),
+  );
+  const ordersPending = marketQuery.isPending || ordersQuery.isPending;
+  const eventsPending = ordersPending || positionsQuery.isPending;
+  const tradesPending = ordersPending || tradesQuery.isPending;
+  /** A card per event, holding `table` of its markets (their questions shown when it has several). */
+  const eventCards = (
+    groups: MarketView[][],
+    pending: boolean,
+    empty: string,
+    table: (markets: MarketView[], showTitles: boolean) => ReactNode,
+  ) =>
+    groups.length === 0 && pending ? (
       <>
         <PortfolioEventSkeleton />
         <PortfolioEventSkeleton />
@@ -86,11 +127,9 @@ export function PortfolioClient({ markets: initial }: { markets: MarketView[] })
       </Card>
     ) : (
       groups.map((group) => (
-        <PortfolioEventCard
-          key={group[0]?.mapping.conditionId ?? group[0]?.id}
-          markets={group}
-          view={view}
-        />
+        <PortfolioEventCard key={group[0]?.mapping.conditionId ?? group[0]?.id} markets={group}>
+          {table(group, group.length > 1)}
+        </PortfolioEventCard>
       ))
     );
 
@@ -188,17 +227,46 @@ export function PortfolioClient({ markets: initial }: { markets: MarketView[] })
               )}
               {tab === "Positions" && (
                 <section aria-label="Positions" className="flex min-w-0 flex-col gap-5">
-                  {eventCards(positionEvents, "positions", "No event positions yet.")}
+                  {eventCards(
+                    positionEvents,
+                    eventsPending,
+                    "No event positions yet.",
+                    (group, showTitles) => (
+                      <PositionTable markets={group} softClose showTitles={showTitles} />
+                    ),
+                  )}
                 </section>
               )}
-              {tab === "Orders" && <OrderTable markets={markets} />}
+              {tab === "Orders" && (
+                <section aria-label="Orders" className="flex min-w-0 flex-col gap-5">
+                  {eventCards(
+                    orderEvents,
+                    ordersPending,
+                    "No open orders. Limit orders rest here until they fill or you cancel them.",
+                    (group, showTitles) => (
+                      <OrderList markets={group} showTitles={showTitles} recovery={ordersQuery} />
+                    ),
+                  )}
+                </section>
+              )}
               {tab === "Claims" && (
                 <section aria-label="Claims" className="flex min-w-0 flex-col gap-5">
-                  {eventCards(claimGroups, "claims", "No claims yet.")}
+                  {eventCards(claimGroups, eventsPending, "No claims yet.", (group, showTitles) => (
+                    <ClaimTable markets={group} showTitles={showTitles} />
+                  ))}
                 </section>
               )}
               {tab === "Trade History" && (
-                <PortfolioTradeHistory rows={tradeRows} isPending={tradesPending} />
+                <section aria-label="Trade history" className="flex min-w-0 flex-col gap-5">
+                  {eventCards(
+                    tradeEvents,
+                    tradesPending,
+                    "No trades yet. Your fills in every market show here.",
+                    (group, showTitles) => (
+                      <WalletTradeTable markets={group} showTitles={showTitles} />
+                    ),
+                  )}
+                </section>
               )}
             </div>
             <TradingPermissionCard />

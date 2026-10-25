@@ -7,11 +7,9 @@ import {
   MarketGroupHeader,
 } from "@/components/portfolio/MarketGroup";
 import { useWallet } from "@/components/providers/WalletProvider";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { DataError, EmptyState, LoadingState } from "@/components/ui/page";
-import { Segmented } from "@/components/ui/segmented";
 import { Spinner } from "@/components/ui/spinner";
 import {
   Table,
@@ -34,79 +32,62 @@ import {
 import { groupByMarket } from "@/lib/portfolio/positions";
 import type { IndexedOrder, MarketView } from "@/types/api";
 
-const VIEWS = ["Open", "History", "All"] as const;
-type View = (typeof VIEWS)[number];
 /** Rows shown at first and added per "Show more": the list can hold 1,000 orders. */
 const PAGE = 50;
+const COLUMNS = 5;
 /** Lifecycles whose open orders can only release their escrow. */
 const CLOSED = new Set(["frozen", "awaiting-resolution", "resolved", "redeemable", "archived"]);
 const placedAt = (order: IndexedOrder) => (order.createdAt ? Date.parse(order.createdAt) : 0);
 
-/** The member's orders grouped by market: `currentMarketId`'s (the market on screen) first, then
- * the market with the latest order. Open orders by default; History holds the closed ones. */
-export function OrderTable({
-  markets,
-  currentMarketId,
-}: {
+interface OrderListProps {
   markets: MarketView[];
   currentMarketId?: string;
-}) {
-  const wallet = useWallet(),
-    query = useOrderRecovery();
-  const [view, setView] = useState<View>("Open"),
-    [shown, setShown] = useState(PAGE);
+  /** Each market's question in its header row (a card already titled by it can leave it out). */
+  showTitles?: boolean;
+}
+
+/** The member's open orders in `markets`, grouped by market: `currentMarketId`'s (the market on
+ * screen) first, then the market with the latest order. */
+export function OrderTable(props: OrderListProps) {
+  const recovery = useOrderRecovery();
+  return <OrderList {...props} recovery={recovery} />;
+}
+
+/** OrderTable with its orders and cancel state given, so several lists can share one: a single
+ * cancellation runs at a time. */
+export function OrderList({
+  markets,
+  currentMarketId,
+  showTitles = true,
+  recovery: query,
+}: OrderListProps & { recovery: ReturnType<typeof useOrderRecovery> }) {
+  const wallet = useWallet();
+  const [shown, setShown] = useState(PAGE);
   const marketsById = useMemo(() => new Map(markets.map((m) => [m.id, m])), [markets]);
+  const orders = query.orders
+    .filter((o) => o.status === "open" && marketsById.has(o.marketId))
+    .sort((a, b) => placedAt(b) - placedAt(a));
   // An open order's expiry turns its "Cancel" into "Release escrow" with no data changing.
-  useRerenderAt(
-    query.orders.filter((o) => o.status === "open").map((o) => Number(o.expiry) * 1000),
-  );
+  useRerenderAt(orders.map((o) => Number(o.expiry) * 1000));
   if (wallet.access !== "member" && wallet.access !== "suspended")
     return <AccountStepEmpty>Connect to see your orders.</AccountStepEmpty>;
-  const openCount = query.orders.filter((o) => o.status === "open").length;
-  const orders = query.orders
-    .filter((o) => view === "All" || (view === "Open") === (o.status === "open"))
-    .sort((a, b) => placedAt(b) - placedAt(a));
   const groups = groupByMarket(
     orders.slice(0, shown),
     (order) => marketsById.get(order.marketId),
     currentMarketId,
     (items) => Math.max(...items.map(placedAt)),
   );
-  const columns = view === "Open" ? 6 : 7;
   const current = currentMarketId ? marketsById.get(currentMarketId) : undefined;
   return (
-    <section aria-label="Orders" className="min-w-0">
-      <div className="flex items-center gap-3 border-b px-3 py-2 sm:px-4">
-        <Segmented
-          label="Order status"
-          variant="timeframe"
-          value={view}
-          options={VIEWS}
-          onChange={(next) => {
-            setView(next);
-            setShown(PAGE);
-          }}
-          renderOption={(option) =>
-            option === "Open" && openCount > 0 ? (
-              <>
-                Open <span className="text-muted-foreground tabular-nums">{openCount}</span>
-              </>
-            ) : (
-              option
-            )
-          }
-        />
-      </div>
-      {(query.data?.truncated || query.data?.openTruncated) && (
+    <div className="min-w-0">
+      {query.data?.openTruncated && (
         <p role="status" className="border-b px-3 py-2 text-xs font-medium text-warning sm:px-4">
-          {query.data.openTruncated
-            ? "The open-order limit was reached. This list and reservation totals may be incomplete."
-            : "Showing the most recent order history plus older open orders. Earlier closed orders are not included."}
+          The open-order limit was reached. This list and reservation totals may be incomplete.
         </p>
       )}
       {query.isInitialError ? (
         <DataError
-          message="Order history is unavailable. Existing orders are not cancelled."
+          message="Orders are unavailable. Existing orders are not cancelled."
           retry={() => {
             void query.refetch();
           }}
@@ -115,9 +96,7 @@ export function OrderTable({
         <LoadingState />
       ) : !groups.length ? (
         <EmptyState>
-          {view === "Open"
-            ? "No open orders. Limit orders rest here until they fill or you cancel them."
-            : "No past orders yet."}
+          No open orders. Limit orders rest here until they fill or you cancel them.
         </EmptyState>
       ) : (
         <Table className="sm:min-w-[38rem]">
@@ -131,15 +110,14 @@ export function OrderTable({
                   <span>Reserved</span>
                 </InfoTooltip>
               </TableHead>
-              {view !== "Open" && <TableHead className="hidden sm:table-cell">Status</TableHead>}
               <TableHead>
                 <span className="sr-only">Actions</span>
               </TableHead>
             </TableRow>
           </TableHeader>
           {current && groups[0]?.market.id !== current.id && (
-            <EmptyCurrentGroup market={current} columns={columns}>
-              {view === "Open" ? "No open orders in this market." : "No orders in this market."}
+            <EmptyCurrentGroup market={current} columns={COLUMNS}>
+              No open orders in this market.
             </EmptyCurrentGroup>
           )}
           {groups.map(({ market, items }) => (
@@ -150,15 +128,15 @@ export function OrderTable({
             >
               <MarketGroupHeader
                 market={market}
-                columns={columns}
+                columns={COLUMNS}
                 current={market.id === currentMarketId}
+                showTitle={showTitles}
               />
               {items.map((order) => (
                 <OrderRow
                   key={order.id}
                   order={order}
                   market={market}
-                  showStatus={view !== "Open"}
                   canceling={query.canceling}
                   pending={query.pending.has(order.id)}
                   cancel={query.cancel}
@@ -175,28 +153,25 @@ export function OrderTable({
           </Button>
         </div>
       )}
-    </section>
+    </div>
   );
 }
 
 function OrderRow({
   order,
   market,
-  showStatus,
   canceling,
   pending,
   cancel,
 }: {
   order: IndexedOrder;
   market: MarketView;
-  showStatus: boolean;
   canceling: string | null;
   pending: boolean;
   cancel: ReturnType<typeof useOrderRecovery>["cancel"];
 }) {
   const filled = BigInt(order.filled),
     quantity = BigInt(order.quantity);
-  const partial = filled > 0n && BigInt(order.remaining) > 0n;
   const expired = BigInt(order.expiry) <= BigInt(Math.floor(Date.now() / 1000));
   const closed = CLOSED.has(market.lifecycle);
   const branch = order.branch === 0 ? "YES" : "NO";
@@ -234,38 +209,20 @@ function OrderRow({
         </span>
       </TableCell>
       <TableCell className="hidden h-12 py-2 text-right tabular-nums sm:table-cell">
-        {order.status === "open" ? (
-          order.side === 0 ? (
-            `${formatNumber(tokenAmount(order.reserved, market.quoteTokenDecimals))} ${market.quoteTokenMetadata?.symbol ?? "USDC"}${order.fundingKind === 1 ? `-${branch}` : ""}`
-          ) : (
-            `${formatNumber(tokenAmount(order.reserved, market.base.decimals), 4)} ${market.ticker}${order.fundingKind === 1 ? `-${branch}` : ""}`
-          )
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        )}
+        {order.side === 0
+          ? `${formatNumber(tokenAmount(order.reserved, market.quoteTokenDecimals))} ${market.quoteTokenMetadata?.symbol ?? "USDC"}${order.fundingKind === 1 ? `-${branch}` : ""}`
+          : `${formatNumber(tokenAmount(order.reserved, market.base.decimals), 4)} ${market.ticker}${order.fundingKind === 1 ? `-${branch}` : ""}`}
       </TableCell>
-      {showStatus && (
-        <TableCell className="hidden h-12 py-2 sm:table-cell">
-          <Badge
-            variant={partial ? "warning" : order.status === "open" ? "positive" : "secondary"}
-            className="capitalize"
-          >
-            {partial ? "Partially filled" : order.status}
-          </Badge>
-        </TableCell>
-      )}
       <TableCell className="h-12 py-2 pr-3 pl-2 text-right sm:pr-4 sm:pl-3">
-        {order.status === "open" && (
-          <Button
-            size="xs"
-            variant="outline"
-            disabled={canceling !== null || pending}
-            onClick={() => cancel(order.id, expired ? "expired" : closed ? "closed" : "cancel")}
-          >
-            {canceling === order.id && <Spinner className="animate-spin" />}
-            {pending ? "Pending chain" : expired || closed ? "Release escrow" : "Cancel"}
-          </Button>
-        )}
+        <Button
+          size="xs"
+          variant="outline"
+          disabled={canceling !== null || pending}
+          onClick={() => cancel(order.id, expired ? "expired" : closed ? "closed" : "cancel")}
+        >
+          {canceling === order.id && <Spinner className="animate-spin" />}
+          {pending ? "Pending chain" : expired || closed ? "Release escrow" : "Cancel"}
+        </Button>
       </TableCell>
     </TableRow>
   );

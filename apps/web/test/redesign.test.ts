@@ -1,7 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import {
-  formatPriceRawX18,
-  formatShareAmount,
   MAX_ORDER_UINT128,
   parsePriceRawX18,
   parseShareAmount,
@@ -32,13 +30,7 @@ import { impactLine } from "../src/lib/markets/history";
 import { groupMarkets, impactPercent, midpoint } from "../src/lib/markets/presentation";
 import { outcomeLabel, safeExternalUrl } from "../src/lib/markets/resolution";
 import { conditionalPositionRows } from "../src/lib/portfolio/positions";
-import {
-  csvCell,
-  orderHistoryCsv,
-  tradeHistoryCsv,
-  walletTradeRows,
-  wholeReserved,
-} from "../src/lib/portfolio/presentation";
+import { walletTradeRows, wholeReserved } from "../src/lib/portfolio/presentation";
 import { createActionScope } from "../src/lib/trading/action-scope";
 import { marketPriceBasis, marketPriceBound, quantityForSpend } from "../src/lib/trading/entry";
 import { previewOrder } from "../src/lib/trading/order";
@@ -628,23 +620,6 @@ describe("honest market, portfolio and evidence presentation", () => {
       expect(safeExternalUrl(url)).toBeNull();
     expect(safeExternalUrl("https://example.com/evidence")).toBe("https://example.com/evidence");
   });
-  test("CSV escapes labels and spreadsheet formula injection without losing exact raw-unit quantities", () => {
-    expect(csvCell('a,"b"')).toBe('"a,""b"""');
-    expect(csvCell("=1+1")).toBe('"\'=1+1"');
-    expect(csvCell("\t@SUM(A1)")).toContain("'");
-    const order = {
-      ...required(state.orders[0]),
-      marketId: market.id,
-      quantity: "1000001",
-      filled: "1",
-      limitPriceRawX18: "123456789",
-    };
-    const csv = orderHistoryCsv([order], [market]);
-    expect(csv.split("\r\n")[0]).toContain('"Limit (USDC)"');
-    expect(csv).toContain(formatShareAmount(1000001n, market));
-    expect(csv).toContain(formatPriceRawX18(123456789n, market));
-    expect(csv).toContain("Updated block");
-  });
   test("wallet trade history includes only fills belonging to the connected wallet orders", () => {
     const order = required(state.orders[0]);
     const trade = {
@@ -661,7 +636,6 @@ describe("honest market, portfolio and evidence presentation", () => {
     const rows = walletTradeRows([trade, unrelated], [order], [market]);
     expect(rows).toHaveLength(1);
     expect(rows[0]?.side).toBe("Buy");
-    expect(tradeHistoryCsv(rows)).toContain('"255.25"');
   });
   test("wallet trade history identifies self-matches without double-counting the fill", () => {
     const buy = required(state.orders[0]);

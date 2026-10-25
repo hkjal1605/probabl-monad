@@ -287,7 +287,7 @@ export function MarketWorkspace({
               </TabsContent>
               <TabsContent value="trades">
                 <AccountMarkets market={market}>
-                  {(markets) => <WalletTradeTable markets={markets} />}
+                  {(markets) => <WalletTradeTable markets={markets} currentMarketId={market.id} />}
                 </AccountMarkets>
               </TabsContent>
             </Tabs>
