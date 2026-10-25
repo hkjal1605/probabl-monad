@@ -4,6 +4,7 @@ import {
   GROUP_BODY,
   MarketGroupHeader,
 } from "@/components/portfolio/MarketGroup";
+import { RedeemDialog } from "@/components/portfolio/RedeemDialog";
 import { useWallet } from "@/components/providers/WalletProvider";
 import { DataError, EmptyState, LoadingState } from "@/components/ui/page";
 import {
@@ -15,17 +16,25 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { usePositions } from "@/hooks/useProtocolData";
-import { formatNumber, tokenAmount } from "@/lib/format/display";
-import { midpoint } from "@/lib/markets/presentation";
+import { formatNumber, formatUsd, tokenAmount } from "@/lib/format/display";
+import { isResolved, midpoint } from "@/lib/markets/presentation";
 import { groupByMarket } from "@/lib/portfolio/positions";
+import {
+  canRedeem,
+  claimAmount,
+  holdsClaims,
+  redemptionLines,
+  redemptionUsd,
+  resolvedOutcome,
+} from "@/lib/portfolio/redemption";
 import { PositionActions } from "@/modules/PortfolioPageModule/components/PositionActions";
-import { positionHasClaims } from "@/services/index-stream";
 import type { MarketView, PositionView } from "@/types/api";
 
 const COLUMNS = 4;
 
-/** The member's conditional claims grouped by market (`currentMarketId`'s first, then the largest),
- * a row per claimed token with its YES and NO amounts, to split, merge or redeem. */
+/** The member's conditional claims grouped by market (`currentMarketId`'s first, then the largest):
+ * a row per claimed token with its YES and NO amounts, to split or merge, and for a resolved market
+ * one row with what redeeming pays. Claims a result made worthless are left out. */
 export function ClaimTable({
   markets,
   currentMarketId,
@@ -51,7 +60,7 @@ export function ClaimTable({
   if (query.isPending) return <LoadingState />;
   const byId = new Map(markets.map((market) => [market.id, market]));
   const groups = groupByMarket(
-    query.positions.filter(positionHasClaims),
+    query.positions.filter((position) => holdsClaims(position, byId.get(position.marketId))),
     (position) => byId.get(position.marketId),
     currentMarketId,
     ([position]) => (position ? claimValue(position, byId.get(position.marketId)) : 0),
@@ -93,40 +102,88 @@ export function ClaimTable({
               current={market.id === currentMarketId}
               showTitle={showTitles}
             />
-            {claimLines(market, position).map((line) => (
-              <TableRow key={line.collateral} className="h-12">
-                <TableCell className="h-12 py-2 pr-2 pl-3 sm:pr-3 sm:pl-4">
-                  <span className="font-medium">{line.symbol}</span>
-                  <p className="text-xs text-muted-foreground">
-                    {line.collateral === 0 ? "Cash claims" : "Stock claims"}
-                  </p>
-                </TableCell>
-                {[line.yes, line.no].map((amount, branch) => (
-                  <TableCell
-                    // biome-ignore lint/suspicious/noArrayIndexKey: The two branches, always in this order.
-                    key={branch}
-                    className={`h-12 px-2 py-2 text-right tabular-nums sm:px-3 ${BigInt(amount) === 0n ? "text-muted-foreground" : ""}`}
-                  >
-                    {formatNumber(
-                      tokenAmount(amount, line.decimals),
-                      line.collateral === 0 ? 2 : 4,
-                    )}
+            {isResolved(market) ? (
+              <RedeemRow market={market} position={position} disabled={!query.isDataFresh} />
+            ) : (
+              claimLines(market, position).map((line) => (
+                <TableRow key={line.collateral} className="h-12">
+                  <TableCell className="h-12 py-2 pr-2 pl-3 sm:pr-3 sm:pl-4">
+                    <span className="font-medium">{line.symbol}</span>
+                    <p className="text-xs text-muted-foreground">
+                      {line.collateral === 0 ? "Cash claims" : "Stock claims"}
+                    </p>
                   </TableCell>
-                ))}
-                <TableCell className="h-12 py-2 pr-3 pl-2 text-right sm:pr-4 sm:pl-3">
-                  <PositionActions
-                    position={position}
-                    market={market}
-                    collateral={line.collateral}
-                    disabled={!query.isDataFresh}
-                  />
-                </TableCell>
-              </TableRow>
-            ))}
+                  {[line.yes, line.no].map((amount, branch) => (
+                    <TableCell
+                      // biome-ignore lint/suspicious/noArrayIndexKey: The two branches, always in this order.
+                      key={branch}
+                      className={`h-12 px-2 py-2 text-right tabular-nums sm:px-3 ${BigInt(amount) === 0n ? "text-muted-foreground" : ""}`}
+                    >
+                      {formatNumber(
+                        tokenAmount(amount, line.decimals),
+                        line.collateral === 0 ? 2 : 4,
+                      )}
+                    </TableCell>
+                  ))}
+                  <TableCell className="h-12 py-2 pr-3 pl-2 text-right sm:pr-4 sm:pl-3">
+                    <PositionActions
+                      position={position}
+                      market={market}
+                      collateral={line.collateral}
+                      disabled={!query.isDataFresh}
+                    />
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         ) : null,
       )}
     </Table>
+  );
+}
+
+/** A resolved market's claims as one row: what redeeming pays, and the button that does it. */
+function RedeemRow({
+  market,
+  position,
+  disabled,
+}: {
+  market: MarketView;
+  position: PositionView;
+  disabled: boolean;
+}) {
+  const lines = canRedeem(market) ? redemptionLines(market, position) : null;
+  const outcome = resolvedOutcome(market);
+  const usd = lines ? redemptionUsd(market, lines) : null;
+  return (
+    <TableRow className="h-12">
+      <TableCell colSpan={COLUMNS - 1} className="h-12 py-2 pr-2 pl-3 sm:pr-3 sm:pl-4">
+        {lines?.length ? (
+          <>
+            <span className="font-medium tabular-nums">
+              You receive{" "}
+              {lines
+                .map((line) => claimAmount(market, line.collateral, line.plan.credit))
+                .join(" + ")}
+            </span>
+            <p className="text-xs text-muted-foreground tabular-nums">
+              Resolved {outcome}
+              {usd !== null && ` · ≈ ${formatUsd(usd)}`}
+            </p>
+          </>
+        ) : (
+          <span className="text-muted-foreground">
+            Resolved{outcome && ` ${outcome}`}. Redemption opens once the result is final.
+          </span>
+        )}
+      </TableCell>
+      <TableCell className="h-12 py-2 pr-3 pl-2 text-right sm:pr-4 sm:pl-3">
+        {lines && lines.length > 0 && (
+          <RedeemDialog market={market} position={position} lines={lines} disabled={disabled} />
+        )}
+      </TableCell>
+    </TableRow>
   );
 }
 

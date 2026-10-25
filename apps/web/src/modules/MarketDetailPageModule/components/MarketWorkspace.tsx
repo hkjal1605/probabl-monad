@@ -37,7 +37,7 @@ import { useProbabilityStream } from "@/hooks/useProbabilityStream";
 import { useMarkets } from "@/hooks/useProtocolData";
 import { formatNumber, formatTime } from "@/lib/format/display";
 import { marketPath, publicIdOf } from "@/lib/markets/identity";
-import { midpoint, percent, spotImpactPercent } from "@/lib/markets/presentation";
+import { isResolved, midpoint, percent, spotImpactPercent } from "@/lib/markets/presentation";
 import { type DepthLevel, depthLevels, visibleDepthPerSide } from "@/lib/markets/visible-depth";
 import { cn } from "@/lib/utils";
 import { marketsStore } from "@/stores/useMarketsStore";
@@ -47,6 +47,7 @@ import { MarketDetailPageSkeleton } from "./MarketDetailPageSkeleton";
 import { MarketRulesDialog } from "./MarketRulesDialog";
 import { OrderTicket } from "./OrderTicket";
 import { QuotePauseNotice } from "./QuotePauseNotice";
+import { ResolvedMarketCard } from "./ResolvedMarketCard";
 
 const EMPTY_PROBABILITY: MarketView["probability"] = {
   ask: null,
@@ -297,7 +298,11 @@ export function MarketWorkspace({
           ref={ticketRef}
           className="market-workspace-ticket min-h-0 min-w-0 scroll-mb-16 rounded-[4px] bg-card xl:overflow-y-auto xl:overscroll-contain"
         >
-          <OrderTicket key={market.id} market={market} />
+          {isResolved(market) ? (
+            <ResolvedMarketCard market={market} />
+          ) : (
+            <OrderTicket key={market.id} market={market} />
+          )}
         </div>
       </div>
       <nav

@@ -104,7 +104,7 @@ export function PositionTable({
     currentMarketId,
   );
   const current = markets.find((market) => market.id === currentMarketId);
-  const resolvedNote = "This market has resolved. Redeem its claims in Claims.";
+  const resolvedNote = "This market has resolved. Claims that pay are redeemed in Claims.";
   if (!groups.length) {
     return (
       <EmptyState>

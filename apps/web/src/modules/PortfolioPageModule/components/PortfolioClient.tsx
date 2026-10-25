@@ -19,15 +19,14 @@ import { formatNumber } from "@/lib/format/display";
 import { groupMarkets, isResolved, sortEventGroups } from "@/lib/markets/presentation";
 import { conditionalPositionRows } from "@/lib/portfolio/positions";
 import { walletTradeRows } from "@/lib/portfolio/presentation";
+import { holdsClaims } from "@/lib/portfolio/redemption";
 import { portfolioValue } from "@/lib/portfolio/summary";
-import { positionHasClaims } from "@/services/index-stream";
 import type { MarketView } from "@/types/api";
 import { PortfolioEventCard } from "./PortfolioEventCard";
 import { PortfolioEventSkeleton } from "./PortfolioEventSkeleton";
 import { PortfolioVault } from "./PortfolioVault";
 import { TradingPermissionCard } from "./TradingPermissionCard";
 
-const hasClaims = positionHasClaims;
 const TABS = ["Trading Account", "Positions", "Orders", "Claims", "Trade History"] as const;
 type Tab = (typeof TABS)[number];
 
@@ -56,7 +55,11 @@ export function PortfolioClient({ markets: initial }: { markets: MarketView[] })
   const tradesQuery = useWalletTrades();
   const assetQuery = useWalletAssets(markets);
   const activeOrders = ordersQuery.orders.filter((order) => order.status === "open");
-  const claims = positionsQuery.positions.filter(hasClaims);
+  const marketById = new Map(markets.map((market) => [market.id, market]));
+  // Claims that can still pay: a resolved market's losing claims leave the list.
+  const claims = positionsQuery.positions.filter((position) =>
+    holdsClaims(position, marketById.get(position.marketId)),
+  );
   // The same value as the header's: vault balances and every claim, at fresh prices.
   const valuationFresh =
     assetQuery.isDataFresh &&
