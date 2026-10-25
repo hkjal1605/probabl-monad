@@ -237,6 +237,10 @@ describe("category featured markets", () => {
     expect(tabs.at(-1)).toBe(CALENDAR_TAB);
     expect(inMarketTab(cases[7]![0], "Daily") && !inMarketTab(cases[7]![0], "Weekly")).toBe(true);
     expect(visibleTabs([market])).not.toContain("Geopolitics");
+    // A tab whose markets have all stopped trading is left out.
+    const stopped = cases.map(([m]) => ({ ...(m as typeof market), lifecycle: "frozen" as const }));
+    expect(visibleTabs(stopped)).toEqual(["All", CALENDAR_TAB]);
+    expect(visibleTabs([...stopped, market])).toEqual(visibleTabs([market]));
   });
 });
 describe("canonical order windows", () => {

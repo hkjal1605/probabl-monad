@@ -135,10 +135,12 @@ export function inMarketTab(
   }
 }
 
-/** The tabs to show: the fixed ones, each topic some market is in, and the calendar. */
+/** The tabs to show: All, each other tab with an open market in it, and the calendar. A tab
+ * whose markets have all closed or resolved would list nothing to trade. */
 export function visibleTabs(markets: readonly MarketView[]): MarketTab[] {
-  const topics = new Set(markets.map((market) => marketTopic(market)));
+  const open = markets.filter((market) => market.lifecycle === "open");
   return MARKET_TABS.filter(
-    (tab) => !(TOPICS as readonly string[]).includes(tab) || topics.has(tab as Topic),
+    (tab) =>
+      tab === "All" || tab === CALENDAR_TAB || open.some((market) => inMarketTab(market, tab)),
   );
 }

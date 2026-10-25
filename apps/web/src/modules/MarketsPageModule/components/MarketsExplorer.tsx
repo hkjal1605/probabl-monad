@@ -153,8 +153,8 @@ export function MarketsExplorer({
     const tokens = [...new Map(visible.flat().map((m) => [marketAssetKey(m), m])).values()].sort(
       (a, b) => a.ticker.localeCompare(b.ticker),
     );
-    // The fixed tabs, each topic with markets, and the calendar; the open tab always shows.
-    const tabs = visibleTabs(markets);
+    // All, each tab with a listed open market, and the calendar; the open tab always shows.
+    const tabs = visibleTabs(priced);
     if (!tabs.includes(category)) tabs.splice(tabs.length - 1, 0, category);
     return { listed, visible, tokens, tabs };
   }, [markets, filters.lifecycle, filters.sort, category]);
