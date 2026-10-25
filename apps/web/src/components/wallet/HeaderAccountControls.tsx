@@ -11,7 +11,7 @@ import { useMarkets, useOrders } from "@/hooks/useProtocolData";
 import { useWalletAssets } from "@/hooks/useWalletAssets";
 import { formatCompactUsd } from "@/lib/format/display";
 import { loadChunk } from "@/lib/load-chunk";
-import { headerPortfolioSummary } from "@/lib/portfolio/summary";
+import { portfolioValue } from "@/lib/portfolio/summary";
 import { useAccountStep } from "./AccountGate";
 import { WalletButton } from "./WalletButton";
 
@@ -51,8 +51,8 @@ export function HeaderAccountControls() {
   return <MemberAccountControls />;
 }
 
-/** A member's portfolio value, cash and deposits. The markets come with their spot prices, which
- * value stock-token balances. */
+/** A member's portfolio value and deposits. The markets come with their spot prices, which value
+ * stock-token balances. */
 function MemberAccountControls() {
   const catalogue = useMarkets();
   const assets = useWalletAssets(catalogue.markets);
@@ -63,9 +63,8 @@ function MemberAccountControls() {
   const valuationFresh = balancesFresh && orders.isDataFresh && orders.data?.openTruncated !== true;
   const balancesLoading = assets.isPending || catalogue.isPending;
   const valuationLoading = balancesLoading || orders.isPending || catalogue.spotPending;
-  const summary = useMemo(
-    () =>
-      headerPortfolioSummary(catalogue.markets, assets.balances, assets.positions, orders.orders),
+  const value = useMemo(
+    () => portfolioValue(catalogue.markets, assets.balances, assets.positions, orders.orders),
     [catalogue.markets, assets.balances, assets.positions, orders.orders],
   );
   return (
@@ -82,25 +81,10 @@ function MemberAccountControls() {
               <Skeleton className="h-3.5 w-14" aria-label="Loading portfolio value" />
             ) : (
               <span className="text-sm font-medium tabular-nums text-positive">
-                {valuationFresh && summary.netPortfolioValue !== null
-                  ? formatHeaderUsd(summary.netPortfolioValue)
-                  : "—"}
+                {valuationFresh && value !== null ? formatHeaderUsd(value) : "—"}
               </span>
             )}
           </Link>
-          <div
-            className="flex flex-col items-end gap-1 text-right leading-none"
-            title="Cash available to trade"
-          >
-            <span className="text-xs font-medium text-muted-foreground">Cash</span>
-            {balancesLoading ? (
-              <Skeleton className="h-3.5 w-14" aria-label="Loading available cash" />
-            ) : (
-              <span className="text-sm font-medium tabular-nums text-positive">
-                {balancesFresh ? formatHeaderUsd(summary.cashAvailable) : "$0.00"}
-              </span>
-            )}
-          </div>
         </div>
         <Button
           size="sm"

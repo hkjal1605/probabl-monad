@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { OrderTable } from "@/components/portfolio/OrderTable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,10 +11,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AccountGate } from "@/components/wallet/AccountGate";
 import { useMarkets, useOrders, usePositions, useWalletTrades } from "@/hooks/useProtocolData";
 import { useWalletAssets } from "@/hooks/useWalletAssets";
-import { formatNumber, tokenAmount } from "@/lib/format/display";
+import { formatNumber } from "@/lib/format/display";
 import { groupMarkets, isResolved, sortEventGroups } from "@/lib/markets/presentation";
 import { conditionalPositionRows } from "@/lib/portfolio/positions";
 import { walletTradeRows } from "@/lib/portfolio/presentation";
+import { portfolioValue } from "@/lib/portfolio/summary";
 import { positionHasClaims } from "@/services/index-stream";
 import type { MarketView } from "@/types/api";
 import { PortfolioEventCard } from "./PortfolioEventCard";
@@ -36,26 +37,24 @@ export function PortfolioClient({ markets: initial }: { markets: MarketView[] })
   const tradesQuery = useWalletTrades();
   const assetQuery = useWalletAssets(markets);
   const activeOrders = ordersQuery.orders.filter((order) => order.status === "open");
-  const balances = assetQuery.balances
-    .map((asset) => {
-      const vault = BigInt(asset.balance.vaultAvailable);
-      const walletAmount = BigInt(asset.balance.canonicalBalance);
-      const reserved = BigInt(asset.balance.reserved);
-      return { ...asset, vault, walletAmount, reserved, available: vault };
-    })
-    .filter((asset) => asset.available > 0n || asset.walletAmount > 0n || asset.reserved > 0n);
   const claims = positionsQuery.positions.filter(hasClaims);
-  const valuesKnown =
+  // The same value as the header's: vault balances and every claim, at fresh prices.
+  const valuationFresh =
     assetQuery.isDataFresh &&
     marketQuery.isDataFresh &&
-    balances.every((asset) => asset.available === 0n || asset.reference !== null);
-  const total = valuesKnown
-    ? balances.reduce(
-        (sum, asset) =>
-          sum + tokenAmount(asset.available.toString(), asset.decimals) * (asset.reference ?? 0),
-        0,
-      )
-    : null;
+    positionsQuery.isDataFresh &&
+    ordersQuery.isDataFresh &&
+    ordersQuery.data?.openTruncated !== true;
+  const valuationPending =
+    assetQuery.isPending ||
+    marketQuery.spotPending ||
+    positionsQuery.isPending ||
+    ordersQuery.isPending;
+  const value = useMemo(
+    () =>
+      portfolioValue(markets, assetQuery.balances, positionsQuery.positions, ordersQuery.orders),
+    [markets, assetQuery.balances, positionsQuery.positions, ordersQuery.orders],
+  );
   const eventGroups = sortEventGroups(groupMarkets(markets), "newest");
   // Unresolved events holding claims or claims reserved by open orders (a resolved event's
   // claims are redeemed in Claims).
@@ -150,17 +149,17 @@ export function PortfolioClient({ markets: initial }: { markets: MarketView[] })
             <CardContent className="px-0 py-7">
               <div>
                 <p className="eyebrow uppercase tracking-[0.12em] font-semibold text-muted-foreground">
-                  Total balance
+                  Portfolio value
                 </p>
-                {assetQuery.isPending && balances.length === 0 ? (
-                  <Skeleton className="mt-2 h-11 w-40" aria-label="Loading total balance" />
+                {valuationPending ? (
+                  <Skeleton className="mt-2 h-11 w-40" aria-label="Loading portfolio value" />
                 ) : (
                   <p className="mt-2 text-3xl font-medium tracking-tight tabular-nums sm:text-[40px] sm:leading-11">
-                    {total === null ? "—" : `$${formatNumber(total, 2)}`}
+                    {valuationFresh && value !== null ? `$${formatNumber(value, 2)}` : "—"}
                   </p>
                 )}
                 <p className="mt-2 text-xs font-medium text-muted-foreground">
-                  Available in vault · estimated value
+                  Trading account and claims · estimated value
                 </p>
               </div>
             </CardContent>

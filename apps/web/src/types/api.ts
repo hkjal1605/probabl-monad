@@ -101,6 +101,9 @@ export interface MarketView extends ShareUnits {
   /** Where this market trades: transactions use `venue.marketId`, never `id`. */
   venue: VenueView;
   lifecycle: MarketLifecycle;
+  /** The resolved payout to YES and NO claims, as parts of their sum (YES won: [1, 0], INVALID:
+   * [1, 1]); null until the market resolves. */
+  payouts?: [number, number] | null;
   /** The venue market (Polymarket or Kalshi) the market is conditioned on. */
   mapping: {
     conditionId: string;

@@ -49,6 +49,13 @@ const lifecycle = (state: unknown): MarketLifecycle =>
       "archived",
     ] as const
   )[Math.max(0, Number(state) - 1)] ?? "scheduled";
+/** A resolved market's YES and NO payout parts, else null. */
+const payoutParts = (value: unknown): [number, number] | null =>
+  Array.isArray(value) &&
+  value.length === 2 &&
+  value.every((part) => typeof part === "number" && Number.isFinite(part) && part >= 0)
+    ? [value[0], value[1]]
+    : null;
 /** A raw token amount (decimal string) as an approximate display number, else null. */
 const displayAmount = (value: unknown, decimals: number) =>
   typeof value === "string" && /^[0-9]{1,78}$/.test(value)
@@ -388,6 +395,7 @@ async function liveMarkets(
         underlying: typeof market.underlying === "string" ? market.underlying : null,
         venue,
         lifecycle: lifecycle(market.state),
+        payouts: payoutParts(market.payouts),
         mapping: {
           conditionId: text(market.eventConditionId),
           noIndex: text(market.eventNoIndex),
