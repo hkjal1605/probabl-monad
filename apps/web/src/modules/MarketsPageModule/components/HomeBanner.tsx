@@ -2,9 +2,8 @@
 
 import { ArrowRight, CalendarDays } from "lucide-react";
 import Link from "next/link";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LazyPriceChart } from "@/components/market/LazyPriceChart";
-import type { LightweightChartSeries } from "@/components/market/LightweightPriceChart";
 import { ProbabilityGauge } from "@/components/market/ProbabilityGauge";
 import { dollars, dollarTicks, priceSeries } from "@/components/market/priceSeries";
 import { useUiStore } from "@/components/providers/UiStateProvider";
@@ -24,12 +23,9 @@ import {
   eventKey,
   eventMonogram,
   midpoint,
-  spotImpactPercent,
 } from "@/lib/markets/presentation";
 import { cn } from "@/lib/utils";
 import type { MarketView } from "@/types/api";
-
-const signed = (value: number) => `${value >= 0 ? "+" : "−"}${Math.abs(value).toFixed(1)}%`;
 
 function EventImage({ market, className }: { market: MarketView; className?: string }) {
   return (
@@ -56,49 +52,6 @@ function StockIcon({ market, className }: { market: MarketView; className?: stri
   );
 }
 
-/** One outcome's live value, as prediction markets list outcomes: a colored key, its name, its price. */
-function Outcome({
-  color,
-  label,
-  value,
-  detail,
-}: {
-  color: LightweightChartSeries["colorToken"];
-  label: string;
-  value: number | null;
-  detail: ReactNode;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4 border-border/60 border-b py-2.5 last:border-0">
-      <dt className="flex items-center gap-2.5 text-base text-foreground">
-        <span
-          aria-hidden="true"
-          className="size-2.5 rounded-full"
-          style={{ backgroundColor: `var(--${color})` }}
-        />
-        {label}
-      </dt>
-      <dd className="text-right">
-        <span className="block font-semibold text-xl text-foreground tabular-nums leading-none">
-          {value === null ? "—" : dollars(value)}
-        </span>
-        <span className="mt-1.5 block text-muted-foreground text-xs tabular-nums">{detail}</span>
-      </dd>
-    </div>
-  );
-}
-
-function VersusSpot({ value }: { value: number | null }) {
-  return value === null ? (
-    <>No spot reference</>
-  ) : (
-    <>
-      <span className={value >= 0 ? "text-positive" : "text-destructive"}>{signed(value)}</span> vs
-      spot
-    </>
-  );
-}
-
 /** The selected market's prices over time: YES and NO book midpoints and the stock's spot, as
  * recorded each minute, ending at the live values. */
 function EventChart({
@@ -119,7 +72,7 @@ function EventChart({
       ? "Prices are recorded every minute: the chart fills in as they arrive."
       : undefined;
   return (
-    <div className="relative min-h-64 md:min-h-0">
+    <div className="relative min-h-64 flex-1 lg:min-h-0">
       <LazyPriceChart
         variant="banner"
         series={series}
@@ -167,8 +120,6 @@ function StockPicker({
   );
 }
 
-/** The event leading the selected category: its question and probability, one of its stocks'
- * prices if YES, if NO and spot, and their chart. */
 /** Whether the screen is md wide or wider, read once mounted: a phone leaves the featured event
  * out (the feed's first card is the same event), so its chart and price history never load there. */
 function useWide() {
@@ -183,6 +134,8 @@ function useWide() {
   return wide;
 }
 
+/** The event leading the selected category: its question and probability, and one of its
+ * stocks' prices if YES, if NO and spot over time. */
 function FeaturedEvent({ assets }: { assets: MarketView[] }) {
   const event = assets[0] as MarketView;
   const [selected, setSelected] = useState(() => ([...assets].sort(byTrading)[0] ?? event).id);
@@ -217,34 +170,18 @@ function FeaturedEvent({ assets }: { assets: MarketView[] }) {
           <StockPicker assets={assets} value={market.id} onChange={setSelected} />
         </div>
       )}
-      <div className="mt-5 grid min-h-0 flex-1 gap-6 md:grid-cols-[minmax(0,4fr)_minmax(0,9fr)]">
-        <div className="flex min-w-0 flex-col gap-4">
-          <dl className="flex flex-col">
-            <Outcome
-              color="positive"
-              label="If YES"
-              value={live.yes}
-              detail={<VersusSpot value={spotImpactPercent(market, "YES")} />}
-            />
-            <Outcome
-              color="danger"
-              label="If NO"
-              value={live.no}
-              detail={<VersusSpot value={spotImpactPercent(market, "NO")} />}
-            />
-            <Outcome color="info" label="Spot" value={live.spot} detail="Live price" />
-          </dl>
-          <Button
-            size="lg"
-            className="mt-auto w-full sm:w-fit"
-            nativeButton={false}
-            render={<Link href={marketPath(market)} />}
-          >
-            Trade {market.ticker}
-            <ArrowRight data-icon="inline-end" aria-hidden="true" />
-          </Button>
-        </div>
-        {wide ? <EventChart market={market} live={live} /> : <div className="min-w-0" />}
+      {/* The chart's legend carries the live YES, NO and spot prices. */}
+      <div className="mt-5 flex min-h-0 flex-1 flex-col gap-4">
+        {wide && <EventChart market={market} live={live} />}
+        <Button
+          size="lg"
+          className="w-full sm:w-fit"
+          nativeButton={false}
+          render={<Link href={marketPath(market)} />}
+        >
+          Trade {market.ticker}
+          <ArrowRight data-icon="inline-end" aria-hidden="true" />
+        </Button>
       </div>
     </Card>
   );

@@ -30,21 +30,9 @@ function FeaturedBannerSkeleton() {
           </div>
           <Skeleton className="h-12 w-16 rounded-xl" />
         </div>
-        <div className="mt-5 grid gap-6 md:grid-cols-[minmax(0,4fr)_minmax(0,9fr)]">
-          <div className="flex flex-col gap-4">
-            <div className="flex gap-1.5">
-              <Skeleton className="h-8 w-20 rounded-full" />
-              <Skeleton className="h-8 w-20 rounded-full" />
-            </div>
-            {CARD_ROWS.map((row) => (
-              <div key={row} className="flex items-center justify-between py-1">
-                <Skeleton className="h-5 w-16" />
-                <Skeleton className="h-7 w-24" />
-              </div>
-            ))}
-            <Skeleton className="h-10 w-32 rounded-lg" />
-          </div>
-          <Skeleton className="min-h-64 rounded-lg" />
+        <div className="mt-5 flex min-h-0 flex-1 flex-col gap-4">
+          <Skeleton className="min-h-64 flex-1 rounded-lg lg:min-h-0" />
+          <Skeleton className="h-10 w-32 rounded-lg" />
         </div>
       </Card>
       <Card variant="market" className="flex flex-col gap-6 p-4 sm:p-5">
