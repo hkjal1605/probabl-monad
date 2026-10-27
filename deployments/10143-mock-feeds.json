@@ -106,5 +106,111 @@
     "deploymentBlock": "74690041",
     "transactionHash": "0xbe19f73e2c7f3c0f8bdfab359171fdc81be945e5d8ed98941d976325678eea49",
     "deployedAt": "2026-10-27T14:37:41.846Z"
+  },
+  {
+    "symbol": "USOx",
+    "token": "0xD5Cfa496a855c8De9cD68E7586134654Abb1df97",
+    "feed": "0x511115a0bf2D90B57Ab89f5c2Dcb87550242973E",
+    "decimals": 8,
+    "description": "RHUSO / USD (testnet mock)",
+    "source": {
+      "chainId": 4663,
+      "feed": "0x75a9c76Ef439e2C7c2E5a34Ab105EcFe3766431c",
+      "description": "RHUSO / USD"
+    },
+    "owner": "0x2ed4b3b723680c3E65A0C588721a8F4918021525",
+    "deploymentBlock": "74697531",
+    "transactionHash": "0xc5197ba2e70e87d79ec9a4f361ba1cfc5914aa70bf7663c1d2cc434a56241a45",
+    "deployedAt": "2026-10-27T15:15:33.439Z"
+  },
+  {
+    "symbol": "PRx",
+    "token": "0x29E4f089Fd517B70E875B281E55961DFA0255Aae",
+    "feed": "0x153f2C79c8C7edAC059Eb432330914481d371d9B",
+    "decimals": 8,
+    "description": "Robinhood PRx reference / USD (testnet mock)",
+    "source": {
+      "reference": "robinhood"
+    },
+    "owner": "0x2ed4b3b723680c3E65A0C588721a8F4918021525",
+    "deploymentBlock": "74697540",
+    "transactionHash": "0x3c0ed3427e40a2b0f00d7ff6898e8aef7951d96538694b321e7ec676e50d548d",
+    "deployedAt": "2026-10-27T15:15:36.054Z"
+  },
+  {
+    "symbol": "BAx",
+    "token": "0x10FAc7e8d71A9f4634d6A7424B13A85915417A75",
+    "feed": "0xCC24B17Ca56c83dA8DF48a4129D6A4EC1b65FAAE",
+    "decimals": 8,
+    "description": "Robinhood BAx reference / USD (testnet mock)",
+    "source": {
+      "reference": "robinhood"
+    },
+    "owner": "0x2ed4b3b723680c3E65A0C588721a8F4918021525",
+    "deploymentBlock": "74697550",
+    "transactionHash": "0x9962afbe04a93c7bbe4bdeef05af77380efc2f5186f77356264fcad8a4478964",
+    "deployedAt": "2026-10-27T15:15:39.104Z"
+  },
+  {
+    "symbol": "SPYx",
+    "token": "0xf199a17163733fc7dF4653A31cb0c0302458FcE9",
+    "feed": "0x32181801E004D1C2edAc470CBe1ec56844D95240",
+    "decimals": 8,
+    "description": "RHSPY / USD (testnet mock)",
+    "source": {
+      "chainId": 4663,
+      "feed": "0x319724394D3A0e3669269846abE664Cd621f9f6A",
+      "description": "RHSPY / USD"
+    },
+    "owner": "0x2ed4b3b723680c3E65A0C588721a8F4918021525",
+    "deploymentBlock": "74697560",
+    "transactionHash": "0xf56639371f2c749a9093ffe151b6d07fdde057eb849e0e0c5c646d4f3a2ca6cc",
+    "deployedAt": "2026-10-27T15:15:42.195Z"
+  },
+  {
+    "symbol": "QQQx",
+    "token": "0xcF54BF849CBb892088ED33a80Af744DE45FDcd7B",
+    "feed": "0x32cA9f2e9965d4d1722bAAb9101Aff46760eBEA7",
+    "decimals": 8,
+    "description": "Robinhood QQQ / USD (testnet mock)",
+    "source": {
+      "chainId": 4663,
+      "feed": "0x80901d846d5D7B030F26B480776EE3b29374C2ae",
+      "description": "Robinhood QQQ / USD"
+    },
+    "owner": "0x2ed4b3b723680c3E65A0C588721a8F4918021525",
+    "deploymentBlock": "74697569",
+    "transactionHash": "0x3d1caa03d50bdfb2f9a8caf8cb4a1152dbb509aae4dfd5b100334d6c6ceebfea",
+    "deployedAt": "2026-10-27T15:15:44.804Z"
+  },
+  {
+    "symbol": "CRCLx",
+    "token": "0xe911004BF4c9E0b86a386Aa977d05feb0AcC3894",
+    "feed": "0x99a05329e9D3052f67F888488dfEF5FdcA7A2956",
+    "decimals": 8,
+    "description": "Robinhood CRCL / USD (testnet mock)",
+    "source": {
+      "chainId": 4663,
+      "feed": "0x6652eDf64bA3731C4F2D3ce821A0Fb1f1f6b482a",
+      "description": "Robinhood CRCL / USD"
+    },
+    "owner": "0x2ed4b3b723680c3E65A0C588721a8F4918021525",
+    "deploymentBlock": "74697578",
+    "transactionHash": "0xa115b1d950517e72b3dd57e2fe932a382dd615271c94b01745b68b7197c62c3f",
+    "deployedAt": "2026-10-27T15:15:47.449Z"
+  },
+  {
+    "symbol": "GLXYx",
+    "token": "0x15aC48f4D0AC2E1f4b3eAe5A2D0574c597AA2C5d",
+    "feed": "0xD516F9dd34bFd9B91f1Ac3b7eA0559715c6e4DEa",
+    "decimals": 8,
+    "description": "Robinhood GLXYx reference / USD (testnet mock)",
+    "source": {
+      "reference": "robinhood"
+    },
+    "owner": "0x2ed4b3b723680c3E65A0C588721a8F4918021525",
+    "deploymentBlock": "74697587",
+    "transactionHash": "0xbaf54f099fc76b248b2686eff6cddb4581d84c8c00e82ebc40e23bb024f38e92",
+    "deployedAt": "2026-10-27T15:15:49.999Z"
   }
 ]
