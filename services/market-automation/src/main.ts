@@ -8,7 +8,7 @@
  *   CHAIN_ID=… RPC_URL=… EXCHANGE_ADDRESS=… MARKET_ADMIN_PRIVATE_KEY=… POLYGON_RPC_URL=…
  *   [RESOLUTION_ADMIN_PRIVATE_KEY=…] [AUTOMATION_API_URL=http://127.0.0.1:3000]
  *   [AUTOMATION_AUTH_ORIGIN=http://localhost:3002] bun services/market-automation/src/main.ts */
-import { conditionalStocksAbi } from "@conditional-stocks/evm-client";
+import { conditionalStocksAbi, DEPLOYLESS_BATCH_SIZE } from "@conditional-stocks/evm-client";
 import { apiOrigin } from "@conditional-stocks/operator";
 import { Logger, logLevel } from "@conditional-stocks/shared";
 import { nativeCurrency } from "@conditional-stocks/shared/chains";
@@ -51,7 +51,13 @@ const chain = defineChain({
   rpcUrls: { default: { http: rpcs } },
 });
 const transport = fallback(rpcs.map((url) => http(url)));
-const client = createPublicClient({ chain, transport });
+// Concurrent reads (every curated vault's, at startup and each run) share deployless multicalls,
+// so a public RPC's per-second request limit is not spent one read at a time.
+const client = createPublicClient({
+  chain,
+  batch: { multicall: { deployless: true, batchSize: DEPLOYLESS_BATCH_SIZE, wait: 5 } },
+  transport,
+});
 const polygon = createPublicClient({
   chain: polygonChain,
   transport: http(required("POLYGON_RPC_URL"), { retryCount: 2 }),
