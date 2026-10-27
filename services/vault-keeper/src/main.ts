@@ -74,12 +74,14 @@ async function main() {
     nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
     rpcUrls: { default: { http: [rpc] } },
   });
-  // Concurrent reads of every vault share one JSON-RPC batch, and contract reads share deployless
+  // Concurrent reads of every vault share JSON-RPC batches, and contract reads share deployless
   // multicalls, each within a deployless call's limits. Each vault's view is a multicall of its own.
+  // Every deployless read carries Multicall3's bytecode, so a batch holds ten: all fourteen Monad
+  // testnet vaults' reads in one request exceed ankr's size limit (413).
   const client = createPublicClient({
     chain,
     batch: { multicall: { deployless: true, batchSize: DEPLOYLESS_BATCH_SIZE, wait: 5 } },
-    transport: http(rpc, { batch: { wait: 5 }, retryCount: 2 }),
+    transport: http(rpc, { batch: { batchSize: 10, wait: 5 }, retryCount: 2 }),
   });
   if ((await client.getChainId()) !== chainId) throw new Error("RPC serves a different chain");
 
