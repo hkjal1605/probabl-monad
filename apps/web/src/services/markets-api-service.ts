@@ -7,7 +7,13 @@ import {
   tokenDecimals,
 } from "@conditional-stocks/domain";
 import { type FeeRates, isFeeRate, isRebateRate } from "@conditional-stocks/evm-client";
-import { polymarketImageUrl } from "@conditional-stocks/market-data";
+import {
+  EVENT_SOURCES,
+  type EventSource,
+  httpsImageUrl,
+  polymarketImageUrl,
+} from "@conditional-stocks/market-data";
+import { venueImageUrl } from "../lib/markets/venue-images";
 import { marketTokenDisplay } from "../lib/tokens/catalog";
 import type {
   BaseLiveView,
@@ -43,6 +49,13 @@ const lifecycle = (state: unknown): MarketLifecycle =>
       "archived",
     ] as const
   )[Math.max(0, Number(state) - 1)] ?? "scheduled";
+/** A resolved market's YES and NO payout parts, else null. */
+const payoutParts = (value: unknown): [number, number] | null =>
+  Array.isArray(value) &&
+  value.length === 2 &&
+  value.every((part) => typeof part === "number" && Number.isFinite(part) && part >= 0)
+    ? [value[0], value[1]]
+    : null;
 /** A raw token amount (decimal string) as an approximate display number, else null. */
 const displayAmount = (value: unknown, decimals: number) =>
   typeof value === "string" && /^[0-9]{1,78}$/.test(value)
@@ -192,19 +205,83 @@ export function aggregateBook(
   };
 }
 
-async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<MarketView[]> {
+/** Markets per `/v1/events` read (the API's limit). */
+const EVENT_BATCH_SIZE = 50;
+/** Events (a market's off-chain metadata and its latest probability) as last read, by market.
+ * Chain frames cannot change them and probability has its own stream, so a list refreshed by a
+ * frame reuses one read within a minute. A failed read falls back on one up to 30 minutes old
+ * rather than leaving markets without their question, art and rules. */
+const EVENT_FRESH_MS = 60_000;
+const EVENT_KEPT_MS = 30 * 60_000;
+const eventCache = new Map<string, { event: Record<string, unknown>; at: number }>();
+/** Forgets the kept events (tests that reuse market ids with other event data). */
+export const forgetEvents = () => eventCache.clear();
+/** Whether a read could not get every event it needed (the caller reads again later). */
+export interface MarketsReadReport {
+  eventsFailed: boolean;
+}
+type Book = { orders: Record<string, unknown>[]; truncated?: boolean; unavailable?: boolean };
+const UNAVAILABLE_BOOK: Book = { orders: [], unavailable: true, truncated: false };
+
+/** The market list (or one market by its URL segment) with each market's book and event. A list
+ * read costs three requests: the markets, all their books, and their events in batches of 50
+ * (one market per event: sibling markets share their event). A single market's three reads start
+ * together, as the indexer and the API resolve the segment themselves. */
+async function liveMarkets(
+  marketId?: string,
+  signal?: AbortSignal,
+  report?: MarketsReadReport,
+): Promise<MarketView[]> {
   const json = <T>(url: string): Promise<T> =>
     requestJson<T>(new URL(url).pathname + new URL(url).search, signal ? { signal } : {});
-  // Start the all-books projection with the market list. Once market identities
-  // arrive, their metadata reads can overlap the remaining orderbook transfer.
+  /** The events of `ids`: kept ones within a minute, the rest read in batches of 50 (each batch
+   * tried twice). An entry the API could not produce, or a batch that failed, keeps the last
+   * good event and is reported so the list is read again. */
+  const events = async (ids: string[]): Promise<Record<string, unknown>> => {
+    const now = Date.now();
+    const due = ids.filter((id) => (eventCache.get(id)?.at ?? 0) <= now - EVENT_FRESH_MS);
+    const read = (batch: string[]) =>
+      json<{ events: Record<string, unknown> }>(
+        `${upstreamUrl("api")}/v1/events?markets=${batch.map(encodeURIComponent).join(",")}`,
+      ).then((response) => record(response.events));
+    await Promise.all(
+      Array.from({ length: Math.ceil(due.length / EVENT_BATCH_SIZE) }, async (_, i) => {
+        const batch = due.slice(i * EVENT_BATCH_SIZE, (i + 1) * EVENT_BATCH_SIZE);
+        const result = await read(batch)
+          .catch(async () => {
+            if (signal?.aborted) return null;
+            await new Promise((resolve) => setTimeout(resolve, 1_500));
+            return signal?.aborted ? null : read(batch);
+          })
+          .catch(() => null);
+        for (const id of batch) {
+          const event = result ? record(result[id]) : {};
+          if (result && Object.keys(event).length && !("error" in event))
+            eventCache.set(id, { event, at: Date.now() });
+          else if (report && !signal?.aborted) report.eventsFailed = true;
+        }
+      }),
+    );
+    const kept = Date.now() - EVENT_KEPT_MS;
+    return Object.fromEntries(
+      ids.flatMap((id) => {
+        const entry = eventCache.get(id);
+        return entry && entry.at > kept ? [[id, entry.event]] : [];
+      }),
+    );
+  };
+  const singleEvent = marketId ? events([marketId]) : undefined;
+  const singleBook = marketId
+    ? json<Book>(
+        `${upstreamUrl("indexer")}/orderbook/${encodeURIComponent(marketId)}?limit=2000`,
+      ).catch(() => UNAVAILABLE_BOOK)
+    : undefined;
+  // The list's books come in one projection, overlapping the market list.
   const batchPromise = marketId
     ? Promise.resolve(null)
-    : json<{
-        books: Record<
-          string,
-          { orders: Record<string, unknown>[]; truncated?: boolean; unavailable?: boolean }
-        >;
-      }>(`${upstreamUrl("indexer")}/orderbooks?view=levels`).catch(() => null);
+    : json<{ books: Record<string, Book> }>(
+        `${upstreamUrl("indexer")}/orderbooks?view=levels`,
+      ).catch(() => null);
   const marketResponse = marketId
     ? {
         markets: [
@@ -214,21 +291,23 @@ async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<Mar
         ],
       }
     : await json<{ markets: Record<string, unknown>[] }>(`${upstreamUrl("indexer")}/markets`);
-  // Sibling asset markets share one immutable Polymarket condition. Fetch its
+  // Sibling asset markets share one immutable event (a Polymarket or Kalshi market). Read its
   // metadata/probability once so one event cannot randomly diverge per asset.
-  const attachments = new Map<string, Promise<Record<string, unknown>>>();
+  const representative = new Map<string, string>();
   for (const market of marketResponse.markets) {
-    const condition = text(market.polymarketConditionId).toLowerCase();
-    if (!attachments.has(condition)) {
-      const id = text(market.id);
-      attachments.set(
-        condition,
-        json<Record<string, unknown>>(`${upstreamUrl("api")}/v1/markets/${id}/polymarket`).catch(
-          () => ({}),
-        ),
-      );
-    }
+    const condition = text(market.eventConditionId).toLowerCase();
+    if (!representative.has(condition)) representative.set(condition, text(market.id));
   }
+  const ids = [...representative.values()];
+  const read: Promise<Record<string, unknown>> = singleEvent
+    ? singleEvent.then((found) => ({ [ids[0] ?? ""]: found[marketId ?? ""] }))
+    : events(ids);
+  const attachments = new Map<string, Promise<Record<string, unknown>>>();
+  for (const [condition, id] of representative)
+    attachments.set(
+      condition,
+      read.then((found) => record(found[id])),
+    );
   const batch = await batchPromise;
   return Promise.all(
     marketResponse.markets.map(async (market): Promise<MarketView> => {
@@ -240,19 +319,16 @@ async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<Mar
       const fees = parseFees(market);
       const makerRebateBps = parseRebate(market);
       const quoteToken = address(market.quoteToken, "quote token");
-      const condition = text(market.polymarketConditionId).toLowerCase();
+      const condition = text(market.eventConditionId).toLowerCase();
       const [attached, book] = await Promise.all([
         attachments.get(condition) ?? Promise.resolve({}),
-        marketId
-          ? json<{ orders: Record<string, unknown>[]; truncated?: boolean; unavailable?: boolean }>(
-              `${upstreamUrl("indexer")}/orderbook/${id}?limit=2000`,
-            ).catch(() => ({ orders: [], unavailable: true, truncated: false }))
-          : Promise.resolve(
-              batch?.books?.[id] ?? { orders: [], unavailable: true, truncated: false },
-            ),
+        singleBook ?? Promise.resolve(batch?.books?.[id] ?? UNAVAILABLE_BOOK),
       ]);
       const attachedRecord = record(attached);
       const metadata = record(record(attachedRecord.metadata).normalized);
+      const source: EventSource = EVENT_SOURCES.includes(market.eventSource as EventSource)
+        ? (market.eventSource as EventSource)
+        : "polymarket";
       const probability = record(attachedRecord.probability);
       let probabilityView: MarketView["probability"] = {
         ask: null,
@@ -264,8 +340,8 @@ async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<Mar
       try {
         probabilityView = expireCachedProbability(
           parseProbabilityMessage(
-            { topic: `probability.${text(market.polymarketConditionId)}`, value: probability },
-            text(market.polymarketConditionId),
+            { topic: `probability.${text(market.eventConditionId)}`, value: probability },
+            text(market.eventConditionId),
           ),
         );
       } catch {
@@ -297,6 +373,7 @@ async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<Mar
         protocolVersion: market.protocolVersion,
         priceFormat: market.priceFormat,
         baseStep: text(market.baseStep),
+        minNotional: text(market.minNotional, "0"),
         priceTickRawX18: text(market.priceTickRawX18, "1"),
         fees,
         makerRebateBps,
@@ -318,19 +395,32 @@ async function liveMarkets(marketId?: string, signal?: AbortSignal): Promise<Mar
         underlying: typeof market.underlying === "string" ? market.underlying : null,
         venue,
         lifecycle: lifecycle(market.state),
+        payouts: payoutParts(market.payouts),
         mapping: {
-          conditionId: text(market.polymarketConditionId),
-          noIndex: text(market.polymarketNoIndex),
-          polymarketUrl: text(metadata.canonicalUrl, "https://polymarket.com"),
-          yesIndex: text(market.polymarketYesIndex),
+          conditionId: text(market.eventConditionId),
+          noIndex: text(market.eventNoIndex),
+          source,
+          sourceUrl: text(metadata.canonicalUrl, `https://${source}.com`),
+          yesIndex: text(market.eventYesIndex),
         },
         no,
         ordinaryReference: null,
         probability: probabilityView,
         question: text(metadata.question, `Conditional market ${id.slice(0, 8)}`),
-        imageUrl:
-          polymarketImageUrl(metadata) ??
-          polymarketImageUrl(record(attachedRecord.metadata).rawPayload),
+        event: {
+          endTime: Number.isFinite(Date.parse(text(metadata.endTime)))
+            ? new Date(text(metadata.endTime)).toISOString()
+            : null,
+          ...(text(metadata.seriesTicker) ? { series: text(metadata.seriesTicker) } : {}),
+          ...(text(metadata.eventTicker) ? { eventTicker: text(metadata.eventTicker) } : {}),
+          result: metadata.result === "yes" || metadata.result === "no" ? metadata.result : null,
+        },
+        // The venue's artwork as normalized (Polymarket's image, Kalshi's market or series
+        // image), else a Polymarket payload's own fields.
+        imageUrl: venueImageUrl(
+          httpsImageUrl(metadata.imageUrl) ??
+            polymarketImageUrl(record(attachedRecord.metadata).rawPayload),
+        ),
         quoteToken,
         residual: null,
         ticker: display.ticker,

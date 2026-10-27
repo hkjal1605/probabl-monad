@@ -1,0 +1,23 @@
+Fair branch prices: Y*=103.00  N*=98.00  check p*Y+(1-p)*N=100.00 (= s)
+
+Table S1a: virtual-reserve curve started at P0, arbitraged to Y*
+    P0  claims sold % of curve  paid (YES-USD)  giveaway YES-USD  giveaway today $ % of backing
+     1        901.5      90.1%            9149             83702             33481       33.48%
+    10        688.4      68.8%           22094             48813             19525       19.53%
+    25        507.3      50.7%           25744             26511             10604       10.60%
+    50        303.3      30.3%           21764              9473              3789        3.79%
+    75        146.7      14.7%           12892              2216               886        0.89%
+    90         65.2       6.5%            6281               438               175        0.18%
+    98         24.6       2.5%            2469                62                25        0.02%
+   103          0.0       0.0%               0                 0                 0        0.00%
+
+S1b: static arbitrage when the YES curve quotes P0 < N* < s (NO book at N*)
+  P0=50: pay 98 USD, merge to 1 stock worth 100: riskless +2.00 + leftover 48 YES-USD worth 19.20 -> total +21.20/share
+  P0=90: pay 98 USD, merge to 1 stock worth 100: riskless +2.00 + leftover 8 YES-USD worth 3.20 -> total +5.20/share
+  P0=97: pay 98 USD, merge to 1 stock worth 100: riskless +2.00 + leftover 1 YES-USD worth 0.40 -> total +2.40/share
+  Static band without Polymarket: min(Y,N) <= s <= max(Y,N); with a Polymarket hedge for the leftover claims: p*Y + (1-p)*N = s within hedge costs.
+
+S1c: backing. Seeding a YES curve with X real claims requires splitting X stock:
+  X=1000 stock -> 1000 YES-stock (in the curve) + 1000 NO-stock (left over).
+  Left-over NO-stock is worth (1-p)*N = 58.8 each today and pays 98-ish only if NO: an unhedged event bet of $58,800 unless a NO curve sells it (= split-seeded pair, S2).
+  pump.fun mints its token from nothing, so its curve needs no backing; a stock claim cannot be minted.

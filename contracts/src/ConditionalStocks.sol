@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import { ConditionalStocksAdmin } from "./ConditionalStocksAdmin.sol";
 import { ConditionalStocksBase } from "./ConditionalStocksBase.sol";
+import { IQuoteMaker } from "./interfaces/IQuoteMaker.sol";
 
 /// @title ConditionalStocks
 /// @notice Fully collateralized event-conditional stock markets. One contract holds every
@@ -124,52 +125,6 @@ contract ConditionalStocks is ConditionalStocksBase {
         emit Withdrawn(msg.sender, token, amount, to);
     }
 
-    /// @notice Converts underlying credit into equal YES and NO claims. Collateral 0 is the
-    ///         quote token, 1 the market's base token.
-    function split(uint32 id, uint8 collateral, uint256 amount) external {
-        address token = _collateral(id, collateral);
-        if (amount == 0) revert InvalidTerms();
-        uint256 available = _credit[msg.sender][token];
-        if (available < amount) revert InsufficientFunds();
-        _credit[msg.sender][token] = available - amount;
-        _back(id, collateral, amount, true);
-        _claim(id, 0, collateral, msg.sender, amount, true);
-        _claim(id, 1, collateral, msg.sender, amount, true);
-        emit PositionChanged(id, msg.sender, 0, collateral, amount, amount, amount);
-    }
-
-    /// @notice Converts equal YES and NO claims back into underlying credit, in any state.
-    function merge(uint32 id, uint8 collateral, uint256 amount) external {
-        address token = _collateral(id, collateral);
-        if (amount == 0) revert InvalidTerms();
-        _claim(id, 0, collateral, msg.sender, amount, false);
-        _claim(id, 1, collateral, msg.sender, amount, false);
-        _back(id, collateral, amount, false);
-        _credit[msg.sender][token] += amount;
-        emit PositionChanged(id, msg.sender, 1, collateral, amount, amount, amount);
-    }
-
-    /// @notice Burns claims of a resolved market for their payout. An INVALID (1/2 each)
-    ///         payout never discards a fractional raw unit: redeem an even total.
-    function redeem(uint32 id, uint8 collateral, uint256 yes, uint256 no) external {
-        address token = _collateral(id, collateral);
-        uint8 state = _terms[id].state;
-        if (state != REDEEMABLE && state != ARCHIVED) revert InvalidState();
-        if (yes == 0 && no == 0) revert InvalidTerms();
-        Book memory b = _books[id];
-        uint256 denominator = _payoutDenominator(b.payoutYes, b.payoutNo);
-        uint256 numerator = yes * b.payoutYes + no * b.payoutNo;
-        if (numerator % denominator != 0) revert FractionalRedemption();
-        uint256 amount = numerator / denominator;
-        if (yes != 0) _claim(id, 0, collateral, msg.sender, yes, false);
-        if (no != 0) _claim(id, 1, collateral, msg.sender, no, false);
-        if (amount != 0) {
-            _back(id, collateral, amount, false);
-            _credit[msg.sender][token] += amount;
-        }
-        emit PositionChanged(id, msg.sender, 2, collateral, yes, no, amount);
-    }
-
     // ---------------------------------------------------------------- trading
 
     /// @notice Places an order and fills it against planned resting makers.
@@ -201,6 +156,33 @@ contract ConditionalStocks is ConditionalStocksBase {
             revert InvalidDelegation();
         }
         return _place(owner, msg.sender, o, p, m);
+    }
+
+    /// @notice `place` (`owner` is the caller) or `placeFor` that first fills makers' signed RFQ
+    ///         quotes for `owner`, each up to its `fill` and in order, then the planned makers.
+    ///         A quote expired, already used, or beyond its maker's balance is skipped; one for
+    ///         another book or taker, outside the order's limit or beyond its signed size reverts.
+    function placeWithQuotes(
+        address owner,
+        uint256 o,
+        uint256 p,
+        uint256 m,
+        Quote[] calldata quotes
+    ) external returns (uint256 key) {
+        if (owner == address(0) || quotes.length > MAX_MAKERS) {
+            revert InvalidOrder();
+        }
+        return _place(owner, owner == msg.sender ? address(0) : msg.sender, o, p, m);
+    }
+
+    /// @dev The quotes of a `placeWithQuotes` call (validated by its ABI decoding): its fifth
+    ///      argument.
+    function _quotes() private pure returns (Quote[] calldata quotes) {
+        assembly ("memory-safe") {
+            let head := add(4, calldataload(132))
+            quotes.length := calldataload(head)
+            quotes.offset := add(head, 32)
+        }
     }
 
     function _place(address owner, address delegate, uint256 o, uint256 p, uint256 m)
@@ -256,13 +238,15 @@ contract ConditionalStocks is ConditionalStocksBase {
         t.remaining = quantity;
         uint256 prefix = uint256(t.market) << 40 | t.branch << 32;
         key = prefix | t.seq;
-        // Only a placement that names makers can fill, so only it reads the fee rates (and the
-        // maker rebate each fill pays).
+        // Only a placement that names makers or quotes can fill, so only it reads the fee rates
+        // (and the maker rebate each fill pays).
         FeeRates memory r;
-        if (uint32(m) != 0) {
+        bool quoted = msg.sig == this.placeWithQuotes.selector;
+        if (uint32(m) != 0 || quoted) {
             r = _feeRates[t.market];
             t.rebateBps = r.rebateBps;
         }
+        if (quoted) _takeQuotes(t, r, tm, _quotes());
         for (uint256 i; i < MAX_MAKERS && t.remaining != 0; ++i) {
             uint256 entry = uint32(m >> (32 * i));
             if (entry == 0) break;
@@ -494,6 +478,135 @@ contract ConditionalStocks is ConditionalStocksBase {
         }
     }
 
+    /// @dev Fills signed RFQ quotes. A quote rests nothing, so its maker delivers at the fill:
+    ///      base (a buyer's) or quote (a seller's) from its credit, keeping the other branch's
+    ///      claim, or from its claims on the branch. Ledger moves otherwise match `_fill`.
+    function _takeQuotes(
+        Taker memory t,
+        FeeRates memory r,
+        Terms memory tm,
+        Quote[] calldata quotes
+    ) private {
+        if (r.takerBps > t.maxFee) revert FeeCap();
+        bytes32 domain = keccak256(
+            abi.encode(DOMAIN_TYPEHASH, NAME_HASH, VERSION_HASH, block.chainid, address(this))
+        );
+        for (uint256 i; i < quotes.length && t.remaining != 0; ++i) {
+            _takeQuote(t, r, tm, quotes[i], domain);
+        }
+    }
+
+    function _takeQuote(
+        Taker memory t,
+        FeeRates memory r,
+        Terms memory tm,
+        Quote calldata q,
+        bytes32 domain
+    ) private {
+        uint256 terms = q.terms;
+        uint256 flags = uint8(terms >> 32);
+        uint256 ticks = uint64(terms >> 96);
+        uint256 quantity = q.fill;
+        if (
+            uint32(terms) != t.market || flags & F_BRANCH != t.branch
+                || (flags & F_SELL != 0) == t.sell || (t.sell ? ticks < t.ticks : ticks > t.ticks)
+                || quantity == 0 || quantity > terms >> 160 || quantity % tm.step != 0
+        ) revert StalePlan();
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                hex"1901", domain, keccak256(abi.encode(QUOTE_TYPEHASH, t.owner, terms, q.nonce))
+            )
+        );
+        // A nonce at or above 2^96 names its maker contract in its top 160 bits; any other
+        // quote's maker is the wallet that signed it.
+        address maker = address(uint160(q.nonce >> 96));
+        if (maker == address(0)) {
+            bytes32 vs = q.vs;
+            maker = ecrecover(
+                digest, uint8(uint256(vs) >> 255) + 27, q.r, vs & bytes32(type(uint256).max >> 1)
+            );
+            if (maker == address(0)) revert Unauthorized();
+        }
+        if (quantity > t.remaining) quantity = t.remaining;
+        uint256 quoteAmount = quantity * (ticks * tm.tick) / WAD;
+        if (quoteAmount == 0) revert StalePlan();
+        bool claim = flags & F_CLAIM != 0;
+        uint256 owed = t.sell ? quoteAmount : quantity;
+        uint256 mb = uint256(t.market) << 1 | t.branch;
+        Account memory a = _accounts[mb][maker];
+        address token = t.sell ? QUOTE : tm.base;
+        uint256 available = claim ? (t.sell ? a.quote : a.base) : _credit[maker][token];
+        uint256 word = _quoteNonces[maker][q.nonce >> 8];
+        // forge-lint: disable-next-line(incorrect-shift)
+        uint256 bit = 1 << (q.nonce & 255);
+        if (uint40(terms >> 56) <= block.timestamp || word & bit != 0 || available < owed) return;
+        // A maker contract decides itself (its signer, its limits), within a fixed gas budget.
+        if (q.nonce >> 96 != 0) {
+            (bool ok, bytes memory data) = maker.staticcall{ gas: QUOTE_CHECK_GAS }(
+                abi.encodeCall(IQuoteMaker.acceptQuote, (digest, terms, quantity, q.r, q.vs))
+            );
+            if (!ok || data.length != 32 || bytes4(data) != IQuoteMaker.acceptQuote.selector) {
+                return;
+            }
+        }
+        _quoteNonces[maker][q.nonce >> 8] = word | bit;
+        if (!claim) {
+            _credit[maker][token] = available - owed;
+            _claim(t.market, 1 - t.branch, t.sell ? 0 : 1, maker, owed, true);
+            if (t.sell) t.quoteBacking += owed;
+            else t.baseBacking += owed;
+        } else if (t.sell) {
+            a.quote -= uint96(owed);
+        } else {
+            a.base -= uint96(owed);
+        }
+        uint256 buyerFee;
+        uint256 sellerFee;
+        uint256 improvement;
+        if (!t.sell) {
+            (buyerFee, t.carry) = _fee(quantity, r.takerBps, t.carry);
+            (sellerFee,) = _fee(quoteAmount, r.makerBps, 0);
+            improvement = _quoteUp(t.remaining, t.price) - _quoteUp(t.remaining - quantity, t.price)
+                - quoteAmount;
+            uint256 rebate = buyerFee * t.rebateBps / BPS;
+            a.quote = _u96(a.quote + quoteAmount - sellerFee);
+            a.base = _u96(a.base + rebate);
+            t.received += quantity - buyerFee;
+            t.paid += quoteAmount;
+            if (!t.claim) {
+                t.quoteBacking += quoteAmount;
+                t.inactive += quoteAmount;
+            }
+            t.baseFee += buyerFee - rebate;
+            t.quoteFee += sellerFee;
+        } else {
+            (buyerFee,) = _fee(quantity, r.makerBps, 0);
+            (sellerFee, t.carry) = _fee(quoteAmount, r.takerBps, t.carry);
+            uint256 rebate = sellerFee * t.rebateBps / BPS;
+            a.base = _u96(a.base + quantity - buyerFee);
+            a.quote = _u96(a.quote + rebate);
+            t.received += quoteAmount - sellerFee;
+            t.paid += quantity;
+            if (!t.claim) {
+                t.baseBacking += quantity;
+                t.inactive += quantity;
+            }
+            t.baseFee += buyerFee;
+            t.quoteFee += sellerFee - rebate;
+        }
+        _storeAccount(_accounts[mb][maker], a);
+        t.remaining -= quantity;
+        t.filled += quantity;
+        emit QuoteFilled(
+            t.market,
+            maker,
+            quantity | QUOTE_SEQ << 96 | t.seq << 128 | t.branch << 160
+                | (claim ? uint256(1) << 168 : 0) | ticks << 176,
+            quoteAmount | improvement << 128,
+            buyerFee | sellerFee << 128
+        );
+    }
+
     /// @dev Whether the grant a delegated order was placed under still lets it trade.
     function _delegateLive(uint256 key, address owner, uint24 generation, uint64 delegationEpoch)
         private
@@ -594,16 +707,6 @@ contract ConditionalStocks is ConditionalStocksBase {
     }
 
     // ---------------------------------------------------------------- internals
-
-    function _back(uint32 id, uint8 collateral, uint256 amount, bool add) private {
-        Backing memory bk = _backing[id];
-        if (collateral == 0) {
-            bk.quote = add ? _u128(bk.quote + amount) : uint128(bk.quote - amount);
-        } else {
-            bk.base = add ? _u128(bk.base + amount) : uint128(bk.base - amount);
-        }
-        _backing[id] = bk;
-    }
 
     function _fee(uint256 gross, uint256 rate, uint16 carry)
         private

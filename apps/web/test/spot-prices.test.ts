@@ -168,10 +168,12 @@ describe("UI and trading separation", () => {
     expect(updated!.yes).toBe(market.yes);
     expect(updated!.no).toBe(market.no);
     expect(previewOrder("1", "123.45", updated!)).toEqual(before);
-    const [down] = withMarketSpotPrices([updated!], undefined, NOW, true);
-    expect(down!.ordinaryReference).toBeNull();
-    expect(down!.spotReference!.status).toBe("unavailable");
-    expect(previewOrder("1", "123.45", down!)).toEqual(before);
+    // A failed refresh keeps the last price until it expires, 60 s after it was fetched.
+    expect(withMarketSpotPrices([updated!], undefined, NOW)[0]!.ordinaryReference).toBe(123.45);
+    const [expired] = withMarketSpotPrices([updated!], undefined, NOW + 61_000);
+    expect(expired!.ordinaryReference).toBeNull();
+    expect(expired!.spotReference!.status).toBe("stale");
+    expect(previewOrder("1", "123.45", expired!)).toEqual(before);
     expect(withMarketSpotPrices([market], undefined, NOW)[0]!.ordinaryReference).toBeNull();
   });
   test("portfolio estimates use the actual quote price and the live per-token stock price", () => {

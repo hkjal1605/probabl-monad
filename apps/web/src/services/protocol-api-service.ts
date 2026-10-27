@@ -4,13 +4,6 @@ export { ApiError, requestJson } from "./api";
 
 import type { ResolutionView, TradeView } from "../types/api";
 export const api = {
-  trades: (marketId?: string, signal?: AbortSignal) =>
-    requestJson<{ trades: TradeView[] }>(
-      marketId
-        ? `/trades?marketId=${encodeURIComponent(marketId)}&limit=100`
-        : "/trades?limit=1000",
-      signal ? { signal } : {},
-    ),
   /** A wallet's own trades (maker or taker), newest first: its member session reads them. */
   walletTrades: (owner: string, signal?: AbortSignal) =>
     requestJson<{ trades: TradeView[] }>(`/trades?owner=${encodeURIComponent(owner)}&limit=1000`, {

@@ -1,0 +1,333 @@
+window,dimension,key,markets,volume_contracts,share_pct,per_day_contracts,est_taker_usd,usd_share_pct,usd_per_day
+7d,by_frequency,custom,102939,3820558593,55.51,545794085,1740174686,54.65,248596384
+7d,by_frequency,fifteen_min,14942,2654298313,38.56,379185473,1248325934,39.2,178332276
+7d,by_frequency,hourly,482673,267526860,3.89,38218123,125705320,3.95,17957903
+7d,by_frequency,one_off,10633,71552458,1.04,10221780,35578319,1.12,5082617
+7d,by_frequency,daily,13282,50752398,0.74,7250343,25262850,0.79,3608979
+7d,by_frequency,annual,169,7194866,0.1,1027838,3401157,0.11,485880
+7d,by_frequency,weekly,1994,6062800,0.09,866114,3065110,0.1,437873
+7d,by_frequency,monthly,574,5240832,0.08,748690,2718828,0.09,388404
+7d,by_category,sports,112307,3880262727,56.37,554323247,1770940762,55.62,252991537
+7d,by_category,crypto,419948,2600331706,37.78,371475958,1222077444,38.38,174582492
+7d,by_category,financials,75239,321191754,4.67,45884536,151153414,4.75,21593345
+7d,by_category,weather/climate,8977,28320634,0.41,4045805,10994413,0.35,1570630
+7d,by_category,economy/Fed/macro,7341,19754617,0.29,2822088,13379276,0.42,1911325
+7d,by_category,mentions,1050,11004219,0.16,1572031,2645981,0.08,377997
+7d,by_category,culture/entertainment,1347,9332277,0.14,1333182,6712707,0.21,958958
+7d,by_category,politics/elections,438,7993872,0.12,1141982,4018017,0.13,574002
+7d,by_category,tech/AI/science,521,4112745,0.06,587535,1902027,0.06,271718
+7d,by_category,geopolitics/war,38,882567,0.01,126081,408162,0.01,58309
+7d,by_league,,514899,3002924392,43.63,428989199,1413291442,44.38,201898777
+7d,by_league,Tennis,6286,1042934445,15.15,148990635,518179692,16.27,74025670
+7d,by_league,NFL,17119,831401447,12.08,118771635,374071990,11.75,53438856
+7d,by_league,NCAA football,14085,665885311,9.67,95126473,280415359,8.81,40059337
+7d,by_league,MLB,3384,260350722,3.78,37192960,107079555,3.36,15297079
+7d,by_league,Soccer: other,11800,196965829,2.86,28137976,92875638,2.92,13267948
+7d,by_league,Soccer: UEFA club comps,5770,171385280,2.49,24483611,72871470,2.29,10410210
+7d,by_league,NBA,2455,89386894,1.3,12769556,43169428,1.36,6167061
+7d,by_league,NHL,12542,76633823,1.11,10947689,38713647,1.22,5530521
+7d,by_league,Soccer: MLS,3475,64617786,0.94,9231112,29823518,0.94,4260503
+7d,by_league,Esports,3907,63650021,0.92,9092860,31293757,0.98,4470537
+7d,by_league,Soccer: La Liga,1688,62380757,0.91,8911537,25596603,0.8,3656658
+7d,by_league,Cricket,262,62372047,0.91,8910292,29944990,0.94,4277856
+7d,by_league,Soccer: Premier League,2030,60546132,0.88,8649447,27992321,0.88,3998903
+7d,by_league,UFC/MMA,454,44431651,0.65,6347379,18860401,0.59,2694343
+7d,by_league,Soccer: Liga MX,1096,33751999,0.49,4821714,14516724,0.46,2073818
+7d,by_league,Soccer: Serie A,1359,32784571,0.48,4683510,16074967,0.5,2296424
+7d,by_league,Soccer: Ligue 1,1223,18976556,0.28,2710937,8569493,0.27,1224213
+7d,by_league,Soccer: Bundesliga,1448,18512953,0.27,2644708,8084250,0.25,1154893
+7d,by_league,Golf,1772,16586985,0.24,2369569,2105408,0.07,300773
+7d,by_league,Basketball: other,3785,14775633,0.21,2110805,7340908,0.23,1048701
+7d,by_league,Combat sports,84,13894432,0.2,1984919,5923428,0.19,846204
+7d,by_league,Soccer: EFL,886,9491014,0.14,1355859,4583518,0.14,654788
+7d,by_league,WNBA,271,6775461,0.1,967923,3285965,0.1,469424
+7d,by_league,E-sims (eSoccer/eBasketball),11180,5701607,0.08,814515,3827965,0.12,546852
+7d,by_league,Motorsport,441,4487060,0.07,641009,598516,0.02,85502
+7d,by_league,Soccer: FIFA/World Cup,321,3949447,0.06,564207,1379669,0.04,197096
+7d,by_league,Baseball,99,2708989,0.04,386998,1230762,0.04,175823
+7d,by_league,Table tennis,1472,1927139,0.03,275306,1166883,0.04,166698
+7d,by_league,Baseball: other,33,1378681,0.02,196954,627491,0.02,89642
+7d,by_league,Hockey: other,358,831180,0.01,118740,378302,0.01,54043
+7d,by_league,Sports: other,200,195989,0.0,27998,89202,0.0,12743
+7d,by_league,Table Tennis,240,192952,0.0,27565,87820,0.0,12546
+7d,by_league,Football: other,68,145331,0.0,20762,66146,0.0,9449
+7d,by_league,Darts,230,133982,0.0,19140,60980,0.0,8711
+7d,by_league,NCAA basketball,111,82032,0.0,11719,37336,0.0,5334
+7d,by_league,Chess,347,31077,0.0,4440,14144,0.0,2021
+7d,by_league,Hockey,12,4889,0.0,698,2225,0.0,318
+7d,by_league,Rugby,14,623,0.0,89,293,0.0,42
+7d,by_market_life,<1h,26261,2658284643,38.62,379754949,1250600441,39.27,178657206
+7d,by_market_life,1-6w,7251,1645759261,23.91,235108466,702984375,22.08,100426339
+7d,by_market_life,1-7d,75991,1374012112,19.96,196287445,636416727,19.99,90916675
+7d,by_market_life,6-24h,42261,890268142,12.93,127181163,443355568,13.92,63336510
+7d,by_market_life,1-6h,474210,289015269,4.2,41287896,138961192,4.36,19851599
+7d,by_market_life,>6w,1232,25847691,0.38,3692527,11913901,0.37,1701986
+7d,category|frequency,sports|custom,102562,3814260991,55.41,,1736018057,,
+7d,category|frequency,crypto|fifteen_min,9296,2353090770,34.19,,1106352585,,
+7d,category|frequency,financials|fifteen_min,5646,301207543,4.38,,141973350,,
+7d,category|frequency,crypto|hourly,410238,247134321,3.59,,115674754,,
+7d,category|frequency,sports|one_off,8152,50560793,0.73,,27432986,,
+7d,category|frequency,weather/climate|daily,2306,21933323,0.32,,7576373,,
+7d,category|frequency,financials|hourly,65805,14384850,0.21,,6759930,,
+7d,category|frequency,economy/Fed/macro|daily,6770,12825710,0.19,,9944897,,
+7d,category|frequency,mentions|one_off,1023,10913801,0.16,,2624240,,
+7d,category|frequency,sports|daily,986,8921904,0.13,,4426157,,
+7d,category|frequency,sports|annual,107,6491477,0.09,,3050994,,
+7d,category|frequency,weather/climate|hourly,6630,6007689,0.09,,3270637,,
+7d,category|frequency,culture/entertainment|custom,64,4941533,0.07,,3554445,,
+7d,category|frequency,economy/Fed/macro|monthly,398,4857905,0.07,,2536718,,
+7d,category|frequency,financials|daily,2570,3671452,0.05,,1512841,,
+7d,category|frequency,politics/elections|one_off,148,3457745,0.05,,1640008,,
+7d,category|frequency,politics/elections|daily,192,3374954,0.05,,1790807,,
+7d,category|frequency,culture/entertainment|one_off,650,3140615,0.05,,2259044,,
+7d,category|frequency,tech/AI/science|one_off,170,2351924,0.03,,1087698,,
+7d,category|frequency,economy/Fed/macro|weekly,164,2041177,0.03,,876686,,
+7d,category|frequency,culture/entertainment|weekly,538,1179166,0.02,,848174,,
+7d,category|frequency,tech/AI/science|custom,264,1141103,0.02,,527728,,
+7d,category|frequency,financials|one_off,486,1091592,0.02,,513714,,
+7d,category|frequency,politics/elections|weekly,75,979976,0.01,,495571,,
+7d,category|frequency,geopolitics/war|weekly,35,849902,0.01,,393055,,
+7d,category|frequency,financials|weekly,659,687363,0.01,,323480,,
+7d,category|frequency,tech/AI/science|annual,2,512342,0.01,,236943,,
+7d,category|frequency,weather/climate|weekly,23,297653,0.0,,115576,,
+7d,category|frequency,tech/AI/science|monthly,85,107376,0.0,,49658,,
+7d,category|frequency,politics/elections|monthly,17,102922,0.0,,52047,,
+7d,category|frequency,mentions|custom,27,90419,0.0,,21741,,
+7d,category|frequency,crypto|monthly,13,81291,0.0,,38204,,
+7d,category|frequency,weather/climate|custom,15,73741,0.0,,28633,,
+7d,category|frequency,politics/elections|annual,4,73368,0.0,,37102,,
+7d,category|frequency,culture/entertainment|annual,35,70962,0.0,,51043,,
+7d,category|frequency,financials|monthly,56,69886,0.0,,32889,,
+7d,category|frequency,financials|custom,5,45897,0.0,,21600,,
+7d,category|frequency,financials|annual,12,33171,0.0,,15611,,
+7d,category|frequency,sports|weekly,500,27562,0.0,,12568,,
+7d,category|frequency,crypto|daily,398,25054,0.0,,11775,,
+7d,category|frequency,geopolitics/war|one_off,1,19440,0.0,,8990,,
+7d,category|frequency,economy/Fed/macro|one_off,3,16549,0.0,,11639,,
+7d,category|frequency,economy/Fed/macro|annual,6,13276,0.0,,9337,,
+7d,category|frequency,geopolitics/war|monthly,2,13225,0.0,,6116,,
+7d,category|frequency,weather/climate|monthly,3,8227,0.0,,3194,,
+7d,category|frequency,politics/elections|custom,2,4907,0.0,,2482,,
+7d,category|frequency,crypto|annual,3,270,0.0,,127,,
+7d,category|frequency,culture/entertainment|daily,60,1,0.0,,1,,
+7d,category|market_life,crypto|<1h,9296,2353090770,34.19,,1106352585,,
+7d,category|market_life,sports|1-6w,4997,1629277045,23.67,,693885828,,
+7d,category|market_life,sports|1-7d,59560,1299481320,18.88,,605601734,,
+7d,category|market_life,sports|6-24h,23046,868213929,12.61,,429651490,,
+7d,category|market_life,financials|<1h,14610,301613482,4.38,,142367771,,
+7d,category|market_life,crypto|1-6h,405302,219764940,3.19,,102874008,,
+7d,category|market_life,sports|1-6h,21761,60939596,0.89,,31696981,,
+7d,category|market_life,weather/climate|1-7d,2295,22160891,0.32,,7642777,,
+7d,category|market_life,crypto|1-7d,4627,20852498,0.3,,9741429,,
+7d,category|market_life,sports|>6w,600,18772946,0.27,,8225246,,
+7d,category|market_life,economy/Fed/macro|6-24h,6423,12465585,0.18,,9687248,,
+7d,category|market_life,financials|1-7d,7453,8792239,0.13,,3739700,,
+7d,category|market_life,mentions|1-7d,562,7905730,0.11,,1910234,,
+7d,category|market_life,financials|6-24h,12477,7818098,0.11,,3495978,,
+7d,category|market_life,politics/elections|1-7d,213,6930214,0.1,,3460028,,
+7d,category|market_life,crypto|1-6w,693,6621828,0.1,,3108357,,
+7d,category|market_life,weather/climate|1-6h,6630,6007689,0.09,,3270637,,
+7d,category|market_life,culture/entertainment|1-6w,467,5975185,0.09,,4297950,,
+7d,category|market_life,economy/Fed/macro|>6w,113,4232788,0.06,,2214746,,
+7d,category|market_life,sports|<1h,2343,3577890,0.05,,1879484,,
+7d,category|market_life,tech/AI/science|1-7d,415,2949072,0.04,,1363862,,
+7d,category|market_life,culture/entertainment|1-7d,514,2615933,0.04,,1881641,,
+7d,category|market_life,economy/Fed/macro|1-7d,346,2289077,0.03,,1059074,,
+7d,category|market_life,financials|1-6h,40271,1608489,0.02,,912724,,
+7d,category|market_life,mentions|6-24h,165,1575346,0.02,,369505,,
+7d,category|market_life,financials|1-6w,380,861263,0.01,,402791,,
+7d,category|market_life,geopolitics/war|1-6w,31,827990,0.01,,382922,,
+7d,category|market_life,tech/AI/science|>6w,10,775725,0.01,,358751,,
+7d,category|market_life,culture/entertainment|>6w,336,739884,0.01,,532199,,
+7d,category|market_life,mentions|1-6w,192,720089,0.01,,173146,,
+7d,category|market_life,economy/Fed/macro|1-6w,319,704984,0.01,,364441,,
+7d,category|market_life,mentions|1-6h,114,628522,0.01,,151129,,
+7d,category|market_life,politics/elections|>6w,97,563803,0.01,,269852,,
+7d,category|market_life,financials|>6w,48,498184,0.01,,234450,,
+7d,category|market_life,tech/AI/science|1-6w,96,387948,0.01,,179415,,
+7d,category|market_life,politics/elections|1-6w,70,373851,0.01,,186000,,
+7d,category|market_life,mentions|>6w,15,172031,0.0,,41365,,
+7d,category|market_life,politics/elections|6-24h,56,122154,0.0,,100191,,
+7d,category|market_life,weather/climate|>6w,12,72890,0.0,,28302,,
+7d,category|market_life,weather/climate|6-24h,34,70086,0.0,,49172,,
+7d,category|market_life,economy/Fed/macro|1-6h,130,62183,0.0,,53767,,
+7d,category|market_life,geopolitics/war|1-7d,6,35137,0.0,,16250,,
+7d,category|market_life,geopolitics/war|>6w,1,19440,0.0,,8990,,
+7d,category|market_life,weather/climate|1-6w,6,9078,0.0,,3525,,
+7d,category|market_life,politics/elections|1-6h,2,3850,0.0,,1947,,
+7d,category|market_life,mentions|<1h,2,2501,0.0,,601,,
+7d,category|market_life,crypto|6-24h,30,1670,0.0,,1067,,
+7d,category|market_life,culture/entertainment|6-24h,30,1275,0.0,,917,,
+7d,category|market_life,economy/Fed/macro|<1h,10,0,0.0,,0,,
+30d,by_frequency,custom,410499,15910541923,56.84,530351397,7268358653,56.08,242278622
+30d,by_frequency,fifteen_min,60313,10285477717,36.75,342849257,4839205098,37.34,161306837
+30d,by_frequency,hourly,2015305,1231757824,4.4,41058594,577365931,4.45,19245531
+30d,by_frequency,one_off,37917,272349725,0.97,9078324,136085609,1.05,4536187
+30d,by_frequency,daily,49890,199777877,0.71,6659263,95487831,0.74,3182928
+30d,by_frequency,annual,1889,48374384,0.17,1612479,22923810,0.18,764127
+30d,by_frequency,weekly,9078,24676487,0.09,822550,12701788,0.1,423393
+30d,by_frequency,monthly,2164,18156226,0.06,605208,9104002,0.07,303467
+30d,by_frequency,quarterly,16,26824,0.0,894,17489,0.0,583
+30d,by_category,sports,443146,16117047793,57.58,537234926,7373744674,56.89,245791489
+30d,by_category,crypto,1804746,10287540996,36.75,342918033,4836083335,37.31,161202778
+30d,by_category,financials,261265,1258603180,4.5,41953439,591472273,4.56,19715742
+30d,by_category,weather/climate,38554,114983285,0.41,3832776,44173699,0.34,1472457
+30d,by_category,economy/Fed/macro,23479,56214474,0.2,1873816,38657713,0.3,1288590
+30d,by_category,politics/elections,2230,47969413,0.17,1598980,23951809,0.18,798394
+30d,by_category,culture/entertainment,7763,44347157,0.16,1478239,31898910,0.25,1063297
+30d,by_category,mentions,3661,38621334,0.14,1287378,9330787,0.07,311026
+30d,by_category,tech/AI/science,2082,18301320,0.07,610044,8463837,0.07,282128
+30d,by_category,geopolitics/war,145,7510034,0.03,250334,3473176,0.03,115773
+30d,by_league,,2143925,11874091193,42.42,395803040,5587505538,43.11,186250185
+30d,by_league,Tennis,25469,4558504790,16.29,151950160,2263679754,17.46,75455992
+30d,by_league,NFL,73903,3556375579,12.71,118545853,1593350844,12.29,53111695
+30d,by_league,NCAA football,63644,2556803616,9.13,85226787,1094221132,8.44,36474038
+30d,by_league,MLB,66879,1613508833,5.76,53783628,676538042,5.22,22551268
+30d,by_league,Soccer: other,50425,1207247437,4.31,40241581,558207862,4.31,18606929
+30d,by_league,Esports,14301,255353900,0.91,8511797,125309313,0.97,4176977
+30d,by_league,UFC/MMA,1958,252895773,0.9,8429859,111234220,0.86,3707807
+30d,by_league,Cricket,1875,225854192,0.81,7528473,109837844,0.85,3661261
+30d,by_league,WNBA,8302,215280765,0.77,7176025,103628681,0.8,3454289
+30d,by_league,Soccer: UEFA club comps,6087,208356824,0.74,6945227,89698653,0.69,2989955
+30d,by_league,NHL,31678,196955756,0.7,6565192,98717502,0.76,3290583
+30d,by_league,NBA,5401,185772735,0.66,6192425,89931764,0.69,2997725
+30d,by_league,Golf,10578,178718833,0.64,5957294,58320410,0.45,1944014
+30d,by_league,Soccer: La Liga,4330,156520553,0.56,5217352,63900278,0.49,2130009
+30d,by_league,Soccer: MLS,7846,143964330,0.51,4798811,66301161,0.51,2210039
+30d,by_league,Soccer: Liga MX,3300,141813330,0.51,4727111,60763578,0.47,2025453
+30d,by_league,Soccer: Premier League,3944,131936930,0.47,4397898,61147798,0.47,2038260
+30d,by_league,Soccer: Serie A,2702,62303419,0.22,2076781,30565168,0.24,1018839
+30d,by_league,Soccer: Bundesliga,2691,51182030,0.18,1706068,22110785,0.17,737026
+30d,by_league,Basketball: other,12298,47048458,0.17,1568282,23462036,0.18,782068
+30d,by_league,Soccer: Ligue 1,2299,34184920,0.12,1139497,15501853,0.12,516728
+30d,by_league,Motorsport,2470,26267009,0.09,875567,5946124,0.05,198204
+30d,by_league,Baseball,1894,20632951,0.07,687765,9402439,0.07,313415
+30d,by_league,Combat sports,222,20161303,0.07,672043,8594024,0.07,286467
+30d,by_league,Soccer: EFL,2001,17940821,0.06,598027,8554411,0.07,285147
+30d,by_league,Baseball: other,858,16080989,0.06,536033,7319082,0.06,243969
+30d,by_league,Soccer: FIFA/World Cup,502,11429556,0.04,380985,4784156,0.04,159472
+30d,by_league,Table Tennis,9054,8976273,0.03,299209,4085450,0.03,136182
+30d,by_league,E-sims (eSoccer/eBasketball),19227,6952521,0.02,231751,4685316,0.04,156177
+30d,by_league,Hockey: other,1292,2593558,0.01,86452,1180429,0.01,39348
+30d,by_league,Table tennis,1472,1927139,0.01,64238,1166883,0.01,38896
+30d,by_league,Sports: other,1219,1229354,0.0,40978,561875,0.0,18729
+30d,by_league,Football: other,276,1052622,0.0,35087,479089,0.0,15970
+30d,by_league,Darts,772,582816,0.0,19427,265262,0.0,8842
+30d,by_league,Chess,1674,340712,0.0,11357,155962,0.0,5199
+30d,by_league,Rugby,155,134468,0.0,4482,61446,0.0,2048
+30d,by_league,NCAA basketball,111,82032,0.0,2734,37336,0.0,1245
+30d,by_league,MMA,25,75775,0.0,2526,34488,0.0,1150
+30d,by_league,Hockey,12,4889,0.0,163,2225,0.0,74
+30d,by_market_life,<1h,81301,10299841750,36.8,343328058,4846616089,37.39,161553870
+30d,by_market_life,1-7d,324548,6706526983,23.96,223550899,3106719719,23.97,103557324
+30d,by_market_life,1-6w,28142,5639028115,20.15,187967604,2401810598,18.53,80060353
+30d,by_market_life,6-24h,165643,3833010517,13.69,127767017,1899097073,14.65,63303236
+30d,by_market_life,1-6h,1981068,1237571805,4.42,41252394,584168047,4.51,19472268
+30d,by_market_life,>6w,6369,275159815,0.98,9171994,122838686,0.95,4094623
+30d,category|frequency,sports|custom,408935,15869448665,56.69,,7244838964,,
+30d,category|frequency,crypto|fifteen_min,39872,9168828700,32.76,,4312131952,,
+30d,category|frequency,financials|fifteen_min,20441,1116649016,3.99,,527073147,,
+30d,category|frequency,crypto|hourly,1762876,1108528980,3.96,,519165532,,
+30d,category|frequency,sports|one_off,26102,165225523,0.59,,89196644,,
+30d,category|frequency,financials|hourly,224269,101794682,0.36,,46509484,,
+30d,category|frequency,weather/climate|daily,9822,89687892,0.32,,30983509,,
+30d,category|frequency,sports|annual,1455,43804670,0.16,,20588195,,
+30d,category|frequency,economy/Fed/macro|daily,21729,40724731,0.15,,31141246,,
+30d,category|frequency,mentions|one_off,3623,38441333,0.14,,9287506,,
+30d,category|frequency,sports|daily,4518,38240298,0.14,,18971012,,
+30d,category|frequency,weather/climate|hourly,28160,21434161,0.08,,11690915,,
+30d,category|frequency,culture/entertainment|one_off,2788,21355943,0.08,,15361330,,
+30d,category|frequency,politics/elections|one_off,1061,18797456,0.07,,8915633,,
+30d,category|frequency,financials|daily,9812,16742015,0.06,,6869143,,
+30d,category|frequency,culture/entertainment|custom,217,16176445,0.06,,11635717,,
+30d,category|frequency,financials|one_off,3400,14072967,0.05,,6622882,,
+30d,category|frequency,politics/elections|daily,649,13355521,0.05,,7037858,,
+30d,category|frequency,tech/AI/science|one_off,915,10666353,0.04,,4932883,,
+30d,category|frequency,politics/elections|custom,75,10187625,0.04,,5151847,,
+30d,category|frequency,economy/Fed/macro|weekly,773,7564069,0.03,,3248768,,
+30d,category|frequency,economy/Fed/macro|monthly,867,7213208,0.03,,3766619,,
+30d,category|frequency,crypto|monthly,243,7165705,0.03,,3367665,,
+30d,category|frequency,tech/AI/science|custom,940,5831658,0.02,,2696975,,
+30d,category|frequency,culture/entertainment|weekly,2658,5436206,0.02,,3910263,,
+30d,category|frequency,financials|custom,23,4706983,0.02,,2215154,,
+30d,category|frequency,politics/elections|weekly,320,4550804,0.02,,2301326,,
+30d,category|frequency,geopolitics/war|one_off,13,3664749,0.01,,1694842,,
+30d,category|frequency,financials|weekly,2713,2968890,0.01,,1397190,,
+30d,category|frequency,geopolitics/war|weekly,122,2658413,0.01,,1229440,,
+30d,category|frequency,weather/climate|custom,211,2440365,0.01,,947567,,
+30d,category|frequency,crypto|annual,9,1937734,0.01,,910677,,
+30d,category|frequency,financials|monthly,531,1346866,0.0,,633849,,
+30d,category|frequency,tech/AI/science|annual,80,1147737,0.0,,530796,,
+30d,category|frequency,geopolitics/war|custom,1,1142574,0.0,,528408,,
+30d,category|frequency,weather/climate|weekly,320,1023201,0.0,,397298,,
+30d,category|frequency,crypto|daily,1740,1018566,0.0,,478695,,
+30d,category|frequency,culture/entertainment|monthly,260,805260,0.0,,579223,,
+30d,category|frequency,politics/elections|monthly,103,720024,0.0,,364114,,
+30d,category|frequency,culture/entertainment|annual,220,564450,0.0,,406009,,
+30d,category|frequency,tech/AI/science|monthly,111,509304,0.0,,235539,,
+30d,category|frequency,economy/Fed/macro|custom,59,427608,0.0,,300739,,
+30d,category|frequency,politics/elections|annual,22,357982,0.0,,181030,,
+30d,category|frequency,weather/climate|monthly,40,351561,0.0,,136507,,
+30d,category|frequency,sports|weekly,2136,328636,0.0,,149859,,
+30d,category|frequency,financials|annual,72,315849,0.0,,148642,,
+30d,category|frequency,economy/Fed/macro|annual,30,199856,0.0,,140560,,
+30d,category|frequency,mentions|custom,38,180001,0.0,,43281,,
+30d,category|frequency,tech/AI/science|weekly,36,146266,0.0,,67644,,
+30d,category|frequency,economy/Fed/macro|one_off,9,64090,0.0,,45075,,
+30d,category|frequency,crypto|one_off,6,61309,0.0,,28814,,
+30d,category|frequency,weather/climate|annual,1,46106,0.0,,17902,,
+30d,category|frequency,geopolitics/war|monthly,9,44298,0.0,,20486,,
+30d,category|frequency,economy/Fed/macro|quarterly,12,20911,0.0,,14707,,
+30d,category|frequency,culture/entertainment|daily,1620,8854,0.0,,6368,,
+30d,category|frequency,financials|quarterly,4,5912,0.0,,2782,,
+30d,category|market_life,crypto|<1h,39883,9168829700,32.76,,4312132422,,
+30d,category|market_life,sports|1-7d,251224,6384392275,22.81,,2969384224,,
+30d,category|market_life,sports|1-6w,16978,5552992124,19.84,,2359038276,,
+30d,category|market_life,sports|6-24h,94374,3738276253,13.36,,1845330279,,
+30d,category|market_life,financials|<1h,35550,1117091394,3.99,,527489960,,
+30d,category|market_life,crypto|1-6h,1741713,990823766,3.54,,464178115,,
+30d,category|market_life,sports|1-6h,70482,217107112,0.78,,104661061,,
+30d,category|market_life,sports|>6w,4272,210370156,0.75,,88345259,,
+30d,category|market_life,crypto|1-7d,20129,90321365,0.32,,42193771,,
+30d,category|market_life,weather/climate|1-7d,10070,90293931,0.32,,31157927,,
+30d,category|market_life,financials|1-7d,33055,67541070,0.24,,29906879,,
+30d,category|market_life,financials|6-24h,49613,48279121,0.17,,21571003,,
+30d,category|market_life,economy/Fed/macro|6-24h,20377,39473847,0.14,,30225020,,
+30d,category|market_life,crypto|1-6w,2900,35600857,0.13,,16655119,,
+30d,category|market_life,weather/climate|1-6h,28162,21439431,0.08,,11694612,,
+30d,category|market_life,politics/elections|>6w,459,21225436,0.08,,10359707,,
+30d,category|market_life,mentions|1-7d,1678,20047001,0.07,,4910795,,
+30d,category|market_life,politics/elections|1-7d,783,19581575,0.07,,9987144,,
+30d,category|market_life,culture/entertainment|1-6w,2521,16502793,0.06,,11870459,,
+30d,category|market_life,culture/entertainment|>6w,802,15027177,0.05,,10809048,,
+30d,category|market_life,sports|<1h,5816,13909872,0.05,,6985574,,
+30d,category|market_life,culture/entertainment|1-7d,4315,12809311,0.05,,9213738,,
+30d,category|market_life,tech/AI/science|1-7d,1659,12739440,0.05,,5891627,,
+30d,category|market_life,financials|>6w,335,10874418,0.04,,5117612,,
+30d,category|market_life,financials|1-6w,3029,10166271,0.04,,4772490,,
+30d,category|market_life,economy/Fed/macro|1-7d,1629,8765876,0.03,,4057364,,
+30d,category|market_life,mentions|1-6w,595,8082115,0.03,,1962494,,
+30d,category|market_life,politics/elections|1-6w,814,6674681,0.02,,3254377,,
+30d,category|market_life,mentions|6-24h,760,6048938,0.02,,1380855,,
+30d,category|market_life,economy/Fed/macro|>6w,232,5700877,0.02,,3056670,,
+30d,category|market_life,geopolitics/war|>6w,10,4748280,0.02,,2195944,,
+30d,category|market_life,financials|1-6h,139683,4650907,0.02,,2614329,,
+30d,category|market_life,tech/AI/science|1-6w,306,3333133,0.01,,1541479,,
+30d,category|market_life,mentions|1-6h,555,3295326,0.01,,800616,,
+30d,category|market_life,geopolitics/war|1-6w,129,2726616,0.01,,1260982,,
+30d,category|market_life,tech/AI/science|>6w,108,2219136,0.01,,1026287,,
+30d,category|market_life,economy/Fed/macro|1-6w,721,2014175,0.01,,1093760,,
+30d,category|market_life,crypto|>6w,6,1937464,0.01,,910550,,
+30d,category|market_life,weather/climate|>6w,74,1911417,0.01,,742183,,
+30d,category|market_life,mentions|>6w,71,1145453,0.0,,275426,,
+30d,category|market_life,weather/climate|1-6w,149,935349,0.0,,361161,,
+30d,category|market_life,politics/elections|6-24h,171,483870,0.0,,348633,,
+30d,category|market_life,weather/climate|6-24h,99,403157,0.0,,217816,,
+30d,category|market_life,economy/Fed/macro|1-6h,470,251414,0.0,,217367,,
+30d,category|market_life,geopolitics/war|1-7d,6,35137,0.0,,16250,,
+30d,category|market_life,crypto|6-24h,115,27844,0.0,,13358,,
+30d,category|market_life,tech/AI/science|6-24h,9,9611,0.0,,4445,,
+30d,category|market_life,economy/Fed/macro|<1h,50,8284,0.0,,7533,,
+30d,category|market_life,culture/entertainment|6-24h,125,7876,0.0,,5665,,
+30d,category|market_life,politics/elections|1-6h,3,3850,0.0,,1947,,
+30d,category|market_life,mentions|<1h,2,2501,0.0,,601,,

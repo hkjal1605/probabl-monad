@@ -49,19 +49,6 @@ export function SiteHeader() {
                   <Button
                     variant="ghost"
                     className="justify-start"
-                    render={<Link href="/orders" />}
-                    nativeButton={false}
-                  />
-                }
-              >
-                Orders
-              </SheetClose>
-              <SheetClose
-                nativeButton={false}
-                render={
-                  <Button
-                    variant="ghost"
-                    className="justify-start"
                     render={<Link href="/vaults" />}
                     nativeButton={false}
                   />

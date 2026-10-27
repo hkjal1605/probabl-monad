@@ -227,4 +227,21 @@ test("per-world holdings and a probability-weighted estimate", () => {
   // Spot 100 raw per whole token (1e2 x 1e18 / 1e18): 1,000 + 1,000 + 0.4 x 103 + 0.6 x 100.
   expect(deltaVaultValue(holdings, 100n, () => 400_000n)).toBe(2101n);
   expect(deltaVaultValue(holdings, 100n, () => null)).toBeNull();
+  // A registered market with no claims, or paired ones, is valued without its odds.
+  const none = { yesQuote: 0n, noQuote: 0n, yesBase: 0n, noBase: 0n };
+  const paired = { yesQuote: 50n, noQuote: 50n, yesBase: NVDA, noBase: NVDA };
+  const quiet = {
+    ...holdings,
+    markets: [
+      { market: 2, claims: none, free: none },
+      { market: 3, claims: paired, free: paired },
+    ],
+  };
+  const asked: number[] = [];
+  const odds = (market: number) => {
+    asked.push(market);
+    return null;
+  };
+  expect(deltaVaultValue(quiet, 100n, odds)).toBe(1000n + 1000n + 150n);
+  expect(asked).toEqual([]);
 });

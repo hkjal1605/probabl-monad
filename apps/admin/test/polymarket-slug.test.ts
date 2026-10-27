@@ -2,7 +2,7 @@ import { afterEach, expect, test } from "bun:test";
 import { normalizeGammaMarket } from "@conditional-stocks/market-data";
 import { NextRequest } from "next/server";
 import { POST } from "../src/app/api/gateway/[...path]/route";
-import { fetchMarketMetadata } from "../src/lib/admin-api";
+import { fetchEventMetadata } from "../src/lib/admin-api";
 import { parseMarketSlug } from "../src/lib/polymarket-slug";
 
 const slug = "clarity-act-signed-into-law-in-2026";
@@ -83,9 +83,13 @@ test("both forms' shared client sends a slug and operator session to the API pro
     expect(init?.method).toBe("POST");
     return Response.json(snapshot);
   }) as typeof fetch;
-  expect(await fetchMarketMetadata<typeof snapshot>("test-session", ` ${slug} `)).toEqual(snapshot);
-  expect(() => fetchMarketMetadata("test-session", "https://evil.test")).toThrow("market slug");
-  await expect(fetchMarketMetadata("", slug)).rejects.toMatchObject({ status: 401 });
+  expect(
+    await fetchEventMetadata<typeof snapshot>("test-session", "polymarket", ` ${slug} `),
+  ).toEqual(snapshot);
+  expect(() => fetchEventMetadata("test-session", "polymarket", "https://evil.test")).toThrow(
+    "market slug",
+  );
+  await expect(fetchEventMetadata("", "polymarket", slug)).rejects.toMatchObject({ status: 401 });
   expect(calls).toBe(1);
 });
 
@@ -170,7 +174,7 @@ test("invalid source identities, malformed metadata and unsupported markets neve
     [{ ...raw, conditionId: "invalid" }, 502],
     [{ id: "158505", slug, markets: [raw] }, 502],
     [[raw], 502],
-    [{ ...raw, negRisk: true }, 422],
+    [{ ...raw, negRisk: true, negRiskOther: true }, 422],
     [{ ...raw, outcomes: '["Yes","No","Maybe"]' }, 422],
   ] as const) {
     let calls = 0;

@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { loadPolymarketEnvironment } from "../src/environment.ts";
+import { MAXIMUM_RESPONSE_BYTES } from "../src/fetch-json.ts";
 import { OfficialPolymarketSource } from "../src/source.ts";
 
 test("Polymarket configuration requires credentials, supported protocols and positive thresholds", () => {
@@ -38,8 +39,7 @@ test("official HTTP adapter validates identities, bounds responses and classifie
       paths.push(new URL(request.url).pathname + new URL(request.url).search);
       if (mode === "error") return new Response("unavailable", { status: 503 });
       if (mode === "invalid") return new Response("{broken");
-      if (mode === "declared-large")
-        return new Response(" ".repeat(OfficialPolymarketSource.maximumResponseBytes + 1));
+      if (mode === "declared-large") return new Response(" ".repeat(MAXIMUM_RESPONSE_BYTES + 1));
       if (mode === "stream-large") {
         let chunks = 0;
         return new Response(

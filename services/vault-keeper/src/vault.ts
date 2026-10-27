@@ -42,11 +42,17 @@ const claims = (c: DeltaVaultClaims): DeltaVaultClaims => ({
   noBase: c.noBase,
 });
 
-/** The vault's quoting state in one eth_call. The terms and exposure of the markets the vault
- * registered at the previous read (`known`) are read along with everything else; only a changed
- * market set (one added, settled or removed since) costs a second call. Each vault reads on its
- * own: at its 8-market cap a vault's read returns about 9.4 KB, and merged with other vaults'
- * reads it would pass the 24 KB a deployless multicall can return. */
+/** Markets whose terms and exposure ride along with the vault's holdings in its first read, and
+ * markets per further concurrent read: about 0.6 KB each against the 24 KB a deployless multicall
+ * can return (the holdings alone are about 14 KB at the 48-market cap). */
+const MARKETS_IN_FIRST_READ = 8;
+const MARKETS_PER_READ = 16;
+
+/** The vault's quoting state: one eth_call up to `MARKETS_IN_FIRST_READ` markets, then concurrent
+ * reads of the rest. The terms and exposure of the markets the vault registered at the previous
+ * read (`known`) are read along with everything else; only a changed market set (one added,
+ * settled or removed since) costs another round of reads. Each vault reads on its own: merged
+ * with other vaults' reads, the first would pass the 24 KB limit. */
 export async function readVaultView(
   client: PublicClient,
   vault: VaultIdentity,
@@ -59,38 +65,54 @@ export async function readVaultView(
       { ...read, functionName: "market", args: [market] },
       { ...read, functionName: "exposure", args: [market] },
     ]);
-  const results = (await direct.multicall({
-    allowFailure: true,
-    // Deployless: works on chains without a Multicall3 deployment (anvil).
-    deployless: true,
-    contracts: [
-      { ...read, functionName: "totalSupply" },
-      { ...read, functionName: "paused" },
-      { ...read, functionName: "limits" },
-      { ...read, functionName: "holdings" },
-      { ...read, functionName: "markets" },
-      { ...read, functionName: "oraclePrice" },
-      ...terms(known),
-    ] as never,
-  })) as Result[];
+  const termsOf = async (markets: readonly number[]) => {
+    const chunks: number[][] = [];
+    for (let i = 0; i < markets.length; i += MARKETS_PER_READ)
+      chunks.push(markets.slice(i, i + MARKETS_PER_READ));
+    const reads = await Promise.all(
+      chunks.map(
+        (chunk) =>
+          direct.multicall({
+            allowFailure: true,
+            deployless: true,
+            // One call per chunk: chunks are sized to the return limit, not viem's calldata split.
+            batchSize: 0,
+            contracts: terms(chunk) as never,
+          }) as Promise<Result[]>,
+      ),
+    );
+    return reads.flat();
+  };
+  const [results, rest] = await Promise.all([
+    direct.multicall({
+      allowFailure: true,
+      // Deployless: works on chains without a Multicall3 deployment (anvil).
+      deployless: true,
+      batchSize: 0,
+      contracts: [
+        { ...read, functionName: "totalSupply" },
+        { ...read, functionName: "paused" },
+        { ...read, functionName: "limits" },
+        { ...read, functionName: "holdings" },
+        { ...read, functionName: "markets" },
+        { ...read, functionName: "oraclePrice" },
+        ...terms(known.slice(0, MARKETS_IN_FIRST_READ)),
+      ] as never,
+    }) as Promise<Result[]>,
+    termsOf(known.slice(MARKETS_IN_FIRST_READ)),
+  ]);
   const value = <T>(r: Result | undefined) => {
     if (r?.status !== "success") throw r?.error ?? new Error("Vault read failed");
     return r.result as T;
   };
   const markets = value<readonly number[]>(results[4]);
-  let details = results.slice(6);
+  let details = [...results.slice(6), ...rest];
   if (
     markets.length !== known.length ||
     markets.some((market, i) => market !== known[i]) ||
     details.some((r) => r.status !== "success")
   )
-    details = markets.length
-      ? ((await direct.multicall({
-          allowFailure: true,
-          deployless: true,
-          contracts: terms(markets) as never,
-        })) as Result[])
-      : [];
+    details = await termsOf(markets);
   const limits = value<DeltaVaultLimits>(results[2]);
   const holdings = value<{
     quote: bigint;

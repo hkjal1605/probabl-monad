@@ -12,6 +12,7 @@ import type { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { PublicClient } from "viem";
 import type { Auth } from "../auth/routes.ts";
+import type { RfqHub } from "../rfq/hub.ts";
 import { type DelegatedTrading, type TradingSigner, tradingPermission } from "./delegated.ts";
 import type { OrderPlanner } from "./plan.ts";
 
@@ -24,14 +25,20 @@ export function mountTrading(
     prepare: OrderPlanner;
     signer: TradingSigner | null;
     delegated: DelegatedTrading | null;
+    rfq?: RfqHub | null;
   },
 ) {
-  const { indexer, client, auth, prepare, signer, delegated } = options;
-  // Read-only planning (no signing, broadcasting or state writes), for members' own orders.
+  const { indexer, client, auth, prepare, signer, delegated, rfq } = options;
+  // Read-only planning (no signing, broadcasting or state writes), for members' own orders. The
+  // plan covers the book only: a market order submitted for delegated execution also goes out
+  // for quotes to the `rfq.makers` approved makers online, which can only improve it.
   app.post("/v1/orders/prepare", async (c) => {
     const order = parseOrder((await c.req.json()).order);
     await auth.trader(c, order.maker);
-    return c.json(prepare(order));
+    const planned = prepare(order);
+    return c.json(
+      rfq && order.tif === 1 ? { ...planned, rfq: { makers: rfq.makers(order.maker) } } : planned,
+    );
   });
 
   /** Owner-signed placement: the reviewed plan as wallet calldata, simulated first. */

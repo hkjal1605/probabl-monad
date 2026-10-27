@@ -1,10 +1,11 @@
 "use client";
+import { memo } from "react";
 import { useProbabilityStream } from "@/hooks/useProbabilityStream";
 import { formatNumber } from "@/lib/format/display";
 import { cn } from "@/lib/utils";
 import type { MarketView } from "@/types/api";
 
-export function ProbabilityGauge({
+function ProbabilityGaugeView({
   probability: initial,
   conditionId = "",
 }: {
@@ -54,3 +55,6 @@ export function ProbabilityGauge({
     </div>
   );
 }
+
+/** Re-renders only when its probability changes, not with every list update. */
+export const ProbabilityGauge = memo(ProbabilityGaugeView);

@@ -1,5 +1,13 @@
 import { expect, setSystemTime, test } from "bun:test";
-import { type Address, type Hex, type PublicClient, zeroHash } from "viem";
+import { conditionalStocksAbi } from "@conditional-stocks/evm-client";
+import {
+  type Address,
+  encodeEventTopics,
+  type Hex,
+  type Log,
+  type PublicClient,
+  zeroHash,
+} from "viem";
 import { ChainFollower } from "../src/follower.ts";
 import { logRangeLimit, mapLimit } from "../src/rpc.ts";
 
@@ -260,4 +268,38 @@ test("a poke polls at once and waiters resolve on the block they wait for", asyn
   follower.stop();
   await expect(pending).rejects.toThrow("stopped");
   follower.poke(); // a no-op once stopped
+});
+
+test("a log's zero blockTimestamp (Robinhood Chain's nodes send 0x0) falls back to the header", async () => {
+  const follower = new ChainFollower({
+    client: {
+      getBlock: async ({ blockHash }: { blockHash: Hex }) => ({
+        hash: blockHash,
+        timestamp: 1_800_000_123n,
+      }),
+    } as unknown as PublicClient,
+    exchange,
+    quote,
+    deploymentBlock: 1n,
+    domain: "stub",
+  });
+  const log = {
+    address: exchange,
+    topics: encodeEventTopics({ abi: conditionalStocksAbi, eventName: "PauseSet" }),
+    // PauseSet(paused = true, reason = 0).
+    data: `0x${"0".repeat(63)}1${"0".repeat(64)}` as Hex,
+    blockNumber: 7n,
+    blockHash: hash(7n),
+    logIndex: 0,
+    transactionHash: hash(70n),
+    transactionIndex: 0,
+    removed: false,
+    blockTimestamp: "0x0",
+  } as unknown as Log;
+  const blocks = await (
+    follower as unknown as {
+      blocksOf(logs: Log[], stamps: Map<Hex, bigint>): Promise<{ block: { timestamp: bigint } }[]>;
+    }
+  ).blocksOf([log], new Map());
+  expect(blocks[0]?.block.timestamp).toBe(1_800_000_123n);
 });

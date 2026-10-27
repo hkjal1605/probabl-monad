@@ -74,10 +74,44 @@ test("chart lines: recorded midpoints in display units and spot, each ending at 
   // A live value no newer than the last record adds nothing.
   expect(
     priceLines(
-      [{ time: 60, yes: null, no: null, spot: 110 }],
+      [{ time: 60, yes: "100000000", no: null, spot: 110 }],
       first,
-      { yes: null, no: null, spot: 9 },
+      { yes: 100, no: null, spot: 9 },
       60,
     ).spot,
   ).toEqual([{ time: 60, value: 110 }]);
+});
+
+test("chart lines: spot is drawn only where YES or NO has a price", () => {
+  // The book emptied after 120: spot alone would run on past YES and NO and cross them.
+  const lines = priceLines(
+    [
+      { time: 60, yes: "100000000", no: "120000000", spot: 110 },
+      { time: 120, yes: null, no: "121000000", spot: 111 },
+      { time: 180, yes: null, no: null, spot: 140 },
+    ],
+    first,
+    { yes: null, no: null, spot: 150 },
+    240,
+  );
+  expect(lines.spot).toEqual([
+    { time: 60, value: 110 },
+    { time: 120, value: 111 },
+  ]);
+  // With a live YES price the live spot point returns.
+  expect(
+    priceLines(
+      [{ time: 60, yes: "100000000", no: null, spot: 110 }],
+      first,
+      {
+        yes: 101,
+        no: null,
+        spot: 112,
+      },
+      120,
+    ).spot,
+  ).toEqual([
+    { time: 60, value: 110 },
+    { time: 120, value: 112 },
+  ]);
 });

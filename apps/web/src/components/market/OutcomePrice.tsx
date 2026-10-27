@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { memo } from "react";
 import { formatNumber } from "@/lib/format/display";
 import { marketPath } from "@/lib/markets/identity";
 import { midpoint, percent, spotImpactPercent } from "@/lib/markets/presentation";
 import { cn } from "@/lib/utils";
 import type { MarketView } from "@/types/api";
 
-export function OutcomePrice({ market, branch }: { market: MarketView; branch: "YES" | "NO" }) {
+function OutcomePriceView({ market, branch }: { market: MarketView; branch: "YES" | "NO" }) {
   const book = branch === "YES" ? market.yes : market.no;
   const mid = midpoint(book);
   const crossed = book.bestAsk !== null && book.bestBid !== null && book.bestAsk < book.bestBid;
@@ -49,3 +50,6 @@ export function OutcomePrice({ market, branch }: { market: MarketView; branch: "
     </Link>
   );
 }
+
+/** Re-renders only when its market or branch changes, not with every list update. */
+export const OutcomePrice = memo(OutcomePriceView);

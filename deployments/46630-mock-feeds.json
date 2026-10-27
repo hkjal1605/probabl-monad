@@ -1,82 +1,484 @@
 [
   {
-    "symbol": "TSLA",
-    "token": "0xC9f9c86933092BbbfFF3CCb4b105A4A94bf3Bd4E",
-    "feed": "0x3775baC90DAf126828f2eEc4d49F0EE7089C9685",
+    "symbol": "USO",
+    "token": "0xE2d4641BE09103ff557c298bB45Eb3DC502687EB",
+    "feed": "0x759db2D98a9CB6F121B7114C0183ce18Ff7C3883",
     "decimals": 8,
-    "description": "RHTSLA / USD (testnet mock)",
+    "description": "RHUSO / USD (testnet mock)",
     "source": {
       "chainId": 4663,
-      "feed": "0x4A1166a659A55625345e9515b32adECea5547C38",
-      "description": "RHTSLA / USD"
+      "feed": "0x75a9c76Ef439e2C7c2E5a34Ab105EcFe3766431c",
+      "description": "RHUSO / USD"
     },
-    "owner": "0x7c2e81c16dF690F0fEF9d472682f88f0b4Ad5f6D",
-    "deploymentBlock": "126793818",
-    "transactionHash": "0x50ec48aae406a7f508a7c5b753e4d16cca9bd57ae4a8441af20445a9a63732f9",
-    "deployedAt": "2026-09-30T17:29:20.812Z"
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139588803",
+    "transactionHash": "0x8ae65032d55bd33a78f00ce2d88fd9529bd792a0ac5e1efb1d2170b95d05448e",
+    "deployedAt": "2026-10-20T18:42:31.497Z"
   },
   {
-    "symbol": "AMZN",
-    "token": "0x5884aD2f920c162CFBbACc88C9C51AA75eC09E02",
-    "feed": "0x05ebC8a330e5dFbade8F7912286B5Ada4EcE618a",
+    "symbol": "XOM",
+    "token": "0xbA663601922B5332617395c7C52016e3E843b205",
+    "feed": "0x1bEe37a3eb6F842Fcda86943e7c316C612C78873",
     "decimals": 8,
-    "description": "Robinhood AMZN / USD (testnet mock)",
+    "description": "Robinhood XOM reference / USD (testnet mock)",
+    "source": {
+      "reference": "robinhood"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139588880",
+    "transactionHash": "0x51c556e60299ec9dd41598d8c6647e2f087b45d3a0b7c8f61acb9b3f0646dc62",
+    "deployedAt": "2026-10-20T18:42:40.947Z"
+  },
+  {
+    "symbol": "PR",
+    "token": "0x3F3437F10da3CAE7C404223f4d37ff4d63760491",
+    "feed": "0x9Fe14D30A719b0368E350f1673eA98026A282d72",
+    "decimals": 8,
+    "description": "Robinhood PR reference / USD (testnet mock)",
+    "source": {
+      "reference": "robinhood"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139588952",
+    "transactionHash": "0xc3eb678ffed52c0e47075ea45f8af36a598453796e192701718cd7660198002f",
+    "deployedAt": "2026-10-20T18:42:49.948Z"
+  },
+  {
+    "symbol": "CCL",
+    "token": "0x3950d048C2B292C99B146562d2E76c81e3CB2Df6",
+    "feed": "0x112BC9D65c1f92Cc80AEb8e055BeC5DD97080f22",
+    "decimals": 8,
+    "description": "Robinhood CCL reference / USD (testnet mock)",
+    "source": {
+      "reference": "robinhood"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139589019",
+    "transactionHash": "0x71280907e6322a47e2d29d8df85d6221d34ed48f7d9e52da9138dcafd82bf9f8",
+    "deployedAt": "2026-10-20T18:42:59.045Z"
+  },
+  {
+    "symbol": "BA",
+    "token": "0x468D9aF737F55c900ce48Cc41e59FAA9058D004D",
+    "feed": "0x72Cc9C32aCdD77A3AFae7105E2969004FA02f8c2",
+    "decimals": 8,
+    "description": "Robinhood BA reference / USD (testnet mock)",
+    "source": {
+      "reference": "robinhood"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139589091",
+    "transactionHash": "0x40d1177ff9e65473bf579191ffa7867ea066442a8161f8e081aa4994a5e7b874",
+    "deployedAt": "2026-10-20T18:43:07.851Z"
+  },
+  {
+    "symbol": "SPY",
+    "token": "0xC5d93b499a2978cDde005e4BBAFd28fDFeAB815b",
+    "feed": "0xAa1F76c082bb631C347e80f1690f99A7A9b2FDE9",
+    "decimals": 8,
+    "description": "RHSPY / USD (testnet mock)",
     "source": {
       "chainId": 4663,
-      "feed": "0xD5a1508ceD74c084eBf3cBe853e2C968fB2a651C",
-      "description": "Robinhood AMZN / USD"
+      "feed": "0x319724394D3A0e3669269846abE664Cd621f9f6A",
+      "description": "RHSPY / USD"
     },
-    "owner": "0x7c2e81c16dF690F0fEF9d472682f88f0b4Ad5f6D",
-    "deploymentBlock": "126793837",
-    "transactionHash": "0x1ccd97c8dfdfd3589c2d6ff89356df5afe345f681b50270c1958c24a9f6e4443",
-    "deployedAt": "2026-09-30T17:29:24.637Z"
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139589160",
+    "transactionHash": "0x7026b48a80f48de94040eda6239cfdfededc98644a1402063d5db48017875655",
+    "deployedAt": "2026-10-20T18:43:16.708Z"
   },
   {
-    "symbol": "PLTR",
-    "token": "0x1FBE1a0e43594b3455993B5dE5Fd0A7A266298d0",
-    "feed": "0x55b76717C9cC90f5044FA422ac496049b2491cfb",
+    "symbol": "QQQ",
+    "token": "0x51c642306e19E0ad18e4c6F860f1A21f9eB199B2",
+    "feed": "0xfEe06D3f2dD1bEf7F08b535031e2C3aA446d142A",
     "decimals": 8,
-    "description": "Robinhood PLTR / USD (testnet mock)",
+    "description": "Robinhood QQQ / USD (testnet mock)",
     "source": {
       "chainId": 4663,
-      "feed": "0x820ABedFF239034956B7A9d2F0a331f9F075eB4c",
-      "description": "Robinhood PLTR / USD"
+      "feed": "0x80901d846d5D7B030F26B480776EE3b29374C2ae",
+      "description": "Robinhood QQQ / USD"
     },
-    "owner": "0x7c2e81c16dF690F0fEF9d472682f88f0b4Ad5f6D",
-    "deploymentBlock": "126793860",
-    "transactionHash": "0xb4f295a8d05da150200c0c53a0f4acbe68e493a2df84d5a7bac5b80081b0813c",
-    "deployedAt": "2026-09-30T17:29:27.788Z"
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139589229",
+    "transactionHash": "0x946df7c288a9d5feab560a18f1276b0be1dc897c14530dc3f43e26afe04296a4",
+    "deployedAt": "2026-10-20T18:43:25.361Z"
   },
   {
-    "symbol": "AMD",
-    "token": "0x71178BAc73cBeb415514eB542a8995b82669778d",
-    "feed": "0x16cfe20B7a1a81F4210f3214144F36E0d45582F9",
+    "symbol": "MSTR",
+    "token": "0x8b23487dc53F69f4d405859dfF7b6f77fb6dC639",
+    "feed": "0x91F0082E5B0F4e66d5Af5CAf499ece19b766a0ad",
     "decimals": 8,
-    "description": "RHAMD / USD (testnet mock)",
+    "description": "Robinhood MSTR / USD (testnet mock)",
     "source": {
       "chainId": 4663,
-      "feed": "0x943A29E7ae51A4798823ca9eEd2ed533B2A22C72",
-      "description": "RHAMD / USD"
+      "feed": "0x396118bdFB181e6240E74D243F266B061c0edc3D",
+      "description": "Robinhood MSTR / USD"
     },
-    "owner": "0x7c2e81c16dF690F0fEF9d472682f88f0b4Ad5f6D",
-    "deploymentBlock": "126793885",
-    "transactionHash": "0x31ce15fda3adcc02f05787f23a614b3a9bd1b81356c719f325dfe97e03f884d6",
-    "deployedAt": "2026-09-30T17:29:31.018Z"
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139589295",
+    "transactionHash": "0xb2d8aeb0b91dd294b0e04194e42dbe770e7d89f7046f11e18c90a8eb370ba40e",
+    "deployedAt": "2026-10-20T18:43:33.984Z"
   },
   {
-    "symbol": "NFLX",
-    "token": "0x3b8262A63d25f0477c4DDE23F83cfe22Cb768C93",
-    "feed": "0x1Baa50056b13aC863F837eD91adaCB4Ac584CC83",
+    "symbol": "COIN",
+    "token": "0x7E9969fDA400d034A7a68598E8b895108812Ba9e",
+    "feed": "0x6665bcEE5C8FBE7aBFcE8B30f4a70f548DeDD83B",
     "decimals": 8,
-    "description": "NFLX / USD (testnet mock)",
+    "description": "Robinhood COIN / USD (testnet mock)",
+    "source": {
+      "chainId": 4663,
+      "feed": "0xA3a468A452940B7D6b69991207B508c609a98Ef2",
+      "description": "Robinhood COIN / USD"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139589361",
+    "transactionHash": "0x5132b7fdbe5ffd79c7e7de6988adfd8b0abea7e12da5a9ba88775e0a7d2e6849",
+    "deployedAt": "2026-10-20T18:43:42.627Z"
+  },
+  {
+    "symbol": "CRCL",
+    "token": "0x9Ab9F6FCA39138Ac32c25599C59Bb35AD57B4620",
+    "feed": "0x84d503b8B4195113C2E3cc877E74857c4509c80A",
+    "decimals": 8,
+    "description": "Robinhood CRCL / USD (testnet mock)",
+    "source": {
+      "chainId": 4663,
+      "feed": "0x6652eDf64bA3731C4F2D3ce821A0Fb1f1f6b482a",
+      "description": "Robinhood CRCL / USD"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139589423",
+    "transactionHash": "0xac9994292f09b9b57c0f802cb431999d08e9d5315c74f198051e3de592fd3c58",
+    "deployedAt": "2026-10-20T18:43:51.325Z"
+  },
+  {
+    "symbol": "GLXY",
+    "token": "0x7818c4DCe480a056B6705Aed2236FF2C9C787413",
+    "feed": "0x35Dd9AFe23a92e4Dc0A1B8b685846B970255b4f7",
+    "decimals": 8,
+    "description": "Robinhood GLXY reference / USD (testnet mock)",
+    "source": {
+      "reference": "robinhood"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139589491",
+    "transactionHash": "0x02d1b34fbb1d239e4510d37456d529143095b867cb7324a066b68b1683478d72",
+    "deployedAt": "2026-10-20T18:44:00.361Z"
+  },
+  {
+    "symbol": "CLSK",
+    "token": "0x81f86Ae547C5f03743E979A47133463003271d40",
+    "feed": "0x39E19Dc01F19352F0297B118410074F84340d90E",
+    "decimals": 8,
+    "description": "Robinhood CLSK / USD (testnet mock)",
+    "source": {
+      "chainId": 4663,
+      "feed": "0x810c12D3a554Bc47fd39597Fe3b3AAC4941F50eF",
+      "description": "Robinhood CLSK / USD"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139589556",
+    "transactionHash": "0x60fc615a84a2a1a73bd6822b12058d43572c5d1bab0329138dbb38b32701018f",
+    "deployedAt": "2026-10-20T18:44:09.018Z"
+  },
+  {
+    "symbol": "IREN",
+    "token": "0x2B9eaa17E1168d3418738984C513513dcfaD00DA",
+    "feed": "0x52818458b880975f2739386c8Ae7e3fF051d3f0B",
+    "decimals": 8,
+    "description": "Robinhood IREN reference / USD (testnet mock)",
+    "source": {
+      "reference": "robinhood"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139589623",
+    "transactionHash": "0xfbc89aedbe0f0bd928694facce27e929e04f79bea71b03a150166207cba9af4c",
+    "deployedAt": "2026-10-20T18:44:17.944Z"
+  },
+  {
+    "symbol": "WULF",
+    "token": "0xa36426E0b6d60d5B19aF8296EAb04D5557E3B7cB",
+    "feed": "0x58a8eB6a1b228be31DdEb8cFe498098071Ca7B84",
+    "decimals": 8,
+    "description": "Robinhood WULF reference / USD (testnet mock)",
+    "source": {
+      "reference": "robinhood"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139589676",
+    "transactionHash": "0x5532f0b96512f47d579769548202d2557189afb90d62fc754b54241eafa94274",
+    "deployedAt": "2026-10-20T18:44:26.535Z"
+  },
+  {
+    "symbol": "BULL",
+    "token": "0xD4CC5Bd28936469fE902Bf943c0C8780CF20E546",
+    "feed": "0xE5B6a26FdaD96f11fc2ab97C088c76eeF9A14497",
+    "decimals": 8,
+    "description": "Robinhood BULL reference / USD (testnet mock)",
+    "source": {
+      "reference": "robinhood"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139589743",
+    "transactionHash": "0x7375b431a440a9614a47ef93376ba52c9c308584425306e9a613f2a819c4cb42",
+    "deployedAt": "2026-10-20T18:44:35.667Z"
+  },
+  {
+    "symbol": "SLV",
+    "token": "0x260EBB0D61F73Eb4B12FcaAD5EF6771b54d62c0f",
+    "feed": "0x4173a383a169bC1bc3421F753B099005AAC40C06",
+    "decimals": 8,
+    "description": "Robinhood SLV / USD (testnet mock)",
+    "source": {
+      "chainId": 4663,
+      "feed": "0x209b73908e92Ae021826eD79609845451Ecba2ce",
+      "description": "Robinhood SLV / USD"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139589806",
+    "transactionHash": "0x69b516492ae393d8bd9951095d93400345db861db411e6264de0324ceeb9b24b",
+    "deployedAt": "2026-10-20T18:44:44.367Z"
+  },
+  {
+    "symbol": "GLD",
+    "token": "0x60b6B05F4e0c2DB22Fe37765cbcb83c0d83c9e5b",
+    "feed": "0x7b5090F8f02955e95DC307066f52e90148D25C93",
+    "decimals": 8,
+    "description": "GLD / USD (testnet mock)",
+    "source": {
+      "chainId": 4663,
+      "feed": "0x470A51258068043bd43dC0a56245625C9fE86eB0",
+      "description": "GLD / USD"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139589871",
+    "transactionHash": "0x458e6aef9b6623510e52b2712b3422890e65cc6ab2668371370880ce23d8ecd5",
+    "deployedAt": "2026-10-20T18:44:53.079Z"
+  },
+  {
+    "symbol": "SHY",
+    "token": "0xA279af42c25b9F859fF1354f38bCDB43fe7D1b50",
+    "feed": "0x5EfB62EF6Db37a2b101232E253584040e19aea6B",
+    "decimals": 8,
+    "description": "Robinhood SHY reference / USD (testnet mock)",
+    "source": {
+      "reference": "robinhood"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139589946",
+    "transactionHash": "0xc15c5772c0b2ec3e01c8f3f0f87b101a9089d4b7b84e73a1ee99a6656125dc10",
+    "deployedAt": "2026-10-20T18:45:02.369Z"
+  },
+  {
+    "symbol": "BND",
+    "token": "0x961c2c51A54DFc933D244724400e0927365eC8dE",
+    "feed": "0xb7f603d5410B08b56B13bFC317ebF04FcBa9F7BA",
+    "decimals": 8,
+    "description": "Robinhood BND reference / USD (testnet mock)",
+    "source": {
+      "reference": "robinhood"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139590020",
+    "transactionHash": "0x8f2e452e64cd87ba04d9236e61719ac665ef369a88c603f4d61de04451d41096",
+    "deployedAt": "2026-10-20T18:45:11.548Z"
+  },
+  {
+    "symbol": "NU",
+    "token": "0xe6062b64C6f2059D6bDf5cfFA8A8945FaaC6665e",
+    "feed": "0x4024Ce97A263A8381170727C7411cDDbF2C93AEd",
+    "decimals": 8,
+    "description": "Robinhood NU reference / USD (testnet mock)",
+    "source": {
+      "reference": "robinhood"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139590092",
+    "transactionHash": "0x152266e05e316eeabd5264f02e100db647fd90942a88ab01bd65cd50bbf7a1b6",
+    "deployedAt": "2026-10-20T18:45:21.061Z"
+  },
+  {
+    "symbol": "SOFI",
+    "token": "0x729D282f64cF1143e2E7959Aa5737FB3EF218472",
+    "feed": "0x9823d00617F8b8864FF4d3B402d0E5e97516063b",
+    "decimals": 8,
+    "description": "Robinhood SOFI reference / USD (testnet mock)",
+    "source": {
+      "reference": "robinhood"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139590167",
+    "transactionHash": "0x4e87dbfed905b98958babd8c21c81e9d77a971f5376ae39a948fcdad66ee580a",
+    "deployedAt": "2026-10-20T18:45:30.116Z"
+  },
+  {
+    "symbol": "NVDA",
+    "token": "0x5b85fD3b8C7476eF67efa32AC3539325D51aC222",
+    "feed": "0x4141c54e732FCdF1b9Af95945993BCf0ab8F07cA",
+    "decimals": 8,
+    "description": "RHNVDA / USD (testnet mock)",
+    "source": {
+      "chainId": 4663,
+      "feed": "0x379EC4f7C378F34a1B47E4F3cbeBCbAC3E8E9F15",
+      "description": "RHNVDA / USD"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139590235",
+    "transactionHash": "0x5fe902d168eac90f1899274f9d5ea53e91ef10a081f271e9e679530e8755eae3",
+    "deployedAt": "2026-10-20T18:45:38.940Z"
+  },
+  {
+    "symbol": "CRWV",
+    "token": "0xCC24B17Ca56c83dA8DF48a4129D6A4EC1b65FAAE",
+    "feed": "0x098a0fD94D7AEC9505A9C66dd7f631d10F038018",
+    "decimals": 8,
+    "description": "Robinhood CRWV / USD (testnet mock)",
+    "source": {
+      "chainId": 4663,
+      "feed": "0xe1b3aABCAFAd1c94708dc1367dcfF8Aa4407487C",
+      "description": "Robinhood CRWV / USD"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139590306",
+    "transactionHash": "0x702bbbbf453643438637effb08dbb025e683df4b205ae43f9c84a49bedfcc4f1",
+    "deployedAt": "2026-10-20T18:45:47.753Z"
+  },
+  {
+    "symbol": "AAPL",
+    "token": "0x360D2dEfb979911f4091F42Acc5995C32551eb31",
+    "feed": "0xD82aeB62702deE5ba7dC5C8b3ca9f2bC277abba1",
+    "decimals": 8,
+    "description": "Robinhood AAPL / USD (testnet mock)",
+    "source": {
+      "chainId": 4663,
+      "feed": "0x6B22A786bAa607d76728168703a39Ea9C99f2cD0",
+      "description": "Robinhood AAPL / USD"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139590385",
+    "transactionHash": "0xdd3d62084d698658e7b3f6c8cc134750196677e19afe157ec3419a0daa9c5042",
+    "deployedAt": "2026-10-20T18:45:56.534Z"
+  },
+  {
+    "symbol": "SMH",
+    "token": "0x99a05329e9D3052f67F888488dfEF5FdcA7A2956",
+    "feed": "0x0dFe5633939b415c4cfE65aE8671f80E52da4dF8",
+    "decimals": 8,
+    "description": "Robinhood SMH reference / USD (testnet mock)",
+    "source": {
+      "reference": "robinhood"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139590455",
+    "transactionHash": "0x081a027a8b7e03f6fddd2ca22328da7077ac6f550184ef117559402d26b66de8",
+    "deployedAt": "2026-10-20T18:46:05.095Z"
+  },
+  {
+    "symbol": "EWT",
+    "token": "0xF09B35853E598DD26737A0817c6987e9ff1B194D",
+    "feed": "0x2A98f6183418261c698A96Ea75534f5A23017D6B",
+    "decimals": 8,
+    "description": "Robinhood EWT reference / USD (testnet mock)",
+    "source": {
+      "reference": "robinhood"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139590529",
+    "transactionHash": "0xaec41f764422c4c10d8ac9eeb1fe9b6ca2166689ea78b223dd1219b682986e85",
+    "deployedAt": "2026-10-20T18:46:13.882Z"
+  },
+  {
+    "symbol": "DJT",
+    "token": "0x431a9e3B056cA9B063Ae17A48c24b364f39Bf4c5",
+    "feed": "0xB2e63192227d7EdbCd0D1fE2601776Ba6f66d0Fc",
+    "decimals": 8,
+    "description": "Robinhood DJT reference / USD (testnet mock)",
+    "source": {
+      "reference": "robinhood"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139590595",
+    "transactionHash": "0x270d9e31f222f5150014a6f68c3f6523d4cc530c069786ac6572ddb5cda322d4",
+    "deployedAt": "2026-10-20T18:46:22.527Z"
+  },
+  {
+    "symbol": "WETH",
+    "token": "0x5a57588e4ccd7752D0845ffa337240995B7441f0",
+    "feed": "0xf72E14ca962C3abc033D9ef78A94C2aC45F1d360",
+    "decimals": 8,
+    "description": "ETH / USD (testnet mock)",
+    "source": {
+      "chainId": 4663,
+      "feed": "0x78F3556b67E17Df817D51Ef5a990cDaF09E8d3A9",
+      "description": "ETH / USD"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139590666",
+    "transactionHash": "0x3f3cdafe2d66652995f83f493ac9aa24e58eef2fb6cf02b84cd5cbdbddc63601",
+    "deployedAt": "2026-10-20T18:46:30.240Z"
+  },
+  {
+    "symbol": "cbBTC",
+    "token": "0x2C1815A78C5C2F6b8e79319CD82C3cD88b5F01EC",
+    "feed": "0xFB6E76B40E8826F6Ce85E9c3dEaCbF43D4d963b8",
+    "decimals": 8,
+    "description": "BTC / USD (testnet mock)",
+    "source": {
+      "chainId": 4663,
+      "feed": "0xa2c5184bF03d373Dc9dE4876eb4Bce595B460251",
+      "description": "BTC / USD"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139590729",
+    "transactionHash": "0xb190657a119b94bd75554be46573b3c0bffebf5a79b2bfa4b97c60d7ed876ffb",
+    "deployedAt": "2026-10-20T18:46:38.969Z"
+  },
+  {
+    "symbol": "SOL",
+    "token": "0x84D2e527F11F4bfb7bbD9224173025C5B7d90F4c",
+    "feed": "0x92bE3c82228cEE4f2080f671ea9F09168063D88A",
+    "decimals": 8,
+    "description": "SOL / USD (testnet mock)",
     "source": {
       "chainId": 56,
-      "feed": "0x1fE6c9Bd9B29e5810c2819f37dDa8559739ebeC9",
-      "description": "NFLX / USD"
+      "feed": "0x0E8a53DD9c13589df6382F13dA6B3Ec8F919B323",
+      "description": "SOL / USD"
     },
-    "owner": "0x7c2e81c16dF690F0fEF9d472682f88f0b4Ad5f6D",
-    "deploymentBlock": "127016123",
-    "transactionHash": "0xb76652bb34385671da8be81ad762be314893b04411fe95591e31275980d23eb0",
-    "deployedAt": "2026-10-01T06:45:58.006Z"
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139590814",
+    "transactionHash": "0xc0fbb9801231cf13f220ba422dc6b9e959d60d15b3e0b063c17b95eb025da083",
+    "deployedAt": "2026-10-20T18:46:47.803Z"
+  },
+  {
+    "symbol": "XRP",
+    "token": "0x4548F35d22248aC5a1a2E89B02D9b23a558D7661",
+    "feed": "0xE13bd4e007de07BFB9c545e469ad6A9D79BDfBA2",
+    "decimals": 8,
+    "description": "XRP / USD (testnet mock)",
+    "source": {
+      "chainId": 56,
+      "feed": "0x93A67D414896A280bF8FFB3b389fE3686E014fda",
+      "description": "XRP / USD"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139590879",
+    "transactionHash": "0xc0f03de76e3e30fbd534c933c9d85cd9f215a5b0720c7dd1e375204af515d8ba",
+    "deployedAt": "2026-10-20T18:46:56.501Z"
+  },
+  {
+    "symbol": "DOGE",
+    "token": "0x44336c1e1A3823C047BBA611bB28E9C7A3fba0ff",
+    "feed": "0x3Ce8C7FE457b9b76D01e886f5a94515f6bd390AD",
+    "decimals": 8,
+    "description": "DOGE / USD (testnet mock)",
+    "source": {
+      "chainId": 56,
+      "feed": "0x3AB0A0d137D4F946fBB19eecc6e92E64660231C8",
+      "description": "DOGE / USD"
+    },
+    "owner": "0xdb9a2d716Fe010d8c42a060659fF7FF808f7f2d3",
+    "deploymentBlock": "139590945",
+    "transactionHash": "0x8d6f7e00f3bf2937aee55ee87d948740b80ca94b823d7bed26b4bdab25be9868",
+    "deployedAt": "2026-10-20T18:47:03.963Z"
   }
 ]

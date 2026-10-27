@@ -19,8 +19,11 @@ import {
   type Hex,
   keccak256,
   type PublicClient,
+  type TransactionReceipt,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { type Auction, RfqDesk } from "../rfq/desk.ts";
+import type { RfqHub } from "../rfq/hub.ts";
 import type { OrderPlanner } from "./plan.ts";
 
 const MAX_STALE_REPLANS = 4;
@@ -98,8 +101,20 @@ class Mutex {
   }
 }
 
+/** What a submission's RFQ came to, for the app: the quotes the transaction carried. */
+const auctionSummary = (auction: Auction) => ({
+  id: auction.id,
+  quotes: auction.quotes.length,
+  awards: auction.quotes.flatMap((q) => {
+    const quantity = auction.awarded.get(q.maker.id);
+    return quantity ? [{ price: q.terms.price.toString(), quantity: quantity.toString() }] : [];
+  }),
+});
+
 export class DelegatedTrading {
   private readonly nonce = new Mutex();
+  /** Asks approved makers to quote market orders (absent without an RFQ hub). */
+  readonly desk: RfqDesk | null;
 
   constructor(
     private readonly options: {
@@ -109,18 +124,62 @@ export class DelegatedTrading {
       client: PublicClient;
       signer: TradingSigner;
       prepare: OrderPlanner;
+      rfq?: {
+        hub: RfqHub;
+        chainId: number;
+        minQuoteSeconds: number;
+        log?: (level: "info" | "warn", event: string, fields: Record<string, unknown>) => void;
+      } | null;
     },
-  ) {}
+  ) {
+    const { rfq } = options;
+    this.desk = rfq
+      ? new RfqDesk({
+          ...rfq,
+          indexer: options.indexer,
+          client: options.client,
+          prepare: options.prepare,
+        })
+      : null;
+  }
 
   /** Places `order` for `owner` through its grant. The signed bytes are journaled before
    * broadcast; retrying the same `clientId` never creates a second transaction. */
   async submit(owner: Address, input: OrderWire, clientId: string) {
-    const { indexer, db, domain, client, signer, prepare } = this.options;
+    const { db, domain, signer } = this.options;
     if (!/^[A-Za-z0-9-]{8,64}$/.test(clientId)) throw new Error("Invalid client request id");
     const order = parseOrder(input);
     if (order.maker !== owner || order.delegate !== signer.address)
       throw new Error("Delegated order owner or signer differs from the authenticated wallet");
     const termsHash = createHash("sha256").update(JSON.stringify(order)).digest("hex");
+    const desk = this.desk;
+    // A market order first goes out for quotes to the approved makers online, unless this is a
+    // retry of a submission already journaled. Its one transaction then fills the quotes that
+    // win with the book's orders.
+    const auction =
+      desk?.wants(order) && !(await db.delegatedSubmission(domain, owner, clientId))
+        ? await desk.run(order)
+        : null;
+    let receipt: TransactionReceipt | null = null;
+    try {
+      return await this.execute(owner, order, clientId, termsHash, auction, (r) => {
+        receipt = r;
+      });
+    } finally {
+      if (auction) desk?.settle(auction, receipt);
+    }
+  }
+
+  private async execute(
+    owner: Address,
+    order: OrderWire,
+    clientId: string,
+    termsHash: string,
+    auction: Auction | null,
+    included: (receipt: TransactionReceipt) => void,
+  ) {
+    const { indexer, db, domain, client, signer, prepare } = this.options;
+    const desk = this.desk;
     const submission = await db.locked(`delegated:${domain}:${owner}`, async (queries) => {
       const existing = await queries.delegatedSubmission(domain, owner, clientId);
       if (existing) {
@@ -137,7 +196,7 @@ export class DelegatedTrading {
       for (let attempt = 0; ; attempt++) {
         const m = market();
         if (!m) throw new Error("Unknown market");
-        const { plan } = prepare(order);
+        const { plan } = auction && desk ? desk.plan(order, auction) : prepare(order);
         const envelope = placement(indexer.options.exchange, order, plan, m.tick);
         try {
           await client.call({ account: signer.address, to: envelope.to, data: envelope.data });
@@ -185,6 +244,7 @@ export class DelegatedTrading {
         .catch(() => {});
       receipt = await client.waitForTransactionReceipt({ hash, timeout: 60_000 });
     }
+    included(receipt);
     if (receipt.status !== "success")
       throw new Error(
         "The order was not executed: the book changed before inclusion. Review the latest quote.",
@@ -209,6 +269,10 @@ export class DelegatedTrading {
         // Other contracts' logs (e.g. tokens) are not protocol events.
       }
     }
-    return { transactionHash: hash, orderHash };
+    return {
+      transactionHash: hash,
+      orderHash,
+      ...(auction ? { rfq: auctionSummary(auction) } : {}),
+    };
   }
 }

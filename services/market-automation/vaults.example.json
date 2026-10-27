@@ -1,0 +1,14 @@
+{
+  "vaults": [
+    {
+      "vault": "0x0000000000000000000000000000000000000001",
+      "risk": {
+        "bandBps": 1000,
+        "cutoffBufferSeconds": 3600,
+        "maxOrderQuote": "2000",
+        "maxRestingQuote": "10000",
+        "maxImbalanceBase": "100"
+      }
+    }
+  ]
+}

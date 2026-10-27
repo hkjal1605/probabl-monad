@@ -1,40 +1,7 @@
 import { displayPrice } from "@/lib/format/display";
 import type { PriceHistoryPoint } from "@/services/price-history";
-import type { MarketView, TradeView } from "@/types/api";
+import type { MarketView } from "@/types/api";
 
-export interface PricePoint {
-  id: string;
-  at: number;
-  branch: number;
-  price: number;
-}
-export function executionPoints(trades: TradeView[], market: MarketView, since = 0): PricePoint[] {
-  return trades
-    .filter((t) => t.marketId === market.id && (t.branch === 0 || t.branch === 1))
-    .map((t) => ({
-      id: t.id,
-      at: Number(t.blockTimestamp),
-      branch: t.branch,
-      price: displayPrice(t.executionPriceRawX18, market),
-    }))
-    .filter(
-      (p) => Number.isFinite(p.at) && p.at >= since && Number.isFinite(p.price) && p.price > 0,
-    )
-    .sort((a, b) => a.at - b.at || a.id.localeCompare(b.id));
-}
-/** Compare the most recently executed prices, never invent a missing branch or imply historical book quotes. */
-export function executionImpact(points: PricePoint[]): PricePoint[] {
-  let yes: number | null = null,
-    no: number | null = null;
-  const result: PricePoint[] = [];
-  for (const point of points) {
-    if (point.branch === 0) yes = point.price;
-    else no = point.price;
-    if (yes !== null && no !== null && no > 0)
-      result.push({ ...point, branch: 0, price: ((yes - no) / no) * 100 });
-  }
-  return result;
-}
 /** A line's points: unix seconds and display values, in time order. */
 export interface LinePoint {
   time: number;
@@ -42,7 +9,8 @@ export interface LinePoint {
 }
 /** A market's YES, NO and spot lines from its recorded prices (display units, the stock's spot per
  * whole token), each ending at its live value when that is newer than the last record. A minute
- * without a value has no point. */
+ * without a value has no point, and spot is drawn only where YES or NO has one: alone (an empty
+ * book, the vaults paused near the result) it would run on past them and cross them. */
 export function priceLines(
   history: readonly PriceHistoryPoint[],
   market: MarketView,
@@ -53,13 +21,24 @@ export function priceLines(
   for (const p of history) {
     if (p.yes !== null) lines.yes.push({ time: p.time, value: displayPrice(p.yes, market) });
     if (p.no !== null) lines.no.push({ time: p.time, value: displayPrice(p.no, market) });
-    if (p.spot !== null) lines.spot.push({ time: p.time, value: p.spot });
+    if (p.spot !== null && (p.yes !== null || p.no !== null))
+      lines.spot.push({ time: p.time, value: p.spot });
   }
+  const priced = (value: number | null): value is number =>
+    value !== null && Number.isFinite(value);
   for (const key of ["yes", "no", "spot"] as const) {
     const value = live[key],
       line = lines[key];
-    if (value !== null && Number.isFinite(value) && (line.at(-1)?.time ?? 0) < now)
-      line.push({ time: now, value });
+    if (key === "spot" && !priced(live.yes) && !priced(live.no)) continue;
+    if (priced(value) && (line.at(-1)?.time ?? 0) < now) line.push({ time: now, value });
   }
   return lines;
+}
+/** YES's premium over NO in percent, at each time both lines have a price. */
+export function impactLine(lines: { yes: readonly LinePoint[]; no: readonly LinePoint[] }) {
+  const no = new Map(lines.no.map((p) => [p.time, p.value]));
+  return lines.yes.flatMap((p): LinePoint[] => {
+    const n = no.get(p.time);
+    return n !== undefined && n > 0 ? [{ time: p.time, value: ((p.value - n) / n) * 100 }] : [];
+  });
 }

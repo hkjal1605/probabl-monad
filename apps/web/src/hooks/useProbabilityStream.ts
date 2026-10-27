@@ -11,26 +11,25 @@ export function useProbabilityStream(conditionId: string, initial: ProbabilityVi
   initialRef.current = initial;
   useEffect(() => {
     if (!conditionId) return;
-    const stop = connectProbability(conditionId, initialRef.current);
-    const timer = setInterval(() => {
-      const current = probabilityStore.get(conditionId).data;
-      if (current) {
-        const probability = expireCachedProbability(current.probability);
-        if (
-          probability.quality !== current.probability.quality ||
-          probability.value !== current.probability.value
-        )
-          probabilityStore.setData(conditionId, {
-            ...current,
-            probability,
-          });
-      }
-    }, 1000);
-    return () => {
-      clearInterval(timer);
-      stop();
-    };
+    return connectProbability(conditionId, initialRef.current);
   }, [conditionId]);
+  // The shown value goes stale 90 s after it was observed: one timer at that moment, not a clock.
+  const observedAt = entry?.probability.observedAt;
+  useEffect(() => {
+    const at = observedAt ? Date.parse(observedAt) + 90_000 : NaN;
+    if (!conditionId || !Number.isFinite(at) || at <= Date.now()) return;
+    const timer = setTimeout(
+      () => {
+        const current = probabilityStore.get(conditionId).data;
+        if (!current) return;
+        const probability = expireCachedProbability(current.probability);
+        if (probability.quality !== current.probability.quality)
+          probabilityStore.setData(conditionId, { ...current, probability });
+      },
+      at - Date.now() + 1,
+    );
+    return () => clearTimeout(timer);
+  }, [conditionId, observedAt]);
   useEffect(() => {
     if (!conditionId || initial.value === null || !Number.isFinite(initial.value)) return;
     const current = probabilityStore.get(conditionId).data;

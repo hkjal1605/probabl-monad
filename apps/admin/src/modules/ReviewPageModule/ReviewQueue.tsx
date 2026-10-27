@@ -145,7 +145,7 @@ export function PacketCard({ packet, onDone }: { packet: EvidenceView; onDone: (
           </div>
           <CardTitle className="mt-3">
             {packet.envelope.packet.kind === "market-creation"
-              ? (packet.envelope.packet.polymarket?.question ?? "Market creation packet")
+              ? (packet.envelope.packet.event?.question ?? "Market creation packet")
               : `Resolve market ${short(packet.envelope.packet.localMarket?.marketId ?? "")}`}
           </CardTitle>
           <p className="mt-2 text-xs text-muted-foreground">

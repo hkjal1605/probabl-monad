@@ -1,13 +1,13 @@
 {
   "chainId": 46630,
   "network": "Robinhood Chain Testnet",
-  "exchange": "0x32dfD605918A4528047b61F63C8622b65EFcf3db",
-  "deploymentBlock": "129392459",
-  "transactionHash": "0x02ec38530faa4a1691bd82306971c2aa07846c6d0e946a653a7617d3bde0d9ad",
+  "exchange": "0x0641D31Fc01A5B96487F60c793b17aB538372185",
+  "deploymentBlock": "139375601",
+  "transactionHash": "0x44146cb6305490ad914ee3e56b39acad63cfd6407ab3ce270244d33bb8efe925",
   "quote": "0x509E319A1bA0C429596A05294594D884F5610D73",
   "admin": "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f",
   "marketAdmin": "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0",
   "guardian": "0x3c75eE21AF23832057760433Bf95DA9f9c0c7c41",
   "resolutionAdmin": "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0",
-  "deployedAt": "2026-10-05T17:54:34.921Z"
+  "deployedAt": "2026-10-20T11:09:44.081Z"
 }

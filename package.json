@@ -15,6 +15,7 @@
     "apps/server",
     "services/market-maker",
     "services/vault-keeper",
+    "services/market-automation",
     "apps/web",
     "services/polymarket-ingestor",
     "apps/admin",
@@ -37,6 +38,7 @@
     "deploy:exchange": "bun scripts/evm/deploy.ts",
     "deploy:mock-feeds": "bun scripts/evm/deploy-mock-feeds.ts",
     "deploy:mock-usdg": "bun scripts/evm/deploy-mock-usdg.ts",
+    "deploy:testnet-tokens": "bun scripts/evm/deploy-testnet-tokens.ts",
     "deploy:ui:cloudflare": "bun --filter @conditional-stocks/web deploy:cloudflare",
     "deploy:ui:cloudflare:strict": "bun --filter @conditional-stocks/web deploy:cloudflare:strict",
     "deploy:vault": "bun scripts/evm/deploy-vault.ts",
@@ -55,6 +57,7 @@
     "start:api": "bun --filter @conditional-stocks/api start",
     "start:docs": "bun --filter @conditional-stocks/docs start",
     "start:feed-mirror": "bun scripts/evm/feed-mirror.ts",
+    "start:market-automation": "bun --filter @conditional-stocks/market-automation start",
     "start:market-maker": "bun --filter @conditional-stocks/market-maker start",
     "start:polymarket": "bun --filter @conditional-stocks/polymarket-ingestor start",
     "start:ui": "bun --filter @conditional-stocks/web start",
@@ -62,7 +65,7 @@
     "test": "bun run test:contracts && bun run test:ts",
     "test:contracts": "forge test --root contracts",
     "test:gas": "forge test --root contracts --match-contract Gas --gas-report",
-    "test:ts": "bun scripts/evm/with-database.ts bun test packages/domain/src packages/shared/tests packages/market-data/tests packages/evm-client/test packages/operator/test services/indexer/test services/market-maker/test services/vault-keeper/test services/polymarket-ingestor/tests apps/server/test apps/web/test apps/admin/test",
+    "test:ts": "bun scripts/evm/with-database.ts bun test packages/domain/src packages/shared/tests packages/market-data/tests packages/evm-client/test packages/operator/test services/indexer/test services/market-maker/test services/vault-keeper/test services/market-automation/test services/polymarket-ingestor/tests apps/server/test apps/web/test apps/admin/test",
     "typecheck": "bun run --workspaces --if-present typecheck"
   },
   "devDependencies": {

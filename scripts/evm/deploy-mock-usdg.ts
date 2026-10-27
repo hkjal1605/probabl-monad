@@ -1,12 +1,15 @@
 /** Testnet only: deploys the mock USDG quote token (contracts/test/mocks/MockUSDG.sol) where the
  * chain has no USDG with usable liquidity, mints an initial supply to the deployer and records it
  * in deployments/<chainId>-mock-usdg.json. Pass the address as QUOTE_TOKEN to deploy.ts. Anyone
- * can mint more; stock tokens are never mocked (use the issuer's testnet tokens).
+ * can mint more. Stock tokens are the issuer's testnet tokens or the mainnet copies from
+ * deploy-testnet-tokens.ts.
  *
  *   DEPLOYER_PRIVATE_KEY=… RPC_URL=… CHAIN_ID=46630 [MINT=1000000 in whole USDG]
  *   bun scripts/evm/deploy-mock-usdg.ts */
+
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
+import { nativeCurrency } from "@conditional-stocks/shared/chains";
 import {
   createPublicClient,
   createWalletClient,
@@ -38,7 +41,7 @@ const supply = parseUnits(process.env.MINT?.trim() || "1000000", 6);
 const chain = defineChain({
   id: chainId,
   name,
-  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  nativeCurrency: nativeCurrency(chainId),
   rpcUrls: { default: { http: [rpc] } },
 });
 const client = createPublicClient({ chain, transport: http(rpc) });

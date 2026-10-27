@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import { ConditionalStocksAdmin } from "../../src/ConditionalStocksAdmin.sol";
 import { ConditionalStocksBase } from "../../src/ConditionalStocksBase.sol";
 import { DeltaVault } from "../../src/vault/DeltaVault.sol";
 import { DeltaVaultAdmin } from "../../src/vault/DeltaVaultAdmin.sol";
@@ -242,17 +243,18 @@ contract DeltaVaultGovernanceTest is VaultBase {
         DeltaVaultBase.Market memory m = ops.market(next);
         ok(m.listed && m.tick == TICK && m.cutoff == T0 + 20 days, "cached terms");
 
-        // At most eight markets.
-        for (uint256 i; i < 6; ++i) {
+        // At most MAX_MARKETS markets.
+        uint256 limit = vault.MAX_MARKETS();
+        while (ops.markets().length < limit) {
             uint32 id = createMarket(uint40(T0 - 1), uint40(T0 + 20 days));
             vm.prank(curator);
             ops.addMarket(id, r);
         }
-        eq(ops.markets().length, 8, "full");
-        uint32 ninth = createMarket(uint40(T0 - 1), uint40(T0 + 20 days));
+        eq(ops.markets().length, 48, "full");
+        uint32 extra = createMarket(uint40(T0 - 1), uint40(T0 + 20 days));
         vm.expectRevert(DeltaVaultBase.MarketLimit.selector);
         vm.prank(curator);
-        ops.addMarket(ninth, r);
+        ops.addMarket(extra, r);
     }
 
     function testRemoveMarketRequiresAFlatPosition() public {
@@ -316,7 +318,7 @@ contract DeltaVaultGovernanceTest is VaultBase {
         _position();
         // A one-unit claim donation makes the stock claims odd: 3 NVDA + 1 raw if YES, 15 if NO.
         vm.startPrank(alice);
-        cs.split(market, 1, 1);
+        ConditionalStocksAdmin(address(cs)).split(market, 1, 1);
         view_.transferClaim(market, YES, 1, address(vault), 1);
         vm.stopPrank();
         uint256 quoteBefore = credit(address(vault), address(usdc));

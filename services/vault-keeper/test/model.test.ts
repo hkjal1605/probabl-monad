@@ -2,10 +2,13 @@ import { describe, expect, test } from "bun:test";
 import { quote } from "@conditional-stocks/evm-client";
 import { BPS, PROB } from "@conditional-stocks/operator";
 import {
+  anchorBps,
   conditionalGap,
   fairPrices,
   halfSpread,
   impliedProbability,
+  inverseNormal,
+  ladderAnchorBps,
   ladders,
   markedValue,
   type Quote,
@@ -366,5 +369,31 @@ describe("ladders", () => {
         expect(distance * BPS <= spot * 950n).toBe(true);
       }
     }
+  });
+});
+
+describe("ladder anchors", () => {
+  test("δ₀ is β·σ·√τ·φ(z)/(p(1−p)): 1.6·β·σ·√τ at even odds, signed by β, gone at the fixing", () => {
+    expect(inverseNormal(0.5)).toBe(0);
+    expect(inverseNormal(0.975)).toBeCloseTo(1.959964, 5);
+    expect(inverseNormal(0.025)).toBeCloseTo(-1.959964, 5);
+    const now = 1_800_000_000n;
+    const day = { beta: 1.54, dailyVolBps: 281, fixing: Number(now) + 86_400 };
+    // MSTR on Bitcoin's 5 pm strike a day out, at even odds: 1.54 x 2.81% x 1.596 = 6.9%.
+    expect(ladderAnchorBps(day, 500_000n, now)).toBe(691);
+    // Four days out it doubles (√4); a negative beta (CCL on oil) turns it around.
+    expect(ladderAnchorBps({ ...day, fixing: Number(now) + 4 * 86_400 }, 500_000n, now)).toBe(1381);
+    expect(ladderAnchorBps({ ...day, beta: -0.57 }, 500_000n, now)).toBe(-256);
+    // A strike in the tail widens the gap, finitely (conditionalGap bounds it).
+    const tail = ladderAnchorBps(day, 50_000n, now);
+    expect(tail).toBeGreaterThan(691);
+    expect(Number.isFinite(tail)).toBe(true);
+    // At the fixing, or with the result certain, there is no gap left.
+    expect(ladderAnchorBps({ ...day, fixing: Number(now) }, 500_000n, now)).toBe(0);
+    expect(ladderAnchorBps(day, 1_000_000n, now)).toBe(0);
+    // Without a driver the configured anchor stands.
+    const plain = { anchorBps: -300, impactBps: 0, maxGapBps: 800, orderQuote: "1" };
+    expect(anchorBps(plain, 500_000n, now)).toBe(-300);
+    expect(anchorBps({ ...plain, driver: day }, 500_000n, now)).toBe(691);
   });
 });

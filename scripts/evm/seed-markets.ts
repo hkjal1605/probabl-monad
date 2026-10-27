@@ -130,7 +130,7 @@ for (const event of DEMO_MARKET_SEED) {
                 quoteToken: deployment.quote,
                 baseStep: "1000000000000000",
                 priceTickRawX18: "10000",
-                minNotional: "1000000",
+                minNotional: "100000",
                 maxOrderQuantity: "1000000000000000000000",
                 maxOrderNotional: "10000000000",
                 maxWalletOpenNotional: "100000000000",

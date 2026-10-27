@@ -186,6 +186,7 @@
         "@conditional-stocks/db": "workspace:*",
         "@conditional-stocks/domain": "workspace:*",
         "@conditional-stocks/evm-client": "workspace:*",
+        "@conditional-stocks/market-automation": "workspace:*",
         "@conditional-stocks/shared": "workspace:*",
         "viem": "2.56.3",
       },
@@ -196,7 +197,19 @@
       "dependencies": {
         "@conditional-stocks/db": "workspace:*",
         "@conditional-stocks/evm-client": "workspace:*",
+        "@conditional-stocks/market-data": "workspace:*",
         "hono": "4.13.5",
+        "viem": "2.56.3",
+      },
+    },
+    "services/market-automation": {
+      "name": "@conditional-stocks/market-automation",
+      "version": "0.1.0",
+      "dependencies": {
+        "@conditional-stocks/evm-client": "workspace:*",
+        "@conditional-stocks/market-data": "workspace:*",
+        "@conditional-stocks/operator": "workspace:*",
+        "@conditional-stocks/shared": "workspace:*",
         "viem": "2.56.3",
       },
     },
@@ -462,6 +475,8 @@
     "@conditional-stocks/evm-scripts": ["@conditional-stocks/evm-scripts@workspace:scripts/evm"],
 
     "@conditional-stocks/indexer": ["@conditional-stocks/indexer@workspace:services/indexer"],
+
+    "@conditional-stocks/market-automation": ["@conditional-stocks/market-automation@workspace:services/market-automation"],
 
     "@conditional-stocks/market-data": ["@conditional-stocks/market-data@workspace:packages/market-data"],
 

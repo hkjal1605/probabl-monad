@@ -13,6 +13,17 @@ export interface MarketModel {
   maxGapBps: number;
   /** Quote notional per ladder (bids or asks of one branch), in whole quote tokens. */
   orderQuote: string;
+  /** A ladder market's driver, which sets δ₀ in place of `anchorBps` (`ladderAnchorBps`). */
+  driver?: LadderDriver;
+}
+/** What moves a ladder market's stock: its event is "the driver closes above a strike at
+ * `fixing`" (a Kalshi "above" ladder) and the stock moves `beta` times the driver. */
+export interface LadderDriver {
+  beta: number;
+  /** The driver's daily volatility, bps. */
+  dailyVolBps: number;
+  /** Unix seconds. */
+  fixing: number;
 }
 /** Model of one market, overriding the default; `disabled` keeps a registered market unquoted. */
 export interface MarketOverride extends Partial<MarketModel> {
@@ -30,9 +41,32 @@ export interface VaultSettings {
   basePriceMultiplier: string;
   quotePriceMultiplier: string;
   markets: MarketOverride[];
+  /** The stock's beta to each ladder series' driver (e.g. MSTR to KXBTCD, Bitcoin: 1.54): its
+   * ladder markets take δ₀ from it (`drivers`) unless a market override sets `anchorBps`. */
+  betas?: Record<string, number>;
+}
+/** Quoting market orders through the API's RFQ stream (docs/rfq.md): live mode, with one approved
+ * API key per vault in VK_RFQ_API_KEYS (vault order). */
+export interface RfqSettings {
+  enabled: boolean;
+  /** Keep the resting ladders on the book as well. Off (the default with RFQ on), the vault
+   * quotes only through RFQ and leaves no order resting. */
+  bookQuotes: boolean;
+  /** How long a signed quote stays fillable, seconds. */
+  quoteTtlSeconds: number;
+  /** The oldest live reference (stock price and probability) a quote may price from, ms. */
+  maxReferenceAgeMs: number;
+  /** Spot-price refresh, ms (the API caches Robinhood's prices for 2 s). */
+  spotPollMs: number;
+  /** Half-spread added on RFQ quotes for the option a firm quote gives while it lives, bps. */
+  edgeBps: number;
 }
 export interface Settings {
   vaults: VaultSettings[];
+  rfq: RfqSettings;
+  /** Each ladder series' driver volatility (e.g. KXBTCD, Bitcoin at 5 pm ET: 281 bps a day),
+   * which with a vault's `betas` sets its ladder markets' δ₀. */
+  drivers?: Record<string, { dailyVolBps: number }>;
   /** Model of every registered market without a (complete) override. Without it, only
    * markets with a complete override are quoted. */
   model?: MarketModel;
@@ -58,7 +92,7 @@ export interface Settings {
   bandMarginBps: number;
   maxProbabilitySpreadX6: number;
   probabilityFloorX6: number;
-  /** Quoting stops while other traders' books imply a probability this far from Polymarket's. */
+  /** Quoting stops while other traders' books imply a probability this far from the event market's. */
   maxProbabilityDriftX6: number;
   jumpBps: number;
   probabilityJumpX6: number;
@@ -115,6 +149,8 @@ export function marketModel(
   return complete(merged) ? merged : undefined;
 }
 
+const SERIES = /^[A-Z0-9]{2,32}$/;
+
 function vaultSettings(input: unknown, defaults: MarketModel | undefined): VaultSettings {
   const raw = input as Partial<VaultSettings>;
   if (!raw || typeof raw.vault !== "string") throw new Error("Configure every vault's address");
@@ -126,9 +162,13 @@ function vaultSettings(input: unknown, defaults: MarketModel | undefined): Vault
     basePriceMultiplier: raw.basePriceMultiplier ?? "1",
     quotePriceMultiplier: raw.quotePriceMultiplier ?? "1",
     markets,
+    ...(raw.betas === undefined ? {} : { betas: raw.betas }),
   };
   if (!positive(result.basePriceMultiplier) || !positive(result.quotePriceMultiplier))
     throw new Error("Positive unit conversions required");
+  for (const [series, beta] of Object.entries(result.betas ?? {}))
+    if (!SERIES.test(series) || typeof beta !== "number" || !(Math.abs(beta) <= 10))
+      throw new Error(`Invalid beta of ${result.vault} to ${series}`);
   const seen = new Set<number>();
   for (const m of markets) {
     if (!m || !Number.isSafeInteger(m.market) || m.market <= 0 || seen.has(m.market))
@@ -188,8 +228,40 @@ export function settings(input: unknown): Settings {
     quotePriceMultiplier: _quote,
     vaults: _vaults,
     model: _model,
+    rfq: rawRfq,
     ...shared
   } = raw;
+  const rfqInput = (rawRfq ?? {}) as Partial<RfqSettings>;
+  const rfqEnabled = rfqInput.enabled ?? false;
+  const rfq: RfqSettings = {
+    enabled: rfqEnabled,
+    bookQuotes: rfqInput.bookQuotes ?? !rfqEnabled,
+    quoteTtlSeconds: rfqInput.quoteTtlSeconds ?? 10,
+    maxReferenceAgeMs: rfqInput.maxReferenceAgeMs ?? 5_000,
+    spotPollMs: rfqInput.spotPollMs ?? 2_000,
+    edgeBps: rfqInput.edgeBps ?? 0,
+  };
+  if (typeof rfq.enabled !== "boolean" || typeof rfq.bookQuotes !== "boolean")
+    throw new Error("Invalid rfq switches");
+  for (const [field, [low, high]] of Object.entries({
+    quoteTtlSeconds: [5, 300],
+    maxReferenceAgeMs: [500, 60_000],
+    spotPollMs: [500, 60_000],
+    edgeBps: [0, 1000],
+  } as Record<string, [number, number]>)) {
+    const value = rfq[field as keyof RfqSettings];
+    if (typeof value !== "number" || !Number.isInteger(value) || value < low || value > high)
+      throw new Error(`Invalid rfq.${field}`);
+  }
+  if (!rfq.enabled && !rfq.bookQuotes) throw new Error("Quote through RFQ, the book or both");
+  for (const [series, driver] of Object.entries(raw.drivers ?? {}))
+    if (
+      !SERIES.test(series) ||
+      !Number.isInteger(driver?.dailyVolBps) ||
+      driver.dailyVolBps < 1 ||
+      driver.dailyVolBps > 5000
+    )
+      throw new Error(`Invalid driver ${series}`);
   const result: Settings = {
     allowStaleSpot: false,
     quoteLevels: 2,
@@ -221,6 +293,7 @@ export function settings(input: unknown): Settings {
     dailyGasBudgetWei: "10000000000000000",
     ...shared,
     vaults,
+    rfq,
     ...(model ? { model } : {}),
   };
   const ranges: Record<string, [number, number]> = {

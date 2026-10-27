@@ -4,7 +4,8 @@ pragma solidity 0.8.30;
 import { ConditionalStocksBase } from "./ConditionalStocksBase.sol";
 
 /// @title ConditionalStocksAdmin
-/// @notice Governance, market lifecycle, resolution, trading delegation, claim transfers and
+/// @notice Positions (split, merge, redeem), governance, market lifecycle, resolution, trading
+///         delegation, claim transfers and
 ///         views of `ConditionalStocks`. Deployed by and bound to one `ConditionalStocks`, which
 ///         reaches it by delegatecall: every function here runs on that contract's storage.
 /// @dev Called directly it only reads and writes its own empty storage. Its fallback routes
@@ -15,6 +16,65 @@ contract ConditionalStocksAdmin is ConditionalStocksBase {
     address private immutable SELF = address(this);
 
     constructor(address quote_) ConditionalStocksBase(quote_) { }
+
+    // ---------------------------------------------------------------- positions
+    // Off the trading path, so here rather than in the exchange's size-bound runtime.
+
+    /// @notice Converts underlying credit into equal YES and NO claims. Collateral 0 is the
+    ///         quote token, 1 the market's base token.
+    function split(uint32 id, uint8 collateral, uint256 amount) external {
+        address token = _collateral(id, collateral);
+        if (amount == 0) revert InvalidTerms();
+        uint256 available = _credit[msg.sender][token];
+        if (available < amount) revert InsufficientFunds();
+        _credit[msg.sender][token] = available - amount;
+        _back(id, collateral, amount, true);
+        _claim(id, 0, collateral, msg.sender, amount, true);
+        _claim(id, 1, collateral, msg.sender, amount, true);
+        emit PositionChanged(id, msg.sender, 0, collateral, amount, amount, amount);
+    }
+
+    /// @notice Converts equal YES and NO claims back into underlying credit, in any state.
+    function merge(uint32 id, uint8 collateral, uint256 amount) external {
+        address token = _collateral(id, collateral);
+        if (amount == 0) revert InvalidTerms();
+        _claim(id, 0, collateral, msg.sender, amount, false);
+        _claim(id, 1, collateral, msg.sender, amount, false);
+        _back(id, collateral, amount, false);
+        _credit[msg.sender][token] += amount;
+        emit PositionChanged(id, msg.sender, 1, collateral, amount, amount, amount);
+    }
+
+    /// @notice Burns claims of a resolved market for their payout. An INVALID (1/2 each)
+    ///         payout never discards a fractional raw unit: redeem an even total.
+    function redeem(uint32 id, uint8 collateral, uint256 yes, uint256 no) external {
+        address token = _collateral(id, collateral);
+        uint8 state = _terms[id].state;
+        if (state != REDEEMABLE && state != ARCHIVED) revert InvalidState();
+        if (yes == 0 && no == 0) revert InvalidTerms();
+        Book memory b = _books[id];
+        uint256 denominator = _payoutDenominator(b.payoutYes, b.payoutNo);
+        uint256 numerator = yes * b.payoutYes + no * b.payoutNo;
+        if (numerator % denominator != 0) revert FractionalRedemption();
+        uint256 amount = numerator / denominator;
+        if (yes != 0) _claim(id, 0, collateral, msg.sender, yes, false);
+        if (no != 0) _claim(id, 1, collateral, msg.sender, no, false);
+        if (amount != 0) {
+            _back(id, collateral, amount, false);
+            _credit[msg.sender][token] += amount;
+        }
+        emit PositionChanged(id, msg.sender, 2, collateral, yes, no, amount);
+    }
+
+    function _back(uint32 id, uint8 collateral, uint256 amount, bool add) private {
+        Backing memory bk = _backing[id];
+        if (collateral == 0) {
+            bk.quote = add ? _u128(bk.quote + amount) : uint128(bk.quote - amount);
+        } else {
+            bk.base = add ? _u128(bk.base + amount) : uint128(bk.base - amount);
+        }
+        _backing[id] = bk;
+    }
 
     // ---------------------------------------------------------------- governance
 

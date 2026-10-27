@@ -1,25 +1,6 @@
 import { expireSpotPrice } from "@conditional-stocks/shared/spot-prices";
 import type { BranchBook, MarketView } from "@/types/api";
-
-export const MARKET_CATEGORIES = ["All", "Macro", "Earnings", "Policy", "Other"] as const;
-export type MarketCategory = (typeof MARKET_CATEGORIES)[number];
-
-export function marketCategoryPath(category: MarketCategory) {
-  return category === "All" ? "/" : `/category/${category.toLowerCase()}`;
-}
-
-export function marketCategoryFromSlug(slug: string): Exclude<MarketCategory, "All"> | null {
-  const category = MARKET_CATEGORIES.find(
-    (candidate) => candidate !== "All" && candidate.toLowerCase() === slug.toLowerCase(),
-  );
-  return category && category !== "All" ? category : null;
-}
-
-export function marketCategoryFromPathname(pathname: string): MarketCategory | null {
-  if (pathname === "/") return "All";
-  const match = /^\/category\/([^/]+)\/?$/.exec(pathname);
-  return match?.[1] ? marketCategoryFromSlug(match[1]) : null;
-}
+import { marketTopic } from "./categories";
 
 export function currentSpotUsd(market: MarketView, nowMs = Date.now()): number | null {
   const spot = market.spotReference && expireSpotPrice(market.spotReference, nowMs);
@@ -51,6 +32,13 @@ export function spotImpactPercent(
   return Number.isFinite(impact) ? impact : null;
 }
 
+/** Whether a market's result is final (resolved, redeemable or archived): its claims are
+ * redeemed rather than traded, so they are no longer an open position. */
+export const isResolved = (market: Pick<MarketView, "lifecycle">) =>
+  market.lifecycle === "resolved" ||
+  market.lifecycle === "redeemable" ||
+  market.lifecycle === "archived";
+
 export function midpoint(book: BranchBook): number | null {
   const { bestBid, bestAsk } = book;
   return bestBid !== null && bestAsk !== null && bestBid > 0 && bestAsk >= bestBid
@@ -65,7 +53,7 @@ export function impactPercent(market: MarketView, branch: "YES" | "NO" = "YES"):
   return reference > 0 ? ((branch === "YES" ? yes - no : no - yes) / reference) * 100 : null;
 }
 export function eventKey(market: MarketView) {
-  // A Polymarket condition plus its outcome orientation is the immutable event
+  // An event market's condition (Polymarket or Kalshi) plus its outcome orientation is the immutable event
   // identity. Local trading windows and lifecycle state belong to each asset
   // market and must not split one external event into multiple cards.
   return [
@@ -132,13 +120,6 @@ export function sortEventGroups(groups: MarketView[][], direction: "newest" | "o
     );
   });
 }
-export function marketCategory(market: MarketView) {
-  const question = market.question.toLowerCase();
-  if (/fed|rate|inflation|cpi|gdp|recession/.test(question)) return "Macro";
-  if (/export|tariff|election|policy|ban|regulat|\bact\b|\blaw\b/.test(question)) return "Policy";
-  if (/revenue|earnings|deliver|quarter|profit/.test(question)) return "Earnings";
-  return "Other";
-}
 /** Both branches' book depth, in dollars (display only). */
 export const bookDepthUsd = (market: MarketView) => market.yes.depthUsd + market.no.depthUsd;
 /** Most traded first: 24-hour volume, then book depth, then market id. */
@@ -146,18 +127,21 @@ export const byTrading = (a: MarketView, b: MarketView) =>
   (b.volume24h ?? 0) - (a.volume24h ?? 0) ||
   bookDepthUsd(b) - bookDepthUsd(a) ||
   a.id.localeCompare(b.id);
-/** The `count` open markets traded most in the last 24 hours. */
-export const mostTraded = (markets: readonly MarketView[], count = 4) =>
-  markets
-    .filter((market) => market.lifecycle === "open")
-    .sort(byTrading)
-    .slice(0, count);
 /** Text in place of an event's image. */
 export function eventMonogram(market: MarketView) {
-  const category = marketCategory(market);
-  return category === "Macro" ? "FED" : category === "Policy" ? "PRC" : market.ticker;
+  const topic = marketTopic(market);
+  return topic === "Economy"
+    ? "ECO"
+    : topic === "Geopolitics"
+      ? "GEO"
+      : topic === "Politics"
+        ? "POL"
+        : market.ticker;
 }
 export const percent = (value: number | null) =>
   value === null || !Number.isFinite(value) ? "—" : `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
-export const compact = (value: number) =>
-  new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+const compactOne = new Intl.NumberFormat("en-US", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+export const compact = (value: number) => compactOne.format(value);

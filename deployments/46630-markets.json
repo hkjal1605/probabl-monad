@@ -2,108 +2,463 @@
   "chainId": 46630,
   "api": "https://api-rh-testnet.probabl.trade",
   "tokens": {
-    "TSLA": "0xC9f9c86933092BbbfFF3CCb4b105A4A94bf3Bd4E",
-    "AMZN": "0x5884aD2f920c162CFBbACc88C9C51AA75eC09E02",
-    "PLTR": "0x1FBE1a0e43594b3455993B5dE5Fd0A7A266298d0",
-    "NFLX": "0x3b8262A63d25f0477c4DDE23F83cfe22Cb768C93",
-    "AMD": "0x71178BAc73cBeb415514eB542a8995b82669778d"
+    "AAPL": "0x360D2dEfb979911f4091F42Acc5995C32551eb31",
+    "BA": "0x468D9aF737F55c900ce48Cc41e59FAA9058D004D",
+    "BND": "0x961c2c51A54DFc933D244724400e0927365eC8dE",
+    "CCL": "0x3950d048C2B292C99B146562d2E76c81e3CB2Df6",
+    "CLSK": "0x81f86Ae547C5f03743E979A47133463003271d40",
+    "COIN": "0x7E9969fDA400d034A7a68598E8b895108812Ba9e",
+    "CRCL": "0x9Ab9F6FCA39138Ac32c25599C59Bb35AD57B4620",
+    "GLD": "0x60b6B05F4e0c2DB22Fe37765cbcb83c0d83c9e5b",
+    "GLXY": "0x7818c4DCe480a056B6705Aed2236FF2C9C787413",
+    "MSTR": "0x8b23487dc53F69f4d405859dfF7b6f77fb6dC639",
+    "NU": "0xe6062b64C6f2059D6bDf5cfFA8A8945FaaC6665e",
+    "NVDA": "0x5b85fD3b8C7476eF67efa32AC3539325D51aC222",
+    "PR": "0x3F3437F10da3CAE7C404223f4d37ff4d63760491",
+    "QQQ": "0x51c642306e19E0ad18e4c6F860f1A21f9eB199B2",
+    "SLV": "0x260EBB0D61F73Eb4B12FcaAD5EF6771b54d62c0f",
+    "SMH": "0x99a05329e9D3052f67F888488dfEF5FdcA7A2956",
+    "SOFI": "0x729D282f64cF1143e2E7959Aa5737FB3EF218472",
+    "SPY": "0xC5d93b499a2978cDde005e4BBAFd28fDFeAB815b",
+    "USO": "0xE2d4641BE09103ff557c298bB45Eb3DC502687EB",
+    "WETH": "0x5a57588e4ccd7752D0845ffa337240995B7441f0",
+    "XOM": "0xbA663601922B5332617395c7C52016e3E843b205"
   },
   "events": [
     {
-      "gammaMarketId": "609655",
-      "slug": "us-recession-by-end-of-2026",
-      "question": "US recession by end of 2026?",
-      "rationale": "A recession hits every one: consumer and ad spend (AMZN retail, NFLX subscriptions), big-ticket autos (TSLA), cyclical semiconductors (AMD) and high-multiple growth software (PLTR).",
+      "gammaMarketId": "665374",
+      "slug": "will-the-us-invade-iran-before-2027",
+      "question": "Will the U.S. invade Iran before 2027?",
+      "rationale": "An invasion lifts oil (USO, XOM, PR) and sinks fuel-hungry CCL and BA and the indexes: USO's daily return tracks its odds with r 0.43 (t 7.4, 238 days).",
       "markets": {
-        "TSLA": {
-          "packetHash": "0xf51e461327c3471e59bfa1fefdcf5a081b3331a4bbb31e4a3cd82b1f52ef33e9",
-          "marketId": "1",
-          "transactionHash": "0xa93b251794f4368245cb0dad51f09907a4c1691d3911e7f20570a88b19bf58f1",
-          "opened": true
+        "USO": {
+          "anchorBps": 1200,
+          "marketId": "39",
+          "rebate": "0"
         },
-        "AMZN": {
-          "packetHash": "0xece149c0d8f4593453bfb6ca3d033b6ffd4d9ddddfe939810c9f7e379437c6a9",
-          "marketId": "2",
-          "transactionHash": "0x6b0028262b09e8bf649269ea0bd2acbe83cacb0a416a8e18b608be7556b612e2",
-          "opened": true
+        "XOM": {
+          "anchorBps": 1200,
+          "marketId": "40",
+          "rebate": "0"
         },
-        "PLTR": {
-          "packetHash": "0xad6a08f72244a47a561eceb7880e17b61d80d7e133ebc8f652d93227fa88f888",
-          "marketId": "3",
-          "transactionHash": "0x1d7a142f1eef9314628eb1f8d6e4da935c2bddf4caa3b7d34b8ae6e7c595f5ea",
-          "opened": true
+        "PR": {
+          "anchorBps": 1200,
+          "marketId": "41",
+          "rebate": "0"
         },
-        "NFLX": {
-          "packetHash": "0x720c83672a44b6917960b5ea328a63a857ffa85f372e6f77f8a3e8dd5b190ede",
-          "marketId": "4",
-          "transactionHash": "0x2a729d9f3e693836aa4d39a786e522701276460fe4498b7533fdecf0f041e581",
-          "opened": true
+        "CCL": {
+          "anchorBps": -1200,
+          "marketId": "42",
+          "rebate": "0"
         },
-        "AMD": {
-          "packetHash": "0xeac6187d0e299aca9974a4e3f65d34607520ff0e392e43a53b37561df97fb8b8",
-          "marketId": "5",
-          "transactionHash": "0xd97a9d6a29943cdfef338823d5324f925bf0f03f4c17aff1c80bdce3d7c81634",
-          "opened": true
+        "BA": {
+          "anchorBps": -1200,
+          "marketId": "43",
+          "rebate": "0"
+        },
+        "QQQ": {
+          "anchorBps": -1200,
+          "marketId": "44",
+          "rebate": "0"
+        },
+        "SPY": {
+          "anchorBps": -910,
+          "marketId": "45",
+          "rebate": "0"
         }
       }
     },
     {
-      "gammaMarketId": "691340",
-      "slug": "ai-industry-downturn-by-december-31-2026-857",
-      "question": "AI bubble burst in 2026?",
-      "rationale": "An AI downturn reprices AI compute (AMD GPUs), AI software (PLTR AIP), cloud AI capex and Amazon's Anthropic stake (AMZN), and Tesla's autonomy and robotics valuation (TSLA).",
+      "gammaMarketId": "3128886",
+      "slug": "us-announces-end-of-iranian-blockade-byptptpt-20260713152715080",
+      "question": "US announces end of Iranian blockade by December 31, 2026?",
+      "rationale": "An end to the blockade reopens oil supply: oil names fall (USO r -0.59), CCL, BA and SPY rise.",
       "markets": {
-        "AMD": {
-          "packetHash": "0x52cf16f87bacfc869da604b5b24bc6aae521c3da5a4ca62a7b51c553533164fe",
-          "marketId": "6",
-          "transactionHash": "0x2c2de7d3918603d1d24a160131d1a654983120f56db41da27985f46102f98761",
-          "opened": true
+        "USO": {
+          "anchorBps": -1200,
+          "marketId": "46",
+          "rebate": "0"
         },
-        "PLTR": {
-          "packetHash": "0x3d31014e7de5b30d00d318e0128cbaabcff795aeeb1d1dc6cba222596be37967",
-          "marketId": "7",
-          "transactionHash": "0x4151e7584c820d28902b446bbf696f1b5962d8f0c10fdc4b3568a6183b1ca0e0",
-          "opened": true
+        "XOM": {
+          "anchorBps": -1200,
+          "marketId": "47",
+          "rebate": "0"
         },
-        "AMZN": {
-          "packetHash": "0xe639000017585f15068549a0af91c1a7cf92d30e3bab04e83de41ead6612448a",
-          "marketId": "8",
-          "transactionHash": "0x7ea19dd878c87cb291e08eb88a4f3fd4c56d27ede6bf660db088e90259e83815",
-          "opened": true
+        "PR": {
+          "anchorBps": -1200,
+          "marketId": "48",
+          "rebate": "0"
         },
-        "TSLA": {
-          "packetHash": "0x3ced116c474a14e4bc862b24b5d66167842ff3afdeafff6fbe61e2767dd99669",
-          "marketId": "9",
-          "transactionHash": "0x15e60b97dd38577611e9ae0480fa264f5333ae511164f2f0229c5702f5e47f21",
-          "opened": true
+        "CCL": {
+          "anchorBps": 1200,
+          "marketId": "49",
+          "rebate": "0"
+        },
+        "BA": {
+          "anchorBps": 1200,
+          "marketId": "50",
+          "rebate": "0"
+        },
+        "SPY": {
+          "anchorBps": 550,
+          "marketId": "51",
+          "rebate": "0"
         }
       }
     },
     {
-      "gammaMarketId": "2252540",
-      "slug": "tesla-and-spacex-merger-officially-announced-by-december-31",
-      "question": "Tesla and SpaceX merger officially announced by December 31?",
-      "rationale": "A Tesla-SpaceX combination directly changes Tesla's ownership, valuation and share count.",
+      "gammaMarketId": "4713483",
+      "slug": "us-iran-ceasefire-continues-throughptptpt",
+      "question": "US x Iran ceasefire continues through November 30?",
+      "rationale": "A ceasefire that holds keeps oil down and the indexes up (USO r -0.50, SPY r 0.54, 22 days).",
       "markets": {
-        "TSLA": {
-          "packetHash": "0xd258580cddc357e750fd74b60aff219fa1861ff0bf37364e21765ef6e63afeac",
-          "marketId": "10",
-          "transactionHash": "0xe6f01d6be7692e9d8d4ca379342dea8dcb006463219d0b829f1615e218d99627",
-          "opened": true
+        "USO": {
+          "anchorBps": -1200,
+          "marketId": "52",
+          "rebate": "0"
+        },
+        "QQQ": {
+          "anchorBps": 1120,
+          "marketId": "53",
+          "rebate": "0"
+        },
+        "SPY": {
+          "anchorBps": 650,
+          "marketId": "54",
+          "rebate": "0"
         }
       }
     },
     {
-      "gammaMarketId": "2413330",
-      "slug": "will-anthropic-ipo-by-december-31-2026-546-128-719",
-      "question": "Will Anthropic IPO by December 31, 2026?",
-      "rationale": "Amazon is Anthropic's largest strategic investor and cloud partner; an IPO marks its stake to market.",
+      "kalshiTicker": "KXWTIMAX-26DEC31-T120",
+      "cutoff": "2026-12-31T19:00:00Z",
+      "slug": "KXWTIMAX-26DEC31",
+      "question": "Will the maximum WTI front month settle price reach $120.01 in 2026?",
+      "rationale": "WTI above $120 is an oil shock: USO tracks it with r 0.73 (t 13.1); oil producers rise, CCL, BA and the indexes fall.",
       "markets": {
-        "AMZN": {
-          "packetHash": "0x0279d7fd11cf318d2da4d523842e8a9d59ac65cab9a6260141e836d576385563",
-          "marketId": "11",
-          "transactionHash": "0x31e3e0cd647c010d8e415df6c0e383598ccbec1294a864ea15790be8e4027440",
-          "opened": true
+        "USO": {
+          "anchorBps": 1200,
+          "marketId": "55",
+          "rebate": "0"
+        },
+        "XOM": {
+          "anchorBps": 1200,
+          "marketId": "56",
+          "rebate": "0"
+        },
+        "PR": {
+          "anchorBps": 1200,
+          "marketId": "57",
+          "rebate": "0"
+        },
+        "CCL": {
+          "anchorBps": -1200,
+          "marketId": "58",
+          "rebate": "0"
+        },
+        "BA": {
+          "anchorBps": -1200,
+          "marketId": "59",
+          "rebate": "0"
+        },
+        "QQQ": {
+          "anchorBps": -960,
+          "marketId": "60",
+          "rebate": "0"
+        },
+        "SPY": {
+          "anchorBps": -720,
+          "marketId": "61",
+          "rebate": "0"
+        }
+      }
+    },
+    {
+      "kalshiTicker": "KXHORMUZNORM-26MAR17-B270701",
+      "slug": "KXHORMUZNORM-26MAR17",
+      "question": "Will Strait of Hormuz traffic return to normal before Jul 1, 2027?",
+      "rationale": "Normal Hormuz traffic ends the oil shock: USO r -0.53 (t -7.5, measured on the Jan 2027 date); CCL, BA and the indexes rise.",
+      "markets": {
+        "USO": {
+          "anchorBps": -1200,
+          "marketId": "62",
+          "rebate": "0"
+        },
+        "XOM": {
+          "anchorBps": -1200,
+          "marketId": "63",
+          "rebate": "0"
+        },
+        "PR": {
+          "anchorBps": -1200,
+          "marketId": "64",
+          "rebate": "0"
+        },
+        "CCL": {
+          "anchorBps": 1200,
+          "marketId": "65",
+          "rebate": "0"
+        },
+        "BA": {
+          "anchorBps": 1200,
+          "marketId": "66",
+          "rebate": "0"
+        },
+        "QQQ": {
+          "anchorBps": 1190,
+          "marketId": "67",
+          "rebate": "0"
+        },
+        "SPY": {
+          "anchorBps": 770,
+          "marketId": "68",
+          "rebate": "0"
+        }
+      }
+    },
+    {
+      "gammaMarketId": "1345531",
+      "slug": "what-price-will-bitcoin-hit-before-2027",
+      "question": "Will Bitcoin reach $90,000 by December 31, 2026?",
+      "rationale": "Bitcoin-linked stocks and Ether move with Bitcoin's 2026 ladder (r 0.40-0.55, t 6.6-11.8).",
+      "markets": {
+        "MSTR": {
+          "anchorBps": 1200,
+          "marketId": "69",
+          "rebate": "0"
+        },
+        "COIN": {
+          "anchorBps": 1200,
+          "marketId": "70",
+          "rebate": "0"
+        },
+        "CRCL": {
+          "anchorBps": 1200,
+          "marketId": "71",
+          "rebate": "0"
+        },
+        "GLXY": {
+          "anchorBps": 1200,
+          "marketId": "72",
+          "rebate": "0"
+        },
+        "CLSK": {
+          "anchorBps": 1200,
+          "marketId": "73",
+          "rebate": "0"
+        },
+        "WETH": {
+          "anchorBps": 1200,
+          "marketId": "74",
+          "rebate": "0"
+        }
+      }
+    },
+    {
+      "gammaMarketId": "3865960",
+      "slug": "what-price-will-bitcoin-hit-before-2027",
+      "question": "Will Bitcoin dip to $70,000 by December 31, 2026?",
+      "rationale": "A dip to $70k drags Bitcoin-linked stocks and Ether down (r -0.45 to -0.65 on the $55k low).",
+      "markets": {
+        "MSTR": {
+          "anchorBps": -1200,
+          "marketId": "75",
+          "rebate": "0"
+        },
+        "COIN": {
+          "anchorBps": -1200,
+          "marketId": "76",
+          "rebate": "0"
+        },
+        "CRCL": {
+          "anchorBps": -1200,
+          "marketId": "77",
+          "rebate": "0"
+        },
+        "GLXY": {
+          "anchorBps": -1200,
+          "marketId": "78",
+          "rebate": "0"
+        },
+        "CLSK": {
+          "anchorBps": -1200,
+          "marketId": "79",
+          "rebate": "0"
+        },
+        "WETH": {
+          "anchorBps": -1200,
+          "marketId": "80",
+          "rebate": "0"
+        }
+      }
+    },
+    {
+      "gammaMarketId": "2467356",
+      "slug": "what-price-will-ethereum-hit-before-2027",
+      "question": "Will Ethereum reach $3,000 by December 31, 2026?",
+      "rationale": "Coinbase, Circle, Strategy and Galaxy move with Ether's 2026 ladder (r 0.48-0.61).",
+      "markets": {
+        "COIN": {
+          "anchorBps": 1200,
+          "marketId": "81",
+          "rebate": "0"
+        },
+        "CRCL": {
+          "anchorBps": 1200,
+          "marketId": "82",
+          "rebate": "0"
+        },
+        "MSTR": {
+          "anchorBps": 1200,
+          "marketId": "83",
+          "rebate": "0"
+        },
+        "GLXY": {
+          "anchorBps": 1200,
+          "marketId": "84",
+          "rebate": "0"
+        }
+      }
+    },
+    {
+      "gammaMarketId": "3866000",
+      "slug": "what-price-will-ethereum-hit-before-2027",
+      "question": "Will Ethereum dip to $2,250 by December 31, 2026?",
+      "rationale": "A dip in Ether drags Coinbase, Circle, Strategy and Galaxy down (r -0.48 to -0.61 on the $1,500 low).",
+      "markets": {
+        "COIN": {
+          "anchorBps": -1200,
+          "marketId": "85",
+          "rebate": "0"
+        },
+        "CRCL": {
+          "anchorBps": -1200,
+          "marketId": "86",
+          "rebate": "0"
+        },
+        "MSTR": {
+          "anchorBps": -1200,
+          "marketId": "87",
+          "rebate": "0"
+        },
+        "GLXY": {
+          "anchorBps": -1200,
+          "marketId": "88",
+          "rebate": "0"
+        }
+      }
+    },
+    {
+      "gammaMarketId": "3215008",
+      "cutoff": "2026-12-09T18:30:00Z",
+      "slug": "fed-decision-in-december-20260729232808632",
+      "question": "Will the Fed increase interest rates by 25 bps after the December 2026 meeting?",
+      "rationale": "A December hike weighs on metals, bonds and rate-sensitive fintechs (SLV r -0.46, GLD r -0.44, 56 days).",
+      "markets": {
+        "SLV": {
+          "anchorBps": -1200,
+          "marketId": "89",
+          "rebate": "0"
+        },
+        "NU": {
+          "anchorBps": -1200,
+          "marketId": "90",
+          "rebate": "0"
+        },
+        "SOFI": {
+          "anchorBps": -1200,
+          "marketId": "91",
+          "rebate": "0"
+        },
+        "GLD": {
+          "anchorBps": -1200,
+          "marketId": "92",
+          "rebate": "0"
+        },
+        "BND": {
+          "anchorBps": -370,
+          "marketId": "93",
+          "rebate": "0"
+        }
+      }
+    },
+    {
+      "kalshiTicker": "KXGOLDDIRY-26DEC31H1700-T4400",
+      "cutoff": "2026-12-31T21:30:00Z",
+      "slug": "KXGOLDDIRY-26DEC31H1700",
+      "question": "Will the price of Gold be above 4400 on December 31, 2026 at 5 pm EST?",
+      "rationale": "Silver moves 1.89 times gold, so SLV follows gold's year-end close.",
+      "markets": {
+        "SLV": {
+          "anchorBps": 1200,
+          "marketId": "94",
+          "rebate": "0"
+        }
+      }
+    },
+    {
+      "kalshiTicker": "KXCPI-26OCT-T0.2",
+      "cutoff": "2026-11-10T13:00:00Z",
+      "slug": "KXCPI-26OCT",
+      "question": "Will CPI rise more than 0.2% in October 2026?",
+      "rationale": "Hot inflation is hawkish: gold and silver fall on an upside CPI surprise.",
+      "markets": {
+        "GLD": {
+          "anchorBps": -200,
+          "marketId": "95",
+          "rebate": "0"
+        },
+        "SLV": {
+          "anchorBps": -400,
+          "marketId": "96",
+          "rebate": "0"
+        }
+      }
+    },
+    {
+      "gammaMarketId": "676739",
+      "cutoff": "2026-12-31T20:30:00Z",
+      "slug": "largest-company-end-of-december-2026",
+      "question": "Will NVIDIA be the largest company in the world by market cap on December 31, 2026?",
+      "rationale": "NVIDIA and the chip ETF move with NVIDIA's odds of ending the year largest (NVDA r 0.43, t 7.1).",
+      "markets": {
+        "NVDA": {
+          "anchorBps": 1200,
+          "marketId": "97",
+          "rebate": "0"
+        },
+        "SMH": {
+          "anchorBps": 1200,
+          "marketId": "98",
+          "rebate": "0"
+        }
+      }
+    },
+    {
+      "gammaMarketId": "676741",
+      "cutoff": "2026-12-31T20:30:00Z",
+      "slug": "largest-company-end-of-december-2026",
+      "question": "Will Apple be the largest company in the world by market cap on December 31, 2026?",
+      "rationale": "Apple moves with its odds of ending the year largest (r 0.26, t 4.2).",
+      "markets": {
+        "AAPL": {
+          "anchorBps": 1200,
+          "marketId": "99",
+          "rebate": "0"
+        }
+      }
+    },
+    {
+      "gammaMarketId": "601826",
+      "cutoff": "2026-10-25T19:30:00Z",
+      "slug": "brazil-presidential-election",
+      "question": "Will Flávio Bolsonaro win the 2026 Brazilian presidential election?",
+      "rationale": "Nubank, Brazil's largest digital bank, moved +13% on the first-round result; trading stops before the Oct 25 runoff polls close.",
+      "markets": {
+        "NU": {
+          "anchorBps": 1200,
+          "marketId": "100",
+          "rebate": "0"
         }
       }
     }

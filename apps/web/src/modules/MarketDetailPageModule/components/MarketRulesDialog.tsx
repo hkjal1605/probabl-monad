@@ -1,5 +1,7 @@
 "use client";
+
 import { formatBps } from "@conditional-stocks/evm-client";
+import { EVENT_SOURCE_NAMES } from "@conditional-stocks/market-data";
 import { InfoIcon, XIcon } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -19,7 +21,8 @@ import type { MarketView } from "@/types/api";
 import { rulesTextParts, safeRulesLink } from "../utils/rulesText";
 
 export function MarketRulesDialog({ market }: { market: MarketView }) {
-  const source = safeRulesLink(market.mapping.polymarketUrl);
+  const source = safeRulesLink(market.mapping.sourceUrl);
+  const venue = EVENT_SOURCE_NAMES[market.mapping.source];
   return (
     <Dialog>
       <DialogTrigger render={<Button variant="link" size="sm" />}>Rules</DialogTrigger>
@@ -86,7 +89,7 @@ export function MarketRulesDialog({ market }: { market: MarketView }) {
             <AlertTitle>Market resolution</AlertTitle>
             <AlertDescription>
               These are the saved reference rules. Our market admin reviews the evidence and settles
-              this market on chain. Polymarket does not directly settle your positions here.
+              this market on chain. {venue} does not directly settle your positions here.
             </AlertDescription>
           </Alert>
           {source && (
@@ -96,7 +99,7 @@ export function MarketRulesDialog({ market }: { market: MarketView }) {
               rel="noopener noreferrer"
               className="self-start text-sm text-primary hover:underline underline-offset-4"
             >
-              View on Polymarket ↗
+              View on {venue} ↗
             </a>
           )}
         </div>

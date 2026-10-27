@@ -1,5 +1,5 @@
 import type { TokenReader } from "@conditional-stocks/indexer";
-import { type Fees, fetchPolymarket, fetchSpotPrices } from "@conditional-stocks/operator";
+import { type Fees, fetchEvent, fetchSpotPrices } from "@conditional-stocks/operator";
 import type { Address, PublicClient } from "viem";
 
 type SpotPricesResponse = Awaited<ReturnType<typeof fetchSpotPrices>>;
@@ -12,11 +12,11 @@ export interface TickSources {
   quote: Address;
   bases: readonly Address[];
   spotPrices?: typeof fetchSpotPrices;
-  polymarket?: typeof fetchPolymarket;
+  event?: typeof fetchEvent;
 }
 
 /** What the vaults quoted in one round share. Each read is made on first use and every later
- * user awaits the same promise: one spot-price request for every token, one Polymarket read per
+ * user awaits the same promise: one spot-price request for every token, one event read per
  * event (markets of different stocks on one event share it), one refresh of the issuers' state
  * and one fee estimate, however many vaults and markets the round quotes. */
 export class Tick {
@@ -33,12 +33,12 @@ export class Tick {
     return this.spot;
   }
 
-  /** Polymarket metadata and probability of `condition`, read through one of its markets. */
-  polymarket(market: number, condition: string) {
+  /** The event's metadata and probability of `condition`, read through one of its markets. */
+  event(market: number, condition: string) {
     const key = condition.toLowerCase();
     let event = this.events.get(key);
     if (!event) {
-      event = (this.sources.polymarket ?? fetchPolymarket)(this.sources.origin, market);
+      event = (this.sources.event ?? fetchEvent)(this.sources.origin, market);
       this.events.set(key, event);
     }
     return event;
@@ -47,7 +47,7 @@ export class Tick {
   /** Starts the reads a market's reference needs, so they overlap the chain reads. */
   prefetch(market: number, condition: string) {
     this.spotPrices().catch(() => undefined);
-    this.polymarket(market, condition).catch(() => undefined);
+    this.event(market, condition).catch(() => undefined);
   }
 
   /** The issuers' pause and UI multiplier of every quoted stock (one multicall). */

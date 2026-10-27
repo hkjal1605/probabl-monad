@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import { ConditionalStocksAdmin } from "../../src/ConditionalStocksAdmin.sol";
 import { ConditionalStocksBase } from "../../src/ConditionalStocksBase.sol";
 import { DeltaVault } from "../../src/vault/DeltaVault.sol";
 import { DeltaVaultAdmin } from "../../src/vault/DeltaVaultAdmin.sol";
@@ -194,7 +195,7 @@ contract VaultAuditFixesTest is VaultAuditBase {
         eq(ex.account(id, 0, vaultAdmin).base, b, "stock-if-YES paid");
         eq(ex.account(id, 1, vaultAdmin).base, b, "stock-if-NO paid");
         vm.prank(vaultAdmin);
-        cs.merge(id, 1, b);
+        ConditionalStocksAdmin(address(cs)).merge(id, 1, b);
         eq(ex.credit(vaultAdmin, address(x)), b, "merged into exchange credit");
     }
 

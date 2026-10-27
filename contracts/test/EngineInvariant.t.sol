@@ -236,7 +236,7 @@ contract EngineHandler {
         uint256 available = view_.credit(a, collateral == 0 ? address(usdc) : address(stock));
         if (available == 0) return;
         vm.prank(a);
-        cs.split(id, collateral, 1 + amount % (available / 8 + 1));
+        ConditionalStocksAdmin(address(cs)).split(id, collateral, 1 + amount % (available / 8 + 1));
     }
 
     function merge(uint256 seed, uint256 amount) external {
@@ -250,7 +250,7 @@ contract EngineHandler {
         uint256 max = yes < no ? yes : no;
         if (max == 0) return;
         vm.prank(a);
-        cs.merge(id, collateral, 1 + amount % max);
+        ConditionalStocksAdmin(address(cs)).merge(id, collateral, 1 + amount % max);
     }
 
     function transferClaim(uint256 seed, uint256 amount) external {
@@ -396,8 +396,8 @@ contract EngineInvariantTest is Base {
         for (uint256 i; i < actors.length; ++i) {
             vm.startPrank(actors[i]);
             for (uint256 j; j < markets.length; ++j) {
-                cs.split(markets[j], 0, 200_000e6);
-                cs.split(markets[j], 1, 2_000e18);
+                ConditionalStocksAdmin(address(cs)).split(markets[j], 0, 200_000e6);
+                ConditionalStocksAdmin(address(cs)).split(markets[j], 1, 2_000e18);
             }
             vm.stopPrank();
             holders.push(actors[i]);
@@ -636,11 +636,11 @@ contract EngineInvariantTest is Base {
         eq(uint256(y.notional) + n.notional, 0, "wallet notional after cancel-all");
         if (y.quote != 0 || n.quote != 0) {
             vm.prank(h);
-            cs.redeem(id, 0, y.quote, n.quote);
+            ConditionalStocksAdmin(address(cs)).redeem(id, 0, y.quote, n.quote);
         }
         if (y.base != 0 || n.base != 0) {
             vm.prank(h);
-            cs.redeem(id, 1, y.base, n.base);
+            ConditionalStocksAdmin(address(cs)).redeem(id, 1, y.base, n.base);
         }
     }
 

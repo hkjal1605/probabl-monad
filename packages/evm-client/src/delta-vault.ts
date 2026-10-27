@@ -28,7 +28,7 @@ export type DeltaVaultRole = keyof typeof DELTA_VAULT_ROLES;
 
 /** Contract bounds (DeltaVaultBase). */
 export const DELTA_VAULT_LIMITS = {
-  maxMarkets: 8,
+  maxMarkets: 48,
   maxOrders: 48,
   maxBandBps: 5000,
   maxCutoffBufferSeconds: 7 * 86_400,
@@ -265,9 +265,13 @@ const claims = (c: {
   noBase: c.noBase,
 });
 
-/** The vault in two multicall round trips: configuration and holdings, then its markets. Each
- * vault reads on its own: at its 8-market cap each read returns about 6 to 7 KB, and merged with
- * other vaults' reads they would pass the 24 KB a deployless multicall can return. */
+/** Markets whose terms, exposure and orders one deployless multicall reads: under 1 KB each, plus
+ * 32 bytes per resting order (48 at most), inside the 24 KB a deployless multicall can return. */
+const MARKETS_PER_READ = 16;
+
+/** The vault in two multicall round trips: configuration and holdings (about 14 KB at the
+ * 48-market cap), then its markets, in concurrent reads of `MARKETS_PER_READ`. Each vault reads
+ * on its own: merged with other vaults' reads, the first would pass the 24 KB limit. */
 export async function readDeltaVault(
   client: PublicClient,
   vault: Address,
@@ -317,18 +321,26 @@ export async function readDeltaVault(
       { ...read, functionName: "markets" },
     ],
   });
-  const [price, details] = await Promise.all([
+  const chunks: number[][] = [];
+  for (let i = 0; i < markets.length; i += MARKETS_PER_READ)
+    chunks.push(markets.slice(i, i + MARKETS_PER_READ));
+  const [price, ...reads] = await Promise.all([
     client.readContract({ ...read, functionName: "oraclePrice" }).catch(() => null),
-    direct.multicall({
-      allowFailure: false,
-      deployless: true,
-      contracts: markets.flatMap((id) => [
-        { ...read, functionName: "market", args: [id] } as const,
-        { ...read, functionName: "exposure", args: [id] } as const,
-        { ...read, functionName: "orders", args: [id] } as const,
-      ]),
-    }),
+    ...chunks.map((chunk) =>
+      direct.multicall({
+        allowFailure: false,
+        deployless: true,
+        // One call per chunk: chunks are sized to the return limit, not viem's calldata split.
+        batchSize: 0,
+        contracts: chunk.flatMap((id) => [
+          { ...read, functionName: "market", args: [id] } as const,
+          { ...read, functionName: "exposure", args: [id] } as const,
+          { ...read, functionName: "orders", args: [id] } as const,
+        ]),
+      }),
+    ),
   ]);
+  const details = reads.flat();
   const detail = <T>(index: number) => details[index] as unknown as T;
   return {
     address,
@@ -417,10 +429,16 @@ export function deltaVaultValue(
     PROB = 1_000_000n;
   let value = h.quote + (h.base * spot) / WAD;
   for (const m of h.markets) {
-    const p = probability(m.market);
-    if (p === null || p < 0n || p > PROB) return null;
     const yes = m.claims.yesQuote + (m.claims.yesBase * spot) / WAD,
       no = m.claims.noQuote + (m.claims.noBase * spot) / WAD;
+    // Equal (or no) claims on both branches are worth the same whatever the odds: a market the
+    // vault holds nothing unpaired in needs no probability.
+    if (yes === no) {
+      value += yes;
+      continue;
+    }
+    const p = probability(m.market);
+    if (p === null || p < 0n || p > PROB) return null;
     value += (yes * p + no * (PROB - p)) / PROB;
   }
   return value;

@@ -1,0 +1,37 @@
+Table S2a: average price impact (excl. fees) of one buy, full-range split-seeded pair
+   trade     C=$50k    C=$250k   C=$1000k   C=$5000k
+     $1k      4.00%      0.80%      0.20%      0.04%
+    $10k     40.00%      8.00%      2.00%      0.40%
+   $100k    400.00%     80.00%     20.00%      4.00%
+
+Table S2b: capital for <=1% average impact on a $10k buy (both branches), by range
+   range  factor     capital     LVR/yr per $ capital (sig=30/45/60%)
+    full     1.0  $2,000,000       1.1%      2.5%      4.5%
+   +-50%     5.4    $367,007       6.1%     13.8%     24.5%
+   +-30%     8.1    $245,884       9.2%     20.6%     36.6%
+   +-20%    11.5    $174,258      12.9%     29.1%     51.6%
+   +-10%    21.5     $93,075      24.2%     54.4%     96.7%
+    +-5%    41.5     $48,200      46.7%    105.0%    186.7%
+
+Table S2c: LVR in $ for the depth above (virtual V_full = $2M per branch pool; today's $ =
+p*LVR_YES + (1-p)*LVR_NO = sigma^2/8 * $2M) per year and per 30-day event, no fees
+  sigma=30%: $22,500/yr, $1,849 per 30 days; volume needed at 30 bp fee to cover it: $616,438 per 30 days
+  sigma=45%: $50,625/yr, $4,161 per 30 days; volume needed at 30 bp fee to cover it: $1,386,986 per 30 days
+  sigma=60%: $90,000/yr, $7,397 per 30 days; volume needed at 30 bp fee to cover it: $2,465,753 per 30 days
+
+Table S2d: fraction of LVR that survives fees, P_trade = 1/(1+sqrt(2*lam)*gamma/sigma_sec)
+  sigma=30%: dt=2s,g=10bp:9.7%  dt=2s,g=30bp:3.4%  dt=12s,g=10bp:20.8%  dt=12s,g=30bp:8.0%  dt=60s,g=10bp:36.9%  dt=60s,g=30bp:16.3%
+  sigma=45%: dt=2s,g=10bp:13.8%  dt=2s,g=30bp:5.1%  dt=12s,g=10bp:28.2%  dt=12s,g=30bp:11.6%  dt=60s,g=10bp:46.8%  dt=60s,g=30bp:22.7%
+  sigma=60%: dt=2s,g=10bp:17.6%  dt=2s,g=30bp:6.7%  dt=12s,g=10bp:34.4%  dt=12s,g=30bp:14.9%  dt=60s,g=10bp:54.0%  dt=60s,g=30bp:28.1%
+  Overnight/weekend gaps are discrete jumps: block speed does not reduce them (see S4).
+
+Table S2e: probability a concentrated range is exited within a 30-day event (GBM, MC 20k paths)
+  +-5%: 99.1% of events leave the range (zero depth on one side once out)
+  +-10%: 76.3% of events leave the range (zero depth on one side once out)
+  +-20%: 25.9% of events leave the range (zero depth on one side once out)
+  +-30%: 6.7% of events leave the range (zero depth on one side once out)
+
+S2f: resolution payoff check (random trades on both pools, then resolve)
+  YES: winning pool holds 430.3 stock + $58,095 -> LP worth $104,571 at S_T=108.0; the losing pool's reserves pay 0
+  NO: winning pool holds 466.2 stock + $53,625 -> LP worth $103,975 at S_T=108.0; the losing pool's reserves pay 0
+  So LP payoff = a CPMM LP position on the winning branch only, started at that branch's seed price.

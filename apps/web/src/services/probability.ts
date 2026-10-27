@@ -1,9 +1,20 @@
 import type { ProbabilityView } from "../types/api";
 import { apiUrl } from "./constants";
 
-export function probabilityStreamUrl(conditionId: string): string {
-  if (!/^0x[0-9a-fA-F]{64}$/.test(conditionId)) throw new Error("Invalid condition ID");
-  return apiUrl(`/v1/probabilities/${conditionId.toLowerCase()}/stream`);
+/** Conditions per probability stream (the API's limit). */
+export const PROBABILITY_BATCH_SIZE = 50;
+
+/** One stream for many conditions, so a page of cards holds one connection. */
+export function probabilityStreamUrl(conditionIds: string[]): string {
+  if (
+    !conditionIds.length ||
+    conditionIds.length > PROBABILITY_BATCH_SIZE ||
+    conditionIds.some((id) => !/^0x[0-9a-fA-F]{64}$/.test(id))
+  )
+    throw new Error("Invalid condition IDs");
+  return apiUrl(
+    `/v1/probabilities/stream?conditions=${conditionIds.map((id) => id.toLowerCase()).join(",")}`,
+  );
 }
 
 const qualities = new Set([

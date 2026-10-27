@@ -1,8 +1,9 @@
+import { memo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import type { TokenDisplayMetadata } from "@/lib/tokens/catalog";
 
-export function TokenIdentity({
+function TokenIdentityView({
   symbol,
   metadata,
   showName = true,
@@ -46,3 +47,6 @@ export function TokenIdentity({
     </InfoTooltip>
   );
 }
+
+/** Re-renders only when its token changes, not with every list update. */
+export const TokenIdentity = memo(TokenIdentityView);

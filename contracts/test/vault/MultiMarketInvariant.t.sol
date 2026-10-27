@@ -296,7 +296,7 @@ contract MultiHandler {
         address from = takers[seed % takers.length];
         amount = 1 + amount % 1e9;
         vm.startPrank(from);
-        try cs.split(id, base ? 1 : 0, amount) {
+        try ConditionalStocksAdmin(address(cs)).split(id, base ? 1 : 0, amount) {
             view_.transferClaim(id, uint8((seed >> 4) % 2), base ? 1 : 0, address(vault), amount);
         } catch { }
         vm.stopPrank();

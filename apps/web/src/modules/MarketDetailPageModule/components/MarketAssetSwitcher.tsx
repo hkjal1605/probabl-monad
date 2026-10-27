@@ -4,6 +4,7 @@ import { TokenIdentity } from "@/components/market/TokenIdentity";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useMarketCatalogue } from "@/hooks/useMarketCatalogue";
 import { marketPath } from "@/lib/markets/identity";
+import { cn } from "@/lib/utils";
 import type { MarketView } from "@/types/api";
 import { relatedMarkets } from "../utils/relatedMarkets";
 
@@ -13,7 +14,11 @@ export function MarketAssetSwitcher({ market }: { market: MarketView }) {
   return (
     <nav
       aria-label="Event assets"
-      className="ml-auto flex max-w-full items-center gap-1 overflow-x-auto rounded-xl p-1 sm:mt-0.5"
+      className={cn(
+        "ml-auto flex max-w-full items-center gap-1 overflow-x-auto rounded-xl p-1 sm:mt-0.5",
+        // On a phone a lone asset only repeats the stock token shown with the prices.
+        assets.length < 2 && !catalogue.error && "max-[899px]:hidden",
+      )}
     >
       {assets.map((asset) => (
         <Link

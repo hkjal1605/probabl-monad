@@ -1,5 +1,3 @@
-let healthyUntil = 0;
-
 import { SHARE_PROTOCOL_VERSION, tokenDecimals } from "@conditional-stocks/domain";
 import type { PositionView, WholeBalanceView } from "../types/api";
 
@@ -66,7 +64,10 @@ export function parsePosition(p: any): PositionView {
     p.protocolVersion !== SHARE_PROTOCOL_VERSION ||
     !address(p.baseToken) ||
     p.baseTokenDecimals !== p.shareDecimals ||
-    [p.quoteYes, p.quoteNo, p.baseYes, p.baseNo].some((n) => !amount(n, 96))
+    [p.quoteYes, p.quoteNo, p.baseYes, p.baseNo, p.pricedYes, p.pricedNo].some(
+      (n) => !amount(n, 96),
+    ) ||
+    [p.costYes, p.costNo].some((n) => !amount(n, 128))
   )
     throw new Error("Invalid streamed position");
   tokenDecimals(p.shareDecimals);
@@ -75,10 +76,52 @@ export function parsePosition(p: any): PositionView {
 }
 export const positionHasClaims = (p: PositionView) =>
   [p.quoteYes, p.quoteNo, p.baseYes, p.baseNo].some((value) => BigInt(value) > 0n);
+/** Resources the index stream keeps current: it refreshes them when a frame names them, so they
+ * neither poll nor age while the stream is healthy. */
+export const STREAMED_RESOURCES: ReadonlySet<string> = new Set([
+  "markets",
+  "wallet-orders",
+  "wallet-trades",
+  "positions",
+  "whole-balances",
+  "trading-readiness",
+  "payout-credits",
+  "resolution",
+]);
+
+/** Streamed resources that still change without a frame naming them, and how often they are read
+ * anyway while the stream is healthy: a wallet's token balances outside the exchange move with
+ * transfers and mints the index never sees. */
+export const STREAM_BACKSTOP_MS: Readonly<Record<string, number>> = { positions: 30_000 };
+
+// The stream's health, as a store that notifies only when it flips (a frame extends it; it lapses
+// on its own when frames stop), so subscribers don't re-render per frame.
+let healthyUntil = 0,
+  healthy = false,
+  lapse: ReturnType<typeof setTimeout> | undefined;
+const healthListeners = new Set<() => void>();
+const setHealth = (next: boolean) => {
+  if (next === healthy) return;
+  healthy = next;
+  for (const listener of healthListeners) listener();
+};
 export const setIndexStreamHealthy = (until: number) => {
   healthyUntil = until;
+  clearTimeout(lapse);
+  const left = until - Date.now();
+  if (left > 0) lapse = setTimeout(() => setHealth(false), left);
+  setHealth(left > 0);
 };
 export const indexStreamHealthy = () => Date.now() < healthyUntil;
+/** For `useSyncExternalStore`: the stream's health, notified on each change. */
+export const subscribeIndexHealth = (listener: () => void) => {
+  healthListeners.add(listener);
+  return () => {
+    healthListeners.delete(listener);
+  };
+};
+export const indexHealthSnapshot = () => healthy;
+export const indexHealthServerSnapshot = () => false;
 
 export function parseIndexUpdate(raw: string) {
   const value = JSON.parse(raw);

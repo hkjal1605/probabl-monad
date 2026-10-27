@@ -1,0 +1,193 @@
+list,rank,title,slug,category,subcategory,vol24h_usd,vol1wk_usd,vol1mo_usd,vol_total_usd,liquidity_usd,open_interest_usd,comments,end_date,n_markets,series_slug
+top15_1wk_politics/elections,1,Brazil Presidential Election,brazil-presidential-election,politics/elections,,956699,8305674,27822811,188761942,1054673,10862462,25690,2026-10-26T03:59,32,
+top15_1wk_politics/elections,2,Next French Presidential Election,next-french-presidential-election,politics/elections,,716429,3675367,14114483,154074771,19139732,3444910,997,2027-04-19T03:59,128,
+top15_1wk_politics/elections,3,Prime Minister of Israel after the next election?,who-will-be-the-next-prime-minister-of-israel-after-the-next-election,politics/elections,,525369,3179498,9929055,49122797,3086676,4383108,886,2026-10-28T03:59,28,
+top15_1wk_politics/elections,4,Balance of Power: 2026 Midterms,balance-of-power-2026-midterms,politics/elections,,493608,2940386,12763579,25501636,11689350,10181940,407,2026-11-04T04:59,5,
+top15_1wk_politics/elections,5,Brazil Presidential Election Second Round: Margin of Victory,brazil-presidential-election-second-round-margin-of-victory,politics/elections,,362264,2304267,3060397,3060394,426911,536211,5,2026-10-26T03:59,9,
+top15_1wk_politics/elections,6,Which party will win the House in 2026?,which-party-will-win-the-house-in-2026,politics/elections,,335534,2171955,6925402,18751954,6754309,9007899,14,2026-11-04T04:59,9,
+top15_1wk_politics/elections,7,Democratic Presidential Nominee 2028,democratic-presidential-nominee-2028,politics/elections,,595745,2079026,13177712,1295704794,74113392,8451015,844,2028-11-08T04:59,128,
+top15_1wk_politics/elections,8,Republican Presidential Nominee 2028,republican-presidential-nominee-2028,politics/elections,,323466,1935126,6506473,713790368,50118846,8901600,447,2028-11-08T04:59,128,
+top15_1wk_politics/elections,9,Presidential Election Winner 2028,presidential-election-winner-2028,politics/elections,,210672,1790977,9764555,717451078,58816407,40508924,1056,2028-11-08T04:59,128,
+top15_1wk_politics/elections,10,Who wins the Senate pending Hormuz Agreement by Oct 23?,who-wins-the-senate-pending-hormuz-agreement,politics/elections,,431282,1233783,2288200,2281082,120006,380765,4,2026-11-04T04:59,3,
+top15_1wk_politics/elections,11,Epstein client list released by...?,epstein-client-list-released-in-2025-372,politics/elections,,75,1219101,3246435,4376655,5824,3224,1049,2027-01-01T04:59,5,
+top15_1wk_politics/elections,12,Who wins the Senate pending Hormuz Agreement before the midterms?,who-wins-the-senate-pending-hormuz-agreement-before-the-midterms,politics/elections,,232217,1210233,1332772,1326458,145468,332071,0,2026-11-04T04:59,3,
+top15_1wk_politics/elections,13,Which party will win the Senate in 2026?,which-party-will-win-the-senate-in-2026,politics/elections,,89496,846331,2460308,7221406,6350975,2640408,220,2026-11-04T04:59,9,
+top15_1wk_politics/elections,14,Texas Senate Election Winner,texas-senate-election-winner,politics/elections,,199714,827663,2942068,4279976,898493,2505037,172,2026-11-04T04:59,13,
+top15_1wk_politics/elections,15,Who wins the Senate pending oil below $85 before the midterms?,who-wins-the-senate-pending-oil-below-85-before-the-midterms,politics/elections,,73082,675939,746903,746882,677046,60724,0,2026-11-04T04:59,4,
+top15_1wk_geopolitics/war,1,US-Iran ceasefire continues through...?,us-iran-ceasefire-continues-throughptptpt,geopolitics/war,,1793166,4423717,7367912,18846826,779841,1416453,0,2026-10-31T23:59,20,us-iran-ceasefire-continues
+top15_1wk_geopolitics/war,2,Israel x Iran ceasefire continues through...?,israel-x-iran-ceasefire-continues-throughptptpt-20260716224448963,geopolitics/war,,298762,1906877,3687567,37207318,239890,1341421,371,2026-12-31T20:29,29,
+top15_1wk_geopolitics/war,3,US announces end of Iranian blockade by...?,us-announces-end-of-iranian-blockade-byptptpt-20260713152715080,geopolitics/war,,325585,1578069,5994172,41569387,352543,1911234,837,2027-01-01T04:59,23,
+top15_1wk_geopolitics/war,4,Israel x Hamas ceasefire cancelled by...?,israel-x-hamas-ceasefire-cancelled-by-october-31,geopolitics/war,,0,1559004,3202538,4068178,12504,6579,979,2027-01-01T04:59,8,
+top15_1wk_geopolitics/war,5,Nicolás Maduro released from custody by...?,nicols-maduro-released-from-custody-by,geopolitics/war,,5,1504526,2396314,2690975,26048,86610,61,2027-01-01T04:59,3,
+top15_1wk_geopolitics/war,6,Will the U.S. invade Iran before 2027?,will-the-us-invade-iran-before-2027,geopolitics/war,,29803,759152,7307761,74662912,458596,6934196,1,2027-01-01T04:59,1,us-to-invade-iran
+top15_1wk_geopolitics/war,7,Will the U.S. invade Venezuela by...?,will-the-us-invade-venezuela-in-2025,geopolitics/war,,6397,713544,9534089,14219930,45500,43011,1176,2027-01-01T04:59,4,
+top15_1wk_geopolitics/war,8,Putin out as President of Russia by...?,putin-out-before-2027,geopolitics/war,,245352,711896,4112442,29689597,728835,7548684,1,2027-07-01T03:59,5,putin-out-as-president
+top15_1wk_geopolitics/war,9,Strait of Hormuz traffic returns to normal by October 31?,strait-of-hormuz-traffic-returns-to-normal-by-october-31-20260810151043583,geopolitics/war,,73260,666581,2166172,2916031,134459,1304884,0,2026-11-01T03:59,1,hormuz-traffic-returns-to-normal
+top15_1wk_geopolitics/war,10,NATO x Russia military clash by...?,nato-x-russia-military-clash-in-2025,geopolitics/war,,107739,656508,2585034,9503529,150175,1648977,285,2027-01-03T04:59,6,
+top15_1wk_geopolitics/war,11,US-Iran ceasefire continues through the midterms?,us-iran-ceasefire-continues-through-the-midterms,geopolitics/war,,170067,637480,806793,806156,307989,107327,0,2026-11-04T04:59,1,us-iran-ceasefire-continues
+top15_1wk_geopolitics/war,12,Strait of Hormuz traffic returns to normal by December 31?,strait-of-hormuz-traffic-returns-to-normal-by-december-31,geopolitics/war,,203956,633226,3410819,15267337,600929,1586093,0,2027-01-01T04:59,1,hormuz-traffic-returns-to-normal
+top15_1wk_geopolitics/war,13,Maduro's Wife Cilia Flores released from custody by...?,cilia-flores-released-from-custody-by,geopolitics/war,,72,524926,1051787,1384245,14470,11064,36,2027-01-01T04:59,3,
+top15_1wk_geopolitics/war,14,María Corina Machado enters Venezuela by...?,will-mara-corina-machado-enter-venezuela-by-january-31,geopolitics/war,,7414,496590,2986640,6684410,39323,49293,461,2027-01-01T04:59,15,
+top15_1wk_geopolitics/war,15,Israel x Hamas Ceasefire Phase II by...?,israel-x-hamas-ceasefire-phase-ii-by-october-31,geopolitics/war,,0,480555,1483841,2902259,12203,21214,357,2027-01-01T04:59,9,
+top15_1wk_economy/Fed/macro,1,Fed Decision in October?,fed-decision-in-october-20260617190323537,economy/Fed/macro,,2725713,16209720,42139909,49929109,4783148,7343479,0,2026-10-29T03:59,5,fomc
+top15_1wk_economy/Fed/macro,2,Fed Decision in December?,fed-decision-in-december-20260729232808632,economy/Fed/macro,,139440,1072571,3020246,4113027,802579,569769,0,2026-12-10T04:59,5,fomc
+top15_1wk_economy/Fed/macro,3,How many Fed rate cuts in 2026?,how-many-fed-rate-cuts-in-2026,economy/Fed/macro,,31270,435486,1402923,54531363,3742589,1937564,127,2027-01-01T04:59,13,
+top15_1wk_economy/Fed/macro,4,Fed Decision in January?,fed-decision-in-january-20260729233815502,economy/Fed/macro,,47771,267085,519056,612742,549052,121355,0,2027-01-28T04:59,5,fomc
+top15_1wk_economy/Fed/macro,5,Another Fed rate hike in 2026?,another-fed-rate-hike-in-2026,economy/Fed/macro,,7036,229960,807003,877328,122951,398392,0,2026-12-10T04:59,1,fed-rate-hike
+top15_1wk_economy/Fed/macro,6,Fed rate cut by...?,fed-rate-cut-by-629,economy/Fed/macro,,1362,211258,702243,3798449,116639,153965,31,2028-01-29T04:59,13,
+top15_1wk_economy/Fed/macro,7,How many Fed rate hikes in 2026?,how-many-fed-rate-hikes-in-2026-20260623190717369,economy/Fed/macro,,9965,174775,582343,1119154,184001,193318,0,2027-01-01T04:59,6,
+top15_1wk_economy/Fed/macro,8,Bank of Canada Decision in October?,bank-of-canada-decision-in-october-20260715203359314,economy/Fed/macro,,122360,140107,216878,307981,60860,70479,0,2026-10-28T00:00,5,bank-of-canada-decision
+top15_1wk_economy/Fed/macro,9,What will the Fed rate be at the end of 2026?,what-will-the-fed-rate-be-at-the-end-of-2026,economy/Fed/macro,,1647,88497,175437,7081848,152505,48894,5,2027-01-01T04:59,15,
+top15_1wk_economy/Fed/macro,10,Fed decisions (Sep–Dec),fed-decisions-sepdec,economy/Fed/macro,,1011,80847,249822,375421,68362,90010,0,2026-12-09T23:59,9,fed-3-parlay
+top15_1wk_economy/Fed/macro,11,How low will 10-year Treasury yield get before 2027?,how-low-will-10-year-treasury-yield-get-before-2027,economy/Fed/macro,,1429,66651,78785,414756,61787,44753,3,2027-01-01T04:59,16,
+top15_1wk_economy/Fed/macro,12,ECB Interest Rates: October 2026,ecb-interest-rates-october-2026-20260723225848778,economy/Fed/macro,,9481,64517,378089,638168,69569,146867,0,2026-10-30T03:59,5,ecb-interest-rates
+top15_1wk_economy/Fed/macro,13,Bank of England decision in November?,bank-of-england-decision-in-november-20260730150602252,economy/Fed/macro,,23549,62946,266593,391222,45620,97590,0,2026-11-05T23:59,5,bank-of-england-decision
+top15_1wk_economy/Fed/macro,14,Bank of Russia decision in October?,bank-of-russia-decision-in-october-20260724021538830,economy/Fed/macro,,36801,62290,102665,136672,52817,44241,0,2026-10-24T03:59,3,bank-of-russia-decision
+top15_1wk_economy/Fed/macro,15,Bank of Israel Decision in October?,bank-of-israel-decision-in-october,economy/Fed/macro,,6257,49875,85975,109923,19023,26284,0,2026-10-21T00:00,3,bank-of-israel-decision
+top15_1wk_finance/stocks/earnings,1,What will WTI Crude Oil (WTI) hit in October 2026?,what-price-will-wti-hit-in-october-2026,finance/stocks/earnings,,191101,1064753,2842914,3162087,588787,1178305,0,2026-11-01T03:59,30,crude-oil-cl-hit
+top15_1wk_finance/stocks/earnings,2,Anthropic IPO by __?,anthropic-ipo-by,finance/stocks/earnings,,48391,500734,1368681,5136214,223815,690507,51,2027-01-01T04:59,10,
+top15_1wk_finance/stocks/earnings,3,Largest Company end of December 2026?,largest-company-end-of-december-2026,finance/stocks/earnings,,37546,490002,1129449,8618211,1062394,534261,0,2027-01-01T04:59,28,largest-company
+top15_1wk_finance/stocks/earnings,4,Anthropic IPO Closing Market Cap,anthropic-ipo-closing-market-cap-higher-strikes,finance/stocks/earnings,,64602,446322,1129282,1987756,226593,113048,0,2028-01-01T04:59,10,anthropic-ipo
+top15_1wk_finance/stocks/earnings,5,Largest Company end of October 2026?,largest-company-end-of-october-2026,finance/stocks/earnings,,13683,283063,445535,596467,141617,123053,0,2026-11-01T03:59,25,largest-company
+top15_1wk_finance/stocks/earnings,6,IPOs before 2027?,ipos-before-2027,finance/stocks/earnings,,9184,234624,490770,7546398,401351,385060,0,2027-01-01T04:59,35,yearly-ipos
+top15_1wk_finance/stocks/earnings,7,Crude Oil all time high by...?,crude-oil-all-time-high-by,finance/stocks/earnings,,6667,179906,679275,5002715,143309,720913,41,2027-01-01T04:59,5,
+top15_1wk_finance/stocks/earnings,8,US imports Russian diesel by...?,us-imports-russian-diesel-by-october-31,finance/stocks/earnings,,20552,143891,321627,321518,20439,80617,30,2026-12-01T04:59,3,
+top15_1wk_finance/stocks/earnings,9,Largest IPO by market cap in 2026?,largest-ipo-by-market-cap-in-2026-287,finance/stocks/earnings,,6015,100619,385038,6641229,579858,663662,50,2027-01-02T04:59,74,
+top15_1wk_finance/stocks/earnings,10,What will Gold (XAUUSD) hit in October 2026?,what-price-will-xauusd-hit-in-october-2026,finance/stocks/earnings,,17990,96919,225160,342204,216440,137483,0,2026-11-01T03:59,24,xauusd-hit-month
+top15_1wk_finance/stocks/earnings,11,What will S&P 500 (SPY) hit in October 2026?,what-price-will-spy-hit-in-october-2026,finance/stocks/earnings,,14449,77619,149686,170836,183978,49220,0,2026-11-01T03:59,24,spy-hit-month
+top15_1wk_finance/stocks/earnings,12,How high will 10-year Treasury yield go before 2027?,how-high-will-10-year-treasury-yield-go-before-2027,finance/stocks/earnings,,1218,67945,379158,1033183,38728,147829,0,2027-01-01T04:59,13,10-year-treasur
+top15_1wk_finance/stocks/earnings,13,OpenAI IPO Closing Market Cap,openai-ipo-closing-market-cap-554,finance/stocks/earnings,,7798,58964,182626,522364,135569,37111,0,2028-01-01T04:59,7,openai-ipo
+top15_1wk_finance/stocks/earnings,14,Will USD/KRW hit __ in 2026?,will-usdkrw-hit-in-2026,finance/stocks/earnings,,0,58665,73076,137605,2487,2404,2,2026-12-31T00:00,13,
+top15_1wk_finance/stocks/earnings,15,What will Gold (GC) hit__ by end of December?,what-will-gold-gc-hit-by-end-of-december,finance/stocks/earnings,,2062,53943,310063,2055324,377424,966857,0,2027-01-01T04:59,12,what-will-gold-gc-hit
+top15_1wk_crypto,1,What price will Bitcoin hit in October?,what-price-will-bitcoin-hit-in-october-2026,crypto,,292224,2582625,7939982,8895715,1861712,3129169,0,2026-11-01T04:00,35,bitcoin-hit-price-monthly
+top15_1wk_crypto,2,What price will Bitcoin hit in 2026?,what-price-will-bitcoin-hit-before-2027,crypto,,289333,2521716,10369124,76597219,3520403,14073102,0,2027-01-01T05:00,47,bitcoin-hit-price-monthly
+top15_1wk_crypto,3,Will MetaMask launch a token by ___ ?,will-metamask-launch-a-token-in-2025,crypto,,30,914181,1541702,8724188,5895,68771,323,2027-01-01T04:59,4,
+top15_1wk_crypto,4,What price will Ethereum hit in 2026?,what-price-will-ethereum-hit-before-2027,crypto,,15688,752349,3755996,18149992,1568891,5972808,0,2027-01-01T05:00,30,ethereum-hit-price-monthly
+top15_1wk_crypto,5,What price will Ethereum hit in October?,what-price-will-ethereum-hit-in-october-2026,crypto,,76090,699877,1983084,2278866,1295765,993693,0,2026-11-01T04:00,37,ethereum-hit-price-monthly
+top15_1wk_crypto,6,Bitcoin above ___ on October 20?,bitcoin-above-on-october-20-2026,crypto,,376241,538858,538858,544471,672867,328754,0,2026-10-20T16:00,11,btc-multi-strikes-weekly
+top15_1wk_crypto,7,Pump.fun airdrop by ....? ,pumpfun-airdop-by,crypto,,0,506339,1756593,2792972,1686,33293,267,2027-01-01T05:00,8,
+top15_1wk_crypto,8,Will Base launch a token by ___ ?,will-base-launch-a-token-in-2025-341,crypto,,1084,402259,2181603,8048198,33057,155540,181,2028-01-01T04:59,6,
+top15_1wk_crypto,9,When will Bitcoin hit $150k?,when-will-bitcoin-hit-150k,crypto,,67,331084,901340,27309734,99346,245512,78,2027-01-01T05:00,9,
+top15_1wk_crypto,10,What price will Plasma hit in 2026?,what-price-will-plasma-hit-before-2027,crypto,,0,285269,286657,305183,28450,4452,10,2027-01-01T04:59,19,
+top15_1wk_crypto,11,Ethereum above ___ on October 20?,ethereum-above-on-october-20-2026,crypto,,192944,275925,275925,273974,344314,176114,0,2026-10-20T16:00,11,ethereum-multi-strikes-weekly
+top15_1wk_crypto,12,Papertrade FDV above ___ one day after launch?,papertrade-fdv-above-one-day-after-launch,crypto,,104080,239779,280128,284480,188332,175237,10,2028-01-01T05:00,8,
+top15_1wk_crypto,13,Bitcoin above ___ on October 21?,bitcoin-above-on-october-21-2026,crypto,,59094,219377,219377,218365,455479,166851,0,2026-10-21T16:00,11,btc-multi-strikes-weekly
+top15_1wk_crypto,14,STRC hits $100 by…,strc-hits-100-by-20260618001620693,crypto,,19952,166199,273087,1428118,10153,243638,0,2027-01-01T04:59,5,strc-hits-100-by
+top15_1wk_crypto,15,What price will Solana hit in October?,what-price-will-solana-hit-in-october-2026,crypto,,25686,152018,320980,411348,799417,235727,0,2026-11-01T04:00,30,solana-hit-price-monthly
+top15_1wk_tech,1,Tesla and SpaceX merger officially announced by...?,tesla-and-spacex-merger-officially-announced-by-june-30,tech,,33484,140652,204511,1464019,46283,137773,26,2028-01-01T04:59,7,
+top15_1wk_tech,2,AI bubble burst by...?,ai-bubble-burst-by,tech,,7497,89119,247103,3109874,28520,126937,99,2027-01-01T04:59,4,
+top15_1wk_tech,3,SCOTUS accepts sports event contract case by...?     ,scotus-accepts-sports-event-contract-case-by-july-31-2026,tech,,317,66508,73956,1062550,34261,13503,6,2027-01-01T04:59,3,
+top15_1wk_tech,4,CoreWeave announces bankruptcy by...?,coreweave-announces-bankruptcy-by,tech,,3572,54745,102521,273504,87452,56434,3,2030-01-01T04:59,3,
+top15_1wk_tech,5,Will Apple release a foldable iPhone by...?,will-apple-release-a-foldable-iphone-before-2027,tech,,2915,44179,132378,1193665,46205,212867,28,2027-01-01T04:59,6,
+top15_1wk_tech,6,NuScale announces bankruptcy by...?,nuscale-announces-bankruptcy-by,tech,,9193,28227,32916,288149,78247,20330,0,2030-01-01T04:59,3,
+top15_1wk_tech,7,GTA 6 launch postponed again?,gta-6-launch-postponed-again,tech,,1664,20208,60371,866274,32697,277392,89,2026-11-20T04:59,1,
+top15_1wk_tech,8,Will Apple release a new product line before 2027?,will-apple-release-a-new-product-line-before-2027,tech,,60,15780,42500,353237,5018,21283,47,2027-01-01T04:59,1,
+top15_1wk_tech,9,#1 Searched Actor on Google 2026?,1-searched-actor-on-google-2026-20260718202053341,tech,,179,12332,18625,115355,243690,15333,4,2027-04-01T03:59,78,
+top15_1wk_tech,10,Will Apple release a touchscreen MacBook in 2026?,will-apple-release-a-touchscreen-macbook-in-2026,tech,,3892,8922,44911,117449,11966,56369,15,2027-01-01T04:59,1,
+top15_1wk_tech,11,#1 Searched Passing on Google 2026?,1-searched-passings-on-google-this-year-20260717220846800,tech,,175,8518,29043,138192,375777,19012,3,2027-04-01T03:59,70,
+top15_1wk_tech,12,Longest GitHub critical incident in October?,longest-github-critical-incident-in-october,tech,,378,8247,21012,25462,4318,2762,0,2026-11-01T03:59,5,longest-github-critical-incident
+top15_1wk_tech,13,Another critical Cloudflare incident by...?,another-critical-cloudflare-incident-byptptpt-20261007,tech,,2119,6444,9544,8834,21492,2411,0,2027-01-01T04:59,3,critical-cloudflare-incident
+top15_1wk_tech,14,SpaceX becomes a US mobile carrier by ___?,spacex-becomes-a-us-mobile-carrier-by,tech,,279,5722,10675,18088,6107,3416,0,2028-01-01T04:59,2,
+top15_1wk_tech,15,Top 5 Most Searched Athletes on Google 2026,top-5-most-searched-athletes-on-google-2026,tech,,4402,5592,14263,49596,11867,12201,0,2026-12-31T23:59,14,
+top15_1wk_AI,1,Indiana enacts data center moratorium by...?,indiana-enacts-data-center-moratorium-by-20260929,AI,,28527,2676359,5451723,6073378,789946,302840,3,2029-01-01T04:59,4,
+top15_1wk_AI,2,Which company has the best AI model end of October?,which-company-has-the-best-ai-model-end-of-october,AI,,59859,486060,1998857,2957360,1510947,463341,0,2026-10-31T16:00,32,best-ai-company
+top15_1wk_AI,3,Will Anthropic’s valuation hit __ by December 31?,will-anthropics-valuation-hit-by-december-31,AI,,59512,448496,973109,5868426,312010,1918082,0,2027-01-05T04:59,13,anthropic-valuation
+top15_1wk_AI,4,Anthropic announces bankruptcy by...?,anthropic-announces-bankruptcy-by,AI,,228108,346492,2028203,2073355,822581,1190553,12,2030-01-01T04:59,3,
+top15_1wk_AI,5,Next Fable Model (5.2+) released by...?,next-fable-model-5pt2-released-byptptpt,AI,,61226,215807,373110,659976,21461,166712,8,2026-12-31T23:59,14,
+top15_1wk_AI,6,Which company has best AI model end of 2026?,which-company-has-best-ai-model-end-of-2026,AI,,22765,161916,1223373,2615162,1220787,212221,0,2026-12-31T17:00,26,best-ai-company
+top15_1wk_AI,7,Louisiana enacts data center moratorium by...?,louisiana-enacts-data-center-moratorium-by-20260929,AI,,3226,137485,382883,703128,165350,86729,0,2029-01-01T04:59,4,
+top15_1wk_AI,8,Next Fable Model (5.2+) released on...?,next-fable-model-5pt2-released-onptptpt-20261002,AI,,25110,112406,142840,179182,26665,19947,4,2026-11-01T03:59,30,
+top15_1wk_AI,9,GPT Astra 6.1+ released by...?,gpt-astra-6pt1-released-byptptpt,AI,,11014,96552,246615,334141,15661,95577,24,2026-12-31T23:59,5,
+top15_1wk_AI,10,OpenAI announces another Millennium Prize solution by...?,openai-announces-another-millennium-prize-solution-by,AI,,297,93425,609729,919645,93065,173356,15,2028-01-01T04:59,3,
+top15_1wk_AI,11,Who will the OpenAI spy be accused of working for in 2026?,who-will-the-openai-spy-be-accused-of-working-for-in-2026,AI,,9504,64262,64262,129002,161406,30731,2,2027-01-01T04:59,10,
+top15_1wk_AI,12,Texas enacts data center moratorium by...?,texas-enacts-data-center-moratorium-by-20260928,AI,,20216,62738,609906,752718,122380,23867,2,2029-01-01T04:59,4,
+top15_1wk_AI,13,Which company has the best AI model end of November?,which-company-has-the-best-ai-model-end-of-november,AI,,19698,59951,305891,341625,140634,51215,0,2026-12-01T04:59,35,best-ai-company
+top15_1wk_AI,14,Next Claude Haiku Model (4.6+): Text Arena Debut?,next-claude-haiku-model-4pt6-text-arena-debut-20260930,AI,,3279,46378,94405,94405,9925,29797,4,2027-07-01T03:59,4,
+top15_1wk_AI,15,Next Fable Model (5.2+): Text Arena Debut?,next-fable-model-5pt2-text-arena-debut-20260928,AI,,7164,40957,45890,45890,11889,13495,4,2027-07-01T03:59,5,
+top15_1wk_sports,1,Ballon d'Or Winner 2026,ballon-dor-winner-2026,sports,Soccer,1410511,5835007,17332098,54672610,11332653,4292073,1217,2027-01-01T04:59,89,
+top15_1wk_sports,2,UEFA Champions League: 2027 Champion,uefa-champions-league-2027-champion-20260701202025549,sports,Soccer,948336,4975699,17694386,55876853,10926424,1182055,46,2027-06-20T03:59,42,
+top15_1wk_sports,3,Pro Football: 2027 Champion,pro-football-2027-champion-20260729185915366,sports,NFL,181125,3042630,11065218,68552156,6705846,1064932,67,2027-04-01T03:59,33,
+top15_1wk_sports,4,NBA: 2027 Champion,nba-2027-champion,sports,NBA,124535,1357532,4332825,26593094,8557220,740665,30,2027-07-01T03:59,36,
+top15_1wk_sports,5,LALIGA: 2027 Champion,laliga-2027-champion-20260701200737375,sports,Soccer,150203,877606,1910337,8943035,5374623,344850,3,2027-06-15T03:59,24,
+top15_1wk_sports,6,EPL: 2027 Champion,epl-2027-champion-20260701200428749,sports,Soccer,151917,857356,4276939,22776812,9957988,2182430,47,2027-06-15T03:59,24,
+top15_1wk_sports,7,MLB World Series Champion 2026,mlb-world-series-champion-2026,sports,MLB,185997,753852,1683699,45470153,261453,687825,47,2026-10-31T23:55,31,
+top15_1wk_sports,8,Ballon d'Or 2026: Kylian Mbappé or Lamine Yamal to finish higher?,ballon-dor-2026-kylian-mbappe-or-lamine-yamal-to-finish-higher,sports,Soccer,85739,487803,568722,568622,43806,339415,63,2027-01-01T04:59,1,
+top15_1wk_sports,9,Paris Saint-Germain FC vs. FC Barcelona - More Markets,ucl-psg-fcb-2026-10-20-more-markets,sports,Soccer,305077,378290,378310,355037,1917630,344840,0,2026-10-20T19:00,60,ucl-2025
+top15_1wk_sports,10,Manchester City FC vs. AEK,ucl-mnc-aek1-2026-10-20,sports,Soccer,242240,357966,358288,358248,737867,300432,0,2026-10-20T19:00,3,ucl-2025
+top15_1wk_sports,11,Ningbo Open: Yulia Putintseva vs Diana Shnaider,wta-putints-shnaide-2026-10-19,sports,Tennis,318376,318500,318500,310835,227073,175089,0,2026-10-27T02:00,16,wta
+top15_1wk_sports,12,Paris Saint-Germain FC vs. FC Barcelona,ucl-psg-fcb-2026-10-20,sports,Soccer,144735,300181,300323,294583,2181926,251716,0,2026-10-20T19:00,3,ucl-2025
+top15_1wk_sports,13,SSC Napoli vs. FK Bodø/Glimt,ucl-nap-bog-2026-10-20,sports,Soccer,257457,260949,261005,260978,660601,252890,0,2026-10-20T19:00,3,ucl-2025
+top15_1wk_sports,14,Japan Women's Open: Paula Badosa vs Antonia Ruzic,wta-badosa-ruzic-2026-10-18,sports,Tennis,246063,247663,247663,207573,113163,159358,0,2026-10-26T01:00,16,wta
+top15_1wk_sports,15,Japan Women's Open: Moyuka Uchijima vs Ena Shibahara,wta-uchijim-shibaha-2026-10-18,sports,Tennis,239488,243269,243269,222112,260364,136127,0,2026-10-26T01:00,16,wta
+top15_1wk_esports,1,Worlds 2026: Winner,worlds-2026-winner,esports,League of Legends,218727,1181344,1776932,1898591,2105432,248295,12,2026-11-29T04:59,20,
+top15_1wk_esports,2,LoL: G2 Esports vs Dplus KIA (BO1) - Worlds Group Stage,lol-g2-dk-2026-10-23,esports,League of Legends,119885,158498,158498,158284,224055,154086,0,2026-10-24T02:00,6,league-of-legends
+top15_1wk_esports,3,Worlds 2026 Winning Region,lol-worlds-2026-winning-region-226,esports,League of Legends,19883,126660,224123,783688,826939,147247,27,2027-01-01T04:59,7,
+top15_1wk_esports,4,LoL: Anyone's Legend vs Karmine Corp (BO1) - Worlds Group Stage,lol-al-kc-2026-10-23,esports,League of Legends,32971,84326,84326,83348,155035,82129,0,2026-10-24T01:00,6,league-of-legends
+top15_1wk_esports,5,Counter-Strike: TheMongolz vs BIG (BO3) - 1win Private Club Playoffs,cs2-mglz-big5-2026-10-20,esports,Counter-Strike,82325,82325,82325,82156,79852,79019,0,2026-10-20T21:00,12,counter-strike
+top15_1wk_esports,6,Counter-Strike: Alliance vs PRIVATE (BO3) - 1win Private Club Playoffs,cs2-all-priv-2026-10-20,esports,Counter-Strike,64795,64795,64795,64629,188479,62471,0,2026-10-20T15:00,11,counter-strike
+top15_1wk_esports,7,Counter-Strike: Lynn Vision vs Morningstar (BO3) - VOID Autumn Cup Playoffs,cs2-lvg-mornin-2026-10-19,esports,Counter-Strike,58633,58633,58633,58633,111753,33774,0,2026-10-20T09:20,4,counter-strike
+top15_1wk_esports,8,Counter-Strike: Liquid vs magic (BO3) - 1win Private Club Playoffs,cs2-tl1-mgc-2026-10-20,esports,Counter-Strike,47757,47757,47757,47520,71233,45909,0,2026-10-20T18:00,11,counter-strike
+top15_1wk_esports,9,LoL: Gen.G vs Invictus Gaming (BO1) - Worlds Group Stage,lol-gen-ig1-2026-10-23,esports,League of Legends,20281,44672,44672,44358,184000,40749,0,2026-10-23T23:00,6,league-of-legends
+top15_1wk_esports,10,Worlds 2026: Finals MVP,worlds-2026-finals-mvp,esports,League of Legends,7064,27874,40839,57958,82203,12413,0,2026-11-29T04:59,68,
+top15_1wk_esports,11,LoL: LOS vs T1 (BO1) - Worlds Group Stage,lol-los-t1-2026-10-23,esports,League of Legends,10083,24025,24025,23976,152908,23171,0,2026-10-24T04:00,6,league-of-legends
+top15_1wk_esports,12,Counter-Strike: Alter Ego vs Rare Atom (BO3) - VOID Autumn Cup Playoffs,cs2-ae2-ra1-2026-10-20,esports,Counter-Strike,22188,22188,22188,22114,198721,17932,0,2026-10-20T11:00,4,counter-strike
+top15_1wk_esports,13,LoL: Galions vs Solary (BO5) - EMEA Masters Playoffs,lol-gal-sly-2026-10-22,esports,League of Legends,2821,19768,19768,20342,31936,16867,0,2026-10-22T18:00,32,league-of-legends
+top15_1wk_esports,14,LoL: Hanwha Life Esports vs Top Esports (BO1) - Worlds Group Stage,lol-hle1-tes-2026-10-23,esports,League of Legends,12512,19244,19244,19066,102232,17665,0,2026-10-24T03:00,6,league-of-legends
+top15_1wk_esports,15,Counter-Strike: Eternal Fire vs Infinite (BO3) - DraculaN Playoffs,cs2-ef1-inf6-2026-10-20,esports,Counter-Strike,19036,19036,19036,18607,37776,17874,0,2026-10-20T17:00,9,counter-strike
+top15_1wk_weather/climate/science,1,Will the US confirm that aliens exist by...?,will-the-us-confirm-that-aliens-exist-before-2027,weather/climate/science,,141702,1146538,4518634,74303911,783817,8588469,1734,2027-01-01T04:59,7,
+top15_1wk_weather/climate/science,2,Highest temperature in Cape Town on October 18?,highest-temperature-in-cape-town-on-october-18-2026,weather/climate/science,,21988,318519,318519,331964,23591,104625,0,2026-10-18T12:00,11,cape-town-daily-weather
+top15_1wk_weather/climate/science,3,Measles cases in U.S. in 2026?,measles-cases-in-us-in-2026,weather/climate/science,,45421,161022,350304,8156047,18619,92754,0,2027-01-01T04:59,17,measles
+top15_1wk_weather/climate/science,4,Highest temperature in Paris on October 19?,highest-temperature-in-paris-on-october-19-2026,weather/climate/science,,86912,126812,126812,126812,12805,33594,0,2026-10-19T12:00,11,paris-daily-weather
+top15_1wk_weather/climate/science,5,Plague pandemic in 2026?,plague-pandemic-in-2026,weather/climate/science,,942,91866,494586,494586,104092,126276,2,2027-01-01T04:59,1,
+top15_1wk_weather/climate/science,6,Highest temperature in Shanghai on October 20?,highest-temperature-in-shanghai-on-october-20-2026,weather/climate/science,,73238,83549,83549,83316,16765,35170,0,2026-10-20T12:00,11,shanghai-daily-weather
+top15_1wk_weather/climate/science,7,Highest temperature in Tokyo on October 20?,highest-temperature-in-tokyo-on-october-20-2026,weather/climate/science,,69232,81054,81054,85854,14512,33769,0,2026-10-20T12:00,11,tokyo-daily-weather
+top15_1wk_weather/climate/science,8,Highest temperature in Hong Kong on October 20?,highest-temperature-in-hong-kong-on-october-20-2026,weather/climate/science,,65239,71224,71224,70310,71501,32785,0,2026-10-20T12:00,11,hong-kong-daily-weather
+top15_1wk_weather/climate/science,9,Highest temperature in Madrid on October 19?,highest-temperature-in-madrid-on-october-19-2026,weather/climate/science,,47971,70094,70094,70686,9295,28140,0,2026-10-19T12:00,11,madrid-daily-weather
+top15_1wk_weather/climate/science,10,Highest temperature in Wellington on October 20?,highest-temperature-in-wellington-on-october-20-2026,weather/climate/science,,52455,69803,69803,69222,12768,34461,0,2026-10-20T12:00,11,wellington-daily-weather
+top15_1wk_weather/climate/science,11,Will the Doge-1 Lunar Mission launch by...?,will-the-doge-1-lunar-mission-launch-before-2027,weather/climate/science,,64596,69764,126007,1120711,18269,121791,45,2028-01-01T04:59,3,
+top15_1wk_weather/climate/science,12,Highest temperature in Denver on October 19?,highest-temperature-in-denver-on-october-19-2026,weather/climate/science,,42757,60412,60412,60412,31725,29009,0,2026-10-19T12:00,11,denver-daily-weather
+top15_1wk_weather/climate/science,13,Highest temperature in Amsterdam on October 19?,highest-temperature-in-amsterdam-on-october-19-2026,weather/climate/science,,37482,59115,59115,59090,5533,30877,0,2026-10-19T12:00,11,amsterdam-daily-weather
+top15_1wk_weather/climate/science,14,Highest temperature in Milan on October 19?,highest-temperature-in-milan-on-october-19-2026,weather/climate/science,,25218,53769,53769,55339,9090,29266,0,2026-10-19T12:00,11,milan-daily-weather
+top15_1wk_weather/climate/science,15,How many tropical cyclones will make landfall in China during 2026?,how-many-tropical-cyclones-will-make-landfall-in-china-during-2026-20260805184236864,weather/climate/science,,6093,52859,132532,192522,13835,24986,5,2027-07-01T03:59,6,
+top15_1wk_culture/entertainment/awards,1,"New ""Stranger Things"" episode released by...? ",new-stranger-things-episode-released-by-wednesday,culture/entertainment/awards,,0,19309692,27726455,30906011,107284,303627,732,2027-04-01T03:59,12,
+top15_1wk_culture/entertainment/awards,2,# of views of Grand Theft Auto VI Launch Trailer on week 1?,of-views-of-grand-theft-auto-vi-launch-trailer-on-week-1,culture/entertainment/awards,,210961,626280,626280,636757,54508,96364,0,2026-10-23T03:59,7,gta-vi-extended-look-views
+top15_1wk_culture/entertainment/awards,3,Which movie has biggest opening weekend in 2026?,which-movie-has-biggest-opening-weekend-in-2026,culture/entertainment/awards,,9298,159039,308656,2440354,104896,165667,0,2027-02-01T04:59,27,biggest-opening-weekend
+top15_1wk_culture/entertainment/awards,4,"""Resident Evil"" total domestic gross by October 31?",resident-evil-total-domestic-gross-by-october-31,culture/entertainment/awards,,8192,111258,245052,264512,44982,51047,0,2026-10-31T23:59,7,box-office-total-gross
+top15_1wk_culture/entertainment/awards,5,Will Jesus Christ return before 2027?,will-jesus-christ-return-before-2027,culture/entertainment/awards,,6901,103408,741695,66578380,407737,1015355,1,2027-01-01T04:59,1,jesus-christ-return
+top15_1wk_culture/entertainment/awards,6,Kanye West performs in Russia by October 31?,kanye-west-performs-in-russia-by-october-31,culture/entertainment/awards,,534,93942,469257,1059512,16947,203196,414,2026-11-01T03:59,1,
+top15_1wk_culture/entertainment/awards,7,Next James Bond actor?,next-james-bond-actor-398,culture/entertainment/awards,,11972,58199,454866,1486949,177033,314264,24,2027-01-01T04:59,49,
+top15_1wk_culture/entertainment/awards,8,Oscars 2027: Best Picture Nominations ,oscars-2026-best-picture-nominations-167,culture/entertainment/awards,,7074,49070,63620,119731,160904,49294,4,2027-03-15T03:59,22,
+top15_1wk_culture/entertainment/awards,9,# of views of next MrBeast video on week 1? (Higher Brackets),of-views-of-next-mrbeast-video-on-week-1-higher-brackets-20261017,culture/entertainment/awards,,41661,46908,46908,46908,17364,17369,0,2026-10-24T16:00,7,mrbeast-views-week-1
+top15_1wk_culture/entertainment/awards,10,Oscars 2027: Best Picture Winner,oscars-2027-best-picture-winner-20260727173620857,culture/entertainment/awards,,2723,43802,85932,420267,276276,71352,5,2027-07-01T03:59,46,
+top15_1wk_culture/entertainment/awards,11,Which KPop groups will release songs in 2026?,which-kpop-groups-will-release-songs-in-2026,culture/entertainment/awards,,63,41164,43574,126011,194,1377,4,2027-01-01T07:59,10,
+top15_1wk_culture/entertainment/awards,12,#2 Spotify Song 2026,2-spotify-song-2026-20260729214346464,culture/entertainment/awards,,10916,33621,60203,131195,42572,21547,0,2027-02-01T04:59,66,
+top15_1wk_culture/entertainment/awards,13,GTA VI released by...?,gta-vi-released-before-november-2026,culture/entertainment/awards,,16333,30271,101586,242634,81478,100950,8,2026-12-01T04:59,3,
+top15_1wk_culture/entertainment/awards,14,Which artists will release a new song in 2026?,which-artists-will-release-a-new-song-in-2026,culture/entertainment/awards,,727,29538,37907,147144,1019,4706,0,2027-01-02T07:59,15,which-artists-will-release-songs
+top15_1wk_culture/entertainment/awards,15,Taylor Swift pregnant by...?,taylor-swift-pregnant-in-2025,culture/entertainment/awards,,0,29207,111553,2059857,263,10123,91,2027-01-01T04:59,4,
+top15_1wk_mentions/tweets,1,"Elon Musk # tweets October 13 - October 20, 2026?",elon-musk-of-tweets-october-13-october-20-2026,mentions/tweets,,544339,1337003,1373301,2031120,165632,224525,0,2026-10-20T16:00,26,elon-tweets
+top15_1wk_mentions/tweets,2,"Elon Musk # tweets October 16 - October 23, 2026?",elon-musk-of-tweets-october-16-october-23-2026,mentions/tweets,,288365,732903,734153,754458,213814,171423,0,2026-10-23T16:00,26,elon-tweets
+top15_1wk_mentions/tweets,3,"Elon Musk # tweets October 19 - October 21, 2026?",elon-musk-of-tweets-october-19-october-21-2026,mentions/tweets,,87006,105458,105458,105358,48445,48690,0,2026-10-21T16:00,10,elon-tweets-48h
+top15_1wk_mentions/tweets,4,"Elon Musk # tweets October 20 - October 27, 2026?",elon-musk-of-tweets-october-20-october-27-2026,mentions/tweets,,19675,100129,100129,98829,277721,45640,0,2026-10-27T16:00,30,elon-tweets
+top15_1wk_mentions/tweets,5,"Donald Trump # Truth Social posts October 13 - October 20, 2026?",donald-trump-of-truth-social-posts-october-13-october-20-2026,mentions/tweets,,31024,51540,65538,76596,33714,21074,0,2026-10-20T16:00,11,trump-truth-social
+top15_1wk_mentions/tweets,6,"Donald Trump # Truth Social posts October 16 - October 23, 2026?",donald-trump-of-truth-social-posts-october-16-october-23-2026,mentions/tweets,,13359,38448,39950,41213,12456,8768,0,2026-10-23T16:00,11,trump-truth-social
+top15_1wk_mentions/tweets,7,Elon Musk # tweets in October 2026?,elon-musk-of-tweets-october-2026,mentions/tweets,,602,22820,97762,397414,19382,22509,0,2026-11-01T04:00,46,elon-tweet-daily
+top15_1wk_mentions/tweets,8,"Donald Trump # Truth Social posts October 20 - October 27, 2026?",donald-trump-of-truth-social-posts-october-20-october-27-2026,mentions/tweets,,4437,13372,13372,14177,18454,4775,0,2026-10-27T16:00,11,trump-truth-social
+top15_1wk_mentions/tweets,9,"CZ # posts October 16 - October 23, 2026?",cz-binance-of-tweets-october-16-october-23-2026,mentions/tweets,,2920,11666,11671,13002,4418,4116,0,2026-10-23T16:00,11,cz-tweets
+top15_1wk_mentions/tweets,10,"Zelenskyy # posts October 13 - October 20, 2026?",zelenskyy-of-tweets-october-13-october-20-2026,mentions/tweets,,1593,6917,8912,10348,7269,2384,0,2026-10-20T16:00,11,zelenskyy-tweets
+top15_1wk_mentions/tweets,11,"Ted Cruz # posts October 13 - October 20, 2026?",ted-cruz-of-tweets-october-13-october-20-2026,mentions/tweets,,1783,6847,8753,15802,542,2951,0,2026-10-20T16:00,11,ted-cruz-daily-tweets
+top15_1wk_mentions/tweets,12,"Khamenei # posts October 13 - October 20, 2026?",khamenei-of-tweets-october-13-october-20-2026,mentions/tweets,,1828,6641,8859,10710,11012,4531,0,2026-10-20T16:00,13,khamenei-daily-tweets
+top15_1wk_mentions/tweets,13,"Elon Musk # tweets October 22 - October 24, 2026?",elon-musk-of-tweets-october-22-october-24-2026,mentions/tweets,,6428,6428,6428,6398,35781,4235,0,2026-10-24T16:00,10,elon-tweets-48h
+top15_1wk_mentions/tweets,14,"NYC Mayor # posts October 13 - October 20, 2026?",nyc-mayor-of-tweets-october-13-october-20-2026,mentions/tweets,,501,5802,6060,9763,12200,2405,0,2026-10-20T16:00,11,nycmayor-tweets
+top15_1wk_mentions/tweets,15,"White House # posts October 16 - October 23, 2026?",white-house-of-tweets-october-16-october-23-2026,mentions/tweets,,2257,5677,5682,8661,7770,1582,0,2026-10-23T16:00,11,whitehouse-daily-tweets
+top15_1wk_other,1,UK election called by...?,uk-election-called-by,other,,460,8267,33064,837848,3121,20941,14,2027-07-01T03:59,6,
+top15_1wk_other,2,How many UK Prime Ministers by end of 2027?,how-many-uk-prime-ministers-by-end-of-2027-20260706201826008,other,,1953,6196,40548,198463,184470,57822,1,2028-01-01T04:59,4,
+top15_1wk_other,3,Leopold Aschenbrenner charged by...?,leopold-aschenbrenner-charged-in-2026-20260730180201140,other,,69,1805,2074,12934,2883,3716,0,2028-01-01T04:59,3,
+top15_1wk_other,4,Will TownSquare launch a token by ___?,will-townsquare-launch-a-token-by-20260720193329907,other,,120,495,805,9298,311,697,0,2027-01-01T04:59,6,
+top15_1wk_other,5,Who will be the next Secretary-General of the UN?,who-will-be-the-next-secretary-general-of-the-un,other,,167,382,913,86870,3503,6739,5,2027-07-01T03:59,47,
+top15_1wk_other,6,Who Will Max Holloway Fight Next?,who-will-max-holloway-fight-next-20260713185228591,other,,100,162,899,17915,822,2689,0,2027-07-12T03:59,14,
+top15_1wk_other,7,Social Security Insolvent by...? ,social-security-insolvent-byptptpt-20260609210543644,other,,0,0,0,929,3220,510,1,2029-01-01T04:59,2,
+top15_1wk_other,8,UFC: Who Will Manel Kape Fight Next?,ufc-who-will-manel-kape-fight-next-20260620182559031,other,,0,0,0,14434,921,1927,1,2027-06-21T03:59,14,
+top15_1wk_other,9,SCOTUS invalidates AR-15 bans?,scotus-invalidates-ar-15-bans-20260630193915657,other,,0,0,0,1877,674,361,0,2027-08-02T03:59,1,
+top15_1wk_other,10,Bayeux Tapestry back in France by…?,bayeux-tapestry-back-in-france-by-20260713162010340,other,,0,0,0,8706,3421,2834,0,2028-01-01T04:59,3,
+top15_1wk_other,11,Criminal charges in Pfizer building structural failure by December 31?,criminal-charges-in-pfizer-building-structural-failure-by-december-31-20260713154109326,other,,0,0,0,4335,137,125,0,2027-01-01T04:59,1,
+top15_1wk_other,12,Myspace relaunched in 2026?,myspace-relaunched-in-2026-20260804185946936,other,,0,0,0,620,378,72,0,2027-01-01T04:59,1,

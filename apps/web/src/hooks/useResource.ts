@@ -1,7 +1,14 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { useStore } from "zustand";
-import { indexStreamHealthy } from "@/services/index-stream";
+import {
+  indexHealthServerSnapshot,
+  indexHealthSnapshot,
+  indexStreamHealthy,
+  STREAM_BACKSTOP_MS,
+  STREAMED_RESOURCES,
+  subscribeIndexHealth,
+} from "@/services/index-stream";
 import { emptyResource, type ResourceStore } from "@/stores/createResourceStore";
 
 export function useResource<T>(
@@ -28,20 +35,19 @@ export function useResource<T>(
       if (document.hidden) return;
       const current = resource.get(key);
       if ((current.streamUntil ?? 0) > Date.now() && !current.error) return;
-      const covered = [
-        "markets",
-        "wallet-orders",
-        "wallet-trades",
-        "trades",
-        "positions",
-        "whole-balances",
-        "trading-readiness",
-        "payout-credits",
-        "resolution",
-      ].includes(resource.name);
-      if (covered && indexStreamHealthy() && !current.error && current.data !== undefined) return;
-      if (Date.now() - current.updatedAt >= (current.error ? 30_000 : refreshMs))
-        void latest.current(true);
+      if (
+        STREAMED_RESOURCES.has(resource.name) &&
+        indexStreamHealthy() &&
+        !current.error &&
+        current.data !== undefined
+      ) {
+        const backstop = STREAM_BACKSTOP_MS[resource.name];
+        if (backstop !== undefined && Date.now() - current.updatedAt >= backstop)
+          void latest.current(true);
+        return;
+      }
+      const since = current.error ? (current.errorAt ?? 0) : current.updatedAt;
+      if (Date.now() - since >= (current.error ? 30_000 : refreshMs)) void latest.current(true);
     }, 10_000);
     return () => {
       clearInterval(timer);
@@ -49,6 +55,11 @@ export function useResource<T>(
       if (active && --active.count === 0) resource.active.delete(key);
     };
   }, [resource, key, enabled, refreshMs, resource.generation()]);
+  const healthy = useSyncExternalStore(
+    subscribeIndexHealth,
+    indexHealthSnapshot,
+    indexHealthServerSnapshot,
+  );
   return {
     data: entry.data,
     error: entry.error,
@@ -56,6 +67,7 @@ export function useResource<T>(
     isPending: enabled && entry.data === undefined && !entry.error,
     isFetching: entry.loading,
     dataUpdatedAt: entry.updatedAt,
+    isStreamed: healthy && STREAMED_RESOURCES.has(resource.name) && !entry.error,
     failureCount: entry.error ? 1 : 0,
     refetch: () => latest.current(true),
   };

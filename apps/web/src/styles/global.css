@@ -231,6 +231,18 @@
   }
 }
 
+@keyframes tour-pulse {
+  0% {
+    box-shadow:
+      0 0 0 2px var(--brand-strong),
+      0 0 0 0 color-mix(in oklab, var(--brand-strong) 45%, transparent);
+  }
+  100% {
+    box-shadow:
+      0 0 0 2px var(--brand-strong),
+      0 0 0 14px color-mix(in oklab, var(--brand-strong) 0%, transparent);
+  }
+}
 @keyframes market-ticker {
   to {
     transform: translateX(-50%);
@@ -266,16 +278,51 @@
   .page-scrollbars-hidden *::-webkit-scrollbar {
     display: none;
   }
-  /* The markets page: the window never scrolls, only the banner and markets below the filters. */
-  body:has(.markets-viewport) {
-    height: 100dvh;
-    overflow: hidden;
+  /* The markets page: the header, testnet banner, filters and footer stay put while the banner and
+     markets scroll. The window scrolls under them, so a swipe or wheel anywhere moves the list. */
+  body:has(.markets-viewport) [data-site-chrome] {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: var(--background);
   }
+  body:has(.markets-viewport) > footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 30;
+    background: var(--background);
+  }
+  /* A phone pins only the header and the category row: the testnet banner and the footer scroll
+     away, leaving the screen to the markets. */
+  @media (width < 48rem) {
+    body:has(.markets-viewport) [data-site-chrome] {
+      display: contents;
+    }
+    body:has(.markets-viewport) [data-site-chrome] > header {
+      position: sticky;
+      top: 0;
+    }
+    body:has(.markets-viewport) > footer {
+      position: static;
+    }
+    /* Category tabs a thumb can hit, underlined at the row's foot. */
+    .home-category-tabs [data-slot="toggle-group-item"] {
+      height: 3rem;
+    }
+    .home-category-tabs [data-slot="segmented-indicator"] {
+      bottom: 0;
+    }
+  }
+  /* A market's page scrolls without showing scrollbars, the window's included. */
+  html:has(.market-workspace-scrollbars-hidden),
+  body:has(.market-workspace-scrollbars-hidden),
   .market-workspace-scrollbars-hidden,
   .market-workspace-scrollbars-hidden * {
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
+  html:has(.market-workspace-scrollbars-hidden)::-webkit-scrollbar,
+  body:has(.market-workspace-scrollbars-hidden)::-webkit-scrollbar,
   .market-workspace-scrollbars-hidden::-webkit-scrollbar,
   .market-workspace-scrollbars-hidden *::-webkit-scrollbar {
     display: none;
@@ -450,6 +497,42 @@
       inset 1px 0 var(--border),
       inset -1px 0 var(--border);
   }
+  /* The first-trade guide's ring: a few pulses to draw the eye, then still. */
+  .tour-ring {
+    box-shadow:
+      0 0 0 2px var(--brand-strong),
+      0 0 0 6px color-mix(in oklab, var(--brand-strong) 18%, transparent);
+    animation: tour-pulse 1.6s ease-out 3;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tour-ring {
+      animation: none;
+    }
+  }
+  /* A market's prices, chart, book and account tabs: items of the workspace grid until xl, where
+     they become one column of their own. */
+  .market-workspace-main {
+    display: contents;
+  }
+  /* One column: no order book, and the chart or the ticket, as the bar fixed below picks. */
+  @media (max-width: 899px) {
+    /* The account tabs come after the ticket, which follows them in the markup. */
+    .market-workspace-information {
+      order: 1;
+    }
+    .market-workspace-book,
+    .market-workspace-grid:not([data-view="trade"]) .market-workspace-ticket,
+    .market-workspace-grid[data-view="trade"] .market-workspace-chart {
+      display: none;
+    }
+    /* The full-width ticket splits Buy and Sell in halves. */
+    .market-workspace-ticket .trade-side-selector [data-slot="toggle-group-item"] {
+      flex: 1;
+    }
+    body:has(.market-view-bar) {
+      padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
+    }
+  }
   @media (min-width: 900px) {
     .market-workspace-grid {
       grid-template-columns: minmax(0, 1fr) 320px;
@@ -476,10 +559,24 @@
       grid-row: 1 / 5;
     }
   }
+  /* From xl the workspace fills the window, which holds still (the grid's size containment keeps
+     its content from stretching the page). The prices, chart, book and account tabs scroll as one
+     column beside the ticket: the chart's height follows the window's, and the tabs fill the rest
+     of the screen on every tab, growing, and the column scrolling, only when a tab holds more. */
   @media (min-width: 1280px) {
     .market-workspace-grid {
-      grid-template-columns: minmax(0, 1fr) 280px 320px;
-      grid-template-rows: auto minmax(0, 3fr) minmax(0, 2fr);
+      contain: size;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      grid-template-rows: minmax(0, 1fr);
+    }
+    .market-workspace-main {
+      display: grid;
+      grid-column: 1;
+      grid-row: 1;
+      min-height: 0;
+      overflow-y: auto;
+      grid-template-columns: minmax(0, 1fr) 280px;
+      grid-template-rows: max-content max(16rem, calc(60dvh - 8rem)) minmax(max-content, 1fr);
     }
     .market-workspace-stats {
       grid-column: 1 / 3;
@@ -493,8 +590,8 @@
       grid-row: 3;
     }
     .market-workspace-ticket {
-      grid-column: 3;
-      grid-row: 1 / 4;
+      grid-column: 2;
+      grid-row: 1;
     }
   }
   .price-grid {

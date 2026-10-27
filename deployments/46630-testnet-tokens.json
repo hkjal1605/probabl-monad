@@ -1,0 +1,769 @@
+{
+  "chainId": 46630,
+  "network": "Robinhood Chain Testnet",
+  "deployer": "0x7c2e81c16dF690F0fEF9d472682f88f0b4Ad5f6D",
+  "tokens": {
+    "USO": {
+      "address": "0xE2d4641BE09103ff557c298bB45Eb3DC502687EB",
+      "contract": "TestnetStockToken",
+      "name": "United States Oil Fund • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/uso.svg",
+      "underlying": "US:USO",
+      "source": {
+        "chainId": 4663,
+        "address": "0xa30FA36Db767ad9eD3f7a60fC79526fB4d56D344"
+      },
+      "stock": {
+        "uid": "0x00000000000000000000000000000000949bd039a8ae465d9cf9336068188b55",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "effectiveAt": "0"
+      },
+      "deploymentBlock": "139376207",
+      "transactionHash": "0x43fe4aef52fcecd7ca05c9c6e56739b65b6a9a70e5b021afec716fe38aec18c2",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "XOM": {
+      "address": "0xbA663601922B5332617395c7C52016e3E843b205",
+      "contract": "TestnetStockToken",
+      "name": "ExxonMobil Holdings Corporation • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/xom.svg",
+      "underlying": "US:XOM",
+      "source": {
+        "chainId": 4663,
+        "address": "0xf9B46d3D1B22199D4D1025a9cEDB540A33F1a2d5"
+      },
+      "stock": {
+        "uid": "0x0000000000000000000000000000000098d983331a5245e98847e635b93eb920",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1001039563764661900",
+        "newMultiplier": "1001039563764661900",
+        "effectiveAt": "1789139430"
+      },
+      "deploymentBlock": "139376325",
+      "transactionHash": "0xbed0afadaeb188822fa64c4ad71da314d4dd6c1c7f6815d1113835b2feec4ad6",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "PR": {
+      "address": "0x3F3437F10da3CAE7C404223f4d37ff4d63760491",
+      "contract": "TestnetStockToken",
+      "name": "Permian Resources • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/pr.svg",
+      "underlying": "US:PR",
+      "source": {
+        "chainId": 4663,
+        "address": "0x4189F0c66EBBB0bfeF1C31f763131361EF32f77C"
+      },
+      "stock": {
+        "uid": "0x0000000000000000000000000000000022d137a64ac743aa991898cc4c1d7af4",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1004477942292229526",
+        "newMultiplier": "1004477942292229526",
+        "effectiveAt": "1789517433"
+      },
+      "deploymentBlock": "139376431",
+      "transactionHash": "0xd5712db3c13c1366e15e486aa5ca378123e5369f113655d317abc5b5275c0859",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "CCL": {
+      "address": "0x3950d048C2B292C99B146562d2E76c81e3CB2Df6",
+      "contract": "TestnetStockToken",
+      "name": "Carnival Corporation • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/ccl.svg",
+      "underlying": "US:CCL",
+      "source": {
+        "chainId": 4663,
+        "address": "0x9651342CeA770aE9a2969Ba2A52611523146aef9"
+      },
+      "stock": {
+        "uid": "0x000000000000000000000000000000001cf204e4aa464340bf2e68461ff6d8d3",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1021486444855206408",
+        "newMultiplier": "1021486444855206408",
+        "effectiveAt": "1788189026"
+      },
+      "deploymentBlock": "139376543",
+      "transactionHash": "0xfad5b93ab734a00d12af97870214f4b67163a539e01d5580cf0db695816d5735",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "BA": {
+      "address": "0x468D9aF737F55c900ce48Cc41e59FAA9058D004D",
+      "contract": "TestnetStockToken",
+      "name": "Boeing • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/ba.svg",
+      "underlying": "US:BA",
+      "source": {
+        "chainId": 4663,
+        "address": "0x4D21483a44Bf67a86b77E3dA301411880797D452"
+      },
+      "stock": {
+        "uid": "0x0000000000000000000000000000000047129a8e0f8f4091841e4004bfa08013",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "effectiveAt": "0"
+      },
+      "deploymentBlock": "139376659",
+      "transactionHash": "0xb689b8bae926ee39e418b65b5a1fbdd86145e404c7aa0e706d00760a60678809",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "SPY": {
+      "address": "0xC5d93b499a2978cDde005e4BBAFd28fDFeAB815b",
+      "contract": "TestnetStockToken",
+      "name": "SPDR S&P 500 ETF Trust • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/spy.svg",
+      "underlying": "US:SPY",
+      "source": {
+        "chainId": 4663,
+        "address": "0x117cc2133c37B721F49dE2A7a74833232B3B4C0C"
+      },
+      "stock": {
+        "uid": "0x000000000000000000000000000000001c6f27a62789417d8ed359ed3c2d3da1",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1001717991187472003",
+        "newMultiplier": "1001717991187472003",
+        "effectiveAt": "1789690233"
+      },
+      "deploymentBlock": "139376761",
+      "transactionHash": "0xd5402f723ae70f498b91adcd4ef00e8c10e1b29f2f96f0d5f4415c84e3dd3e17",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "QQQ": {
+      "address": "0x51c642306e19E0ad18e4c6F860f1A21f9eB199B2",
+      "contract": "TestnetStockToken",
+      "name": "Invesco QQQ • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/qqq.svg",
+      "underlying": "US:QQQ",
+      "source": {
+        "chainId": 4663,
+        "address": "0xD5f3879160bc7c32ebb4dC785F8a4F505888de68"
+      },
+      "stock": {
+        "uid": "0x000000000000000000000000000000002470b933c52d47ccad017ed9ee80c9ed",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1000700791241405425",
+        "newMultiplier": "1000700791241405425",
+        "effectiveAt": "1790035834"
+      },
+      "deploymentBlock": "139376872",
+      "transactionHash": "0x7e81664bbcd9bcbae98c4682369a0d6942c37a74a4a0afe46bf2dbc78fd2ab76",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "MSTR": {
+      "address": "0x8b23487dc53F69f4d405859dfF7b6f77fb6dC639",
+      "contract": "TestnetStockToken",
+      "name": "Strategy Inc. • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/mstr.svg",
+      "underlying": "US:MSTR",
+      "source": {
+        "chainId": 4663,
+        "address": "0xec262a75e413fAfD0dF80480274532C79D42da09"
+      },
+      "stock": {
+        "uid": "0x00000000000000000000000000000000c91ba6e57a1c493f99cae2174e43c86e",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "effectiveAt": "0"
+      },
+      "deploymentBlock": "139376976",
+      "transactionHash": "0xa4cdf57dd53bc64fcddaff6ada287932cdc01d45cc78d372c3a7a8926e0dff65",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "COIN": {
+      "address": "0x7E9969fDA400d034A7a68598E8b895108812Ba9e",
+      "contract": "TestnetStockToken",
+      "name": "Coinbase • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/coin.svg",
+      "underlying": "US:COIN",
+      "source": {
+        "chainId": 4663,
+        "address": "0x6330D8C3178a418788dF01a47479c0ce7CCF450b"
+      },
+      "stock": {
+        "uid": "0x00000000000000000000000000000000970b46dbdece4ae4958a53815e62a85a",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "effectiveAt": "0"
+      },
+      "deploymentBlock": "139377094",
+      "transactionHash": "0x3ab7e124e0920fcd4a1c20deeb17ca37366b01a0fa03c641d82a79d683cb8d6e",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "CRCL": {
+      "address": "0x9Ab9F6FCA39138Ac32c25599C59Bb35AD57B4620",
+      "contract": "TestnetStockToken",
+      "name": "Circle Internet Group • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/crcl.svg",
+      "underlying": "US:CRCL",
+      "source": {
+        "chainId": 4663,
+        "address": "0xdF0992E440dD0be65BD8439b609d6D4366bf1CB5"
+      },
+      "stock": {
+        "uid": "0x000000000000000000000000000000005047f8f8a1a34a9ebee52a4155570807",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "effectiveAt": "0"
+      },
+      "deploymentBlock": "139377203",
+      "transactionHash": "0x7ced18428d58fc3189c757fee44bf2ca256bbbd90e51de143cedf616d26944d7",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "GLXY": {
+      "address": "0x7818c4DCe480a056B6705Aed2236FF2C9C787413",
+      "contract": "TestnetStockToken",
+      "name": "Galaxy Digital Inc. • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/glxy.svg",
+      "underlying": "US:GLXY",
+      "source": {
+        "chainId": 4663,
+        "address": "0x2D427692E928fa156ec22acfaBaFA0447C5805B7"
+      },
+      "stock": {
+        "uid": "0x000000000000000000000000000000001acf6eeea06d40c5b323c903f77bd6d1",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "effectiveAt": "0"
+      },
+      "deploymentBlock": "139377317",
+      "transactionHash": "0x61f1fd7257ba29da1452c860d51cced9e3a205a19fbc8fd465de318414daa51c",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "CLSK": {
+      "address": "0x81f86Ae547C5f03743E979A47133463003271d40",
+      "contract": "TestnetStockToken",
+      "name": "CleanSpark • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/clsk.svg",
+      "underlying": "US:CLSK",
+      "source": {
+        "chainId": 4663,
+        "address": "0xcBB95BBF36099d34dA091dc6Fa6F49EfA257Cee3"
+      },
+      "stock": {
+        "uid": "0x00000000000000000000000000000000730835cf25474184af89c27075a82be1",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "effectiveAt": "0"
+      },
+      "deploymentBlock": "139377432",
+      "transactionHash": "0x7c02278df09d79d442db5c765161cebf109f7c403601477d4dec37317a3aefd8",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "IREN": {
+      "address": "0x2B9eaa17E1168d3418738984C513513dcfaD00DA",
+      "contract": "TestnetStockToken",
+      "name": "IREN Limited • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/iren.svg",
+      "underlying": "US:IREN",
+      "source": {
+        "chainId": 4663,
+        "address": "0xF0AB0c93bE6F41369d302e55db1A96b3c430212D"
+      },
+      "stock": {
+        "uid": "0x00000000000000000000000000000000612c7fa7477f4f21b3a425f180cffd86",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "effectiveAt": "0"
+      },
+      "deploymentBlock": "139377556",
+      "transactionHash": "0xed4adfe34063fa2b75a0684c3361b1f668ceb64c2ba2ace19a0b5ccaf08aab1b",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "WULF": {
+      "address": "0xa36426E0b6d60d5B19aF8296EAb04D5557E3B7cB",
+      "contract": "TestnetStockToken",
+      "name": "TeraWulf • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/wulf.svg",
+      "underlying": "US:WULF",
+      "source": {
+        "chainId": 4663,
+        "address": "0x348Be1A8663f15edDe5CDf8A96BB69078f7aB6Fd"
+      },
+      "stock": {
+        "uid": "0x00000000000000000000000000000000e0c9d26f234a467fa738e2642dd815ca",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "effectiveAt": "0"
+      },
+      "deploymentBlock": "139377683",
+      "transactionHash": "0x3cc8403c45b51b2c5c04e970e01d9eba20716b5428014b3a3e33b429202e6c25",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "BULL": {
+      "address": "0xD4CC5Bd28936469fE902Bf943c0C8780CF20E546",
+      "contract": "TestnetStockToken",
+      "name": "Webull • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/bull.svg",
+      "underlying": "US:BULL",
+      "source": {
+        "chainId": 4663,
+        "address": "0xceF9027c7d6985b85f0BA431125073529A947A68"
+      },
+      "stock": {
+        "uid": "0x000000000000000000000000000000006b598b911bbf43ee8ca6be4dd7267f6d",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "effectiveAt": "0"
+      },
+      "deploymentBlock": "139377809",
+      "transactionHash": "0xaa9e7f5e4a3ea88a625b525b91be992ae5cc478daf22b19d1d14e1c04a0c02ca",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "SLV": {
+      "address": "0x260EBB0D61F73Eb4B12FcaAD5EF6771b54d62c0f",
+      "contract": "TestnetStockToken",
+      "name": "iShares Silver Trust • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/slv.svg",
+      "underlying": "US:SLV",
+      "source": {
+        "chainId": 4663,
+        "address": "0x411eFb0E7f985935DAec3D4C3ebaEa0d0AD7D89f"
+      },
+      "stock": {
+        "uid": "0x00000000000000000000000000000000ddf030d4e25046cab85b3d8c7cd86553",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "effectiveAt": "0"
+      },
+      "deploymentBlock": "139377913",
+      "transactionHash": "0xc2fc7e90d327067064aafaf5328d861a9c4f8c35315e98cab400da7632188acb",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "GLD": {
+      "address": "0x60b6B05F4e0c2DB22Fe37765cbcb83c0d83c9e5b",
+      "contract": "TestnetStockToken",
+      "name": "SPDR Gold Trust • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/gld.svg",
+      "underlying": "US:GLD",
+      "source": {
+        "chainId": 4663,
+        "address": "0xC9a981FEE1F9DEc688bb123ccDeCc63D0deBFC4e"
+      },
+      "stock": {
+        "uid": "0x000000000000000000000000000000001db61e88b20b481093c556e4d07195b5",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "effectiveAt": "0"
+      },
+      "deploymentBlock": "139378017",
+      "transactionHash": "0x3eee1e1ce94012af5a7609b3e0194ff5f73aae01a3a02ed7cf8bfb48199f02ab",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "SHY": {
+      "address": "0xA279af42c25b9F859fF1354f38bCDB43fe7D1b50",
+      "contract": "TestnetStockToken",
+      "name": "iShares 1-3 Year Treasury Bond ETF • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/shy.svg",
+      "underlying": "US:SHY",
+      "source": {
+        "chainId": 4663,
+        "address": "0xBE274710Bf3d9567e1B290eF6a5F9f90ca016FD8"
+      },
+      "stock": {
+        "uid": "0x000000000000000000000000000000009cc71272a7ec45f0adb8a7469632dd4d",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1002055340428983545",
+        "newMultiplier": "1002055340428983545",
+        "effectiveAt": "1790899862"
+      },
+      "deploymentBlock": "139378141",
+      "transactionHash": "0x444942f6bb9e1b86ea45d467d5f9fe81e50c2cc3839417515b62caaf8b02538c",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "BND": {
+      "address": "0x961c2c51A54DFc933D244724400e0927365eC8dE",
+      "contract": "TestnetStockToken",
+      "name": "Vanguard Total Bond Market ETF • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/bnd.svg",
+      "underlying": "US:BND",
+      "source": {
+        "chainId": 4663,
+        "address": "0x2F62fC9fAbb470C690f141c28340eD832bB27020"
+      },
+      "stock": {
+        "uid": "0x000000000000000000000000000000006604af6b5c4a4031a29417ec8c2f8c53",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "effectiveAt": "0"
+      },
+      "deploymentBlock": "139378265",
+      "transactionHash": "0xe200afc005916b8cdcfeb1b3cbdef0c7cda33067c6a3beb542aabb7a636cb1f8",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "NU": {
+      "address": "0xe6062b64C6f2059D6bDf5cfFA8A8945FaaC6665e",
+      "contract": "TestnetStockToken",
+      "name": "Nu • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/nu.svg",
+      "underlying": "US:NU",
+      "source": {
+        "chainId": 4663,
+        "address": "0x408c14038a04f7bD235329E26d2bf569ee20e250"
+      },
+      "stock": {
+        "uid": "0x000000000000000000000000000000002ea76ec420fa43ab81d6734184f7058a",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "effectiveAt": "0"
+      },
+      "deploymentBlock": "139378392",
+      "transactionHash": "0xbd9193abbdd4fe307e83bae24a1caa595fa1ead6aa4c368cd14840e56ded2461",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "SOFI": {
+      "address": "0x729D282f64cF1143e2E7959Aa5737FB3EF218472",
+      "contract": "TestnetStockToken",
+      "name": "SoFi Technologies • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/sofi.svg",
+      "underlying": "US:SOFI",
+      "source": {
+        "chainId": 4663,
+        "address": "0x98E75885157C80992A8D41b696D8c9C6Fb30A926"
+      },
+      "stock": {
+        "uid": "0x00000000000000000000000000000000df2cb1370b1b41a8b896a706fefae931",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "effectiveAt": "0"
+      },
+      "deploymentBlock": "139378515",
+      "transactionHash": "0xf58a230ec2bbd87bfe781720061a1b18f0ae7bf2901899e9918cd2ff2a6e2f51",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "NVDA": {
+      "address": "0x5b85fD3b8C7476eF67efa32AC3539325D51aC222",
+      "contract": "TestnetStockToken",
+      "name": "NVIDIA • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/nvda.svg",
+      "underlying": "US:NVDA",
+      "source": {
+        "chainId": 4663,
+        "address": "0xd0601CE157Db5bdC3162BbaC2a2C8aF5320D9EEC"
+      },
+      "stock": {
+        "uid": "0x00000000000000000000000000000000915f477416294f5099a5e0e09f327ce5",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1000775159164630595",
+        "newMultiplier": "1000775159164630595",
+        "effectiveAt": "1788998430"
+      },
+      "deploymentBlock": "139378615",
+      "transactionHash": "0xfd20b492bdd10c102235de05963414f63439d744ae57eb039ad7e108a2a18bf4",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "CRWV": {
+      "address": "0xCC24B17Ca56c83dA8DF48a4129D6A4EC1b65FAAE",
+      "contract": "TestnetStockToken",
+      "name": "CoreWeave • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/crwv.svg",
+      "underlying": "US:CRWV",
+      "source": {
+        "chainId": 4663,
+        "address": "0x5f10A1C971B69e47e059e1dC91901B59b3fB49C3"
+      },
+      "stock": {
+        "uid": "0x000000000000000000000000000000007f48cdbfaced4ff4b34fbc832f449c33",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "effectiveAt": "0"
+      },
+      "deploymentBlock": "139378722",
+      "transactionHash": "0x4ec9ced856bdb01c9c7ec7e8def8bb099d0a8fa2313ed4e7d85a7c499b449340",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "AAPL": {
+      "address": "0x360D2dEfb979911f4091F42Acc5995C32551eb31",
+      "contract": "TestnetStockToken",
+      "name": "Apple • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/aapl.svg",
+      "underlying": "US:AAPL",
+      "source": {
+        "chainId": 4663,
+        "address": "0xaF3D76f1834A1d425780943C99Ea8A608f8a93f9"
+      },
+      "stock": {
+        "uid": "0x00000000000000000000000000000000c2425be3658540dd8e2424cbf3c5c649",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1000566080061092436",
+        "newMultiplier": "1000566080061092436",
+        "effectiveAt": "1786720366"
+      },
+      "deploymentBlock": "139378833",
+      "transactionHash": "0x02adec99ea0df823750a34a5c9c2cab11b1e63c1c33ea7ca28b5e8dd14083ad7",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "SMH": {
+      "address": "0x99a05329e9D3052f67F888488dfEF5FdcA7A2956",
+      "contract": "TestnetStockToken",
+      "name": "VanEck Semiconductor ETF • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/smh.svg",
+      "underlying": "US:SMH",
+      "source": {
+        "chainId": 4663,
+        "address": "0x072f979c2CAc8e1391B0162a87Fee094bF8744a0"
+      },
+      "stock": {
+        "uid": "0x000000000000000000000000000000008f38b46a1c554840a92533677cce89ad",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "effectiveAt": "0"
+      },
+      "deploymentBlock": "139378928",
+      "transactionHash": "0x3f5157711597a396fda913eadaf5866637be920f309f226eb3c5869031d430c6",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "EWT": {
+      "address": "0xF09B35853E598DD26737A0817c6987e9ff1B194D",
+      "contract": "TestnetStockToken",
+      "name": "iShares MSCI Taiwan Capped ETF • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/ewt.svg",
+      "underlying": "US:EWT",
+      "source": {
+        "chainId": 4663,
+        "address": "0x1c690498150252222C275A5CEd69d3A6b1f52D5E"
+      },
+      "stock": {
+        "uid": "0x00000000000000000000000000000000d198f900bc014be980442c67f2444460",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "effectiveAt": "0"
+      },
+      "deploymentBlock": "139379043",
+      "transactionHash": "0xc66c6e48e0e9ed5eaa77baeb96be9010741f52e21663f8ed1c3ae577897ff4e3",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "DJT": {
+      "address": "0x431a9e3B056cA9B063Ae17A48c24b364f39Bf4c5",
+      "contract": "TestnetStockToken",
+      "name": "Trump Media & Technology Group • Robinhood Token",
+      "decimals": 18,
+      "logo": "/tokens/djt.png",
+      "underlying": "US:DJT",
+      "source": {
+        "chainId": 4663,
+        "address": "0x1D11f0496982706C5e14A514D4E79F2e6BdE4516"
+      },
+      "stock": {
+        "uid": "0x00000000000000000000000000000000d8a566c761e845fc8adffb9b2295c3ee",
+        "terms": "https://robinhood.com/stocktoken/rhj",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "effectiveAt": "0"
+      },
+      "deploymentBlock": "139379153",
+      "transactionHash": "0x4f5b0fe856248f4a2f7b9eee320c8e066624b4b55f43fb76a8ae5e5e08bdba15",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "WETH": {
+      "address": "0x5a57588e4ccd7752D0845ffa337240995B7441f0",
+      "contract": "TestnetPermitToken",
+      "name": "WETH",
+      "decimals": 18,
+      "logo": "/tokens/weth.png",
+      "underlying": "CRYPTO:ETH",
+      "source": {
+        "chainId": 4663,
+        "address": "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73"
+      },
+      "deploymentBlock": "139379259",
+      "transactionHash": "0xdc0c0f5593185c5c418196d2dec7f0a48d2bc5db1d4e8c7bd5db5dc919bb6366",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "50000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "50000"
+      }
+    },
+    "cbBTC": {
+      "address": "0x2C1815A78C5C2F6b8e79319CD82C3cD88b5F01EC",
+      "contract": "TestnetToken",
+      "name": "Coinbase Wrapped BTC",
+      "decimals": 8,
+      "logo": "/tokens/cbbtc.png",
+      "underlying": "CRYPTO:BTC",
+      "source": {
+        "chainId": 4663,
+        "address": "0xCEC185eB182c47d1bA1EFc84e6959e18cd620Be4"
+      },
+      "deploymentBlock": "139379349",
+      "transactionHash": "0xf57448c35bd385080fa10e34f8eb2ae59815857e2915a90dc7391e3df8d707bb",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "2000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "2000"
+      }
+    },
+    "SOL": {
+      "address": "0x84D2e527F11F4bfb7bbD9224173025C5B7d90F4c",
+      "contract": "TestnetToken",
+      "name": "Wrapped SOL",
+      "decimals": 9,
+      "logo": "/tokens/sol.png",
+      "underlying": "CRYPTO:SOL",
+      "source": {
+        "reference": "Solana native mint"
+      },
+      "deploymentBlock": "139379464",
+      "transactionHash": "0xf29d1ea430e524a705fba6fc8c113d2d8b35cc4aa5ca2d0d7b34be49ac28e64d",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "XRP": {
+      "address": "0x4548F35d22248aC5a1a2E89B02D9b23a558D7661",
+      "contract": "TestnetToken",
+      "name": "XRP",
+      "decimals": 6,
+      "logo": "/tokens/xrp.png",
+      "underlying": "CRYPTO:XRP",
+      "source": {
+        "reference": "XRP Ledger native coin"
+      },
+      "deploymentBlock": "139379572",
+      "transactionHash": "0x8d87b6a980fd14ddd8ab524ae586d83096abf34300e73c3d6fe1e96c4dbcf0ee",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "100000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "100000000"
+      }
+    },
+    "DOGE": {
+      "address": "0x44336c1e1A3823C047BBA611bB28E9C7A3fba0ff",
+      "contract": "TestnetToken",
+      "name": "Dogecoin",
+      "decimals": 8,
+      "logo": "/tokens/doge.png",
+      "underlying": "CRYPTO:DOGE",
+      "source": {
+        "reference": "Dogecoin native coin"
+      },
+      "deploymentBlock": "139379685",
+      "transactionHash": "0xb7325ba9e2f43633ac4b244146aaf2d99374965fad41766c8ddb8bf55dc2130c",
+      "minted": {
+        "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f": "1000000000",
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000000"
+      }
+    }
+  }
+}

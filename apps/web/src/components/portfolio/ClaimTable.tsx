@@ -1,4 +1,10 @@
 "use client";
+import {
+  EmptyCurrentGroup,
+  GROUP_BODY,
+  MarketGroupHeader,
+} from "@/components/portfolio/MarketGroup";
+import { RedeemDialog } from "@/components/portfolio/RedeemDialog";
 import { useWallet } from "@/components/providers/WalletProvider";
 import { DataError, EmptyState, LoadingState } from "@/components/ui/page";
 import {
@@ -10,17 +16,34 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { usePositions } from "@/hooks/useProtocolData";
-import { formatNumber, tokenAmount } from "@/lib/format/display";
+import { formatNumber, formatUsd, tokenAmount } from "@/lib/format/display";
+import { isResolved, midpoint } from "@/lib/markets/presentation";
+import { groupByMarket } from "@/lib/portfolio/positions";
+import {
+  canRedeem,
+  claimAmount,
+  holdsClaims,
+  redemptionLines,
+  redemptionUsd,
+  resolvedOutcome,
+} from "@/lib/portfolio/redemption";
 import { PositionActions } from "@/modules/PortfolioPageModule/components/PositionActions";
-import { positionHasClaims } from "@/services/index-stream";
 import type { MarketView, PositionView } from "@/types/api";
 
+const COLUMNS = 4;
+
+/** The member's conditional claims grouped by market (`currentMarketId`'s first, then the largest):
+ * a row per claimed token with its YES and NO amounts, to split or merge, and for a resolved market
+ * one row with what redeeming pays. Claims a result made worthless are left out. */
 export function ClaimTable({
   markets,
-  variant = "table",
+  currentMarketId,
+  showTitles = true,
 }: {
   markets: MarketView[];
-  variant?: "table" | "portfolio";
+  currentMarketId?: string;
+  /** Each market's question in its header row (a card already titled by it can leave it out). */
+  showTitles?: boolean;
 }) {
   const wallet = useWallet(),
     query = usePositions();
@@ -35,92 +58,145 @@ export function ClaimTable({
       />
     );
   if (query.isPending) return <LoadingState />;
-  const rows = query.positions.filter(
-    (p) => markets.some((m) => m.id === p.marketId) && positionHasClaims(p),
+  const byId = new Map(markets.map((market) => [market.id, market]));
+  const groups = groupByMarket(
+    query.positions.filter((position) => holdsClaims(position, byId.get(position.marketId))),
+    (position) => byId.get(position.marketId),
+    currentMarketId,
+    ([position]) => (position ? claimValue(position, byId.get(position.marketId)) : 0),
   );
-  if (!rows.length) return <EmptyState>No indexed conditional claims yet.</EmptyState>;
-  if (variant === "portfolio")
+  const current = currentMarketId ? byId.get(currentMarketId) : undefined;
+  if (!groups.length)
     return (
-      <ul className="flex list-none flex-col gap-2" aria-label="Conditional claims">
-        {rows.map((position) => {
-          const market = markets.find((m) => m.id === position.marketId);
-          if (!market) return null;
-          return (
-            <li
-              className="flex flex-col gap-4 rounded-xl bg-card px-4 py-3 lg:flex-row lg:items-center"
-              key={position.marketId}
-            >
-              <div className="min-w-0 lg:w-64 lg:shrink-0">
-                <p className="font-medium">{market.ticker}</p>
-                <p className="mt-1 truncate text-xs text-muted-foreground">{market.question}</p>
-              </div>
-              <div className="grid flex-1 grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-4">
-                {claimLines(market, position).flatMap((line) =>
-                  (["YES", "NO"] as const).map((branch) => (
-                    <div key={`${line.collateral}-${branch}`}>
-                      <p className="tabular-nums font-medium">
-                        {formatNumber(
-                          tokenAmount(branch === "YES" ? line.yes : line.no, line.decimals),
-                          line.collateral === 0 ? 2 : 4,
-                        )}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {line.symbol} {branch}
-                      </p>
-                    </div>
-                  )),
-                )}
-              </div>
-              <PositionActions position={position} market={market} disabled={!query.isDataFresh} />
-            </li>
-          );
-        })}
-      </ul>
+      <EmptyState>
+        No claims yet. Buying a market&apos;s YES or NO, or splitting tokens, gives you claims.
+      </EmptyState>
     );
   return (
     <Table>
-      <TableHeader>
+      <TableHeader className="sticky top-0 z-10 bg-card">
         <TableRow>
-          <TableHead>Asset</TableHead>
-          <TableHead>Claim token</TableHead>
-          <TableHead>YES</TableHead>
-          <TableHead>NO</TableHead>
+          <TableHead className="pl-3 sm:pl-4">Claim</TableHead>
+          <TableHead className="px-2 text-right text-positive sm:px-3">YES</TableHead>
+          <TableHead className="px-2 text-right text-danger sm:px-3">NO</TableHead>
           <TableHead>
             <span className="sr-only">Manage claims</span>
           </TableHead>
         </TableRow>
       </TableHeader>
-      <TableBody>
-        {rows.flatMap((position) => {
-          const market = markets.find((m) => m.id === position.marketId);
-          if (!market) return [];
-          return claimLines(market, position).map((line) => (
-            <TableRow key={`${position.marketId}-${line.collateral}`}>
-              <TableCell className="font-semibold">{market.ticker}</TableCell>
-              <TableCell>{line.symbol}</TableCell>
-              {(
-                [
-                  ["yes", line.yes],
-                  ["no", line.no],
-                ] as const
-              ).map(([branch, amount]) => (
-                <TableCell key={branch} className="tabular-nums">
-                  {formatNumber(tokenAmount(amount, line.decimals), line.collateral === 0 ? 2 : 4)}
-                </TableCell>
-              ))}
-              <TableCell className="text-right">
-                <PositionActions
-                  position={position}
-                  market={market}
-                  collateral={line.collateral}
-                  disabled={!query.isDataFresh}
-                />
-              </TableCell>
-            </TableRow>
-          ));
-        })}
-      </TableBody>
+      {current && groups[0]?.market.id !== current.id && (
+        <EmptyCurrentGroup market={current} columns={COLUMNS}>
+          No claims in this market.
+        </EmptyCurrentGroup>
+      )}
+      {groups.map(({ market, items: [position] }) =>
+        position ? (
+          <TableBody
+            key={market.id}
+            className={GROUP_BODY}
+            aria-label={`${market.ticker}: ${market.question}`}
+          >
+            <MarketGroupHeader
+              market={market}
+              columns={COLUMNS}
+              current={market.id === currentMarketId}
+              showTitle={showTitles}
+            />
+            {isResolved(market) ? (
+              <RedeemRow market={market} position={position} disabled={!query.isDataFresh} />
+            ) : (
+              claimLines(market, position).map((line) => (
+                <TableRow key={line.collateral} className="h-12">
+                  <TableCell className="h-12 py-2 pr-2 pl-3 sm:pr-3 sm:pl-4">
+                    <span className="font-medium">{line.symbol}</span>
+                    <p className="text-xs text-muted-foreground">
+                      {line.collateral === 0 ? "Cash claims" : "Stock claims"}
+                    </p>
+                  </TableCell>
+                  {[line.yes, line.no].map((amount, branch) => (
+                    <TableCell
+                      // biome-ignore lint/suspicious/noArrayIndexKey: The two branches, always in this order.
+                      key={branch}
+                      className={`h-12 px-2 py-2 text-right tabular-nums sm:px-3 ${BigInt(amount) === 0n ? "text-muted-foreground" : ""}`}
+                    >
+                      {formatNumber(
+                        tokenAmount(amount, line.decimals),
+                        line.collateral === 0 ? 2 : 4,
+                      )}
+                    </TableCell>
+                  ))}
+                  <TableCell className="h-12 py-2 pr-3 pl-2 text-right sm:pr-4 sm:pl-3">
+                    <PositionActions
+                      position={position}
+                      market={market}
+                      collateral={line.collateral}
+                      disabled={!query.isDataFresh}
+                    />
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        ) : null,
+      )}
     </Table>
+  );
+}
+
+/** A resolved market's claims as one row: what redeeming pays, and the button that does it. */
+function RedeemRow({
+  market,
+  position,
+  disabled,
+}: {
+  market: MarketView;
+  position: PositionView;
+  disabled: boolean;
+}) {
+  const lines = canRedeem(market) ? redemptionLines(market, position) : null;
+  const outcome = resolvedOutcome(market);
+  const usd = lines ? redemptionUsd(market, lines) : null;
+  return (
+    <TableRow className="h-12">
+      <TableCell colSpan={COLUMNS - 1} className="h-12 py-2 pr-2 pl-3 sm:pr-3 sm:pl-4">
+        {lines?.length ? (
+          <>
+            <span className="font-medium tabular-nums">
+              You receive{" "}
+              {lines
+                .map((line) => claimAmount(market, line.collateral, line.plan.credit))
+                .join(" + ")}
+            </span>
+            <p className="text-xs text-muted-foreground tabular-nums">
+              Resolved {outcome}
+              {usd !== null && ` · ≈ ${formatUsd(usd)}`}
+            </p>
+          </>
+        ) : (
+          <span className="text-muted-foreground">
+            Resolved{outcome && ` ${outcome}`}. Redemption opens once the result is final.
+          </span>
+        )}
+      </TableCell>
+      <TableCell className="h-12 py-2 pr-3 pl-2 text-right sm:pr-4 sm:pl-3">
+        {lines && lines.length > 0 && (
+          <RedeemDialog market={market} position={position} lines={lines} disabled={disabled} />
+        )}
+      </TableCell>
+    </TableRow>
+  );
+}
+
+/** A position's claims at their book midpoints and cash claims at par, to rank markets. */
+function claimValue(position: PositionView, market: MarketView | undefined) {
+  if (!market) return 0;
+  const base = (amount: string, mark: number | null) =>
+    tokenAmount(amount, position.baseTokenDecimals) * (mark ?? 0);
+  return (
+    tokenAmount(position.quoteYes, position.quoteTokenDecimals) +
+    tokenAmount(position.quoteNo, position.quoteTokenDecimals) +
+    base(position.baseYes, midpoint(market.yes)) +
+    base(position.baseNo, midpoint(market.no))
   );
 }
 
@@ -128,18 +204,18 @@ export function ClaimTable({
 export function claimLines(market: MarketView, position: PositionView, includeEmpty = false) {
   const lines = [
     {
-      collateral: 0 as const,
-      symbol: market.quoteTokenMetadata?.symbol ?? "USDC",
-      decimals: position.quoteTokenDecimals,
-      yes: position.quoteYes,
-      no: position.quoteNo,
-    },
-    {
       collateral: 1 as const,
       symbol: market.base.symbol,
       decimals: position.baseTokenDecimals,
       yes: position.baseYes,
       no: position.baseNo,
+    },
+    {
+      collateral: 0 as const,
+      symbol: market.quoteTokenMetadata?.symbol ?? "USDC",
+      decimals: position.quoteTokenDecimals,
+      yes: position.quoteYes,
+      no: position.quoteNo,
     },
   ];
   return includeEmpty

@@ -1,20 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { ClaimTable } from "@/components/portfolio/ClaimTable";
-import { PositionTable } from "@/components/portfolio/PositionTable";
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { marketPath } from "@/lib/markets/identity";
 import type { MarketView } from "@/types/api";
 
-/** One event's positions or claims on the portfolio page. */
+/** One event on the portfolio page: its question, a way to trade it, and `children`, the tab's
+ * table of its markets (positions, orders, claims or trades). */
 export function PortfolioEventCard({
   markets,
-  view,
+  children,
 }: {
   markets: MarketView[];
-  view: "positions" | "claims";
+  children: ReactNode;
 }) {
   const market = markets[0];
   if (!market) return null;
@@ -41,13 +41,7 @@ export function PortfolioEventCard({
           </Button>
         )}
       </CardHeader>
-      <CardContent className="min-w-0 overflow-x-auto px-2.5 pb-0">
-        {view === "positions" ? (
-          <PositionTable markets={markets} softClose />
-        ) : (
-          <ClaimTable markets={markets} />
-        )}
-      </CardContent>
+      <CardContent className="min-w-0 overflow-x-auto px-2.5 pb-0">{children}</CardContent>
     </Card>
   );
 }

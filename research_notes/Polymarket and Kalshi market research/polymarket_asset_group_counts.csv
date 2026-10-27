@@ -1,0 +1,74 @@
+group,asset,open_markets,events,price_linked_markets,vol24h_usd,vol1wk_usd,vol_total_usd
+commodity,Crude oil,103,26,73,394932,2763027,7050512
+commodity,Gold,49,8,41,32333,167893,3123353
+commodity,Silver,32,4,31,10118,49326,149935
+commodity,Natural gas,18,5,17,13942,17684,21008
+commodity,Gasoline (US gas price),14,4,12,331,382,19776
+commodity,Copper,2,1,2,0,0,16649
+crypto,BTC,853,529,763,1485204,5551274,93262536
+crypto,ETH,774,501,762,451891,1856661,20114459
+crypto,SOL,694,487,689,50055,224193,2858563
+crypto,XRP,683,485,680,57606,125731,1157249
+crypto,HYPE,508,461,491,6480,41435,2663287
+crypto,BNB,477,454,474,1643,3491,173767
+crypto,DOGE,466,452,463,2375,5330,154249
+crypto,ZEC,408,400,404,176,848,207595
+crypto,LINK,21,2,21,289,788,47714
+crypto,USDC/stablecoins,18,8,6,157,4965,1146621
+crypto,PUMP,15,5,10,2615,5164,407768
+crypto,SUI,9,1,9,143,340,23651
+crypto,LIGHTER,8,1,8,934,14189,353199
+crypto,AVAX,8,1,8,343,1257,15495
+crypto,ASTER,7,1,7,8,437,55335
+crypto,MegaETH,6,2,5,54,1018,19087
+crypto,XMR,1,1,1,0,0,126012
+fx,FX pairs,73,20,73,258,848,250312
+index,S&P 500,63,10,61,54243,134272,987166
+index,DXY (dollar index),29,3,29,824,5015,30329
+index,Nikkei,9,2,9,3889,3889,22026
+index,Hang Seng,2,2,2,20,20,20
+index,Dow Jones,2,2,1,60,422,422
+index,Nasdaq,1,1,0,0,0,3695
+index,KOSPI,1,1,1,0,0,40463
+index,FTSE,1,1,1,0,0,0
+index,DAX,1,1,1,42,42,37
+index,Russell 2000,1,1,1,185,185,185
+index,NYSE Composite,1,1,1,0,0,0
+other_co,Spotify,508,14,0,37150,135060,2619392
+other_co,OpenAI (private),275,129,119,63923,527542,13773483
+other_co,Anthropic (private),259,107,135,452757,2100490,19792468
+other_co,ByteDance/TikTok,99,82,25,2961,7069,634871
+other_co,DeepSeek,75,70,6,14419,45696,495250
+other_co,Tencent,69,69,0,1483,2595,107191
+other_co,Mistral,62,59,2,427,3756,446845
+other_co,Xiaomi,62,62,0,6092,14230,165606
+other_co,Opendoor (OPEN),59,6,59,6782,11603,23194
+other_co,Robinhood (HOOD),41,7,32,7796,18324,92207
+other_co,Stripe (private),38,13,36,704,1318,741409
+other_co,Kraken (private),34,11,28,797,5378,1572730
+other_co,Airbnb (ABNB),34,3,34,5575,19322,38939
+other_co,Databricks (private),32,10,32,1083,3358,1226517
+other_co,Perplexity,32,11,29,249,2782,2833518
+other_co,xAI (private),25,13,2,5369,18449,395390
+other_co,JPMorgan,19,5,4,13,13,27225
+other_co,Neuralink,17,5,17,86,447,98249
+other_co,Discord,16,6,13,1777,4486,866409
+other_co,Polymarket,11,2,6,1163,3585,71070
+other_co,Coca-Cola,11,3,0,2139,12846,14218
+other_co,Walmart,10,2,0,1637,6727,7844
+other_co,American Express,7,3,1,410,2194,7870
+other_co,Starbucks,7,3,0,1312,4853,16693
+other_co,Chevron,6,2,0,382,1906,4776
+other_co,McDonald's,6,2,0,532,3778,3778
+other_co,Binance,5,5,0,500,1336,18358
+other_co,Uber,4,2,0,0,0,90443
+other_co,Goldman Sachs,3,3,2,87,1525,41654
+other_co,Tether,2,2,2,0,0,252811
+other_co,PayPal,2,2,0,0,0,124671
+other_co,Bitmine,2,1,0,6,11,36373
+other_co,Disney,2,2,1,0,0,3419
+other_co,Samsung,1,1,0,0,0,10371
+other_co,BYD,1,1,0,0,0,97218
+other_co,Etsy,1,1,0,908,1537,1537
+other_co,Roku,1,1,0,540,880,880
+other_co,Paramount,1,1,0,232,309,309

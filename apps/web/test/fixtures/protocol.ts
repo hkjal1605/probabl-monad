@@ -59,7 +59,8 @@ export const fixtureMarkets: MarketView[] = [
     mapping: {
       conditionId: "0x0000000000000000000000000000000000000000000000000000000000beef01",
       noIndex: "2",
-      polymarketUrl: "/resolution?market=1#evidence-1",
+      source: "polymarket",
+      sourceUrl: "/resolution?market=1#evidence-1",
       yesIndex: "1",
     },
     no: {
@@ -151,6 +152,10 @@ export const fixtureState: {
       quoteNo: "1255250000",
       baseYes: "5000000000000000000",
       baseNo: "5000000000000000000",
+      pricedYes: "0",
+      pricedNo: "0",
+      costYes: "0",
+      costNo: "0",
       redeemable: false,
     },
   ],

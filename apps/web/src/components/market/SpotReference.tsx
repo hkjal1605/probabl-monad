@@ -2,12 +2,13 @@ import type { SpotPrice } from "@conditional-stocks/shared/spot-prices";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { Stat } from "@/components/ui/page";
 
+const spotUsd = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumSignificantDigits: 6,
+});
 export function formatSpotUsd(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumSignificantDigits: 6,
-  }).format(value);
+  return spotUsd.format(value);
 }
 
 export function SpotReference({

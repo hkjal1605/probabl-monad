@@ -6,7 +6,7 @@ export function PortfolioEventSkeleton() {
     <Card
       className="gap-0 rounded-xl bg-card pt-0 pb-2 ring-0"
       role="status"
-      aria-label="Loading portfolio positions"
+      aria-label="Loading events"
     >
       <CardHeader className="flex flex-row items-start justify-between gap-5 border-0 px-5 py-6">
         <Skeleton className="h-6 w-3/5 max-w-96" />

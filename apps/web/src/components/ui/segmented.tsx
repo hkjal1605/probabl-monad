@@ -1,5 +1,5 @@
 "use client";
-import { useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 export function Segmented<T extends string>({
@@ -10,6 +10,7 @@ export function Segmented<T extends string>({
   className,
   disabled = false,
   variant = "default",
+  renderOption,
 }: {
   label: string;
   value: T;
@@ -18,6 +19,8 @@ export function Segmented<T extends string>({
   className?: string;
   disabled?: boolean;
   variant?: "default" | "category" | "compact" | "timeframe" | "chart" | "trade";
+  /** An option's label (an icon beside its text, say); the option itself by default. */
+  renderOption?: (option: T) => ReactNode;
 }) {
   const groupRef = useRef<HTMLDivElement | null>(null);
   const [indicator, setIndicator] = useState<{ left: number; width: number } | null>(null);
@@ -92,7 +95,7 @@ export function Segmented<T extends string>({
           data-option={option}
           className={cn("min-w-0", variant === "default" && "flex-1")}
         >
-          {option}
+          {renderOption ? renderOption(option) : option}
         </ToggleGroupItem>
       ))}
       {variant === "category" && (

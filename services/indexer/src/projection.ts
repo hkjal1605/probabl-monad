@@ -10,6 +10,7 @@ import {
   marketKey,
   marketSlug,
   publicMarketId,
+  QUOTE_SEQ,
   U32_MAX,
   underlyingSymbol,
 } from "@conditional-stocks/evm-client";
@@ -25,6 +26,7 @@ import {
   type TradeDetails,
   traderOf,
 } from "@conditional-stocks/evm-client/ledger";
+import { eventSourceOf } from "@conditional-stocks/market-data";
 import { type Address, getAddress, type Hex, zeroHash } from "viem";
 
 export const PROTOCOL_VERSION = 4;
@@ -128,9 +130,12 @@ export function marketView(
     venue: venueOf(deployment, m.id),
     createdAt: new Date(Number(m.createdAt) * 1000).toISOString(),
     conditionId: String(m.id),
-    polymarketConditionId: m.condition,
-    polymarketYesIndex: String(m.yesIndex),
-    polymarketNoIndex: String(m.noIndex),
+    /** The event market (Polymarket or Kalshi) the market is conditioned on: its venue, its
+     * on-chain id and the index sets of the outcomes the YES and NO branches follow. */
+    eventSource: eventSourceOf(m.metadataUri),
+    eventConditionId: m.condition,
+    eventYesIndex: String(m.yesIndex),
+    eventNoIndex: String(m.noIndex),
     rulesHash: m.rulesHash,
     metadataHash: m.metadataHash,
     metadataUri: m.metadataUri,
@@ -253,9 +258,8 @@ export function liveOrder(
   return true;
 }
 
-/** Each market's YES and NO book midpoints (by venue id; raw quote per raw base x 1e18): halfway
- * between the best live bid and ask, null without both or while they cross. */
-export function bookMidpoints(s: ChainState, now?: bigint) {
+/** Each market's best live bid and ask per branch (index 0 YES, 1 NO), markets with orders only. */
+export function bookTops(s: ChainState, now?: bigint) {
   const best = new Map<number, { bid?: bigint; ask?: bigint }[]>();
   for (const o of s.orders.values()) {
     if (!liveOrder(o, s, now)) continue;
@@ -269,10 +273,23 @@ export function bookMidpoints(s: ChainState, now?: bigint) {
     if (o.side === 0) book.bid = book.bid === undefined || price > book.bid ? price : book.bid;
     else book.ask = book.ask === undefined || price < book.ask ? price : book.ask;
   }
-  const mid = ({ bid, ask }: { bid?: bigint; ask?: bigint }) =>
-    bid !== undefined && ask !== undefined && ask >= bid ? (bid + ask) / 2n : null;
+  return best;
+}
+
+/** A branch's midpoint, or null unless it has an uncrossed bid and ask. */
+export const midpointOf = ({ bid, ask }: { bid?: bigint | null; ask?: bigint | null }) =>
+  bid !== undefined && bid !== null && ask !== undefined && ask !== null && ask >= bid
+    ? (bid + ask) / 2n
+    : null;
+
+/** Each market's YES and NO book midpoints (by venue id; raw quote per raw base x 1e18): halfway
+ * between the best live bid and ask, null without both or while they cross. */
+export function bookMidpoints(s: ChainState, now?: bigint) {
   return new Map(
-    [...best].map(([market, [yes, no]]) => [market, { yes: mid(yes!), no: mid(no!) }]),
+    [...bookTops(s, now)].map(([market, [yes, no]]) => [
+      market,
+      { yes: midpointOf(yes!), no: midpointOf(no!) },
+    ]),
   );
 }
 
@@ -325,6 +342,8 @@ export function positionsOf(s: ChainState, owner: Address, deployment: Deploymen
       baseYes = yes?.base ?? 0n,
       baseNo = no?.base ?? 0n;
     if (!quoteYes && !quoteNo && !baseYes && !baseNo) continue;
+    const costYes = s.bases.get(accountKey(m.id, 0, owner)),
+      costNo = s.bases.get(accountKey(m.id, 1, owner));
     result.push({
       marketId: marketIdentity(s, m).id,
       venue: venueOf(deployment, m.id),
@@ -338,6 +357,11 @@ export function positionsOf(s: ChainState, owner: Address, deployment: Deploymen
       quoteNo: quoteNo.toString(),
       baseYes: baseYes.toString(),
       baseNo: baseNo.toString(),
+      // Stock claims bought in fills (incl. reserved ones) and the quote paid for them.
+      pricedYes: (costYes?.priced ?? 0n).toString(),
+      pricedNo: (costNo?.priced ?? 0n).toString(),
+      costYes: (costYes?.cost ?? 0n).toString(),
+      costNo: (costNo?.cost ?? 0n).toString(),
       protocolVersion: PROTOCOL_VERSION,
     });
   }
@@ -429,7 +453,10 @@ export function tradeView(
      * when it sold), in the same claims. */
     makerRebate: r.makerRebate.toString(),
     takerSide: r.takerSide,
-    makerOrderHash: orderKeyString(r.market, r.branch, r.makerSeq),
+    // A quote fill has no maker order.
+    ...(r.makerSeq === QUOTE_SEQ
+      ? {}
+      : { makerOrderHash: orderKeyString(r.market, r.branch, r.makerSeq) }),
     takerOrderHash: orderKeyString(r.market, r.branch, r.takerSeq),
     maker: checksum(r.maker),
     taker: checksum(r.taker),

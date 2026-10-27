@@ -1,5 +1,6 @@
 import type { ShareUnits } from "@conditional-stocks/domain";
 import type { FeeRates } from "@conditional-stocks/evm-client";
+import type { EventSource } from "@conditional-stocks/market-data";
 import type { SpotPrice } from "@conditional-stocks/shared/spot-prices";
 import type { TokenDisplayMetadata } from "../lib/tokens/catalog";
 
@@ -34,6 +35,8 @@ export interface BranchBook {
   bids: BookLevel[];
   depthUsd: number;
   spread: number | null;
+  /** The RFQ makers' current prices for a $100 order, folded into the best bid and ask above. */
+  quote?: { bid: string | null; ask: string | null };
 }
 export interface ProbabilityView {
   ask: number | null;
@@ -70,6 +73,8 @@ export interface VenueView {
 export interface MarketView extends ShareUnits {
   /** Quantity step in raw base units. */
   baseStep: string;
+  /** The least an order may be worth at its own price, in raw quote units (fixed at creation). */
+  minNotional?: string;
   priceTickRawX18?: string;
   /** Fee rates in bps, fixed when the market was created: resting orders pay the maker rate
    * and incoming ones the taker rate, on what they receive. */
@@ -96,13 +101,33 @@ export interface MarketView extends ShareUnits {
   /** Where this market trades: transactions use `venue.marketId`, never `id`. */
   venue: VenueView;
   lifecycle: MarketLifecycle;
-  mapping: { conditionId: string; noIndex: string; polymarketUrl: string; yesIndex: string };
+  /** The resolved payout to YES and NO claims, as parts of their sum (YES won: [1, 0], INVALID:
+   * [1, 1]); null until the market resolves. */
+  payouts?: [number, number] | null;
+  /** The venue market (Polymarket or Kalshi) the market is conditioned on. */
+  mapping: {
+    conditionId: string;
+    noIndex: string;
+    source: EventSource;
+    sourceUrl: string;
+    yesIndex: string;
+  };
   no: BranchBook;
   ordinaryReference: number | null;
   spotReference?: SpotPrice;
   quoteSpotReference?: SpotPrice;
   probability: ProbabilityView;
   question: string;
+  /** The venue event's schedule and series (display only: categories and the calendar). */
+  event?: {
+    /** When the venue's event resolves or fixes, ISO; null when it doesn't say. */
+    endTime: string | null;
+    /** Kalshi's series and event tickers: a price ladder's strikes share an event. */
+    series?: string;
+    eventTicker?: string;
+    /** The side the venue settled to, once known (Kalshi). */
+    result: "yes" | "no" | null;
+  };
   imageUrl?: string | null;
   quoteToken: string;
   residual: number | null;
@@ -187,6 +212,12 @@ export interface PositionView {
   quoteNo: string;
   baseYes: string;
   baseNo: string;
+  /** Stock claims bought in fills (including reserved ones) and the raw quote paid for them,
+   * net of maker rebates: their average entry is cost / priced. The rest came with no price. */
+  pricedYes: string;
+  pricedNo: string;
+  costYes: string;
+  costNo: string;
   redeemable: boolean;
 }
 export interface TradeView {

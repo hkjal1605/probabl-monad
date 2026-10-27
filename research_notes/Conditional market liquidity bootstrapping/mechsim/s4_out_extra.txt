@@ -1,0 +1,15 @@
+S4 Monte Carlo, 300 paths per scenario; LP alpha per event in today's $ (mean +- s.e.)
+Equal depth: $10k single-leg buy costs 1% all-in at t=0 in every mechanism.
+scenario                                                           A: CPMM pair              B: s-anchored             C: delta-curve
+s-oracle lag 1 min (B, C)                                4,487+-34   (p5   3,432)     6,513+-18   (p5   5,984)     6,207+-21   (p5   5,579)
+   split: noise edge / arbitrage edge                       8,016 /    -3,529          8,027 /    -1,514          7,501 /    -1,294  
+   max |claims inventory| B, C (shares)                                                                827                        479
+s-oracle lag 1 min, C deep full-set side (mu=0.1k)       4,534+-35   (p5   3,598)     6,509+-20   (p5   5,992)     5,653+-41   (p5   4,733)
+   split: noise edge / arbitrage edge                       8,024 /    -3,489          8,040 /    -1,530          7,104 /    -1,452  
+   max |claims inventory| B, C (shares)                                                                857                      1,930
+high-delta + p-oracle lag 5 min (C)                      4,308+-37   (p5   3,184)     4,880+-82   (p5   1,956)     2,385+-197  (p5  -4,038)
+   split: noise edge / arbitrage edge                       8,045 /    -3,736          8,082 /    -3,201          7,597 /    -5,212  
+   max |claims inventory| B, C (shares)                                                              1,365                      1,283
+noise $50k/day                                             -45+-36   (p5  -1,157)     2,160+-11   (p5   1,873)     2,133+-9    (p5   1,872)
+   split: noise edge / arbitrage edge                       2,676 /    -2,721          2,691 /      -532          2,519 /      -385  
+   max |claims inventory| B, C (shares)                                                                991                        516

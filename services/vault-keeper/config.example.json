@@ -8,7 +8,10 @@
           "market": 1,
           "anchorBps": -300
         }
-      ]
+      ],
+      "betas": {
+        "KXBTCD": 1.54
+      }
     },
     {
       "vault": "0x0000000000000000000000000000000000000002",
@@ -27,10 +30,22 @@
     "maxGapBps": 800,
     "orderQuote": "2000"
   },
+  "drivers": {
+    "KXBTCD": {
+      "dailyVolBps": 281
+    }
+  },
   "quoteLevels": 2,
   "halfSpreadBps": 40,
   "ttlSeconds": 300,
   "pollMs": 10000,
   "maxDrawdownBps": 300,
-  "reserveBps": 2000
+  "reserveBps": 2000,
+  "rfq": {
+    "enabled": false,
+    "quoteTtlSeconds": 10,
+    "maxReferenceAgeMs": 5000,
+    "spotPollMs": 2000,
+    "edgeBps": 0
+  }
 }

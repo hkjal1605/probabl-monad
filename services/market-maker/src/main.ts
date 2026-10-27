@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { conditionalStocksAbi } from "@conditional-stocks/evm-client";
 import { ChainFollower, TokenReader } from "@conditional-stocks/indexer";
+import { nativeCurrency } from "@conditional-stocks/shared/chains";
 import { createPublicClient, defineChain, getAddress, http } from "viem";
 import { settings } from "./config.ts";
 import { Engine, log } from "./engine.ts";
@@ -40,7 +41,7 @@ async function main() {
   const chain = defineChain({
     id: chainId,
     name: `chain-${chainId}`,
-    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+    nativeCurrency: nativeCurrency(chainId),
     rpcUrls: { default: { http: [rpc] } },
   });
   const client = createPublicClient({

@@ -9,6 +9,7 @@
  * Every function here is pure; prices are raw quote per raw base x 1e18. */
 import { makerFeeEdge, quote, U128_MAX, WAD } from "@conditional-stocks/evm-client";
 import { abs, BPS, ceil, max, min, PROB } from "@conditional-stocks/operator";
+import type { LadderDriver, MarketModel } from "./config.ts";
 
 export const PPM = 1_000_000n;
 
@@ -51,6 +52,59 @@ export interface Terms {
   minNotional: bigint;
   maxOrder: bigint;
 }
+
+/** Φ⁻¹(p), the standard normal quantile (Acklam's rational approximation, relative error under
+ * 1.2e-9). */
+export function inverseNormal(p: number): number {
+  if (!(p > 0 && p < 1)) throw new Error("A probability strictly between 0 and 1");
+  const a = [
+    -39.69683028665376, 220.9460984245205, -275.9285104469687, 138.357751867269, -30.66479806614716,
+    2.506628277459239,
+  ] as const;
+  const b = [
+    -54.47609879822406, 161.5858368580409, -155.6989798598866, 66.80131188771972,
+    -13.28068155288572,
+  ] as const;
+  const c = [
+    -0.007784894002430293, -0.3223964580411365, -2.400758277161838, -2.549732539343734,
+    4.374664141464968, 2.938163982698783,
+  ] as const;
+  const d = [
+    0.007784695709041462, 0.3224671290700398, 2.445134137142996, 3.754408661907416,
+  ] as const;
+  const tail = (q: number) =>
+    (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
+    ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
+  if (p < 0.02425) return tail(Math.sqrt(-2 * Math.log(p)));
+  if (p > 1 - 0.02425) return -tail(Math.sqrt(-2 * Math.log(1 - p)));
+  const q = p - 0.5,
+    r = q * q;
+  return (
+    ((((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q) /
+    (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1)
+  );
+}
+
+/** A ladder market's δ₀ in bps: the stock's expected price if the driver closes above the strike
+ * minus if it closes below, as a share of spot. With the driver's move to the fixing normal
+ * (daily volatility σ, τ days left) and the strike where the event's probability p puts it,
+ * that gap is β·σ·√τ·φ(Φ⁻¹(p)) / (p(1−p)): at even odds 1.6·β·σ·√τ, shrinking to 0 at the
+ * fixing. `p` is x1e6 and `now` unix seconds; `conditionalGap` bounds the result. */
+export function ladderAnchorBps(driver: LadderDriver, p: bigint, now: bigint): number {
+  const days = (driver.fixing - Number(now)) / 86_400,
+    probability = Number(p) / Number(PROB);
+  if (!(days > 0) || !(probability > 0 && probability < 1)) return 0;
+  const z = inverseNormal(probability),
+    density = Math.exp((-z * z) / 2) / Math.sqrt(2 * Math.PI);
+  const gap =
+    (driver.beta * (driver.dailyVolBps / 10_000) * Math.sqrt(days) * density) /
+    (probability * (1 - probability));
+  return Math.round(gap * 10_000);
+}
+
+/** A market's δ₀ in bps: its ladder driver's at `p` and `now`, else its configured anchor. */
+export const anchorBps = (model: MarketModel, p: bigint, now: bigint) =>
+  model.driver ? ladderAnchorBps(model.driver, p, now) : model.anchorBps;
 
 /** δ̂ in ppm of spot: `anchorBps` moved by `impactBps` per 1% of inventory the vault is long YES
  * (negative) or long NO (positive), scaled by `widen` (x1e4) and bounded by `maxGapBps`. */
@@ -106,7 +160,7 @@ export function widening(secondsLeft: bigint, window: number, factor: number): b
 }
 
 /** Half-spread in bps of the branch price. A probability error dp moves both branch prices by
- * s·δ̂·dp, so the Polymarket spread widens quotes in proportion to |δ̂|. */
+ * s·δ̂·dp, so the event market's spread widens quotes in proportion to |δ̂|. */
 export function halfSpread(input: {
   minBps: number;
   makerBps: number;

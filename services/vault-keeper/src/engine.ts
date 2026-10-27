@@ -12,7 +12,9 @@ import {
   reservation,
 } from "@conditional-stocks/evm-client";
 import {
+  accountOf,
   type ChainState,
+  creditOf,
   type MarketState,
   type OrderState,
   traderOf,
@@ -34,7 +36,7 @@ import {
   type Units,
   units,
 } from "@conditional-stocks/operator";
-import type { Address, PublicClient } from "viem";
+import { type Address, type PublicClient, zeroAddress } from "viem";
 import {
   type MarketModel,
   type MarketOverride,
@@ -42,7 +44,9 @@ import {
   type Settings,
   type VaultSettings,
 } from "./config.ts";
+import type { LiveReferences } from "./live.ts";
 import {
+  anchorBps,
   type Book,
   conditionalGap,
   type Funds,
@@ -54,9 +58,29 @@ import {
   type Quote,
   widening,
 } from "./model.ts";
+import {
+  type Pricing,
+  priceRfq,
+  type RfqOrder,
+  raisesImbalance,
+  type VaultPosition,
+} from "./pricing.ts";
 import type { Basket, KeeperState, MarketRecord } from "./state.ts";
 import type { Tick } from "./tick.ts";
 import { readVaultView, type VaultIdentity, type VaultView } from "./vault.ts";
+
+/** A quote the vault signed that may still fill: it counts against the vault's limits until it
+ * expires (or is reported lost), so concurrent requests never overcommit it. */
+export interface OutstandingQuote {
+  market: number;
+  branch: 0 | 1;
+  /** The vault's side: true when it sells. */
+  sells: boolean;
+  fundingKind: 0 | 1;
+  quantity: bigint;
+  notional: bigint;
+  expiresAtMs: number;
+}
 
 export const log = (event: string, detail: Record<string, unknown> = {}) =>
   console.log(
@@ -64,6 +88,10 @@ export const log = (event: string, detail: Record<string, unknown> = {}) =>
   );
 const seconds = () => BigInt(Math.floor(Date.now() / 1000));
 const WAD = 10n ** 18n;
+/** The order the vault's indicative prices are for, in whole quote tokens. */
+const INDICATIVE_NOTIONAL = "100";
+/** A buy's worst price that never binds. */
+const UNLIMITED = (1n << 128n) - 1n;
 
 /** The vault's live orders, optionally in one market. */
 export function vaultOrders(s: ChainState, vault: Address, market?: number) {
@@ -184,7 +212,7 @@ export type ReferenceReader = (
 /** The round's shared reads of the market's event and of the spot prices. */
 export const tickReference: ReferenceReader = async (tick, market, policy, limits, u) => {
   const [source, prices] = await Promise.all([
-    tick.polymarket(market.id, market.condition),
+    tick.event(market.id, market.condition),
     tick.spotPrices(),
   ]);
   return reference(source, spotPair(prices, u.quote, policy.base), market, policy, limits, u);
@@ -194,9 +222,17 @@ export const tickReference: ReferenceReader = async (tick, market, policy, limit
  * process over one chain follower; each signs with its own wallet, so none waits on another. */
 export class Keeper {
   stopped = false;
+  /** Live references for RFQ quotes (set when RFQ is on). */
+  live?: LiveReferences;
+  /** The latest read of the vault, which RFQ quotes price against between rounds. */
+  latest?: { v: VaultView; at: number };
+  /** Signed quotes that may still fill, by request id. */
+  readonly outstanding = new Map<string, OutstandingQuote>();
   /** Markets the vault registered at the last read: the next read fetches their terms along. */
   private known: number[] = [];
   private readonly overrides: Map<number, MarketOverride>;
+  /** Each Kalshi ladder market's series and fixing, from the rounds' event reads. */
+  private readonly ladders = new Map<number, { series: string; fixing: number }>();
 
   constructor(
     readonly follower: ChainFollower,
@@ -222,9 +258,18 @@ export class Keeper {
     log(event, { vault: this.vault, ...detail });
   }
 
-  /** The Δ-model of a registered market; undefined when it is not to be quoted. */
+  /** The Δ-model of a registered market; undefined when it is not to be quoted. A ladder market
+   * whose series has a driver and a beta for this vault's stock takes δ₀ from them, unless its
+   * override sets `anchorBps`. */
   model(market: number): MarketModel | undefined {
-    return marketModel(this.settings.model, this.overrides.get(market));
+    const override = this.overrides.get(market),
+      model = marketModel(this.settings.model, override),
+      ladder = this.ladders.get(market);
+    const beta = ladder && this.config.betas?.[ladder.series],
+      dailyVolBps = ladder && this.settings.drivers?.[ladder.series]?.dailyVolBps;
+    if (!model || override?.anchorBps !== undefined || beta === undefined || !dailyVolBps)
+      return model;
+    return { ...model, driver: { beta, dailyVolBps, fixing: ladder.fixing } };
   }
 
   /** The replica, never older than the keeper's last included transaction, and the vault. */
@@ -238,6 +283,7 @@ export class Keeper {
     if (!this.follower.health().healthy) throw new Error("Chain view unavailable");
     const v = await readVaultView(this.client, this.identity, this.known);
     this.known = v.markets.map((m) => m.market);
+    this.latest = { v, at: Date.now() };
     return { s: this.follower.confirmed, v };
   }
 
@@ -347,6 +393,18 @@ export class Keeper {
           }
         }),
     );
+    // Each event's ladder series and fixing; RFQ quotes price from live references, validated
+    // against each event's metadata.
+    for (const market of references.keys()) {
+      const m = s.markets.get(market)!;
+      const event = await tick.event(market, m.condition).catch(() => undefined);
+      const n = (event as { metadata?: { normalized?: Record<string, unknown> } } | undefined)
+        ?.metadata?.normalized;
+      const fixing = Date.parse(String(n?.endTime ?? "")) / 1000;
+      if (n?.source === "kalshi" && typeof n.seriesTicker === "string" && Number.isFinite(fixing))
+        this.ladders.set(market, { series: n.seriesTicker, fixing });
+      this.live?.track(m, event);
+    }
     if (this.drawdown(v, references)) {
       // The latch is durable before anything else happens.
       await this.save();
@@ -410,11 +468,18 @@ export class Keeper {
     };
   }
 
-  /** Δ̂ of a market at the vault's current exposure. */
-  private gap(model: MarketModel, v: VaultView, market: number, widen: bigint) {
+  /** Δ̂ of a market at the vault's current exposure, for probability `p` at `now` (seconds). */
+  private gap(
+    model: MarketModel,
+    v: VaultView,
+    market: number,
+    widen: bigint,
+    p: bigint,
+    now: bigint,
+  ) {
     const vm = v.markets.find((m) => m.market === market)!;
     return conditionalGap({
-      anchorBps: model.anchorBps,
+      anchorBps: anchorBps(model, p, now),
       impactBps: model.impactBps,
       maxGapBps: model.maxGapBps,
       imbalance: vm.exposure.imbalance,
@@ -440,7 +505,7 @@ export class Keeper {
       const probability = r?.probability ?? (stored ? BigInt(stored) : PROB / 2n);
       const gapPpm =
         model && v.markets.some((m) => m.market === market)
-          ? this.gap(model, v as VaultView, market, BPS)
+          ? this.gap(model, v as VaultView, market, BPS, probability, seconds())
           : 0n;
       return { probability, gapPpm };
     };
@@ -480,6 +545,8 @@ export class Keeper {
       now = seconds(),
       set = this.settings;
     if (v.paused) throw new Error("Vault paused");
+    // The guardian's exchange pause halts every placement: quotes would only fail.
+    if (s.config.paused) throw new Error("Exchange paused");
     if (m.state !== OPEN || m.open > now) throw new Error("Market not open");
     // Orders must expire before the vault's cutoff buffer and within its lifetime limit, which
     // the vault measures from the block's timestamp: the latest block seen bounds it, as this
@@ -520,7 +587,7 @@ export class Keeper {
     if (nowMs < (record.cooldownUntil ?? 0)) throw new Error("Cooling down after a jump");
 
     const widen = widening(stopAt - now, set.wideningSeconds, set.wideningFactor);
-    const gap = this.gap(model, v, market, widen);
+    const gap = this.gap(model, v, market, widen, r.probability, now);
     const fair = fairPrices(r.spot, r.probability, gap);
     const half = halfSpread({
       minBps: set.halfSpreadBps,
@@ -533,42 +600,45 @@ export class Keeper {
       gapPpm: gap,
       widen,
     });
-    // A liquid book implying another probability means Polymarket's p or our flow is off.
+    // A liquid book implying another probability means the event's p or our flow is off.
     const best = foreignBook(s, this.vault, m);
     const implied = impliedProbability(best, r.spot);
     if (implied !== null && abs(implied - r.probability) > BigInt(set.maxProbabilityDriftX6))
       throw new Error("Order books imply a different probability than the reference");
     const own = vaultOrders(s, this.vault, market);
     const live = { epoch: traderOf(s, this.vault).epoch, maxFeeBps: makerBps };
-    const desired = ladders({
-      terms: m,
-      fair,
-      halfSpread: half,
-      levels: set.quoteLevels,
-      levelSpacingBps: set.levelSpacingBps,
-      maxHalfSpreadBps: set.maxHalfSpreadBps,
-      oracle,
-      bandBps: vm.risk.bandBps,
-      bandMarginBps: set.bandMarginBps,
-      budget: units(model.orderQuote, u.quoteDecimals),
-      maxOrder: vm.risk.maxOrder,
-      maxResting: vm.risk.maxResting,
-      imbalance: vm.exposure.imbalance,
-      maxImbalance: vm.risk.maxImbalance,
-      funds: marketFunds(v, market, own, m.tick, set.reserveBps),
-      best,
-      resting: own
-        .filter((o) => keepable(o, now, set.pollMs, live))
-        .map((o) => ({
-          key: BigInt(o.key),
-          branch: o.branch as 0 | 1,
-          side: o.side as 0 | 1,
-          price: o.ticks * m.tick,
-          quantity: o.remaining,
-          funding: o.fundingKind as 0 | 1,
-        })),
-      repriceBps: set.repriceBps,
-    });
+    // Quoting only through RFQ, the vault leaves nothing resting on the book.
+    const desired = !set.rfq.bookQuotes
+      ? []
+      : ladders({
+          terms: m,
+          fair,
+          halfSpread: half,
+          levels: set.quoteLevels,
+          levelSpacingBps: set.levelSpacingBps,
+          maxHalfSpreadBps: set.maxHalfSpreadBps,
+          oracle,
+          bandBps: vm.risk.bandBps,
+          bandMarginBps: set.bandMarginBps,
+          budget: units(model.orderQuote, u.quoteDecimals),
+          maxOrder: vm.risk.maxOrder,
+          maxResting: vm.risk.maxResting,
+          imbalance: vm.exposure.imbalance,
+          maxImbalance: vm.risk.maxImbalance,
+          funds: marketFunds(v, market, own, m.tick, set.reserveBps),
+          best,
+          resting: own
+            .filter((o) => keepable(o, now, set.pollMs, live))
+            .map((o) => ({
+              key: BigInt(o.key),
+              branch: o.branch as 0 | 1,
+              side: o.side as 0 | 1,
+              price: o.ticks * m.tick,
+              quantity: o.remaining,
+              funding: o.fundingKind as 0 | 1,
+            })),
+          repriceBps: set.repriceBps,
+        });
     const { cancels, places } = orderChanges(own, desired);
     this.log("plan", {
       market,
@@ -610,5 +680,193 @@ export class Keeper {
       fresh,
     );
     return true;
+  }
+
+  // ---------------------------------------------------------------- RFQ
+
+  /** The vault's position in `market` from the replica (exact, event by event), with its
+   * resting orders and every outstanding quote counted as filled. */
+  position(s: ChainState, v: VaultView, market: number, nowMs = Date.now()): VaultPosition {
+    const vault = this.vault;
+    const yes = accountOf(s, market, 0, vault),
+      no = accountOf(s, market, 1, vault);
+    let imbalance = yes.base - no.base,
+      raise = 0n,
+      lower = 0n,
+      expected = 0n,
+      plainBase = creditOf(s, vault, v.base),
+      plainQuote = creditOf(s, vault, v.quote),
+      claimBase: [bigint, bigint] = [yes.base, no.base];
+    const funds: Funds = {
+      quote: plainQuote,
+      base: plainBase,
+      quoteClaims: [yes.quote, no.quote],
+      baseClaims: [yes.base, no.base],
+    };
+    for (const o of vaultOrders(s, vault)) {
+      const m = s.markets.get(o.market);
+      if (!m) continue;
+      const sell = o.side === 1;
+      // Escrow is the vault's: whole-funded orders hold plain credit, claim-funded ones claims.
+      if (o.fundingKind === 0) {
+        if (sell) plainBase += o.remaining;
+        else plainQuote += reservation(0, o.remaining, o.ticks * m.tick);
+      }
+      if (o.market !== market) continue;
+      if (sell && o.fundingKind === 1) {
+        imbalance += o.branch === 0 ? o.remaining : -o.remaining;
+        claimBase[o.branch as 0 | 1] += o.remaining;
+      }
+      if (sell === (o.branch === 1)) raise += o.remaining;
+      else lower += o.remaining;
+    }
+    for (const [id, q] of this.outstanding) {
+      if (q.expiresAtMs <= nowMs) {
+        this.outstanding.delete(id);
+        continue;
+      }
+      // Credit is shared by every market; claims belong to theirs.
+      if (q.fundingKind === 0) {
+        if (q.sells) funds.base -= q.quantity;
+        else funds.quote -= q.notional;
+      }
+      if (q.market !== market) continue;
+      if (q.fundingKind === 1) {
+        if (q.sells) funds.baseClaims[q.branch] -= q.quantity;
+        else funds.quoteClaims[q.branch] -= q.notional;
+      }
+      const raises = raisesImbalance({ branch: q.branch, side: q.sells ? 0 : 1 });
+      if (raises) raise += q.quantity;
+      else lower += q.quantity;
+      expected += raises ? q.quantity : -q.quantity;
+    }
+    // The withdrawal reserve stays free, as for the book's ladders.
+    const reserve = BigInt(this.settings.reserveBps);
+    funds.quote -= min(funds.quote, (plainQuote * reserve) / BPS);
+    funds.base -= min(funds.base, (plainBase * reserve) / BPS);
+    for (const list of [funds.quoteClaims, funds.baseClaims])
+      for (const b of [0, 1] as const) list[b] = max(0n, list[b]);
+    return {
+      imbalance,
+      high: imbalance + raise,
+      low: imbalance - lower,
+      expected: imbalance + expected,
+      inventory: plainBase + (claimBase[0] + claimBase[1]) / 2n,
+      funds: { ...funds, quote: max(0n, funds.quote), base: max(0n, funds.base) },
+    };
+  }
+
+  /** The vault's quote for one RFQ, from memory: the latest vault read, the replica and the
+   * live references. The same safety gates as the book's quotes apply; a jump starts the same
+   * cooldown. Synchronous: it is the whole of the response time but the signature. */
+  rfqQuote(
+    request: { market: number; order: RfqOrder & { taker: Address } },
+    minQuoteSeconds: number,
+  ): Pricing {
+    const decline = (reason: string) => ({ decline: reason });
+    const set = this.settings,
+      nowMs = Date.now(),
+      now = seconds();
+    if (!set.rfq.enabled || !this.live) return decline("RFQ is off");
+    if (this.state.halted) return decline("Drawdown latch set");
+    const latest = this.latest;
+    if (!latest || nowMs - latest.at > set.pollMs * 3) return decline("Vault view is stale");
+    const v = latest.v,
+      market = request.market,
+      vm = v.markets.find((x) => x.market === market),
+      model = this.model(market);
+    if (!vm) return decline("Not a market of this vault");
+    if (!model) return decline("Market not quoted");
+    if (v.paused) return decline("Vault paused");
+    if (request.order.taker === this.vault) return decline("The vault's own order");
+    if (!this.follower.health().healthy) return decline("Chain view unavailable");
+    const s = this.follower.confirmed,
+      m = s.markets.get(market);
+    if (s.config.paused) return decline("Exchange paused");
+    if (!m || m.state !== OPEN || m.open > now) return decline("Market not open");
+    if (v.oraclePrice === null) return decline("Vault oracle unavailable");
+    let u: Units, r: Reference;
+    try {
+      u = this.units(s, v);
+      r = this.live.reference(
+        m,
+        this.policy(),
+        { ...set, maxFeedAgeMs: set.rfq.maxReferenceAgeMs },
+        u,
+        nowMs,
+      );
+    } catch (error) {
+      return decline((error as Error).message);
+    }
+    // A move since the last round's reference as large as a jump pauses quoting, as the rounds
+    // would on their next read.
+    const record = this.record(market);
+    if (record.spot && record.probability) {
+      const move = (abs(r.spot - BigInt(record.spot)) * BPS) / BigInt(record.spot),
+        probMove = abs(r.probability - BigInt(record.probability));
+      if (move >= BigInt(set.jumpBps) || probMove >= BigInt(set.probabilityJumpX6))
+        record.cooldownUntil = Math.max(record.cooldownUntil ?? 0, nowMs + set.cooldownMs);
+    }
+    if (nowMs < (record.cooldownUntil ?? 0)) return decline("Cooling down after a jump");
+    return priceRfq({
+      order: request.order,
+      market: m,
+      risk: { ...vm.risk, maxImbalance: vm.risk.maxImbalance },
+      cutoff: vm.cutoff,
+      limits: v.limits,
+      oracle: v.oraclePrice,
+      model,
+      settings: set,
+      reference: r,
+      movementBps: BigInt(record.movement ?? "0"),
+      position: this.position(s, v, market, nowMs),
+      maxNotional: min(vm.risk.maxOrder, units(model.orderQuote, u.quoteDecimals)),
+      now,
+      nowMs,
+      chainTime: s.timestamp,
+      minQuoteSeconds,
+      allowStaleSpot: set.allowStaleSpot && TESTNETS.includes(this.chainId),
+    });
+  }
+
+  /** The vault's current prices, unsigned, for an order of `INDICATIVE_NOTIONAL` on each branch of
+   * every market it holds: what an RFQ for that order would be quoted now (`rfqQuote`, from
+   * memory). A side the vault would decline is null; a branch it quotes on neither side is left
+   * out. The order is sized at the vault's oracle price. */
+  indications(minQuoteSeconds: number) {
+    const v = this.latest?.v,
+      s = this.follower.confirmed;
+    if (!v?.oraclePrice) return [];
+    let u: Units;
+    try {
+      u = this.units(s, v);
+    } catch {
+      return [];
+    }
+    const quantity = (units(INDICATIVE_NOTIONAL, u.quoteDecimals) * WAD) / v.oraclePrice;
+    const prices: { market: number; branch: 0 | 1; bid: bigint | null; ask: bigint | null }[] = [];
+    for (const { market } of v.markets)
+      for (const branch of [0, 1] as const) {
+        const price = (side: 0 | 1) => {
+          const limit = side === 0 ? UNLIMITED : 0n;
+          const q = this.rfqQuote(
+            { market, order: { branch, side, quantity, limit, taker: zeroAddress } },
+            minQuoteSeconds,
+          );
+          return "decline" in q ? null : q.price;
+        };
+        const ask = price(0),
+          bid = price(1);
+        if ((ask !== null || bid !== null) && (ask === null || bid === null || bid <= ask))
+          prices.push({ market, branch, bid, ask });
+      }
+    return prices;
+  }
+
+  /** What a request came to: a quote that lost (or never filled) frees its capacity at once; a
+   * filled one keeps it until it expires, by when the replica holds the fill. */
+  quoteOutcome(id: string, outcome: string) {
+    if (outcome === "filled" || outcome === "partially_filled") this.follower.poke();
+    else this.outstanding.delete(id);
   }
 }

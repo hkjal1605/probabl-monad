@@ -286,10 +286,7 @@ function setup(
     storage: () => shared,
     origin: () => origin,
     api: () => apiOrigin,
-    client: () =>
-      ({ waitForTransactionReceipt: async () => receipt }) as unknown as ReturnType<
-        Dependencies["client"]
-      >,
+    waitForReceipt: async () => receipt,
     request: (path, requestOptions) => api.request(path, requestOptions),
     clearCache: () => {
       calls.clears++;
@@ -627,11 +624,51 @@ test("a wallet on another chain is asked to switch only on an explicit action, a
   };
   g.controller.start(g.events);
   await tick();
-  // Adding the chain does not switch to it; the explicit action retries once.
-  await expect(g.controller.connect()).rejects.toThrow("Switch your wallet");
+  // A wallet that adds the chain without switching to it is asked to switch once more.
+  await g.controller.connect();
   expect(added).toBe(true);
-  await g.controller.ensureNetwork();
+  expect(g.count("wallet_addEthereumChain")).toBe(1);
+  expect(g.count("wallet_switchEthereumChain")).toBe(2);
   expect(g.controller.getSnapshot().chainId).toBe(deployment.chainId);
+  // A wallet that nests the 4902 code (MetaMask mobile) is recognized too.
+  const h = setup();
+  h.wallet.state.chainId = 1;
+  h.wallet.state.hooks.wallet_switchEthereumChain = async (params) => {
+    if (h.count("wallet_addEthereumChain") === 0)
+      throw Object.assign(new Error("Internal error"), {
+        code: -32603,
+        data: { originalError: { code: 4902 } },
+      });
+    h.wallet.state.chainId = Number((params as [{ chainId: string }])[0].chainId);
+    return null;
+  };
+  h.wallet.state.hooks.wallet_addEthereumChain = async (params) => {
+    h.wallet.state.chainId = Number((params as [{ chainId: string }])[0].chainId);
+    return null;
+  };
+  h.controller.start(h.events);
+  await tick();
+  await h.controller.connect();
+  expect(h.count("wallet_switchEthereumChain")).toBe(1);
+  expect(h.controller.getSnapshot().chainId).toBe(deployment.chainId);
+});
+
+test("the wallet's network shows at once, and a declined switch says what to do", async () => {
+  const f = setup();
+  f.wallet.state.chainId = 1;
+  f.wallet.state.hooks.wallet_switchEthereumChain = async () => {
+    // The app already knows where the wallet is while the prompt is open.
+    expect(f.controller.getSnapshot().chainId).toBe(1);
+    throw Object.assign(new Error("User rejected the request."), { code: 4001 });
+  };
+  f.controller.start(f.events);
+  await tick();
+  await expect(f.controller.connect()).rejects.toThrow("User rejected");
+  expect(f.controller.getSnapshot()).toMatchObject({
+    account: owner,
+    chainId: 1,
+    error: `Switch your wallet to ${deployment.chainName} to continue.`,
+  });
 });
 
 test("an ended session still restores the wallet, and signing in again takes one signature", async () => {

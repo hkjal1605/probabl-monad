@@ -97,6 +97,15 @@ twice. `scripts/evm/fund-referrals.ts` tops it up from the treasury by exactly w
 quote limits, fee cap, expiry); the API then submits orders for it without a wallet prompt. Retries
 with the same client id never place a second order.
 
+**RFQ** (`docs/rfq.md`). A delegated market order first goes out over the `/v1/rfq/stream`
+WebSocket to every maker the market admin approved (Admin → RFQ makers: one API key per maker
+wallet, kept as a hash), which have `RFQ_QUOTE_WINDOW_MS` (500 ms) to answer with an EIP-712 signed
+price; the request closes as soon as every maker online has answered, and with none online nothing
+waits. Quotes and resting orders are ranked together, best price first and the book first at equal
+prices, and the order's one transaction (`placeWithQuotes`) fills the winning quotes straight from
+the makers' balances (no maker order ever rests), then the book's orders. A quote fill costs about
+9k gas more than a resting-order fill (signature check and a nonce bit).
+
 **Index.** The API process follows the exchange's logs into an in-memory replica (no database read on
 the trading path), persists finalized trades and closed orders in coalesced transactions plus a
 compressed checkpoint when the replica changed (every other event lives in the checkpoint and on
@@ -118,7 +127,10 @@ a worst-case YES-minus-NO stock position above the market cap. The guardian paus
 quoting; withdrawals are never paused (the admin may rate-limit them to no less than 10% a day).
 
 Gas (Foundry, including test harness): resting bid 124k, resting claim-funded ask 119k, market buy
-filling one maker 85k (partial 93k), four makers 139k, eight makers 203k, cancel 34k.
+filling one maker 85k (partial 93k), four makers 139k, eight makers 203k, cancel 34k. Exchange call
+alone (`forge test --match-contract GasTest --isolate -vvvv`): a market buy filling one resting
+maker 87.9k, one RFQ quote 96.8k (113.9k on the first nonce of a new 256-nonce word), a quote and a
+resting maker 112.1k.
 
 ## Commands
 
@@ -177,18 +189,28 @@ market maker and the vault keeper do not quote it.
 5. Δ-vaults: `bun run deploy:vault` with `CHAIN_ID`, `RPC_URL`, `DEPLOYER_PRIVATE_KEY`, `BASE_TOKEN`,
    `PRICE_FEED` (the token's own Chainlink feed) and dedicated `VAULT_ADMIN`, `CURATOR`, `KEEPER`,
    `GUARDIAN` (Base pins its sequencer-uptime feed). Testnets have no Chainlink stock feeds:
-   `bun run deploy:mock-feeds` (`FEEDS`, `FEED_SOURCE_RPC_URL`) deploys mocks seeded from the
-   stocks' Robinhood Chain mainnet feeds (or BNB Chain's, `token:feed@56`), and
-   `bun run start:feed-mirror` keeps them current; `bun run provision:vaults` then deploys and
-   provisions the vaults of `deployments/<chainId>-vault-plan.json` end to end. The
-   vault admin signs the printed role and cap calls; the curator sets limits and adds markets
-   (admin console → Vault controls); the admin makes the first deposit. Then set
-   `DELTA_VAULT_ADDRESSES` (API) and `NEXT_PUBLIC_DELTA_VAULTS` (UIs). One keeper process quotes
+   `bun run deploy:mock-feeds` (`FEEDS`, `FEED_SOURCE_RPC_URL`, `FEED_OWNER` for the mirror's
+   relay wallet) deploys mocks seeded from the assets' Robinhood Chain mainnet feeds (or BNB
+   Chain's, `token:feed@56`), or from Robinhood's reference price for tokens Chainlink has no
+   feed of (`token:robinhood`), and `bun run start:feed-mirror` keeps them current (a round on
+   a 0.5% move or after 24 hours); `bun run provision:vaults` then deploys and provisions the
+   vaults of `deployments/<chainId>-vault-plan.json` end to end: it lists a base pool no market
+   has listed yet, grants the roles, sets caps and limits and makes the admin's seed deposit.
+   Market automation's `curate-vaults` job registers the vaults' markets
+   (`docs/market-automation.md`). Then set `DELTA_VAULT_ADDRESSES` (API) and
+   `NEXT_PUBLIC_DELTA_VAULTS` (UIs). One keeper process quotes
    every Δ-vault (`VK_*` settings, see `services/vault-keeper/src/main.ts` and
    `config.example.json`): its config lists the vaults, each with its own keeper wallet holding
    only `KEEPER_ROLE` (`VK_PRIVATE_KEYS`/`VK_WALLET_ADDRESSES`, comma-separated in the same
    order), and a default Δ-`model` for every market a vault registers, which the keeper reads
-   from the chain each round: markets the curator adds or that settle need no restart.
+   from the chain each round: markets the curator adds or that settle need no restart. With
+   `rfq.enabled` the vaults answer market orders over the RFQ stream instead of resting ladders
+   (`docs/delta-vault.md`, "RFQ quoting"): approve each vault's address as an RFQ maker (admin
+   console → RFQ makers, or `scripts/evm/approve-rfq-makers.ts` for every planned vault, run
+   where the keeper runs) and list the keys in `VK_RFQ_API_KEYS`, in vault order. The API prices
+   crypto tokens from Coinbase's books, so crypto vaults quote too. On a testnet,
+   `scripts/evm/smoke-market-order.ts` places a one-click market order end to end and prints who
+   filled it.
 
 `ops/ec2` runs the ingestor, the API and (when `.env.market-maker` or `.env.vault-keeper` exists) the
 market maker and the vault keeper under PM2 behind nginx. A testnet host (x86_64 or Graviton) runs the

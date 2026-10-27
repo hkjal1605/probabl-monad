@@ -1,0 +1,69 @@
+symbol,name,match_kind,open_markets,events,price_linked_markets,earnings_kpi_markets,corporate_event_markets,mention_ranking_markets,other_markets,vol24h_usd,vol1wk_usd,vol_total_usd
+GOOGL,Alphabet Class A,direct,975,122,102,21,44,756,52,117692,648022,5802195
+NFLX,Netflix,direct,216,18,65,6,0,144,1,19613,108852,151252
+META,Meta Platforms,direct,212,89,88,20,16,48,40,42937,197336,1031124
+AAPL,Apple,direct,177,34,84,30,8,51,4,27493,382670,2876317
+MSFT,Microsoft,direct,158,74,88,16,4,22,28,10076,81662,1425002
+AMZN,Amazon,direct,143,66,92,1,4,22,24,16216,51311,1351166
+NVDA,NVIDIA,direct,143,63,86,10,2,21,24,32136,226225,1827053
+TSLA,Tesla,direct,112,25,78,1,8,18,7,57314,212581,1706884
+SPCX,Space Exploration Technologies Corp. Class A Common Stock,direct,105,24,92,0,7,1,5,70075,418681,2696160
+MU,Micron Technology,direct,85,10,69,15,1,0,0,5313,8911,22297
+BABA,Alibaba,direct,78,77,6,0,5,30,37,11639,61333,632401
+PLTR,Palantir Technologies,direct,71,7,70,0,1,0,0,5468,10593,51229
+USO,United States Oil Fund,proxy (underlying index/commodity),71,18,55,1,0,0,15,215734,1268604,5094929
+TTWO,Take-Two Interactive Software,direct,67,19,5,9,20,10,23,234382,732331,2461126
+COIN,Coinbase,direct,49,13,30,5,9,0,5,12622,22363,525530
+GLD,SPDR Gold Trust,proxy (underlying index/commodity),49,8,41,5,0,1,2,32333,167893,3123353
+EWY,iShares MSCI South Korea fund,direct,44,3,44,0,0,0,0,15158,44767,77654
+MSTR,Strategy Inc.,direct,41,13,30,1,9,0,1,5333,5657,776446
+SPY,SPDR S&P 500 ETF Trust,direct,39,4,39,0,0,0,0,37923,109005,188115
+SPY,SPDR S&P 500 ETF Trust,proxy (underlying index/commodity),38,12,23,6,7,0,2,29428,40915,826010
+SKHY,SK hynix Inc. American Depositary Shares,direct,36,2,36,0,0,0,0,649,769,1175
+RKLB,Rocket Lab Corporation,direct,32,3,32,0,0,0,0,5565,12200,30947
+SLV,iShares Silver Trust,proxy (underlying index/commodity),32,4,31,0,0,0,1,10118,49326,149935
+LLY,Eli Lilly,direct,12,4,0,11,1,0,0,341,2060,12819
+AVGO,Broadcom,direct,10,6,5,5,0,0,0,40,450,23256
+INTC,Intel,direct,10,2,0,10,0,0,0,40,738,2661
+LRCX,Lam Research Corp,direct,10,2,0,10,0,0,0,0,0,11949
+LMT,Lockheed,direct,8,4,1,6,1,0,0,46,934,22647
+DELL,Dell,direct,7,4,0,4,0,0,3,163,693,2759
+CRM,Salesforce,direct,6,1,0,6,0,0,0,358,2188,4012
+CRWV,CoreWeave,direct,6,2,0,0,6,0,0,6986,58159,276913
+IBM,IBM,direct,6,2,0,6,0,0,0,91,1385,6912
+NET,"Cloudflare, Inc. Class A common stock",direct,6,3,0,1,0,0,5,2142,8227,71212
+QCOM,Qualcomm,direct,6,2,0,5,0,1,0,0,0,1265
+XOM,ExxonMobil Holdings Corporation,direct,6,2,0,6,0,0,0,20,252,1938
+AMD,AMD,direct,5,1,0,5,0,0,0,40,186,1448
+GE,General Electric,direct,5,1,0,5,0,0,0,123,2050,8155
+GEV,GE Vernova,direct,5,1,0,5,0,0,0,80,772,1670
+GLW,Corning,direct,5,1,0,5,0,0,0,110,1322,3584
+KLAC,KLA,direct,5,1,0,5,0,0,0,25,1030,3500
+SNOW,Snowflake,direct,5,1,0,5,0,0,0,5,212,889
+VRT,Vertiv,direct,5,1,0,5,0,0,0,264,2817,4691
+WDC,Western Digital,direct,5,1,0,5,0,0,0,20,507,2523
+CRWD,CrowdStrike Holdings,direct,4,1,0,4,0,0,0,106,798,1809
+ORCL,Oracle,direct,3,2,0,0,2,1,0,2593,2593,2778
+PANW,Palo Alto Networks,direct,3,1,0,3,0,0,0,50,350,666
+SMR,NuScale Power,direct,3,1,0,0,3,0,0,9193,28227,288149
+BA,Boeing,direct,2,2,0,1,1,0,0,10,45,12467
+CVNA,Carvana,direct,2,2,0,1,1,0,0,50,1292,8655
+NBIS,Nebius Group,direct,2,2,0,0,1,1,0,12,334,7962294
+PFE,Pfizer,direct,2,2,0,0,1,0,1,0,0,11440
+QQQ,Invesco QQQ,proxy (underlying index/commodity),2,2,0,0,0,0,2,0,0,4358
+RBLX,Roblox,direct,2,2,1,1,0,0,0,0,0,2885
+RIVN,Rivian Automotive,direct,2,2,0,1,1,0,0,0,0,984
+COST,Costco,direct,1,1,1,0,0,0,0,0,0,10906
+CSCO,Cisco Systems,direct,1,1,0,0,0,0,1,0,0,1463
+DJT,Trump Media & Technology Group,direct,1,1,1,0,0,0,0,0,0,29
+EWY,iShares MSCI South Korea fund,proxy (underlying index/commodity),1,1,1,0,0,0,0,0,0,40463
+GME,GameStop,direct,1,1,0,0,1,0,0,13271,40936,3157881
+IONQ,IonQ,direct,1,1,0,0,1,0,0,0,0,5251
+RDDT,Reddit,direct,1,1,0,1,0,0,0,40,1706,1706
+SNAP,Snap,direct,1,1,0,0,1,0,0,34,287,151427
+SNDK,Sandisk Corporation,direct,1,1,0,1,0,0,0,86,949,949
+SOFI,SoFi Technologies,direct,1,1,0,1,0,0,0,0,0,375
+SOUN,SoundHound AI,direct,1,1,0,0,1,0,0,0,0,9034
+TSM,Taiwan Semiconductor Manufacturing,direct,1,1,0,0,1,0,0,0,0,18192
+UPS,UPS,direct,1,1,0,1,0,0,0,14,17,17
+ZM,Zoom,direct,1,1,0,0,1,0,0,0,0,431727

@@ -35,14 +35,16 @@ export function retainBookDisplays(previous: unknown, next: { markets: MarketVie
         imageUrl: stable.imageUrl ?? prior.imageUrl ?? null,
         mapping: {
           ...stable.mapping,
-          polymarketUrl:
-            metadataUnavailable && prior.mapping.polymarketUrl
-              ? prior.mapping.polymarketUrl
-              : stable.mapping.polymarketUrl,
+          sourceUrl:
+            metadataUnavailable && prior.mapping.sourceUrl
+              ? prior.mapping.sourceUrl
+              : stable.mapping.sourceUrl,
         },
         probability:
           !hasProbability(stable) && hasProbability(prior) ? prior.probability : stable.probability,
         question: metadataUnavailable ? prior.question : stable.question,
+        // The event's end time, series and result sort the market's tabs and calendar entry.
+        ...(metadataUnavailable && prior.event ? { event: prior.event } : {}),
       };
     }),
   };

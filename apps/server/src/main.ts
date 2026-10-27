@@ -2,7 +2,12 @@
  * `/v1` product API in one process, sharing one RPC poller and one in-memory replica. */
 
 import { createDatabase } from "@conditional-stocks/db";
-import { conditionalStocksAbi, DEPLOYLESS_BATCH_SIZE } from "@conditional-stocks/evm-client";
+import {
+  conditionalStocksAbi,
+  DEPLOYLESS_BATCH_SIZE,
+  QUOTE_TYPES,
+  quoteDomain,
+} from "@conditional-stocks/evm-client";
 import { IndexerService } from "@conditional-stocks/indexer";
 import { MarketDataError } from "@conditional-stocks/market-data";
 import { nativeCurrency } from "@conditional-stocks/shared/chains";
@@ -10,6 +15,7 @@ import { requestLogging } from "@conditional-stocks/shared/http";
 import { RedisCache } from "@conditional-stocks/shared/redis-cache";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
+import { websocket } from "hono/bun";
 import { HTTPException } from "hono/http-exception";
 import { BaseError, createPublicClient, defineChain, fallback, getAddress, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -20,12 +26,16 @@ import { logger } from "./common/logger.ts";
 import { mountCustody } from "./custody/routes.ts";
 import { mountDeltaVaults } from "./delta-vaults/routes.ts";
 import { mountFaucet } from "./faucet.ts";
-import { PolymarketIngestorClient } from "./integrations/polymarket.ts";
+import { EventMarketsClient } from "./integrations/event-markets.ts";
 import { mountInvites } from "./invites/routes.ts";
+import { CoinbaseCryptoPrices } from "./market-data/coinbase.ts";
 import { PriceRecorder } from "./market-data/history.ts";
 import { RobinhoodSpotPrices } from "./market-data/robinhood.ts";
 import { CachedProbability, mountMarketData } from "./market-data/routes.ts";
 import { Referrals } from "./referrals/service.ts";
+import { RfqHub } from "./rfq/hub.ts";
+import { MAX_MAKER_FRAME } from "./rfq/protocol.ts";
+import { mountRfq } from "./rfq/routes.ts";
 import { DelegatedTrading, tradingSigner } from "./trading/delegated.ts";
 import { createOrderPlan } from "./trading/plan.ts";
 import { mountTrading } from "./trading/routes.ts";
@@ -123,6 +133,16 @@ await indexer.start();
 const domain = indexer.domain;
 
 const app = new Hono();
+// Requests in flight, which a shutdown lets finish (see the signal handler below).
+let inflight = 0;
+app.use("*", async (_c, next) => {
+  inflight++;
+  try {
+    await next();
+  } finally {
+    inflight--;
+  }
+});
 app.use("*", browserCors(origins));
 app.use("*", requestLogging(logger, { quietPaths: ["/health", "/ready"] }));
 app.use("*", async (c, next) =>
@@ -242,12 +262,12 @@ app.get("/v1/system/readiness", (c) => {
   }
 });
 
-const polymarket = () => {
+/** The Polymarket and Kalshi ingestor (POLYMARKET_INGESTOR_URL predates Kalshi). */
+const events = () => {
   const url = process.env.POLYMARKET_INGESTOR_URL,
     token = process.env.POLYMARKET_INTERNAL_TOKEN;
-  if (!url || !token)
-    throw new HTTPException(503, { message: "Polymarket ingestor is not configured" });
-  return new PolymarketIngestorClient(url, token);
+  if (!url || !token) throw new HTTPException(503, { message: "Event ingestor is not configured" });
+  return new EventMarketsClient(url, token);
 };
 // Redis shares probability ticks across API processes; without it, reads go to the ingestor.
 let cacheWarning = 0;
@@ -261,14 +281,22 @@ const probabilityCache = new RedisCache(
   },
 );
 const probabilities = new CachedProbability(probabilityCache, (condition) =>
-  polymarket().probability(condition),
+  events().probability(condition),
 );
-const prices = new RobinhoodSpotPrices(chainId, process.env.ROBINHOOD_PRICES_URL || undefined);
-mountMarketData(app, { indexer, prices, probabilities, polymarket, db });
+const prices = new RobinhoodSpotPrices(
+  chainId,
+  process.env.ROBINHOOD_PRICES_URL || undefined,
+  fetch,
+  undefined,
+  new CoinbaseCryptoPrices(),
+);
+mountMarketData(app, { indexer, prices, probabilities, events, db });
 const recorder = new PriceRecorder({
   indexer,
   prices,
   db,
+  // The RFQ hub is created below; the recorder first reads it a minute after start.
+  quotes: () => rfq?.prices() ?? [],
   onError: (error) => logger.warn("prices.record.failed", { error }),
 });
 recorder.start();
@@ -292,16 +320,56 @@ const signer = tradingSigner(
   process.env.TRADING_DELEGATE_ADDRESS,
 );
 const prepare = createOrderPlan(indexer);
-mountTrading(app, {
-  indexer,
-  client,
+/** RFQ: approved makers quote market orders over a WebSocket with signed prices, which the
+ * order's own transaction fills. The orders go through delegated trading, so the stream exists
+ * only with it. */
+const rfqWindowMs = whole("RFQ_QUOTE_WINDOW_MS", 500, 5_000);
+const rfqMinQuoteSeconds = whole("RFQ_MIN_QUOTE_SECONDS", 3, 300);
+const rfq = signer
+  ? new RfqHub({
+      windowMs: rfqWindowMs,
+      maxSessionsPerMaker: whole("RFQ_CONNECTIONS_PER_KEY", 2, 20) || 1,
+      welcome: () => ({
+        chainId,
+        exchange,
+        signing: { domain: quoteDomain(chainId, exchange), types: QUOTE_TYPES },
+        minQuoteSeconds: rfqMinQuoteSeconds,
+      }),
+    })
+  : null;
+const delegated =
+  signer &&
+  new DelegatedTrading({
+    indexer,
+    db,
+    domain,
+    client,
+    signer,
+    prepare,
+    rfq: rfq && {
+      hub: rfq,
+      chainId,
+      minQuoteSeconds: rfqMinQuoteSeconds,
+      log: (level, event, fields) => logger[level](event, fields),
+    },
+  });
+mountTrading(app, { indexer, client, auth, prepare, signer, delegated, rfq });
+mountRfq(app, {
+  db,
+  domain,
   auth,
-  prepare,
-  signer,
-  delegated: signer ? new DelegatedTrading({ indexer, db, domain, client, signer, prepare }) : null,
+  hub: rfq,
+  marketAdmin: () => {
+    try {
+      return indexer.trading().config.marketAdmin;
+    } catch {
+      return null;
+    }
+  },
+  trustedHops,
 });
 mountCustody(app, indexer, client, auth);
-mountAdmin(app, { db, indexer, client, chainId, domain, authenticate: auth.bearer, polymarket });
+mountAdmin(app, { db, indexer, client, chainId, domain, authenticate: auth.bearer, events });
 const faucet = mountFaucet(app, {
   secret: process.env.FAUCET_PRIVATE_KEY,
   chainId,
@@ -310,6 +378,13 @@ const faucet = mountFaucet(app, {
   db,
   domain,
   auth,
+  prices,
+  tokens: (process.env.FAUCET_TOKENS ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map((value) => getAddress(value)),
+  gasEth: process.env.FAUCET_GAS_ETH?.trim() || undefined,
 });
 if (faucet) logger.info("faucet.enabled", { faucet });
 const payoutKey = process.env.REFERRAL_PAYOUT_PRIVATE_KEY?.trim();
@@ -356,17 +431,36 @@ const server = Bun.serve({
   idleTimeout: 60,
   hostname: process.env.API_HOST ?? "127.0.0.1",
   port: Number(process.env.API_PORT ?? 3000),
-  // The socket peer, for per-client rate limits.
-  fetch: (request, bun) => app.fetch(request, { ip: bun.requestIP(request)?.address }),
+  // The socket peer, for per-client rate limits; the server, to upgrade RFQ streams.
+  fetch: (request, bun) => app.fetch(request, { ip: bun.requestIP(request)?.address, server: bun }),
+  websocket: {
+    ...websocket,
+    maxPayloadLength: MAX_MAKER_FRAME,
+    // A maker that stops reading is dropped rather than buffered for.
+    backpressureLimit: 1 << 20,
+    closeOnBackpressureLimit: true,
+    idleTimeout: 120,
+    sendPings: true,
+  },
 });
 logger.info("api.listening", { url: server.url.toString(), chainId, exchange });
+/** Stops accepting connections, lets in-flight requests finish (up to `timeoutMs`), then closes
+ * what is left. Bun's own graceful stop never settles once the server has closed a WebSocket (as
+ * RFQ revocations and this shutdown do; Bun 1.3.14), so the drain counts requests itself. */
+async function drain(timeoutMs: number) {
+  void server.stop();
+  rfq?.closeAll();
+  const until = Date.now() + timeoutMs;
+  while (inflight > 0 && Date.now() < until) await Bun.sleep(50);
+  await server.stop(true);
+}
 for (const signal of ["SIGINT", "SIGTERM"] as const)
   process.on(signal, () => {
     clearInterval(prune);
     recorder.stop();
     referrals.stop();
-    void server
-      .stop()
+    // Under pm2's 90 s kill timeout, with room for the index to flush after.
+    void drain(60_000)
       .then(() => indexer.stop())
       .then(() => db.close())
       .then(() => process.exit(0));

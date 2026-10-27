@@ -1,0 +1,85 @@
+Table S3a: delta-curve average all-in cost (half-spread 30 bp + avg impact) of a YES buy, p=0.5
+           vault C (half stock), impact = bps of delta per 1% of stock inventory
+ impact=10bp/1%:
+   C=$   50k        0.40%        1.30%   n/a (>inv)   (trades $1k / $10k / $100k)
+   C=$  100k        0.35%        0.80%   n/a (>inv)   (trades $1k / $10k / $100k)
+   C=$  250k        0.32%        0.50%        2.30%   (trades $1k / $10k / $100k)
+   C=$ 1000k        0.30%        0.35%        0.80%   (trades $1k / $10k / $100k)
+ impact=25bp/1%:
+   C=$   50k        0.55%        2.80%   n/a (>inv)   (trades $1k / $10k / $100k)
+   C=$  100k        0.43%        1.55%   n/a (>inv)   (trades $1k / $10k / $100k)
+   C=$  250k        0.35%        0.80%        5.30%   (trades $1k / $10k / $100k)
+   C=$ 1000k        0.31%        0.43%        1.55%   (trades $1k / $10k / $100k)
+ impact=50bp/1%:
+   C=$   50k        0.80%        5.30%   n/a (>inv)   (trades $1k / $10k / $100k)
+   C=$  100k        0.55%        2.80%   n/a (>inv)   (trades $1k / $10k / $100k)
+   C=$  250k        0.40%        1.30%       10.30%   (trades $1k / $10k / $100k)
+   C=$ 1000k        0.33%        0.55%        2.80%   (trades $1k / $10k / $100k)
+
+S3b: steepest impact that keeps a $10k YES buy <= 1% all-in (h=30bp), and what discovery costs
+  discovery loss (today's $) when informed flow moves delta by eps on ONE leg: 0.5*p(1-p)*s*kappa*eps^2,
+  kappa = shares per unit of delta. Both legs (buy YES and sell NO) doubles it.
+  C=$   50k: impact<=    7.0 bp/1%  kappa=    3571 sh/unit delta; one-leg loss for eps=1/2/5/10%: $4 / $18 / $112 / $446
+  C=$  100k: impact<=   14.0 bp/1%  kappa=    3571 sh/unit delta; one-leg loss for eps=1/2/5/10%: $4 / $18 / $112 / $446
+  C=$  250k: impact<=   35.0 bp/1%  kappa=    3571 sh/unit delta; one-leg loss for eps=1/2/5/10%: $4 / $18 / $112 / $446
+  C=$ 1000k: impact<=  140.0 bp/1%  kappa=    3571 sh/unit delta; one-leg loss for eps=1/2/5/10%: $4 / $18 / $112 / $446
+  Note: at a FIXED slippage target the discovery cost does not depend on C (kappa is pinned by the
+  $10k/1% target), and it is the same for every mechanism with the same single-leg depth.
+
+Equal-depth calibration: k = 1.40e-04 per share (avg impact 0.7% on 100 shares), D = 7,143 sh
+
+Table S3c: LVR-type losses per 30-day event at that depth (today's $), by risk source
+  stock-vol LVR (CPMM pair, no fee), sigma=30%: $2,642
+  stock-vol LVR (CPMM pair, no fee), sigma=45%: $5,944
+  stock-vol LVR (CPMM pair, no fee), sigma=60%: $10,568
+  p-learning LVR (s-anchored, no p oracle), delta=2%: $36 (to full resolution)
+  p-learning LVR (s-anchored, no p oracle), delta=5%: $223 (to full resolution)
+  p-learning LVR (s-anchored, no p oracle), delta=10%: $893 (to full resolution)
+  p-learning LVR (s-anchored, no p oracle), delta=20%: $3,571 (to full resolution)
+  p-learning LVR (s-anchored, no p oracle), delta=40%: $14,286 (to full resolution)
+  delta-LVR (all mechanisms), sigma_delta=2%/sqrt(yr): $3
+  delta-LVR (all mechanisms), sigma_delta=5%/sqrt(yr): $18
+  delta-LVR (all mechanisms), sigma_delta=20%/sqrt(yr): $294
+  delta-LVR (all mechanisms), sigma_delta=50%/sqrt(yr): $1,835
+  one delta jump of 2%: $36
+  one delta jump of 5%: $223
+  one delta jump of 10%: $893
+
+Table S3d: stock-numeraire LMSR (YES-stock vs NO-stock against whole stock), equal depth
+  d ln Y/dq = (1-pi)/b  ->  b = (1-pi)/k; worst-case loss b*ln2 stock; expected loss to informed
+  traders up to cutoff = b*(H(pi0) - E[H(pi_c)]) with Gaussian-score p, 30-day event, cutoff 1 day before
+  b = 3,571 stock; worst case 2,476 stock = $247,553; expected to cutoff 2,006 stock = $200,621  (E[H(p_c)]=0.131 nats)
+  The LMSR loses because it sells event exposure (YES-stock for whole stock); branch-native
+  quoting (YES-stock for YES-USD) does not, which is why the exchange's books never need it.
+
+Table S3e: p-error sensitivity of the delta-curve: mispricing of BOTH legs = delta*dp (relative)
+  delta   dp=0.02   dp=0.05    dp=0.1    dp=0.2
+     1%     0.02%     0.05%     0.10%     0.20%
+     3%     0.06%     0.15%     0.30%     0.60%
+     5%     0.10%     0.25%     0.50%     1.00%
+    10%     0.20%     0.50%     1.00%     2.00%
+    20%     0.40%     1.00%     2.00%     4.00%
+    40%     0.80%     2.00%     4.00%     8.00%
+  Exploitable only beyond the half-spread (30 bp): needs delta*dp > 0.3%.
+  Profit of one p-manipulation (or stale-p) episode at depth D: 0.5*D*s*(delta*dp - h)^2 per leg:
+    delta=5%, dp=0.10: $1 per leg
+    delta=10%, dp=0.10: $18 per leg
+    delta=20%, dp=0.20: $489 per leg
+    delta=40%, dp=0.20: $2,118 per leg
+
+Table S3f: s-oracle staleness (delta-curve, full-set direction at depth D)
+  staleness    1s: sd 0.016%; expected loss $0.00/trading day
+  staleness    2s: sd 0.023%; expected loss $0.00/trading day
+  staleness   10s: sd 0.051%; expected loss $0.00/trading day
+  staleness   60s: sd 0.124%; expected loss $0.66/trading day
+  staleness  300s: sd 0.278%; expected loss $27.11/trading day
+  Push feed with 0.5% deviation threshold: error up to 0.5% before an update -> each crossing
+  costs up to 0.5*D*s*(0.5%-0.3%)^2 = $1; daily crossings ~ (2.8%/0.5%)^2 ~ 31
+
+Table S3g: capital at equal depth (<=1% all-in on a $10k single-leg trade, both branches)
+  CPMM pair, full range                                                    $   2,857,143
+  CPMM pair, +-30% range                                                   $     351,263
+  CPMM pair, +-20% range                                                   $     248,940
+  LMSR (stock numeraire), worst-case subsidy                               $     247,553
+  delta-curve / s-anchored curve: deliverable inventory for one $10k fill  $      20,000
+  delta-curve with imbalance cap of 5x the trade                           $     100,000

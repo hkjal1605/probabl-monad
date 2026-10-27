@@ -1,40 +1,33 @@
 "use client";
 
 import { ArrowDownToLine } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useWallet } from "@/components/providers/WalletProvider";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useMarketCatalogue } from "@/hooks/useMarketCatalogue";
-import { useOrders } from "@/hooks/useProtocolData";
+import { useMarkets, useOrders } from "@/hooks/useProtocolData";
 import { useWalletAssets } from "@/hooks/useWalletAssets";
 import { formatCompactUsd } from "@/lib/format/display";
-import { headerPortfolioSummary } from "@/lib/portfolio/summary";
+import { loadChunk } from "@/lib/load-chunk";
+import { portfolioValue } from "@/lib/portfolio/summary";
 import { useAccountStep } from "./AccountGate";
-import { DepositDialog } from "./DepositDialog";
 import { WalletButton } from "./WalletButton";
+
+// Loaded the first time it opens, so its form and vault code aren't in every page's bundle.
+const DepositDialog = dynamic(
+  () => loadChunk(() => import("./DepositDialog").then((m) => m.DepositDialog)),
+  {
+    ssr: false,
+  },
+);
 
 const formatHeaderUsd = (value: number) => (value === 0 ? "$0.00" : formatCompactUsd(value));
 
 export function HeaderAccountControls() {
   const wallet = useWallet();
-  const catalogue = useMarketCatalogue();
-  const assets = useWalletAssets(catalogue.markets);
-  const orders = useOrders();
-  const [depositOpen, setDepositOpen] = useState(false);
   const step = useAccountStep();
-  const balancesFresh = assets.isDataFresh && !catalogue.error;
-  const valuationFresh = balancesFresh && orders.isDataFresh && orders.data?.openTruncated !== true;
-  const balancesLoading = assets.isPending || catalogue.loading;
-  const valuationLoading = balancesLoading || orders.isPending;
-  const summary = headerPortfolioSummary(
-    catalogue.markets,
-    assets.balances,
-    assets.positions,
-    orders.orders,
-  );
-
   if (!wallet.account) return <WalletButton />;
   // Signed out or not yet invited: the header offers the next step instead of balances.
   if (step && wallet.access !== "suspended")
@@ -46,11 +39,34 @@ export function HeaderAccountControls() {
           disabled={step.disabled}
           onClick={step.action}
         >
-          {wallet.access === "invite-required" ? "Join with invite" : "Sign in"}
+          {step.kind === "invite"
+            ? "Join with invite"
+            : step.kind === "network"
+              ? "Switch network"
+              : "Sign in"}
         </Button>
         <WalletButton />
       </div>
     );
+  return <MemberAccountControls />;
+}
+
+/** A member's portfolio value and deposits. The markets come with their spot prices, which value
+ * stock-token balances. */
+function MemberAccountControls() {
+  const catalogue = useMarkets();
+  const assets = useWalletAssets(catalogue.markets);
+  const orders = useOrders();
+  const [depositOpen, setDepositOpen] = useState(false),
+    [depositUsed, setDepositUsed] = useState(false);
+  const balancesFresh = assets.isDataFresh && !catalogue.isError;
+  const valuationFresh = balancesFresh && orders.isDataFresh && orders.data?.openTruncated !== true;
+  const balancesLoading = assets.isPending || catalogue.isPending;
+  const valuationLoading = balancesLoading || orders.isPending || catalogue.spotPending;
+  const value = useMemo(
+    () => portfolioValue(catalogue.markets, assets.balances, assets.positions, orders.orders),
+    [catalogue.markets, assets.balances, assets.positions, orders.orders],
+  );
   return (
     <>
       <div className="flex items-center gap-5">
@@ -65,44 +81,34 @@ export function HeaderAccountControls() {
               <Skeleton className="h-3.5 w-14" aria-label="Loading portfolio value" />
             ) : (
               <span className="text-sm font-medium tabular-nums text-positive">
-                {valuationFresh && summary.netPortfolioValue !== null
-                  ? formatHeaderUsd(summary.netPortfolioValue)
-                  : "$0.00"}
+                {valuationFresh && value !== null ? formatHeaderUsd(value) : "—"}
               </span>
             )}
           </Link>
-          <div
-            className="flex flex-col items-end gap-1 text-right leading-none"
-            title="Cash available to trade"
-          >
-            <span className="text-xs font-medium text-muted-foreground">Cash</span>
-            {balancesLoading ? (
-              <Skeleton className="h-3.5 w-14" aria-label="Loading available cash" />
-            ) : (
-              <span className="text-sm font-medium tabular-nums text-positive">
-                {balancesFresh ? formatHeaderUsd(summary.cashAvailable) : "$0.00"}
-              </span>
-            )}
-          </div>
         </div>
         <Button
           size="sm"
           className="hidden rounded-lg px-3 sm:inline-flex"
-          onClick={() => setDepositOpen(true)}
+          onClick={() => {
+            setDepositUsed(true);
+            setDepositOpen(true);
+          }}
         >
           <ArrowDownToLine data-icon="inline-start" />
           Deposit
         </Button>
         <WalletButton />
       </div>
-      <DepositDialog
-        open={depositOpen}
-        onOpenChange={setDepositOpen}
-        assets={assets.assets}
-        balances={assets.balances}
-        fresh={balancesFresh}
-        refresh={assets.refetch}
-      />
+      {depositUsed && (
+        <DepositDialog
+          open={depositOpen}
+          onOpenChange={setDepositOpen}
+          assets={assets.assets}
+          balances={assets.balances}
+          fresh={balancesFresh}
+          refresh={assets.refetch}
+        />
+      )}
     </>
   );
 }

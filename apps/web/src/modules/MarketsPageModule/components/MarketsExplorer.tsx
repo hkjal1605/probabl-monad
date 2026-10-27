@@ -1,7 +1,9 @@
 "use client";
+import { CalendarDays } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { EventCard } from "@/components/market/EventCard";
 import { ProbabilityGauge } from "@/components/market/ProbabilityGauge";
 import { TokenIdentity } from "@/components/market/TokenIdentity";
@@ -12,14 +14,6 @@ import { Masonry } from "@/components/ui/masonry";
 import { DataError, EmptyState, Page } from "@/components/ui/page";
 import { Segmented } from "@/components/ui/segmented";
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -29,26 +23,45 @@ import {
 } from "@/components/ui/table";
 import { useMarkets } from "@/hooks/useProtocolData";
 import { formatNumber } from "@/lib/format/display";
+import { loadChunk } from "@/lib/load-chunk";
+import {
+  CALENDAR_TAB,
+  inMarketTab,
+  type MarketTab,
+  marketTabFromPathname,
+  marketTabPath,
+  marketTopic,
+  visibleTabs,
+} from "@/lib/markets/categories";
 import { marketPath } from "@/lib/markets/identity";
 import {
   eventKey,
   groupMarkets,
   impactPercent,
-  MARKET_CATEGORIES,
-  type MarketCategory,
   marketAssetKey,
-  marketCategory,
-  marketCategoryFromPathname,
-  marketCategoryPath,
   midpoint,
   percent,
   sortEventGroups,
 } from "@/lib/markets/presentation";
+import { withoutUnpricedMarkets } from "@/lib/markets/quote-pause";
 import { cn } from "@/lib/utils";
 import type { MarketView } from "@/types/api";
 import { HomeBanner } from "./HomeBanner";
 import { MarketsColumns } from "./MarketsColumns";
 import { MarketsPageSkeleton } from "./MarketsPageSkeleton";
+import { MarketsToolbar } from "./MarketsToolbar";
+
+// The calendar's own code loads only when it is opened.
+const EventCalendar = dynamic(
+  () => loadChunk(() => import("./EventCalendar").then((m) => m.EventCalendar)),
+  {
+    ssr: false,
+  },
+);
+
+/** The matrix's event and probability columns stay in view while the asset columns between them
+ * scroll sideways. They are opaque, so they take the row's hover colour too. */
+const MATRIX_PINNED = "sticky z-10 bg-background transition-colors [tr:hover>&]:bg-accent";
 
 export function MarketsExplorer({
   markets: initial,
@@ -57,120 +70,170 @@ export function MarketsExplorer({
 }: {
   markets: MarketView[];
   now?: number;
-  category: MarketCategory;
+  category: MarketTab;
 }) {
   const pathname = usePathname(),
     query = useMarkets(initial),
     markets = query.markets;
   const filters = useUiStore((s) => s.filters),
     setFilters = useUiStore((s) => s.setFilters);
-  const pathnameCategory = marketCategoryFromPathname(pathname) ?? routeCategory;
+  const pathnameCategory = marketTabFromPathname(pathname) ?? routeCategory;
   const [category, setCategory] = useState(pathnameCategory);
   useLayoutEffect(() => {
     setCategory(pathnameCategory);
     setFilters({ category: pathnameCategory });
   }, [pathnameCategory, setFilters]);
-  // Active events never list frozen (halted or delisted) sibling markets.
-  const listed =
-    filters.lifecycle === "active" ? markets.filter((m) => m.lifecycle !== "frozen") : markets;
-  const groups = groupMarkets(listed);
-  const visible = sortEventGroups(
-    groups.filter((assets) =>
-      assets.some(
-        (m) =>
-          (category === "All" || marketCategory(m) === category) &&
-          (filters.lifecycle === "all" ||
-            (filters.lifecycle === "active" ? m.lifecycle === "open" : m.lifecycle !== "open")),
+  const filtersRef = useRef<HTMLElement>(null),
+    tabsRef = useRef<HTMLDivElement>(null),
+    listRef = useRef<HTMLDivElement>(null);
+  // The filters stick under the header and testnet banner, whose height varies (the banner wraps,
+  // and comes and goes; a phone pins the header alone); what sticks or is scrolled to below the
+  // filters goes under both.
+  useLayoutEffect(() => {
+    const chrome = document.querySelector<HTMLElement>("[data-site-chrome]"),
+      header = chrome?.querySelector("header"),
+      bar = filtersRef.current;
+    if (!chrome || !header || !bar) return;
+    const style = document.documentElement.style;
+    const measure = () => {
+      const pinned =
+        getComputedStyle(chrome).display === "contents" ? header.offsetHeight : chrome.offsetHeight;
+      style.setProperty("--home-chrome", `${pinned}px`);
+      style.setProperty("--home-sticky", `${pinned + bar.offsetHeight}px`);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    for (const element of [chrome, header, bar]) observer.observe(element);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+      style.removeProperty("--home-chrome");
+      style.removeProperty("--home-sticky");
+    };
+  }, []);
+  /** A new category's markets show from their start, the filters staying where they are. */
+  const showFromStart = () => {
+    const list = listRef.current,
+      bar = filtersRef.current;
+    if (!list || !bar) return;
+    const top =
+      list.getBoundingClientRect().top + window.scrollY - bar.getBoundingClientRect().bottom;
+    if (window.scrollY > top) window.scrollTo({ top });
+  };
+  /** A category tab's action, which the banner's calendar button shares. */
+  const selectCategory = (nextCategory: MarketTab) => {
+    showFromStart();
+    setCategory(nextCategory);
+    setFilters({ category: nextCategory });
+    const nextPath = marketTabPath(nextCategory);
+    if (window.location.pathname !== nextPath) window.history.pushState(null, "", nextPath);
+  };
+  // Recomputed only when the markets or the filters change, so the event groups (and the cards
+  // they feed) keep their identity across unrelated renders.
+  const { listed, visible, tokens, tabs } = useMemo(() => {
+    // Markets the vaults stopped quoting as their event is all but decided are left out, and
+    // active events never list frozen (halted or delisted) sibling markets.
+    const priced = withoutUnpricedMarkets(markets);
+    const listed =
+      filters.lifecycle === "active" ? priced.filter((m) => m.lifecycle !== "frozen") : priced;
+    const visible = sortEventGroups(
+      groupMarkets(listed).filter((assets) =>
+        assets.some(
+          (m) =>
+            inMarketTab(m, category) &&
+            (filters.lifecycle === "all" ||
+              (filters.lifecycle === "active" ? m.lifecycle === "open" : m.lifecycle !== "open")),
+        ),
       ),
-    ),
-    filters.sort,
-  );
-  // Asset identity (the stock), not a token address or a
-  // potentially shared display symbol, determines matrix columns.
-  const tokens = [...new Map(listed.map((m) => [marketAssetKey(m), m])).values()].sort((a, b) =>
-    a.ticker.localeCompare(b.ticker),
-  );
+      filters.sort,
+    );
+    // Asset identity (the stock), not a token address or a potentially shared display symbol,
+    // determines matrix columns: one per stock among the events shown.
+    const tokens = [...new Map(visible.flat().map((m) => [marketAssetKey(m), m])).values()].sort(
+      (a, b) => a.ticker.localeCompare(b.ticker),
+    );
+    // All, each tab with a listed open market, and the calendar; the open tab always shows.
+    const tabs = visibleTabs(priced);
+    if (!tabs.includes(category)) tabs.splice(tabs.length - 1, 0, category);
+    return { listed, visible, tokens, tabs };
+  }, [markets, filters.lifecycle, filters.sort, category]);
+  // The chosen category stays in sight in its scrolling row, centred where it can be so its
+  // neighbours show too (a link can open one past the screen's edge). The row settles when the
+  // full market list adds tabs and when the web font loads, so it centres again then.
+  const tabKey = tabs.join("|");
+  const centred = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new category or tab list moves the pressed tab, read from the row.
+  useLayoutEffect(() => {
+    const centre = (smooth: boolean) => {
+      const row = tabsRef.current,
+        tab = row?.querySelector<HTMLElement>('[aria-pressed="true"]');
+      if (!row || !tab) return;
+      const r = row.getBoundingClientRect(),
+        t = tab.getBoundingClientRect();
+      row.scrollBy({
+        left: t.left + t.width / 2 - (r.left + r.width / 2),
+        behavior: smooth ? "smooth" : "auto",
+      });
+    };
+    centre(centred.current && !matchMedia("(prefers-reduced-motion: reduce)").matches);
+    centred.current = true;
+    if (document.fonts.status !== "loaded") void document.fonts.ready.then(() => centre(false));
+  }, [category, tabKey]);
+  const calendar = category === CALENDAR_TAB;
   const showSkeleton = query.isPending && markets.length === 0;
   return (
     <Page
       variant="terminal"
-      className="page-scrollbars-hidden markets-viewport flex min-h-0 max-w-[1350px] flex-col overflow-hidden px-4 pt-4 pb-0 lg:px-6"
+      className="page-scrollbars-hidden markets-viewport flex max-w-[1350px] flex-col px-4 py-0 lg:px-6"
     >
       <section
-        aria-label="Market filters"
-        className="mb-4 flex min-h-8 shrink-0 items-center gap-4 overflow-x-auto"
+        ref={filtersRef}
+        aria-label="Market categories"
+        className="sticky top-(--home-chrome) z-30 -mx-4 flex min-h-16 shrink-0 items-center bg-background px-4 py-4 max-md:min-h-0 max-md:border-b max-md:py-0 lg:-mx-6 lg:px-6"
       >
-        <Segmented
-          label="Market category"
-          variant="category"
-          className="shrink-0"
-          value={category}
-          options={MARKET_CATEGORIES}
-          onChange={(nextCategory) => {
-            setCategory(nextCategory);
-            setFilters({ category: nextCategory });
-            const nextPath = marketCategoryPath(nextCategory);
-            if (window.location.pathname !== nextPath) window.history.pushState(null, "", nextPath);
-          }}
-        />
-        <div className="ml-auto flex shrink-0 items-center gap-1">
-          <Select
-            value={filters.lifecycle}
-            items={{
-              active: "Active markets",
-              resolving: "Resolution",
-              all: "All lifecycle states",
-            }}
-            onValueChange={(value) => {
-              if (value === "active" || value === "resolving" || value === "all")
-                setFilters({ lifecycle: value });
-            }}
-          >
-            <SelectTrigger aria-label="Lifecycle" size="xs" variant="filter-chip">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="active">Active markets</SelectItem>
-                <SelectItem value="resolving">Resolution</SelectItem>
-                <SelectItem value="all">All lifecycle states</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-          <Select
-            value={filters.sort}
-            items={{ newest: "Newest first", oldest: "Oldest first" }}
-            onValueChange={(value) => {
-              if (value === "newest" || value === "oldest") setFilters({ sort: value });
-            }}
-          >
-            <SelectTrigger aria-label="Sort markets" size="xs" variant="filter">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="newest">Newest first</SelectItem>
-                <SelectItem value="oldest">Oldest first</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+        {/* The categories have the row to themselves and scroll in it when they outgrow it. On a
+            phone the row runs to the screen's edges and fades out at them. */}
+        <div
+          ref={tabsRef}
+          className="home-category-tabs -mb-2 min-w-0 flex-1 overflow-x-auto pb-2 [scrollbar-width:none] max-md:-mx-4 max-md:mb-0 max-md:px-4 max-md:pb-0 max-md:[mask-image:linear-gradient(to_right,transparent,black_1rem,black_calc(100%-1rem),transparent)]"
+        >
           <Segmented
-            label="Market view"
-            variant="compact"
-            value={filters.view}
-            options={["Feed", "Columns", "Matrix"]}
-            onChange={(view) => setFilters({ view })}
+            label="Market category"
+            variant="category"
+            className="shrink-0"
+            value={category}
+            options={tabs}
+            renderOption={(tab) =>
+              tab === CALENDAR_TAB ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <CalendarDays aria-hidden="true" className="size-3.5" />
+                  {tab}
+                </span>
+              ) : (
+                tab
+              )
+            }
+            onChange={selectCategory}
           />
         </div>
       </section>
-      {/* The filters stay put; the banner and the markets below it scroll. */}
-      <div className="min-h-0 flex-1 overflow-y-auto pb-3">
-        {showSkeleton ? (
+      {/* The categories stay put; the banner, the filters and the markets scroll under them. */}
+      <div ref={listRef} className="flex-1 pb-3 max-md:pt-3">
+        {calendar ? (
+          <EventCalendar markets={markets} loading={showSkeleton} />
+        ) : showSkeleton ? (
           <MarketsPageSkeleton view={filters.view} />
         ) : (
           <>
-            {/* The selected category's first event leads; the most traded span every category. */}
-            <HomeBanner featured={visible[0]} category={category} markets={listed} />
+            {/* The selected category's first event leads; what resolves next spans every category. */}
+            <HomeBanner
+              featured={visible[0]}
+              category={category}
+              markets={listed}
+              onViewCalendar={() => selectCategory(CALENDAR_TAB)}
+            />
+            <MarketsToolbar filters={filters} setFilters={setFilters} events={visible.length} />
             {query.isInitialError && (
               <DataError
                 retry={() => {
@@ -193,7 +256,14 @@ export function MarketsExplorer({
                 <Table>
                   <TableHeader className="[&_tr]:border-b-0">
                     <TableRow className="border-b-0 hover:bg-transparent [&_th]:py-3">
-                      <TableHead>Event</TableHead>
+                      <TableHead
+                        className={cn(
+                          MATRIX_PINNED,
+                          "left-0 shadow-[inset_-1px_0_0_var(--border)]",
+                        )}
+                      >
+                        Event
+                      </TableHead>
                       {tokens.map((token) => (
                         <TableHead key={marketAssetKey(token)} className="text-foreground">
                           <TokenIdentity
@@ -204,7 +274,12 @@ export function MarketsExplorer({
                           />
                         </TableHead>
                       ))}
-                      <TableHead className="text-center font-medium text-foreground">
+                      <TableHead
+                        className={cn(
+                          MATRIX_PINNED,
+                          "right-0 text-center font-medium text-foreground shadow-[inset_1px_0_0_var(--border)]",
+                        )}
+                      >
                         Probability
                       </TableHead>
                     </TableRow>
@@ -215,12 +290,18 @@ export function MarketsExplorer({
                       if (!market) return null;
                       return (
                         <TableRow key={eventKey(market)} className="border-b-0">
-                          <TableCell className="min-w-52 max-w-80 whitespace-normal">
+                          <TableCell
+                            data-tour-market={market.venue.marketId}
+                            className={cn(
+                              MATRIX_PINNED,
+                              "left-0 min-w-52 max-w-80 whitespace-normal shadow-[inset_-1px_0_0_var(--border)] max-md:min-w-36 max-md:max-w-40",
+                            )}
+                          >
                             <Link href={marketPath(market)} className="font-semibold">
                               {market.question}
                             </Link>
                             <p className="mt-2 text-xs font-medium text-muted-foreground">
-                              {marketCategory(market)} · {market.lifecycle}
+                              {marketTopic(market)} · {market.lifecycle}
                             </p>
                           </TableCell>
                           {tokens.map((token) => {
@@ -262,7 +343,12 @@ export function MarketsExplorer({
                               </TableCell>
                             );
                           })}
-                          <TableCell className="[&>[role=img]]:mx-auto">
+                          <TableCell
+                            className={cn(
+                              MATRIX_PINNED,
+                              "right-0 shadow-[inset_1px_0_0_var(--border)] [&>[role=img]]:mx-auto",
+                            )}
+                          >
                             <ProbabilityGauge
                               probability={market.probability}
                               conditionId={market.mapping.conditionId}

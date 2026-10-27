@@ -1,8 +1,8 @@
 import { createStore } from "zustand/vanilla";
-import type { MarketCategory } from "@/lib/markets/presentation";
+import type { MarketTab } from "@/lib/markets/categories";
 
 export type DiscoveryFilters = {
-  category: MarketCategory;
+  category: MarketTab;
   lifecycle: "active" | "resolving" | "all";
   sort: "newest" | "oldest";
   view: "Feed" | "Columns" | "Matrix";
@@ -40,7 +40,15 @@ export function createUiStore() {
     setPrefill: (prefill: OrderPrefill | null) => void;
   }>()((set) => ({
     filters: { ...defaultFilters },
-    setFilters: (patch) => set((state) => ({ filters: { ...state.filters, ...patch } })),
+    // An unchanged patch leaves the state as it is, so its subscribers don't re-render.
+    setFilters: (patch) =>
+      set((state) =>
+        (Object.keys(patch) as (keyof DiscoveryFilters)[]).every(
+          (key) => state.filters[key] === patch[key],
+        )
+          ? state
+          : { filters: { ...state.filters, ...patch } },
+      ),
     prefill: null,
     setPrefill: (prefill) => set({ prefill }),
   }));

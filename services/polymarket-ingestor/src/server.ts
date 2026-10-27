@@ -1,9 +1,9 @@
 import { websocket } from "hono/bun";
-import type { createPolymarketApp } from "./app.ts";
+import type { createIngestorApp } from "./app.ts";
 import type { PolymarketEnvironment } from "./environment.ts";
 
 export const startPolymarketServer = (
-  app: ReturnType<typeof createPolymarketApp>,
+  app: ReturnType<typeof createIngestorApp>,
   environment: Pick<PolymarketEnvironment, "host" | "port">,
 ) => {
   const pending = new Set<Promise<Response>>();

@@ -55,7 +55,7 @@ test("an aborted initial stream wait never starts a background HTTP request", as
   }
 });
 
-test("a probability SSE construction failure becomes reconnecting state, not a page exception", () => {
+test("a probability SSE construction failure becomes reconnecting state, not a page exception", async () => {
   const original = globalThis.EventSource;
   globalThis.EventSource = class {
     constructor() {
@@ -63,15 +63,18 @@ test("a probability SSE construction failure becomes reconnecting state, not a p
     }
   } as unknown as typeof EventSource;
   const states: string[] = [];
+  const close = subscribeProbability(
+    `0x${"a".repeat(64)}`,
+    () => {},
+    (status) => states.push(status),
+  );
   try {
-    const close = subscribeProbability(
-      `0x${"a".repeat(64)}`,
-      () => {},
-      (status) => states.push(status),
-    );
+    // The shared stream opens once the page's subscriptions are in (a microtask later).
+    await Promise.resolve();
     expect(states).toEqual(["connecting", "reconnecting"]);
-    close();
   } finally {
+    close();
+    await Promise.resolve();
     globalThis.EventSource = original;
   }
 });

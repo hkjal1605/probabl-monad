@@ -1,15 +1,20 @@
 "use client";
+import { ArrowLeftRight, ChartLine } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { LifecycleBadge } from "@/components/data/StatusBadge";
 import { PriceChart } from "@/components/market/PriceChart";
 import { ProbabilityGauge } from "@/components/market/ProbabilityGauge";
 import { SpotReference } from "@/components/market/SpotReference";
 import { TokenIdentity } from "@/components/market/TokenIdentity";
 import { ClaimTable } from "@/components/portfolio/ClaimTable";
+import { OrderTable } from "@/components/portfolio/OrderTable";
 import { PositionTable } from "@/components/portfolio/PositionTable";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { WalletTradeTable } from "@/components/portfolio/WalletTradeTable";
+import { useUiStore } from "@/components/providers/UiStateProvider";
+import { useMemberAccount } from "@/components/providers/WalletProvider";
+import { Avatar, AvatarFallback, AvatarLazyImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -29,19 +34,20 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { useProbabilityStream } from "@/hooks/useProbabilityStream";
-import { useMarkets, useTrades } from "@/hooks/useProtocolData";
+import { useMarkets } from "@/hooks/useProtocolData";
 import { formatNumber, formatTime } from "@/lib/format/display";
 import { marketPath, publicIdOf } from "@/lib/markets/identity";
-import { midpoint, percent, spotImpactPercent } from "@/lib/markets/presentation";
+import { isResolved, midpoint, percent, spotImpactPercent } from "@/lib/markets/presentation";
 import { type DepthLevel, depthLevels, visibleDepthPerSide } from "@/lib/markets/visible-depth";
 import { cn } from "@/lib/utils";
-import { OrdersClient } from "@/modules/OrdersPageModule/components/OrdersClient";
-import type { BranchBook, MarketView, TradeView } from "@/types/api";
+import { marketsStore } from "@/stores/useMarketsStore";
+import type { BranchBook, MarketView } from "@/types/api";
 import { MarketAssetSwitcher } from "./MarketAssetSwitcher";
 import { MarketDetailPageSkeleton } from "./MarketDetailPageSkeleton";
 import { MarketRulesDialog } from "./MarketRulesDialog";
 import { OrderTicket } from "./OrderTicket";
-import { TradeTable } from "./TradeTable";
+import { QuotePauseNotice } from "./QuotePauseNotice";
+import { ResolvedMarketCard } from "./ResolvedMarketCard";
 
 const EMPTY_PROBABILITY: MarketView["probability"] = {
   ask: null,
@@ -50,6 +56,9 @@ const EMPTY_PROBABILITY: MarketView["probability"] = {
   quality: "disconnected",
   value: null,
 };
+type WorkspaceView = "chart" | "trade";
+/** Where the workspace is one column (global.css): the chart and ticket views, no book. */
+const PHONE = "(max-width: 899px)";
 function OutcomeStat({ market, branch }: { market: MarketView; branch: "YES" | "NO" }) {
   const impact = spotImpactPercent(market, branch);
   return (
@@ -83,20 +92,23 @@ function OutcomeStat({ market, branch }: { market: MarketView; branch: "YES" | "
 export function MarketWorkspace({
   marketId,
   initialMarkets = [],
-  initialTrades = [],
 }: {
   marketId: string;
   initialMarkets?: MarketView[];
-  initialTrades?: TradeView[];
 }) {
   // The segment is a slug or public id; an older numeric link is resolved by the API, which
   // answers with that one market.
   const publicId = publicIdOf(marketId);
-  const query = useMarkets(
-      initialMarkets.filter((m) => m.id === publicId),
-      marketId,
+  // Reads are keyed by the public id, as the index stream names markets, so its frames refresh
+  // them. The page starts from the market list the header already read, and its own read
+  // refreshes that, so a market opens without a skeleton.
+  const key = publicId ?? marketId;
+  const [seed] = useState(() =>
+    (initialMarkets.length ? initialMarkets : (marketsStore.get("all").data?.markets ?? [])).filter(
+      (m) => m.id === publicId,
     ),
-    tradeQuery = useTrades(marketId);
+  );
+  const query = useMarkets(seed, key);
   const indexedMarket = publicId
     ? query.markets.find((m) => m.id === publicId)
     : query.markets.length === 1
@@ -111,9 +123,31 @@ export function MarketWorkspace({
     indexedMarket?.mapping.conditionId ?? "",
     indexedMarket?.probability ?? EMPTY_PROBABILITY,
   );
-  const market = indexedMarket ? { ...indexedMarket, probability: stream.probability } : undefined;
+  const market = useMemo(
+    () => (indexedMarket ? { ...indexedMarket, probability: stream.probability } : undefined),
+    [indexedMarket, stream.probability],
+  );
   const [tab, setTab] = useState("positions"),
     [bookBranch, setBookBranch] = useState<"YES" | "NO">("YES");
+  // On a phone the chart and the ticket are two views of one slot (the book is left out). Each
+  // switch brings the view into sight, as the account tables below can be scrolled to.
+  const [view, setView] = useState<{ name: WorkspaceView; at: number }>({ name: "chart", at: 0 });
+  const chartRef = useRef<HTMLDivElement>(null),
+    ticketRef = useRef<HTMLDivElement>(null);
+  const showView = (name: WorkspaceView) => setView({ name, at: Date.now() });
+  useEffect(() => {
+    if (view.at)
+      (view.name === "trade" ? ticketRef : chartRef).current?.scrollIntoView({
+        block: "nearest",
+        behavior: "smooth",
+      });
+  }, [view]);
+  // A trade handed to this market's ticket (a position's Close, a Buy on the markets list) opens it.
+  const prefill = useUiStore((s) => s.prefill);
+  useEffect(() => {
+    if (prefill && prefill.marketId === indexedMarket?.id && matchMedia(PHONE).matches)
+      setView({ name: "trade", at: Date.now() });
+  }, [prefill, indexedMarket?.id]);
   if (!market)
     return query.isPending ? (
       <MarketDetailPageSkeleton />
@@ -135,11 +169,6 @@ export function MarketWorkspace({
         )}
       </Page>
     );
-  const trades = tradeQuery.data
-    ? tradeQuery.trades
-    : tradeQuery.trades.length
-      ? tradeQuery.trades
-      : initialTrades;
   return (
     <Page
       variant="terminal"
@@ -150,7 +179,7 @@ export function MarketWorkspace({
           <div className="flex items-center gap-3">
             <Avatar size="lg" className="rounded-xl after:rounded-xl">
               {market.imageUrl && (
-                <AvatarImage
+                <AvatarLazyImage
                   src={market.imageUrl}
                   alt=""
                   className="rounded-xl"
@@ -172,93 +201,169 @@ export function MarketWorkspace({
         </div>
         <MarketAssetSwitcher market={market} />
       </div>
-      <div className="market-workspace-grid grid min-h-0 flex-1 items-stretch gap-0.5 bg-secondary p-0.5 xl:overflow-hidden">
-        <div className="market-workspace-stats overflow-hidden rounded-[4px] bg-background">
-          <div className="@container/prices flex flex-wrap items-center gap-x-6 gap-y-3 border-y px-3 py-3">
-            <OutcomeStat market={market} branch="YES" />
-            <SpotReference price={market.spotReference} variant="market" />
-            <OutcomeStat market={market} branch="NO" />
-            <BaseToken market={market} />
+      <div
+        data-view={view.name}
+        className="market-workspace-grid grid min-h-0 flex-1 items-stretch gap-0.5 bg-secondary p-0.5 xl:overflow-hidden"
+      >
+        {/* The prices, chart, book and account tabs. From xl they scroll together as one column
+            beside the ticket (global.css); below that they are items of the grid itself. */}
+        <div className="market-workspace-main gap-0.5">
+          <div className="market-workspace-stats overflow-hidden rounded-[4px] bg-background">
+            <div className="@container/prices flex flex-wrap items-center gap-x-6 gap-y-3 border-y px-3 py-3">
+              <OutcomeStat market={market} branch="YES" />
+              <SpotReference price={market.spotReference} variant="market" />
+              <OutcomeStat market={market} branch="NO" />
+              <BaseToken market={market} />
+            </div>
+            <QuotePauseNotice market={market} />
+            {market.bookQuality === "truncated" && (
+              <DataError
+                message={
+                  "Book display limit reached. Best-price and depth indicators are withheld; the API still reviews against its full candidate book."
+                }
+              />
+            )}
           </div>
-          {market.bookQuality === "truncated" && (
-            <DataError
-              message={
-                "Book display limit reached. Best-price and depth indicators are withheld; the API still reviews against its full candidate book."
-              }
-            />
+          <div
+            ref={chartRef}
+            className="market-workspace-chart min-h-0 min-w-0 scroll-mb-16 overflow-hidden rounded-[4px]"
+          >
+            <PriceChart market={market} />
+          </div>
+          <Card
+            variant="panel"
+            className="market-workspace-book min-h-0 min-w-0 data-[variant=panel]:rounded-[4px]"
+          >
+            <CardHeader className="flex flex-wrap items-center justify-between gap-3">
+              <Segmented
+                label="Order book outcome"
+                variant="chart"
+                options={[`${market.ticker}-YES`, `${market.ticker}-NO`]}
+                value={`${market.ticker}-${bookBranch}`}
+                onChange={(value) => setBookBranch(value === `${market.ticker}-YES` ? "YES" : "NO")}
+              />
+            </CardHeader>
+            <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden px-0">
+              <BranchDepth
+                book={bookBranch === "YES" ? market.yes : market.no}
+                label={`${market.ticker}-${bookBranch}`}
+                available={market.bookQuality === "available"}
+              />
+            </CardContent>
+          </Card>
+          <Card
+            variant="panel"
+            className="market-workspace-information min-h-0 min-w-0 overflow-hidden data-[variant=panel]:rounded-[4px]"
+          >
+            <Tabs value={tab} onValueChange={setTab} className="flex-1 gap-0">
+              <TabsList aria-label="Market information">
+                {[
+                  ["positions", "Positions"],
+                  ["orders", "Orders"],
+                  ["claims", "Claims"],
+                  ["trades", "Trades"],
+                ].map(
+                  ([value, label]) =>
+                    value && (
+                      <TabsTrigger key={value} value={value}>
+                        {label}
+                      </TabsTrigger>
+                    ),
+                )}
+              </TabsList>
+              <TabsContent value="positions">
+                <AccountMarkets market={market}>
+                  {(markets) => <PositionTable markets={markets} currentMarketId={market.id} />}
+                </AccountMarkets>
+              </TabsContent>
+              <TabsContent value="orders">
+                <AccountMarkets market={market}>
+                  {(markets) => <OrderTable markets={markets} currentMarketId={market.id} />}
+                </AccountMarkets>
+              </TabsContent>
+              <TabsContent value="claims">
+                <AccountMarkets market={market}>
+                  {(markets) => <ClaimTable markets={markets} currentMarketId={market.id} />}
+                </AccountMarkets>
+              </TabsContent>
+              <TabsContent value="trades">
+                <AccountMarkets market={market}>
+                  {(markets) => <WalletTradeTable markets={markets} currentMarketId={market.id} />}
+                </AccountMarkets>
+              </TabsContent>
+            </Tabs>
+          </Card>
+        </div>
+        <div
+          ref={ticketRef}
+          className="market-workspace-ticket min-h-0 min-w-0 scroll-mb-16 rounded-[4px] bg-card xl:overflow-y-auto xl:overscroll-contain"
+        >
+          {isResolved(market) ? (
+            <ResolvedMarketCard market={market} />
+          ) : (
+            <OrderTicket key={market.id} market={market} />
           )}
         </div>
-        <div className="market-workspace-chart min-h-0 min-w-0 overflow-hidden rounded-[4px]">
-          <PriceChart market={market} initialTrades={trades} />
-        </div>
-        <Card
-          variant="panel"
-          className="market-workspace-book min-h-0 min-w-0 data-[variant=panel]:rounded-[4px]"
-        >
-          <CardHeader className="flex flex-wrap items-center justify-between gap-3">
-            <Segmented
-              label="Order book outcome"
-              variant="chart"
-              options={[`${market.ticker}-YES`, `${market.ticker}-NO`]}
-              value={`${market.ticker}-${bookBranch}`}
-              onChange={(value) => setBookBranch(value === `${market.ticker}-YES` ? "YES" : "NO")}
-            />
-          </CardHeader>
-          <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden px-0">
-            <BranchDepth
-              book={bookBranch === "YES" ? market.yes : market.no}
-              label={`${market.ticker}-${bookBranch}`}
-              available={market.bookQuality === "available"}
-            />
-          </CardContent>
-        </Card>
-        <div className="market-workspace-ticket min-h-0 min-w-0 overflow-y-auto overscroll-contain rounded-[4px] bg-card">
-          <OrderTicket key={market.id} market={market} />
-        </div>
-        <Card
-          variant="panel"
-          className="market-workspace-information min-h-0 min-w-0 overflow-hidden data-[variant=panel]:rounded-[4px]"
-        >
-          <Tabs value={tab} onValueChange={setTab} className="min-h-0 flex-1 gap-0 overflow-hidden">
-            <TabsList aria-label="Market information">
-              {[
-                ["positions", "Your positions"],
-                ["orders", "Open orders"],
-                ["claims", "Claims"],
-                ["trades", "Trades"],
-              ].map(
-                ([value, label]) =>
-                  value && (
-                    <TabsTrigger key={value} value={value}>
-                      {label}
-                    </TabsTrigger>
-                  ),
-              )}
-            </TabsList>
-            <TabsContent value="positions" className="min-h-0 overflow-auto overscroll-contain">
-              <PositionTable markets={[market]} inline />
-            </TabsContent>
-            <TabsContent value="orders" className="min-h-0 overflow-auto overscroll-contain">
-              <OrdersClient markets={query.markets} marketIds={[market.id]} embedded />
-            </TabsContent>
-            <TabsContent value="claims" className="min-h-0 overflow-auto overscroll-contain">
-              <div className="eyebrow px-3 pt-3 text-muted-foreground">
-                Available conditional claims
-              </div>
-              <ClaimTable markets={[market]} />
-            </TabsContent>
-            <TabsContent value="trades" className="min-h-0 overflow-auto overscroll-contain">
-              {tradeQuery.isInitialError ? (
-                <DataError message="Trade history is unavailable." />
-              ) : (
-                <TradeTable market={market} trades={trades} />
-              )}
-            </TabsContent>
-          </Tabs>
-        </Card>
       </div>
+      <nav
+        aria-label="Market view"
+        className="market-view-bar fixed inset-x-0 bottom-0 z-40 grid grid-cols-2 border-t bg-background pb-[env(safe-area-inset-bottom)] min-[900px]:hidden"
+      >
+        {(
+          [
+            ["chart", "Chart", ChartLine],
+            ["trade", "Trade", ArrowLeftRight],
+          ] as const
+        ).map(([name, label, Icon]) => (
+          <Button
+            key={name}
+            variant="ghost"
+            aria-pressed={view.name === name}
+            onClick={() => showView(name)}
+            className={cn(
+              "h-14 gap-2 rounded-none hover:bg-transparent focus-visible:border-transparent focus-visible:bg-accent focus-visible:ring-0 dark:hover:bg-transparent",
+              view.name === name
+                ? "text-brand-strong hover:text-brand-strong"
+                : "text-muted-foreground hover:text-muted-foreground",
+            )}
+          >
+            <Icon aria-hidden="true" className="size-4.5" />
+            {label}
+          </Button>
+        ))}
+      </nav>
     </Page>
   );
+}
+/** The markets the account tabs show: every market for a member, this page's own live read in
+ * place of its list entry. The list is the one the header reads for members, so this adds no
+ * request; anyone else gets this market alone (and the tabs' sign-in prompts). */
+function AccountMarkets({
+  market,
+  children,
+}: {
+  market: MarketView;
+  children: (markets: MarketView[]) => ReactNode;
+}) {
+  return useMemberAccount() ? (
+    <MemberMarkets market={market}>{children}</MemberMarkets>
+  ) : (
+    children([market])
+  );
+}
+function MemberMarkets({
+  market,
+  children,
+}: {
+  market: MarketView;
+  children: (markets: MarketView[]) => ReactNode;
+}) {
+  const catalogue = useMarkets().markets;
+  const markets = useMemo(
+    () => [market, ...catalogue.filter((m) => m.id !== market.id)],
+    [market, catalogue],
+  );
+  return children(markets);
 }
 function BranchDepth({
   book,
@@ -271,6 +376,8 @@ function BranchDepth({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [visibleLevels, setVisibleLevels] = useState(5);
+  /** The height below the column headers and of one row, once measured. */
+  const [space, setSpace] = useState<{ body: number; row: number } | null>(null);
   useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -282,6 +389,12 @@ function BranchDepth({
       if (!header || !midpointRow || container.clientHeight <= 0) return;
       const next = visibleDepthPerSide(container.clientHeight, header, midpointRow);
       setVisibleLevels((current) => (current === next ? current : next));
+      const body = container.clientHeight - header;
+      setSpace((current) =>
+        current?.body === body && current.row === midpointRow
+          ? current
+          : { body, row: midpointRow },
+      );
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -308,17 +421,46 @@ function BranchDepth({
     </TableRow>
   );
   const columns = 3;
-  const emptyRow = (ask: boolean) => (
-    <TableRow key={`${ask ? "ask" : "bid"}-empty`}>
-      <TableCell colSpan={columns} className="text-muted-foreground">
-        {available ? `No ${ask ? "asks" : "bids"}` : "—"}
-      </TableCell>
-    </TableRow>
-  );
+  // The headers stay on top and the midpoint in the middle of the rows below them: the space
+  // a side's levels leave is filled above the asks and below the bids. Each side shows at most
+  // `visibleLevels` rows, which fit in half that space, so the book always fills its height.
+  const half = space ? (space.body - space.row) / 2 : 0;
+  const fill = (rows: number, side: "asks" | "bids") => {
+    const height = space ? half - rows * space.row : 0;
+    return height > 0 ? (
+      <tr key={`${side}-fill`} role="presentation">
+        <td colSpan={columns} style={{ height, padding: 0 }} />
+      </tr>
+    ) : null;
+  };
+  /** An empty side shows the RFQ makers' price for a $100 order, which a market order fills at. */
+  const emptyRow = (ask: boolean) => {
+    const quoted = ask ? book.quote?.ask : book.quote?.bid;
+    return (
+      <TableRow
+        key={`${ask ? "ask" : "bid"}-empty`}
+        className={quoted ? cn("tabular-nums", ask ? "text-danger" : "text-positive") : undefined}
+      >
+        <TableCell colSpan={columns} className={quoted ? "text-sm" : "text-muted-foreground"}>
+          {quoted ? (
+            <>
+              {formatNumber(Number(quoted))}
+              <span className="ml-2 text-xs text-muted-foreground">vault quote · $100</span>
+            </>
+          ) : available ? (
+            `No ${ask ? "asks" : "bids"}`
+          ) : (
+            "—"
+          )}
+        </TableCell>
+      </TableRow>
+    );
+  };
   return (
     <div
       ref={containerRef}
-      className="flex h-full min-h-0 min-w-0 flex-col justify-center overflow-hidden"
+      // Below xl the book's grid row sizes to its content: it keeps room for five levels a side.
+      className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden max-xl:min-h-84"
     >
       <Table aria-label={label} density="compact">
         <TableHeader className="[&_tr]:border-b-0">
@@ -329,6 +471,7 @@ function BranchDepth({
           </TableRow>
         </TableHeader>
         <TableBody className="[&_tr]:border-b-0">
+          {fill(Math.max(asks.length, 1), "asks")}
           {asks.length === 0 && emptyRow(true)}
           {[...asks].reverse().map((level) => row(level, true, askTotal))}
           <TableRow data-depth-midpoint>
@@ -341,6 +484,7 @@ function BranchDepth({
           </TableRow>
           {bids.map((level) => row(level, false, bidTotal))}
           {bids.length === 0 && emptyRow(false)}
+          {fill(Math.max(bids.length, 1), "bids")}
         </TableBody>
       </Table>
     </div>

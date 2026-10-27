@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import { ConditionalStocksAdmin } from "../src/ConditionalStocksAdmin.sol";
 import { ConditionalStocksBase } from "../src/ConditionalStocksBase.sol";
 import { Base } from "./Base.t.sol";
 
@@ -38,7 +39,7 @@ contract DelegationTest is Base {
         eq(credit(alice, address(usdc)), 1_000_000e6 - 400e6, "owner funds");
 
         vm.prank(bob);
-        cs.split(market, 1, NVDA);
+        ConditionalStocksAdmin(address(cs)).split(market, 1, NVDA);
         uint256 ask = rest(bob, YES, true, true, 19_000, NVDA);
         _delegated(alice, YES, false, 19_000, NVDA, one(uint32(ask)));
         eq(acct(alice, YES).base, NVDA, "stock to owner");

@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { CoinbaseCryptoPrices } from "../src/market-data/coinbase.ts";
 import { RobinhoodSpotPrices } from "../src/market-data/robinhood.ts";
 
 const token = (n: number) => `0x${n.toString(16).padStart(40, "0")}`;
@@ -45,17 +46,14 @@ test("prices stocks at Robinhood's bid/ask midpoint, stablecoins at their peg, n
   // A trading halt, a failed read and an asset without a source are never priced.
   expect(amd).toMatchObject({ status: "unavailable", priceUsd: null });
   expect(nflx).toMatchObject({ status: "unavailable", priceUsd: null, source: "robinhood:NFLX" });
-  // ETH's reference is Jupiter's, which this fetcher fails.
-  expect(eth).toMatchObject({ status: "unavailable", priceUsd: null, source: "jupiter:ETH" });
+  expect(eth).toMatchObject({ status: "unavailable", priceUsd: null, source: null });
   expect(unknown).toMatchObject({ status: "unmapped", priceUsd: null });
-  // One Robinhood request per symbol, never for stablecoins or unknown tokens; crypto is
-  // one Jupiter read.
-  expect(requested.filter((url) => url.startsWith("https://rh.example/")).sort()).toEqual([
+  // One request per symbol, never for stablecoins, crypto or unknown tokens.
+  expect(requested.sort()).toEqual([
     "https://rh.example/rhj/prices/AMD",
     "https://rh.example/rhj/prices/NFLX",
     "https://rh.example/rhj/prices/TSLA",
   ]);
-  expect(requested.filter((url) => url.startsWith("https://lite-api.jup.ag/"))).toHaveLength(1);
 });
 
 test("callers within the cache window share one request per symbol", async () => {
@@ -95,29 +93,63 @@ test("rejects malformed quotes and never reports a price from the future", async
   expect(aapl).toMatchObject({ status: "unavailable", priceUsd: null });
 });
 
-test("prices crypto and pre-IPO assets from one Jupiter read, per share", async () => {
+test("prices crypto at Coinbase's bid/ask midpoint, once per asset, wrapped tokens included", async () => {
+  const requested: string[] = [];
+  const coinbase = new CoinbaseCryptoPrices("https://cb.example", async (url) => {
+    requested.push(url);
+    if (url.endsWith("/ETH-USD/ticker"))
+      return Response.json({ bid: "2431.67", ask: "2431.74", time: new Date().toISOString() });
+    return new Response("{}", { status: 404 });
+  });
+  const prices = new RobinhoodSpotPrices(
+    46630,
+    "https://rh.example/rhj",
+    async () => new Response("{}", { status: 404 }),
+    undefined,
+    coinbase,
+  );
+  const response = await prices.getPrices([
+    { token: token(1), symbol: "WETH" },
+    { token: token(2), symbol: "ETH" },
+    { token: token(3), symbol: "cbBTC" },
+  ]);
+  const [weth, eth, cbbtc] = response.prices;
+  expect(weth).toMatchObject({
+    status: "available",
+    priceUsd: 2431.705,
+    source: "coinbase:ETH-USD",
+  });
+  expect(eth).toMatchObject({ status: "available", priceUsd: 2431.705 });
+  // A failed read is never priced.
+  expect(cbbtc).toMatchObject({
+    status: "unavailable",
+    priceUsd: null,
+    source: "coinbase:BTC-USD",
+  });
+  expect(requested.sort()).toEqual([
+    "https://cb.example/products/BTC-USD/ticker",
+    "https://cb.example/products/ETH-USD/ticker",
+  ]);
+});
+
+test("prices pre-IPO assets from one Jupiter read, per share", async () => {
   const requested: string[] = [];
   const prices = new RobinhoodSpotPrices(10143, "https://rh.example/rhj", async (url) => {
     requested.push(url);
     if (url.startsWith("https://lite-api.jup.ag/price/v3?ids="))
       return new Response(
-        JSON.stringify({
-          cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij: { usdPrice: 82_000 },
-          PreANxuXjsy2pvisWWMNB6YaJNzr7681wJJr2rHsfTh: { usdPrice: 125 },
-        }),
+        JSON.stringify({ PreANxuXjsy2pvisWWMNB6YaJNzr7681wJJr2rHsfTh: { usdPrice: 125 } }),
       );
     return new Response("{}", { status: 404 });
   });
   const response = await prices.getPrices([
-    { token: token(1), symbol: "BTC" },
-    { token: token(2), symbol: "SPACEX" },
-    { token: token(3), symbol: "SOL" },
+    { token: token(1), symbol: "SPACEX" },
+    { token: token(2), symbol: "OPENAI" },
   ]);
-  const [btc, spacex, sol] = response.prices;
-  expect(btc).toMatchObject({ status: "available", priceUsd: 82_000, source: "jupiter:BTC" });
+  const [spacex, openai] = response.prices;
   // SpaceX PreStocks carry 5 shares per token.
   expect(spacex).toMatchObject({ status: "available", priceUsd: 25, source: "jupiter:SPACEX" });
-  expect(sol).toMatchObject({ status: "unavailable", priceUsd: null, source: "jupiter:SOL" });
+  expect(openai).toMatchObject({ status: "unavailable", priceUsd: null, source: "jupiter:OPENAI" });
   // One Jupiter read, and Robinhood is never asked for assets it does not quote.
   expect(requested).toHaveLength(1);
 });

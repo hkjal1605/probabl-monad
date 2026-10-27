@@ -7,6 +7,7 @@
     "build": "next build --webpack",
     "build:cloudflare": "opennextjs-cloudflare build && bun scripts/cloudflare-sanitize.ts",
     "check:cloudflare": "bun --no-env-file scripts/cloudflare-preflight.ts",
+    "smoke:prefetch": "bun scripts/prefetch-smoke.ts",
     "deploy:cloudflare": "bun run build:cloudflare && opennextjs-cloudflare deploy",
     "deploy:cloudflare:strict": "bun run check:cloudflare && bun run deploy:cloudflare",
     "dryrun:cloudflare": "bun run build:cloudflare && OPEN_NEXT_DEPLOY=true wrangler deploy --dry-run",

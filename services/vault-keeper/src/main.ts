@@ -11,6 +11,8 @@ import { type Address, createPublicClient, defineChain, getAddress, http } from 
 import type { PrivateKeyAccount } from "viem/accounts";
 import { settings } from "./config.ts";
 import { Keeper, log } from "./engine.ts";
+import { LiveReferences } from "./live.ts";
+import { RfqMaker } from "./rfq.ts";
 import { initialState, StateFile } from "./state.ts";
 import { Tick } from "./tick.ts";
 import type { VaultIdentity } from "./vault.ts";
@@ -187,11 +189,47 @@ async function main() {
     );
   });
 
+  // RFQ: every vault answers market orders over the API's stream with its own approved key
+  // (VK_RFQ_API_KEYS, in the order of the configured vaults), pricing from live references.
+  const makers: RfqMaker[] = [];
+  let references: LiveReferences | undefined;
+  if (config.rfq.enabled && !process.argv.includes("--cancel")) {
+    const keys = (env.VK_RFQ_API_KEYS ?? "")
+      .split(",")
+      .map((key) => key.trim())
+      .filter(Boolean);
+    if (keys.length !== running.length)
+      throw new Error("VK_RFQ_API_KEYS must list one RFQ API key per configured vault");
+    references = new LiveReferences({
+      origin,
+      tokens: [quote, ...bases],
+      spotPollMs: config.rfq.spotPollMs,
+      onError: (event, detail) => log(event, detail),
+    });
+    references.start();
+    const url = env.VK_RFQ_URL ?? `${origin.replace(/^http/, "ws")}/v1/rfq/stream`;
+    for (const [i, keeper] of running.entries()) {
+      keeper.live = references;
+      const account = vaults[i]?.account;
+      const maker = new RfqMaker({
+        keeper,
+        url,
+        apiKey: keys[i]!,
+        ...(account ? { account } : {}),
+      });
+      maker.start();
+      makers.push(maker);
+    }
+  }
+
   const controller = new AbortController();
   let stopped = false;
   const stop = () => {
     stopped = true;
     for (const keeper of running) keeper.stopped = true;
+    // New quotes stop first; the ones already signed expire within the quote lifetime.
+    for (const maker of makers) maker.stop();
+    references?.stop();
     controller.abort();
   };
   process.on("SIGINT", stop);
@@ -261,6 +299,8 @@ async function main() {
       );
     process.off("SIGINT", stop);
     process.off("SIGTERM", stop);
+    for (const maker of makers) maker.stop();
+    references?.stop();
     follower.stop();
     for (const file of files) file.close();
   }

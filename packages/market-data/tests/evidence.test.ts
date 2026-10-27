@@ -53,6 +53,13 @@ describe("admin evidence packets", () => {
     const first = buildCreationEvidence(input);
     const second = buildCreationEvidence({ ...input, config: { ...input.config } });
     expect(first.packetHash).toBe(second.packetHash);
+    // An unnamed placeholder outcome (or a market Polymarket has not opened) is inactive.
+    expect(() =>
+      buildCreationEvidence({
+        ...input,
+        metadata: normalizeGammaMarket(gammaMarket({ negRisk: true, active: false })),
+      }),
+    ).toThrow(MarketDataError);
     expect(() =>
       buildCreationEvidence({
         ...input,
@@ -60,12 +67,13 @@ describe("admin evidence packets", () => {
       }),
     ).toThrow("multiple of baseStep");
     expect(first.packet.config).toMatchObject({
-      polymarketNoIndex: "2",
-      polymarketYesIndex: "1",
+      eventNoIndex: "2",
+      eventYesIndex: "1",
       makerFeeBps: "10",
       takerFeeBps: "25",
     });
-    expect(first.packet.schemaVersion).toBe(6);
+    expect(first.packet.event).toMatchObject({ source: "polymarket", marketId: "gamma-42" });
+    expect(first.packet.schemaVersion).toBe(7);
     // The fee rates are part of the reviewed, hash-bound terms.
     expect(
       buildCreationEvidence({ ...input, config: { ...input.config, takerFeeBps: "26" } })
@@ -105,7 +113,7 @@ describe("admin evidence packets", () => {
     expect(() =>
       assertEvidenceIntegrity({
         ...first,
-        packet: { ...first.packet, schemaVersion: 5 as never },
+        packet: { ...first.packet, schemaVersion: 6 as never },
       }),
     ).toThrow("Unsupported evidence schema");
   });
@@ -116,6 +124,8 @@ describe("admin evidence packets", () => {
       attachments: [],
       conditionId: "7",
       marketId: "7",
+      source: "polymarket" as const,
+      eventMarketId: "gamma-42",
       metadataRawHash: hashCanonical(gammaMarket()),
       metadataSnapshotId: "snapshot-1",
       officialStatus: "resolved",
@@ -127,9 +137,9 @@ describe("admin evidence packets", () => {
         conditionalTokensAddress: "0x0000000000000000000000000000000000000030",
         transactionHash: `0x${"78".repeat(32)}`,
       },
-      polymarketConditionId: metadata.conditionId,
-      polymarketNoIndex: "2",
-      polymarketYesIndex: "1",
+      eventConditionId: metadata.conditionId,
+      eventNoIndex: "2",
+      eventYesIndex: "1",
       preparedAt: "2026-09-05T00:00:00Z",
       preparer,
       sourceObservations: [

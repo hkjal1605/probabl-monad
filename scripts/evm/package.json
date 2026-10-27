@@ -10,6 +10,7 @@
     "@conditional-stocks/db": "workspace:*",
     "@conditional-stocks/domain": "workspace:*",
     "@conditional-stocks/evm-client": "workspace:*",
+    "@conditional-stocks/market-automation": "workspace:*",
     "@conditional-stocks/shared": "workspace:*",
     "viem": "2.56.3"
   }

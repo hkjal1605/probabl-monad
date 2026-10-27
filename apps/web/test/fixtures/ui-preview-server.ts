@@ -33,9 +33,9 @@ Bun.serve({
           state: 2,
           tradingCutoff: String(Date.parse(m.cutoff) / 1000),
           tradingOpen: String(Date.parse(m.tradingOpen) / 1000),
-          polymarketConditionId: m.mapping.conditionId,
-          polymarketYesIndex: "1",
-          polymarketNoIndex: "2",
+          eventConditionId: m.mapping.conditionId,
+          eventYesIndex: "1",
+          eventNoIndex: "2",
           quoteSymbol: "USDC",
           quoteName: "USD Coin",
         })),
@@ -56,18 +56,29 @@ Bun.serve({
         ),
         truncated: false,
       });
-    if (path.endsWith("/polymarket") && market)
-      return json({
-        metadata: {
-          normalized: {
-            question: market.question,
-            rules: market.description,
-            asset: { symbol: market.ticker },
-            canonicalUrl: "https://polymarket.com",
-          },
+    const eventOf = (m: (typeof markets)[number]) => ({
+      metadata: {
+        normalized: {
+          question: m.question,
+          rules: m.description,
+          asset: { symbol: m.ticker },
+          canonicalUrl: "https://polymarket.com",
         },
-        probability: null,
+      },
+      probability: null,
+    });
+    if (path === "/v1/events") {
+      const ids = (new URL(request.url).searchParams.get("markets") ?? "").split(",");
+      return json({
+        events: Object.fromEntries(
+          ids.flatMap((id) => {
+            const m = markets.find((candidate) => candidate.id === id);
+            return m ? [[id, eventOf(m)]] : [];
+          }),
+        ),
       });
+    }
+    if (path.endsWith("/event") && market) return json(eventOf(market));
     if (path === "/trades") return json({ trades: fixtureState.trades });
     if (path === "/orders") return json({ orders: fixtureState.orders });
     if (path.startsWith("/positions/")) return json({ positions: fixtureState.positions });

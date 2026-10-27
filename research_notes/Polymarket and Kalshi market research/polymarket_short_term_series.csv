@@ -1,0 +1,1093 @@
+family,subject,series_slug,median_gap_between_instances_h,distinct_end_times_30d,instances_30d,instances_7d,instances_24h,vol_30d,vol_7d,vol_last24h,daily_vol_7d_avg,daily_vol_30d_avg,median_inst_7d,p90_inst_7d,median_inst_30d,p90_inst_30d,mean_inst_30d,zero_vol_share_30d,median_listing_h,fee_types,open_events,open_markets,liq_median_next3,main_spread_median_next3,fee_type,resolution_domains
+Central-bank rate decisions,south-africa-reserve-bank-decision,south-africa-reserve-bank-decision,,1,1,0,0,10684,0,0,0,356,0,0,10684,10684,10684,0.0,1463.1,economics_fees,1,5,1838,0.09,economics_fees,www.resbank.co.za(1)
+Central-bank rate decisions,bank-of-mexico-decision,bank-of-mexico-decision,,1,1,0,0,79103,0,0,0,2637,0,0,79103,79103,79103,0.0,2228.5,economics_fees,2,10,7568,0.0055,economics_fees,www.banxico.org.mx(2)
+Central-bank rate decisions,reserve-bank-of-australia-decision,reserve-bank-of-australia-decision,,1,1,0,0,196799,0,0,0,6560,0,0,196799,196799,196799,0.0,1471.8,economics_fees,2,10,11749,0.009,economics_fees,www.rba.gov.au(1)
+Central-bank rate decisions,central-bank-of-colombia-decision,central-bank-of-colombia-decision,,1,1,0,0,94890,0,0,0,3163,0,0,94890,94890,94890,0.0,2188.4,economics_fees,2,10,2116,0.06,economics_fees,www.banrep.gov.co(2)
+Central-bank rate decisions,reserve-bank-of-india-decision,reserve-bank-of-india-decision,,1,1,0,0,42260,0,0,0,1409,0,0,42260,42260,42260,0.0,650.9,economics_fees,1,5,5545,0.01,economics_fees,www.rbi.org.in(1)
+Commodity daily up/down,OIL,oil-daily-up-or-down,24.0,21,21,5,1,224535,49124,16197,7018,7485,8591,13422,9036,16243,10692,0.0,34.0,finance_prices_fees,1,1,788,0.05,finance_prices_fees,app.pyth.com(1)
+Commodity daily up/down,GOLD,gold-daily-up-or-down,24.0,21,21,5,1,186131,37471,6301,5353,6204,8497,9198,8497,13206,8863,0.0,33.0,finance_prices_fees,1,1,9039,0.05,finance_prices_fees,pythdata.app(1)
+Commodity daily up/down,SILVER,silver-daily-up-or-down,24.0,21,21,5,1,124137,16678,3873,2383,4138,3575,3958,5037,10446,5911,0.0,33.0,finance_prices_fees,1,1,1356,0.04,finance_prices_fees,pythdata.app(1)
+Commodity daily up/down,NATURAL-GAS,natural-gas-daily-up-or-down,24.0,21,21,5,1,76692,3370,320,481,2556,320,1541,1155,10728,3652,0.0,34.0,finance_prices_fees,3,3,46,0.07,finance_prices_fees,pythdata.app(2); app.pyth.com(1)
+Commodity hit-price (touch),WTI-CRUDE-OIL,wti-crude-oil-hit-price-weekly,168.0,4,4,1,0,247685,124791,0,17827,8256,124791,124791,47649,103852,61921,0.0,168.0,finance_prices_fees,1,14,15560,0.009,finance_prices_fees,app.pyth.com(1)
+Commodity hit-price (touch),SILVER,silver-hit-price-weekly,168.0,4,4,1,0,301740,99532,0,14219,10058,99532,99532,74363,92853,75435,0.0,167.0,finance_prices_fees,1,13,23638,0.003,finance_prices_fees,pythdata.app(1)
+Commodity hit-price (touch),GOLD,gold-hit-price-weekly,168.0,4,4,1,0,273926,75728,0,10818,9131,75728,75728,72751,74944,68482,0.0,167.0,finance_prices_fees,1,13,21868,0.02,finance_prices_fees,pythdata.app(1)
+Commodity hit-price (touch),NATURAL-GAS,natural-gas-hit-price-weekly,168.0,4,4,1,0,115537,40233,0,5748,3851,40233,40233,28595,37614,28884,0.0,168.0,finance_prices_fees,1,14,38872,0.001,finance_prices_fees,app.pyth.com(1)
+Crypto above-strike ladder,BTC,btc-multi-strikes-weekly,24.0,30,30,7,1,41392078,8636573,1562585,1233796,1379736,1277618,1588616,1322751,1716954,1379736,0.0,168.0,crypto_fees_v2,7,77,455479,0.01,crypto_fees_v2,www.binance.com(7)
+Crypto above-strike ladder,ETH,ethereum-multi-strikes-weekly,24.0,30,30,7,1,9277091,2156114,320664,308016,309236,320664,421066,288443,463484,309236,0.0,168.0,crypto_fees_v2,7,77,324070,0.001,crypto_fees_v2,www.binance.com(7)
+Crypto above-strike ladder,SOL,solana-multi-strikes-weekly,24.0,30,30,7,1,749588,193862,19216,27695,24986,19216,50483,17040,65151,24986,0.0,168.0,crypto_fees_v2,7,77,129626,0.015,crypto_fees_v2,www.binance.com(7)
+Crypto above-strike ladder,BTC,bitcoin-multi-strikes-hourly,1.0,718,718,169,24,592952,128436,24876,18348,19765,327,1353,335,1329,826,0.001,1.3,crypto_fees_v2,2,40,6991,0.035,crypto_fees_v2,www.binance.com(2)
+Crypto above-strike ladder,ETH,ethereum-multi-strikes-hourly,1.0,718,718,169,24,229840,63716,21455,9102,7661,223,709,220,625,320,0.004,1.3,crypto_fees_v2,2,32,5424,0.0225,crypto_fees_v2,www.binance.com(2)
+Crypto above-strike ladder,XRP,xrp-multi-strikes-weekly,24.0,30,30,7,1,386496,43549,2184,6221,12883,2184,13882,3496,38996,12883,0.0,168.0,crypto_fees_v2,7,77,95597,0.027,crypto_fees_v2,www.binance.com(7)
+Crypto hit-price (touch),BTC,bitcoin-hit-price-daily,24.0,30,30,8,1,8863092,3367059,359500,481008,295436,407218,526231,277439,431180,295436,0.0,24.0,crypto_fees_v2,1,15,367435,0.003,crypto_fees_v2,www.binance.com(1)
+Crypto hit-price (touch),BTC,bitcoin-hit-price-weekly,168.0,5,5,1,0,8701384,1537101,0,219586,290046,1537101,1537101,1686365,2092892,1740277,0.0,168.0,crypto_fees_v2,1,14,685165,0.005,crypto_fees_v2,www.binance.com(1)
+Crypto hit-price (touch),ETH,ethereum-hit-price-weekly,168.0,5,5,1,0,4358510,1065548,0,152221,145284,1065548,1065548,827217,1098467,871702,0.0,168.0,crypto_fees_v2,1,14,453740,0.02,crypto_fees_v2,www.binance.com(1)
+Crypto hit-price (touch),ETH,ethereum-hit-price-daily,24.0,30,30,7,1,2316690,929851,160118,132836,77223,118832,199004,65946,162389,77223,0.0,24.0,crypto_fees_v2,1,13,98970,0.022,crypto_fees_v2,www.binance.com(1)
+Crypto hit-price (touch),SOL,solana-hit-price-weekly,168.0,5,5,1,0,141684,40411,0,5773,4723,40411,40411,28778,36822,28337,0.0,168.0,crypto_fees_v2,1,15,101095,0.045,crypto_fees_v2,www.binance.com(1)
+Crypto hit-price (touch),XRP,xrp-hit-price-weekly,168.0,5,5,1,0,122331,30207,0,4315,4078,30207,30207,30207,34723,24466,0.0,168.0,crypto_fees_v2,1,14,53858,0.019,crypto_fees_v2,www.binance.com(1)
+Crypto hit-price (touch),SOL,solana-hit-price-daily,24.0,30,30,7,1,76821,20489,2207,2927,2561,2097,5835,1860,5428,2561,0.0,24.0,crypto_fees_v2,1,9,9182,0.008,crypto_fees_v2,www.binance.com(1)
+Crypto hit-price (touch),XRP,xrp-hit-price-daily,24.0,30,30,7,1,86293,14870,1677,2124,2876,1162,4750,1122,5985,2876,0.0,24.0,crypto_fees_v2,1,9,6124,0.018,crypto_fees_v2,www.binance.com(1)
+Crypto hit-price (touch),ETH/BTC,eth-btc-hit-price-weekly,168.0,3,3,1,0,2057,1597,0,228,69,1597,1597,395,1357,686,0.0,168.0,crypto_fees_v2,1,8,64,0.92,crypto_fees_v2,www.binance.com(1)
+Crypto hit-price (touch),BTC,bitcoin-hit-price-monthly,,1,1,0,0,19060020,0,0,0,635334,0,0,19060020,19060020,19060020,0.0,718.9,crypto_fees_v2,2,50,2691058,0.001,crypto_fees_v2,
+Crypto hit-price (touch),ETH,ethereum-hit-price-monthly,,1,1,0,0,9182025,0,0,0,306067,0,0,9182025,9182025,9182025,0.0,718.9,crypto_fees_v2,2,41,1432328,0.005,crypto_fees_v2,
+Crypto hit-price (touch),SOL,solana-hit-price-monthly,,1,1,0,0,1280888,0,0,0,42696,0,0,1280888,1280888,1280888,0.0,718.9,crypto_fees_v2,2,39,702500,0.001,crypto_fees_v2,
+Crypto hit-price (touch),XRP,xrp-hit-price-monthly,,1,1,0,0,895999,0,0,0,29867,0,0,895999,895999,895999,0.0,718.9,crypto_fees_v2,2,35,515202,0.0045,crypto_fees_v2,
+Crypto hit-price (touch),DOGE,dogecoin-hit-price-monthly,,1,1,0,0,120110,0,0,0,4004,0,0,120110,120110,120110,0.0,718.9,crypto_fees_v2,2,16,139032,0.0015,crypto_fees_v2,
+Crypto hit-price (touch),HYPE,hyperliquid-hit-price-monthly,,1,1,0,0,34427,0,0,0,1148,0,0,34427,34427,34427,0.0,717.6,crypto_fees_v2,2,32,253871,0.0375,crypto_fees_v2,
+Crypto hit-price (touch),ENA,ethena-hit-price-monthly,,1,1,0,0,10532,0,0,0,351,0,0,10532,10532,10532,0.0,717.6,crypto_fees_v2,2,26,13451,0.3715,crypto_fees_v2,
+Crypto hit-price (touch),BNB,bnb-hit-price-monthly,,1,1,0,0,12641,0,0,0,421,0,0,12641,12641,12641,0.0,717.6,crypto_fees_v2,2,25,60207,0.0165,crypto_fees_v2,
+Crypto hit-price (touch),LINK,chainlink-hit-price-monthly,,1,1,0,0,2291,0,0,0,76,0,0,2291,2291,2291,0.0,717.6,crypto_fees_v2,2,21,16310,0.035,crypto_fees_v2,
+Crypto price range (neg-risk buckets),BTC,bitcoin-neg-risk-weekly,24.0,30,30,7,1,5070206,935958,149742,133708,169007,130925,147179,153741,255679,169007,0.0,168.0,crypto_fees_v2,7,77,184753,0.006,crypto_fees_v2,www.binance.com(7)
+Crypto price range (neg-risk buckets),ETH,ethereum-neg-risk-weekly,24.0,30,30,7,1,1689360,429429,76539,61347,56312,54063,81613,51772,80469,56312,0.0,168.0,crypto_fees_v2,7,77,106029,0.04,crypto_fees_v2,www.binance.com(7)
+Crypto price range (neg-risk buckets),SOL,solana-neg-risk-weekly,24.0,30,30,7,1,193801,37164,3452,5309,6460,4450,8156,5405,12258,6460,0.0,168.0,crypto_fees_v2,7,77,11219,0.028,crypto_fees_v2,www.binance.com(7)
+Crypto price range (neg-risk buckets),XRP,xrp-neg-risk-weekly,24.0,30,30,7,1,100140,13825,816,1975,3338,1836,2906,2317,7400,3338,0.0,168.0,crypto_fees_v2,7,77,11788,0.019,crypto_fees_v2,www.binance.com(7)
+Crypto up/down,BTC,btc-up-or-down-5m,0.08,8635,8635,2016,288,332061343,69421098,11655593,9917300,11068711,35649,58525,37304,64661,38455,0.133,23.9,crypto_fees_v2,303,303,13346,0.01,crypto_fees_v2,data.chain.link(303)
+Crypto up/down,BTC,btc-up-or-down-15m,0.25,2879,2879,672,96,103063976,22892927,2777734,3270418,3435466,25720,55493,25186,61085,35799,0.0,24.1,crypto_fees_v2,97,97,6650,0.01,crypto_fees_v2,data.chain.link(97)
+Crypto up/down,BTC,btc-up-or-down-hourly,1.0,720,720,169,24,21219975,4766900,652130,680986,707333,25906,42791,27131,45111,29472,0.001,49.0,crypto_fees_v2,50,50,8141,0.01,crypto_fees_v2,www.binance.com(50)
+Crypto up/down,ETH,eth-up-or-down-5m,0.08,8634,8634,2016,288,16091906,3182074,552239,454582,536397,0,4077,1036,4773,1864,0.495,23.9,crypto_fees_v2,304,304,5805,0.01,crypto_fees_v2,data.chain.link(304)
+Crypto up/down,ETH,eth-up-or-down-15m,0.25,2879,2879,672,96,11157145,2692001,441267,384572,371905,3363,6546,3287,6592,3875,0.0,24.1,crypto_fees_v2,97,97,2917,0.01,crypto_fees_v2,data.chain.link(97)
+Crypto up/down,BTC,btc-up-or-down-daily,24.0,30,30,7,1,6239571,1081015,192046,154431,207986,177691,209138,135099,257521,207986,0.0,47.9,crypto_fees_v2,2,2,24390,0.02,crypto_fees_v2,www.binance.com(2)
+Crypto up/down,SOL,sol-up-or-down-15m,0.25,2879,2879,672,96,3921120,902525,129978,128932,130704,1151,2434,1120,2458,1362,0.001,24.1,crypto_fees_v2,98,98,2227,0.02,crypto_fees_v2,data.chain.link(98)
+Crypto up/down,SOL,sol-up-or-down-5m,0.08,8635,8635,2016,288,4894475,840190,134021,120027,163149,0,1412,0,1759,567,0.61,23.9,crypto_fees_v2,303,303,3106,0.01,crypto_fees_v2,data.chain.link(303)
+Crypto up/down,ETH,eth-up-or-down-hourly,1.0,720,720,169,24,2948030,685902,103343,97986,98268,3685,6133,3752,6571,4094,0.0,49.0,crypto_fees_v2,50,50,4506,0.01,crypto_fees_v2,www.binance.com(50)
+Crypto up/down,BTC,btc-up-or-down-4h,4.0,180,180,42,6,3116321,619302,67048,88472,103877,13445,23184,14931,27065,17313,0.0,27.9,crypto_fees_v2,7,7,1477,0.02,crypto_fees_v2,data.chain.link(7)
+Crypto up/down,XRP,xrp-up-or-down-15m,0.25,2879,2879,672,96,2989909,568328,80839,81190,99664,654,1569,868,1889,1039,0.002,24.1,crypto_fees_v2,97,97,1773,0.01,crypto_fees_v2,data.chain.link(97)
+Crypto up/down,ETH,eth-up-or-down-daily,24.0,30,30,7,1,2252130,544961,73777,77852,75071,68825,114908,65533,134494,75071,0.0,47.9,crypto_fees_v2,2,2,20934,0.02,crypto_fees_v2,www.binance.com(2)
+Crypto up/down,XRP,xrp-up-or-down-5m,0.08,8635,8635,2016,288,2085385,352192,39986,50313,69513,0,652,0,800,242,0.667,23.9,crypto_fees_v2,305,305,2408,0.01,crypto_fees_v2,data.chain.link(305)
+Crypto up/down,BNB,bnb-up-or-down-15m,0.25,2879,2879,672,96,1275922,300764,54838,42966,42531,341,912,341,892,443,0.011,24.1,crypto_fees_v2,98,98,1188,0.03,crypto_fees_v2,data.chain.link(98)
+Crypto up/down,DOGE,doge-up-or-down-15m,0.25,2879,2879,672,96,1426149,273653,47657,39093,47538,325,756,390,932,495,0.011,24.1,crypto_fees_v2,97,97,1238,0.03,crypto_fees_v2,data.chain.link(97)
+Crypto up/down,HYPE,hype-up-or-down-15m,0.25,2879,2879,672,96,821430,162546,28452,23221,27381,184,505,213,586,285,0.095,24.1,crypto_fees_v2,98,98,1299,0.02,crypto_fees_v2,data.chain.link(98)
+Crypto up/down,DOGE,doge-up-or-down-5m,0.08,8635,8635,2016,288,603579,132085,38441,18869,20119,0,226,0,257,70,0.799,23.9,crypto_fees_v2,291,291,1886,0.02,crypto_fees_v2,data.chain.link(291)
+Crypto up/down,ETH,eth-up-or-down-4h,4.0,180,180,42,6,681017,131283,18123,18755,22701,2415,5225,3111,6316,3783,0.0,27.9,crypto_fees_v2,7,7,1421,0.02,crypto_fees_v2,data.chain.link(7)
+Crypto up/down,SOL,solana-up-or-down-hourly,1.0,720,720,169,24,541318,111298,23327,15900,18044,523,1307,533,1423,752,0.001,49.0,crypto_fees_v2,50,50,1923,0.03,crypto_fees_v2,www.binance.com(50)
+Crypto up/down,BNB,bnb-up-or-down-5m,0.08,8635,8635,2016,288,523104,99144,14114,14163,17437,0,170,0,230,61,0.788,23.9,crypto_fees_v2,291,291,1615,0.01,crypto_fees_v2,data.chain.link(291)
+Crypto up/down,XRP,xrp-up-or-down-hourly,1.0,720,720,169,24,263909,73080,8729,10440,8797,250,814,251,761,367,0.0,49.0,crypto_fees_v2,50,50,1132,0.05,crypto_fees_v2,www.binance.com(50)
+Crypto up/down,SOL,solana-up-or-down-daily,24.0,30,30,7,1,162214,55582,10887,7940,5407,8689,10373,4582,9382,5407,0.0,47.9,crypto_fees_v2,2,2,13107,0.02,crypto_fees_v2,www.binance.com(2)
+Crypto up/down,XRP,xrp-up-or-down-daily,24.0,30,30,7,1,75022,33236,4914,4748,2501,4202,8968,1679,4416,2501,0.0,47.9,crypto_fees_v2,2,2,3572,0.02,crypto_fees_v2,www.binance.com(2)
+Crypto up/down,BNB,bnb-up-or-down-hourly,1.0,720,720,169,24,135382,30735,5186,4391,4513,138,345,142,365,188,0.003,49.0,crypto_fees_v2,50,50,682,0.06,crypto_fees_v2,www.binance.com(50)
+Crypto up/down,SOL,sol-up-or-down-4h,4.0,180,180,42,6,176539,26764,2703,3823,5885,404,1208,647,1996,981,0.0,27.9,crypto_fees_v2,7,7,711,0.02,crypto_fees_v2,data.chain.link(7)
+Crypto up/down,XRP,xrp-up-or-down-4h,4.0,180,180,42,6,114359,22603,4281,3229,3812,431,941,463,1176,635,0.0,27.9,crypto_fees_v2,7,7,724,0.02,crypto_fees_v2,data.chain.link(7)
+Crypto up/down,DOGE,doge-up-or-down-hourly,1.0,720,720,169,24,112701,18738,2990,2677,3757,85,235,98,314,157,0.003,49.0,crypto_fees_v2,50,50,632,0.06,crypto_fees_v2,www.binance.com(50)
+Crypto up/down,HYPE,hype-up-or-down-5m,0.08,8635,8635,2016,288,83626,15413,6142,2202,2788,0,0,0,0,10,0.925,23.9,crypto_fees_v2,291,291,941,0.01,crypto_fees_v2,data.chain.link(291)
+Crypto up/down,BNB,bnb-up-or-down-4h,4.0,180,180,42,6,49586,9161,1569,1309,1653,144,462,192,465,275,0.006,27.9,crypto_fees_v2,8,8,419,0.04,crypto_fees_v2,data.chain.link(8)
+Crypto up/down,BNB,bnb-up-or-down-daily,24.0,30,30,7,1,46577,6829,356,976,1553,1071,1458,626,1416,1553,0.0,47.9,crypto_fees_v2,2,2,423,0.05,crypto_fees_v2,www.binance.com(2)
+Crypto up/down,DOGE,doge-up-or-down-4h,4.0,180,180,42,6,22300,6208,1329,887,743,124,244,95,231,124,0.028,27.9,crypto_fees_v2,7,7,426,0.04,crypto_fees_v2,data.chain.link(7)
+Crypto up/down,HYPE,hype-up-or-down-hourly,1.0,720,720,169,24,28054,5467,342,781,935,15,71,15,88,39,0.044,49.0,crypto_fees_v2,50,50,628,0.06,crypto_fees_v2,www.binance.com(50)
+Crypto up/down,ZEC,zec-up-or-down-15m,0.25,2879,2879,672,96,5902,3017,218,431,197,0,15,0,0,2,0.91,24.1,crypto_fees_v2,98,98,54,0.88,crypto_fees_v2,data.chain.link(98)
+Crypto up/down,DOGE,dogecoin-up-or-down-daily,24.0,30,30,7,1,9946,1885,299,269,332,194,486,215,563,332,0.0,47.9,crypto_fees_v2,2,2,399,0.06,crypto_fees_v2,www.binance.com(2)
+Crypto up/down,HYPE,hype-up-or-down-4h,4.0,180,180,42,6,9058,1867,249,267,302,24,97,25,133,50,0.144,27.9,crypto_fees_v2,7,7,419,0.04,crypto_fees_v2,data.chain.link(7)
+Crypto up/down,HYPE,hype-up-or-down-daily,24.0,30,30,7,1,1245,240,30,34,42,32,64,30,85,42,0.0,47.9,crypto_fees_v2,2,2,294,0.165,crypto_fees_v2,www.binance.com(2)
+Crypto up/down,ZEC,zec-up-or-down-4h,4.0,180,180,42,6,205,139,0,20,7,0,0,0,0,1,0.911,27.9,crypto_fees_v2,7,7,10,0.88,crypto_fees_v2,data.chain.link(7)
+Crypto up/down,ZEC,zec-up-or-down-5m,0.08,8635,8635,2016,288,240,57,0,8,8,0,0,0,0,0,0.997,23.9,crypto_fees_v2,290,290,47,0.46,crypto_fees_v2,data.chain.link(290)
+Daily close over/under (commodity/ETF),SPY,spy-daily-close-uo,24.0,21,21,5,1,559031,143357,20442,20480,18634,22173,48754,24609,45316,26621,0.0,32.0,finance_prices_fees,1,11,24427,0.01,finance_prices_fees,pythdata.app(1)
+Daily close over/under (commodity/ETF),WTI,wti-daily-close-uo,24.0,21,21,5,1,784949,132250,38298,18893,26165,23939,34978,38082,59330,37379,0.0,34.0,finance_prices_fees,1,11,7462,0.02,finance_prices_fees,app.pyth.com(1)
+Daily close over/under (commodity/ETF),US-GAS,us-gas-price-daily,24.0,4,4,4,1,5768,5768,895,824,192,1340,2054,1340,2054,1442,0.0,24.0,finance_prices_fees,1,6,469,0.68,finance_prices_fees,gasprices.aaa.com(1)
+Daily highest temperature,seoul,seoul-daily-weather,24.0,30,30,7,1,2058367,554662,88300,79237,68612,81301,90125,64982,88928,68612,0.0,55.1,weather_fees,3,33,16561,0.019,weather_fees,www.weather.gov(3)
+Daily highest temperature,hong-kong,hong-kong-daily-weather,24.0,30,30,7,4,3016177,531580,268121,75940,100539,71489,97120,94181,152429,100539,0.0,55.0,weather_fees,3,33,26310,0.02,weather_fees,
+Daily highest temperature,beijing,beijing-daily-weather,24.0,30,30,7,1,1917172,514746,60622,73535,63906,62325,101196,54402,94907,63906,0.0,55.0,weather_fees,3,33,12651,0.009,weather_fees,www.weather.gov(3)
+Daily highest temperature,tokyo,tokyo-daily-weather,24.0,30,30,7,1,1844968,432423,49425,61775,61499,52947,79622,53624,88822,61499,0.0,55.1,weather_fees,3,33,14512,0.03,weather_fees,www.weather.gov(3)
+Daily highest temperature,shanghai,shanghai-daily-weather,24.0,30,30,7,1,1981907,425150,47565,60736,66064,52704,81033,61744,101620,66064,0.0,55.0,weather_fees,3,33,16765,0.01,weather_fees,www.weather.gov(3)
+Daily highest temperature,los-angeles,los-angeles-daily-weather,24.0,29,29,7,1,1777241,419772,36947,59967,59241,56823,92002,57273,84187,61284,0.0,48.1,weather_fees,3,33,31456,0.02,weather_fees,www.weather.gov(3)
+Daily highest temperature,nyc,nyc-daily-weather,24.0,29,29,6,1,1785980,414429,36915,59204,59533,65589,93453,56269,91935,61586,0.0,52.1,weather_fees,4,35,18699,0.02,weather_fees,www.weather.gov(4)
+Daily highest temperature,wellington,wellington-daily-weather,24.0,30,30,7,1,1846452,398008,47402,56858,61548,57628,72526,53268,96657,61548,0.0,55.1,weather_fees,3,33,13988,0.03,weather_fees,www.weather.gov(3)
+Daily highest temperature,wuhan,wuhan-daily-weather,24.0,30,30,7,1,1212510,387649,43402,55378,40417,41967,96230,34736,55526,40417,0.0,55.0,weather_fees,3,33,14492,0.03,weather_fees,www.weather.gov(3)
+Daily highest temperature,chicago,chicago-daily-weather,24.0,29,29,7,1,1417943,367749,34102,52536,47265,38935,78746,42080,75437,48895,0.0,52.1,weather_fees,4,42,24953,0.02,weather_fees,www.weather.gov(4)
+Daily highest temperature,paris,paris-daily-weather,24.0,29,29,6,0,2308055,356190,0,50884,76935,57135,75017,70071,110599,79588,0.0,55.1,weather_fees,4,40,66211,0.02,weather_fees,www.weather.gov(4)
+Daily highest temperature,london,london-daily-weather,24.0,29,29,6,0,2068743,352184,0,50312,68958,54551,74216,67137,96964,71336,0.0,55.1,weather_fees,4,44,17463,0.01,weather_fees,www.weather.gov(4)
+Daily highest temperature,sao-paulo,sao-paulo-daily-weather,24.0,29,29,6,0,1315693,344983,0,49283,43856,55837,87997,42503,62978,45369,0.0,47.1,weather_fees,3,31,41234,0.015,weather_fees,www.weather.gov(3)
+Daily highest temperature,san-francisco,san-francisco-daily-weather,24.0,29,29,7,1,1309176,323278,23734,46183,43639,40959,72269,43028,67305,45144,0.0,48.1,weather_fees,3,33,23590,0.0085,weather_fees,www.weather.gov(3)
+Daily highest temperature,miami,miami-daily-weather,24.0,30,30,7,2,1662958,322366,96581,46052,55432,41867,60966,51417,78888,55432,0.0,52.1,weather_fees,2,22,36122,0.0105,weather_fees,www.weather.gov(2)
+Daily highest temperature,helsinki,helsinki-daily-weather,24.0,30,30,7,1,1237075,301816,37825,43117,41236,39916,54813,38871,56771,41236,0.0,55.0,weather_fees,3,33,17223,0.01,weather_fees,www.weather.gov(3)
+Daily highest temperature,dallas,dallas-daily-weather,24.0,29,29,7,1,1316530,301074,48360,43011,43884,38288,60591,43470,64643,45398,0.0,52.1,weather_fees,4,44,59498,0.03,weather_fees,www.weather.gov(4)
+Daily highest temperature,munich,munich-daily-weather,24.0,29,29,6,0,1424010,299208,0,42744,47467,42279,70225,48797,68236,49104,0.0,55.1,weather_fees,4,44,13154,0.01,weather_fees,www.weather.gov(4)
+Daily highest temperature,denver,denver-daily-weather,24.0,29,29,7,1,1052761,293879,33643,41983,35092,34969,62164,33731,51613,36302,0.0,52.1,weather_fees,4,44,13124,0.03,weather_fees,www.weather.gov(4)
+Daily highest temperature,toronto,toronto-daily-weather,24.0,29,29,7,0,1087089,289779,0,41397,36236,35763,54938,35657,57907,37486,0.0,47.1,weather_fees,3,33,57385,0.02,weather_fees,www.weather.gov(3)
+Daily highest temperature,singapore,singapore-daily-weather,24.0,30,30,7,1,1288323,289485,38101,41355,42944,39776,50840,40269,56393,42944,0.0,55.0,weather_fees,3,33,10419,0.02,weather_fees,www.weather.gov(3)
+Daily highest temperature,chengdu,chengdu-daily-weather,24.0,30,30,7,1,1305277,263809,39042,37687,43509,37495,48240,38494,62620,43509,0.0,55.0,weather_fees,3,33,13978,0.015,weather_fees,www.weather.gov(3)
+Daily highest temperature,chongqing,chongqing-daily-weather,24.0,30,30,7,1,1141451,261571,32202,37367,38048,32300,47059,36319,51245,38048,0.0,55.0,weather_fees,3,33,15541,0.001,weather_fees,www.weather.gov(3)
+Daily highest temperature,houston,houston-daily-weather,24.0,29,29,7,1,963086,255216,32027,36459,32103,32027,47508,31325,46379,33210,0.0,52.1,weather_fees,4,43,29535,0.03,weather_fees,www.weather.gov(4)
+Daily highest temperature,atlanta,atlanta-daily-weather,24.0,29,29,7,1,1341985,250314,32962,35759,44733,32962,44272,42239,72232,46275,0.0,52.1,weather_fees,4,34,15744,0.01,weather_fees,www.weather.gov(4)
+Daily highest temperature,austin,austin-daily-weather,24.0,29,29,7,1,1054169,248977,27944,35568,35139,33495,49952,35944,50865,36351,0.0,52.1,weather_fees,4,44,8020,0.03,weather_fees,www.weather.gov(4)
+Daily highest temperature,madrid,madrid-daily-weather,24.0,29,29,6,0,1750622,247201,0,35314,58354,36390,54538,55913,83941,60366,0.0,55.0,weather_fees,4,43,21466,0.026,weather_fees,www.weather.gov(4)
+Daily highest temperature,busan,busan-daily-weather,24.0,30,30,7,1,1054419,244368,32682,34910,35147,32562,50533,32017,51885,35147,0.0,55.0,weather_fees,3,33,13205,0.02,weather_fees,www.weather.gov(3)
+Daily highest temperature,manila,manila-daily-weather,24.0,30,30,7,1,1018723,244180,34205,34883,33957,33294,43485,32347,44000,33957,0.0,55.0,weather_fees,3,33,14206,0.01,weather_fees,www.weather.gov(3)
+Daily highest temperature,seattle,seattle-daily-weather,24.0,29,29,7,1,1161688,241523,23788,34503,38723,31952,44310,36412,52558,40058,0.0,48.1,weather_fees,3,33,18992,0.0105,weather_fees,www.weather.gov(3)
+Daily highest temperature,tel-aviv,tel-aviv-daily-weather,24.0,30,30,7,1,993451,235592,34271,33656,33115,33195,37854,29280,43242,33115,0.0,55.1,weather_fees,3,33,11458,0.02,weather_fees,
+Daily highest temperature,lucknow,lucknow-daily-weather,24.0,30,30,7,1,784994,230971,25280,32996,26166,27051,44487,24056,35155,26166,0.0,55.1,weather_fees,3,33,13774,0.006,weather_fees,www.weather.gov(3)
+Daily highest temperature,warsaw,warsaw-daily-weather,24.0,29,29,6,0,1189366,220575,0,31511,39646,31063,57213,39578,52906,41013,0.0,55.0,weather_fees,4,44,43315,0.02,weather_fees,www.weather.gov(4)
+Daily highest temperature,milan,milan-daily-weather,24.0,29,29,6,0,1156785,220495,0,31499,38560,31918,52176,40082,57047,39889,0.0,55.0,weather_fees,4,43,16226,0.01,weather_fees,www.weather.gov(4)
+Daily highest temperature,guangzhou,guangzhou-daily-weather,24.0,30,30,7,1,1503982,220025,31578,31432,50133,30993,41673,43467,79437,50133,0.0,55.0,weather_fees,3,33,12137,0.02,weather_fees,www.weather.gov(3)
+Daily highest temperature,shenzhen,shenzhen-daily-weather,24.0,30,30,7,1,1152574,218465,24881,31209,38419,29456,40865,34575,59340,38419,0.0,55.0,weather_fees,3,33,14480,0.01,weather_fees,www.weather.gov(3)
+Daily highest temperature,ankara,ankara-daily-weather,24.0,30,30,7,1,993957,218395,25227,31199,33132,29803,38269,28903,46094,33132,0.0,55.1,weather_fees,3,33,8448,0.02,weather_fees,www.weather.gov(3)
+Daily highest temperature,taipei,taipei-daily-weather,24.0,30,30,7,1,1088602,208491,17851,29784,36287,30986,39988,32515,56812,36287,0.0,55.0,weather_fees,3,33,17378,0.01,weather_fees,www.wunderground.com(3)
+Daily highest temperature,amsterdam,amsterdam-daily-weather,24.0,29,29,6,0,1092126,204629,0,29233,36404,31343,43687,34268,49473,37660,0.0,55.0,weather_fees,4,44,39076,0.02,weather_fees,www.weather.gov(4)
+Daily highest temperature,buenos-aires,buenos-aires-daily-weather,24.0,29,29,6,0,993148,202614,0,28945,33105,35369,40679,33189,49055,34246,0.0,47.1,weather_fees,3,30,44782,0.0125,weather_fees,www.weather.gov(3)
+Daily highest temperature,moscow,moscow-daily-weather,24.0,30,30,7,1,984470,192717,33887,27531,32816,27012,36014,30566,43354,32816,0.0,55.0,weather_fees,3,33,14186,0.02,weather_fees,
+Daily highest temperature,cape-town,cape-town-daily-weather,24.0,28,28,5,0,1103758,186931,0,26704,36792,37435,46009,34629,49327,39420,0.0,55.0,weather_fees,5,53,13398,0.01,weather_fees,www.weather.gov(5)
+Daily highest temperature,kuala-lumpur,kuala-lumpur-daily-weather,24.0,30,30,7,1,915517,185775,22342,26539,30517,24425,34291,28458,42599,30517,0.0,55.0,weather_fees,3,33,16259,0.02,weather_fees,www.weather.gov(3)
+Daily highest temperature,istanbul,istanbul-daily-weather,24.0,30,30,7,1,794677,180152,32359,25736,26489,24596,33999,23384,36780,26489,0.0,55.0,weather_fees,3,33,18788,0.03,weather_fees,
+Daily highest temperature,jeddah,jeddah-daily-weather,24.0,30,30,7,1,741434,162787,20454,23255,24714,22892,26528,22766,32040,24714,0.0,55.0,weather_fees,3,33,18999,0.03,weather_fees,www.weather.gov(3)
+Daily highest temperature,karachi,karachi-daily-weather,24.0,30,30,7,1,655969,151404,16703,21629,21866,23735,24605,20959,32819,21866,0.0,55.0,weather_fees,3,33,16254,0.003,weather_fees,www.weather.gov(3)
+Daily highest temperature,mexico-city,mexico-city-daily-weather,24.0,29,29,7,1,639760,149811,24598,21402,21325,21651,25187,21651,27587,22061,0.0,47.1,weather_fees,3,33,16721,0.0105,weather_fees,www.weather.gov(3)
+Daily highest temperature,qingdao,qingdao-daily-weather,24.0,30,30,7,1,924739,149257,19268,21322,30825,20318,24524,24763,47512,30825,0.0,55.0,weather_fees,3,33,9552,0.02,weather_fees,www.weather.gov(3)
+Daily highest temperature,panama,panama-daily-weather,24.0,29,29,7,1,678459,126908,11814,18130,22615,19234,20320,19917,33149,23395,0.0,47.1,weather_fees,3,33,42612,0.015,weather_fees,www.weather.gov(3)
+Daily highest temperature,jinan,jinan-daily-weather,24.0,10,10,0,0,26673,0,0,0,889,0,0,2223,4617,2667,0.0,31.1,weather_fees,0,0,,,,
+Daily highest temperature,zhengzhou,zhengzhou-daily-weather,24.0,12,12,0,0,122702,0,0,0,4090,0,0,6389,18796,10225,0.0,31.1,weather_fees,0,0,,,,
+Daily lowest temperature,hong-kong,hong-kong-daily-lowest-temperature,24.0,30,30,7,4,876785,164848,69924,23550,29226,19083,35029,25783,47167,29226,0.0,55.5,weather_fees,3,33,19564,0.008,weather_fees,
+Daily lowest temperature,wellington,wellington-daily-lowest-temperature,24.0,30,30,7,1,96814,62335,1729,8905,3227,2384,23936,1530,4080,3227,0.0,55.5,weather_fees,3,33,8731,0.61,weather_fees,www.weather.gov(3)
+Daily lowest temperature,seoul,seoul-daily-lowest-temperature,24.0,30,30,7,1,250422,51114,5543,7302,8347,5543,12198,8007,14013,8347,0.0,55.5,weather_fees,3,33,7275,0.05,weather_fees,www.weather.gov(3)
+Daily lowest temperature,tokyo,tokyo-daily-lowest-temperature,24.0,30,30,7,1,230042,50160,16265,7166,7668,6002,12745,6076,13660,7668,0.0,55.5,weather_fees,3,33,4328,0.01,weather_fees,www.weather.gov(3)
+Daily lowest temperature,shanghai,shanghai-daily-lowest-temperature,24.0,30,30,7,1,286006,46227,3502,6604,9534,4280,12321,8590,16405,9534,0.0,55.5,weather_fees,3,33,11850,0.07,weather_fees,www.weather.gov(3)
+Daily lowest temperature,london,london-daily-lowest-temperature,24.0,29,29,6,0,188183,30238,0,4320,6273,4862,6719,5850,9808,6489,0.0,55.5,weather_fees,4,44,7757,0.012,weather_fees,www.weather.gov(4)
+Daily lowest temperature,paris,paris-daily-lowest-temperature,24.0,29,29,6,0,227524,26858,0,3837,7584,4715,6710,6436,12992,7846,0.0,55.5,weather_fees,4,43,7895,0.012,weather_fees,www.weather.gov(4)
+Daily lowest temperature,nyc,nyc-daily-lowest-temperature,24.0,29,29,6,1,197361,25125,4314,3589,6579,4414,5099,6072,12465,6806,0.0,52.5,weather_fees,3,23,5365,0.19,weather_fees,www.weather.gov(3)
+Daily lowest temperature,miami,miami-daily-lowest-temperature,24.0,29,29,6,1,142697,22569,4961,3224,4757,3337,4956,4106,8417,4921,0.0,52.5,weather_fees,2,22,6042,0.2605,weather_fees,www.weather.gov(2)
+Daily lowest temperature,dallas,dallas-daily-lowest-temperature,24.0,29,29,7,1,38542,22154,150,3165,1285,2238,7448,560,2563,1329,0.0,52.5,weather_fees,3,33,1900,0.345,weather_fees,www.weather.gov(3)
+Daily lowest temperature,sao-paulo,sao-paulo-daily-lowest-temperature,24.0,29,29,6,0,42537,17729,0,2533,1418,2475,5938,981,2688,1467,0.0,47.5,weather_fees,3,33,1805,0.2145,weather_fees,www.weather.gov(3)
+Daily lowest temperature,houston,houston-daily-lowest-temperature,24.0,29,29,7,1,41676,17087,274,2441,1389,1880,4553,1002,3480,1437,0.0,52.5,weather_fees,3,32,3151,0.3355,weather_fees,www.weather.gov(3)
+Daily lowest temperature,madrid,madrid-daily-lowest-temperature,24.0,29,29,6,0,91160,16784,0,2398,3039,2734,3785,3071,5673,3143,0.0,55.5,weather_fees,4,44,11068,0.51,weather_fees,www.weather.gov(4)
+Daily lowest temperature,jeddah,jeddah-daily-lowest-temperature,24.0,30,30,7,1,40684,14819,1262,2117,1356,1815,2910,893,2543,1356,0.0,55.5,weather_fees,3,33,2153,0.4,weather_fees,www.weather.gov(3)
+Daily lowest temperature,ankara,ankara-daily-lowest-temperature,24.0,30,30,7,1,51866,14480,1408,2069,1729,1408,3859,969,3553,1729,0.0,55.5,weather_fees,3,33,3344,0.66,weather_fees,www.weather.gov(3)
+Daily lowest temperature,karachi,karachi-daily-lowest-temperature,24.0,30,30,7,1,63810,13448,3170,1921,2127,2016,2690,2160,3805,2127,0.0,55.5,weather_fees,3,33,3025,0.66,weather_fees,www.weather.gov(3)
+Daily lowest temperature,mexico-city,mexico-city-daily-lowest-temperature,24.0,29,29,7,1,40422,13136,734,1877,1347,1655,3149,755,2578,1394,0.0,47.5,weather_fees,3,33,985,0.69,weather_fees,www.weather.gov(3)
+Daily lowest temperature,shenzhen,shenzhen-daily-lowest-temperature,24.0,30,30,7,1,46757,12306,2056,1758,1559,1379,2700,1327,3035,1559,0.0,55.5,weather_fees,3,33,2718,0.08,weather_fees,www.weather.gov(3)
+Daily lowest temperature,seattle,seattle-daily-lowest-temperature,24.0,29,29,7,1,41478,12073,1071,1725,1383,1831,2754,1151,2891,1430,0.0,48.5,weather_fees,3,33,1533,0.405,weather_fees,www.weather.gov(3)
+Daily lowest temperature,helsinki,helsinki-daily-lowest-temperature,24.0,30,30,7,1,50481,12040,3471,1720,1683,1330,2806,1250,2996,1683,0.0,55.5,weather_fees,3,33,3656,0.62,weather_fees,www.weather.gov(3)
+Daily lowest temperature,denver,denver-daily-lowest-temperature,24.0,29,29,7,1,40344,11326,367,1618,1345,605,3711,704,3496,1391,0.0,52.5,weather_fees,3,33,711,0.784,weather_fees,www.weather.gov(3)
+Daily lowest temperature,austin,austin-daily-lowest-temperature,24.0,29,29,7,1,58627,11263,380,1609,1954,1060,3389,807,3117,2022,0.0,52.5,weather_fees,3,33,2363,0.3405,weather_fees,www.weather.gov(3)
+Daily lowest temperature,beijing,beijing-daily-lowest-temperature,24.0,30,30,7,1,42506,10733,3258,1533,1417,1262,2849,1092,3267,1417,0.0,55.5,weather_fees,3,33,2780,0.68,weather_fees,www.weather.gov(3)
+Daily lowest temperature,los-angeles,los-angeles-daily-lowest-temperature,24.0,29,29,7,1,53988,8470,893,1210,1800,1279,1491,1279,3744,1862,0.0,48.5,weather_fees,3,33,14686,0.2955,weather_fees,www.weather.gov(3)
+Daily lowest temperature,lucknow,lucknow-daily-lowest-temperature,24.0,30,30,7,1,42620,8384,1553,1198,1421,438,2735,702,2694,1421,0.0,55.5,weather_fees,3,33,2418,0.64,weather_fees,www.weather.gov(3)
+Daily lowest temperature,milan,milan-daily-lowest-temperature,24.0,29,29,6,0,44459,8352,0,1193,1482,674,3102,1091,2876,1533,0.0,55.5,weather_fees,4,40,1933,0.65,weather_fees,www.weather.gov(4)
+Daily lowest temperature,san-francisco,san-francisco-daily-lowest-temperature,24.0,29,29,7,1,41467,8058,514,1151,1382,752,2499,1205,2455,1430,0.0,48.5,weather_fees,3,33,1649,0.0345,weather_fees,www.weather.gov(3)
+Daily lowest temperature,warsaw,warsaw-daily-lowest-temperature,24.0,29,29,6,0,59324,7845,0,1121,1977,1106,2281,901,4952,2046,0.0,55.5,weather_fees,4,44,10090,0.34,weather_fees,www.weather.gov(4)
+Daily lowest temperature,toronto,toronto-daily-lowest-temperature,24.0,29,29,7,1,24849,7595,634,1085,828,447,2319,544,1542,857,0.0,47.5,weather_fees,3,33,1586,0.3395,weather_fees,www.weather.gov(3)
+Daily lowest temperature,chengdu,chengdu-daily-lowest-temperature,24.0,30,30,7,1,30790,7500,1675,1071,1026,686,2077,750,2253,1026,0.0,55.5,weather_fees,3,33,2352,0.64,weather_fees,www.weather.gov(3)
+Daily lowest temperature,guangzhou,guangzhou-daily-lowest-temperature,24.0,30,30,7,1,33753,7228,1236,1033,1125,1212,1292,842,1772,1125,0.0,55.5,weather_fees,3,33,1917,0.6,weather_fees,www.weather.gov(3)
+Daily lowest temperature,chicago,chicago-daily-lowest-temperature,24.0,29,29,7,0,40157,6670,0,953,1339,923,1844,929,2054,1385,0.0,52.5,weather_fees,3,31,4047,0.3355,weather_fees,www.weather.gov(3)
+Daily lowest temperature,wuhan,wuhan-daily-lowest-temperature,24.0,30,30,7,1,55345,6368,3723,910,1845,430,2013,867,2742,1845,0.0,55.5,weather_fees,3,33,2851,0.64,weather_fees,www.weather.gov(3)
+Daily lowest temperature,buenos-aires,buenos-aires-daily-lowest-temperature,24.0,29,29,6,0,45193,6053,0,865,1506,492,2371,870,3350,1558,0.0,47.5,weather_fees,3,27,2387,0.339,weather_fees,www.weather.gov(3)
+Daily lowest temperature,moscow,moscow-daily-lowest-temperature,24.0,30,30,7,1,43459,5504,606,786,1449,633,1397,634,3823,1449,0.0,55.5,weather_fees,3,33,2306,0.68,weather_fees,
+Daily lowest temperature,munich,munich-daily-lowest-temperature,24.0,29,29,6,0,37497,5483,0,783,1250,895,1551,897,2565,1293,0.0,55.5,weather_fees,4,44,2728,0.64,weather_fees,www.weather.gov(4)
+Daily lowest temperature,tel-aviv,tel-aviv-daily-lowest-temperature,24.0,30,30,7,1,44130,5251,794,750,1471,713,1148,798,3883,1471,0.0,55.5,weather_fees,3,33,1899,0.65,weather_fees,
+Daily lowest temperature,amsterdam,amsterdam-daily-lowest-temperature,24.0,29,29,6,0,39083,5072,0,725,1303,768,1302,949,3053,1348,0.0,55.5,weather_fees,4,44,4003,0.08,weather_fees,www.weather.gov(4)
+Daily lowest temperature,chongqing,chongqing-daily-lowest-temperature,24.0,30,30,7,1,40930,5060,2285,723,1364,484,1361,657,3130,1364,0.0,55.5,weather_fees,3,33,1514,0.56,weather_fees,www.weather.gov(3)
+Daily lowest temperature,busan,busan-daily-lowest-temperature,24.0,30,30,7,1,29004,4832,1778,690,967,533,1197,644,2513,967,0.0,55.5,weather_fees,3,33,2715,0.019,weather_fees,www.weather.gov(3)
+Daily lowest temperature,taipei,taipei-daily-lowest-temperature,24.0,30,30,7,1,42403,4712,1383,673,1413,348,1469,884,1632,1413,0.0,55.5,weather_fees,3,33,3652,0.64,weather_fees,www.wunderground.com(3)
+Daily lowest temperature,atlanta,atlanta-daily-lowest-temperature,24.0,29,29,6,0,29224,3733,0,533,974,312,1311,780,2148,1008,0.0,52.5,weather_fees,2,22,2284,0.3355,weather_fees,www.weather.gov(2)
+Daily lowest temperature,cape-town,cape-town-daily-lowest-temperature,24.0,29,29,6,0,31552,3612,0,516,1052,629,811,797,2492,1088,0.0,55.5,weather_fees,4,41,2369,0.64,weather_fees,www.weather.gov(4)
+Daily lowest temperature,qingdao,qingdao-daily-lowest-temperature,24.0,30,30,7,1,27705,3473,351,496,924,342,976,600,1769,924,0.0,55.5,weather_fees,3,33,361,0.64,weather_fees,www.weather.gov(3)
+Daily lowest temperature,istanbul,istanbul-daily-lowest-temperature,24.0,30,30,7,1,30731,3154,638,451,1024,490,718,552,1326,1024,0.0,55.5,weather_fees,3,33,1039,0.158,weather_fees,
+Daily lowest temperature,singapore,singapore-daily-lowest-temperature,24.0,5,5,0,0,19222,0,0,0,641,0,0,2656,6767,3844,0.0,55.5,weather_fees,0,0,,,,
+Daily lowest temperature,kuala-lumpur,kuala-lumpur-daily-lowest-temperature,24.0,5,5,0,0,9327,0,0,0,311,0,0,695,3765,1865,0.0,55.5,weather_fees,0,0,,,,
+Daily lowest temperature,manila,manila-daily-lowest-temperature,24.0,5,5,0,0,15563,0,0,0,519,0,0,2079,6445,3113,0.0,55.5,weather_fees,0,0,,,,
+Daily lowest temperature,panama-city,panama-city-daily-lowest-temperature,24.0,5,5,0,0,7973,0,0,0,266,0,0,1245,2255,1595,0.0,47.5,weather_fees,0,0,,,,
+Daily lowest temperature,jinan,jinan-daily-lowest-temperature,24.0,10,10,0,0,8767,0,0,0,292,0,0,700,1270,877,0.0,31.5,weather_fees,0,0,,,,
+Daily lowest temperature,zhengzhou,zhengzhou-daily-lowest-temperature,24.0,12,12,0,0,20808,0,0,0,694,0,0,922,5168,1734,0.0,31.5,weather_fees,0,0,,,,
+Daily weather (other),rain-daily,rain-daily,24.0,30,30,7,1,235915,47975,4632,6854,7864,6941,8158,7603,11192,7864,0.0,54.8,weather_fees,2,28,1110,0.0135,weather_fees,forecast.weather.gov(2)
+Daily weather (other),tornado-risk-daily,tornado-risk-daily,24.0,30,30,7,1,157520,36675,3130,5239,5251,4770,7946,3978,7804,5251,0.0,14.7,weather_fees,0,0,,,,
+Daily weather (other),biggest-earthquake-daily,biggest-earthquake-daily,24.0,23,23,6,1,65797,7457,837,1065,2193,1193,1786,1645,6551,2861,0.0,37.9,weather_fees,4,24,1043,0.009,weather_fees,
+Earnings markets,tsm-kpis,tsm-kpis,,1,1,1,0,18511,18511,0,2644,617,18511,18511,18511,18511,18511,0.0,138.4,finance_prices_fees,0,0,,,,
+Earnings markets,gs-earnings,gs-earnings,,1,1,1,0,18177,18177,0,2597,606,18177,18177,18177,18177,18177,0.0,324.7,economics_fees,0,0,,,,
+Earnings markets,jpm-earnings,jpm-earnings,,1,1,1,0,15064,15064,0,2152,502,15064,15064,15064,15064,15064,0.0,324.4,economics_fees,0,0,,,,
+Earnings markets,jnj-kpis,jnj-kpis,,1,2,2,0,12202,12202,0,1743,407,6101,7338,6101,7338,6101,0.0,94.7,finance_prices_fees,0,0,,,,
+Earnings markets,ms-kpis,ms-kpis,,1,1,1,0,9615,9615,0,1374,321,9615,9615,9615,9615,9615,0.0,119.7,finance_prices_fees,0,0,,,,
+Earnings markets,blk-earnings,blk-earnings,,1,1,1,0,8602,8602,0,1229,287,8602,8602,8602,8602,8602,0.0,347.7,economics_fees,0,0,,,,
+Earnings markets,jnj-earnings,jnj-earnings,,1,1,1,0,7481,7481,0,1069,249,7481,7481,7481,7481,7481,0.0,324.1,economics_fees,0,0,,,,
+Earnings markets,bny-earnings,bny-earnings,,1,1,1,0,4974,4974,0,711,166,4974,4974,4974,4974,4974,0.0,185.7,economics_fees,0,0,,,,
+Earnings markets,ms-earnings,ms-earnings,,1,1,1,0,4735,4735,0,676,158,4735,4735,4735,4735,4735,0.0,162.1,economics_fees,0,0,,,,
+Earnings markets,tfc-earnings,tfc-earnings,,1,1,1,0,4191,4191,0,599,140,4191,4191,4191,4191,4191,0.0,209.8,economics_fees,0,0,,,,
+Earnings markets,dpz-earnings,dpz-earnings,,1,1,1,0,4174,4174,0,596,139,4174,4174,4174,4174,4174,0.0,323.8,economics_fees,0,0,,,,
+Earnings markets,bac-earnings,bac-earnings,,1,1,1,0,4167,4167,0,595,139,4167,4167,4167,4167,4167,0.0,162.0,economics_fees,0,0,,,,
+Earnings markets,wfc-earnings,wfc-earnings,,1,1,1,0,4159,4159,0,594,139,4159,4159,4159,4159,4159,0.0,324.2,economics_fees,0,0,,,,
+Earnings markets,c-earnings,c-earnings,,1,1,1,0,4095,4095,0,585,136,4095,4095,4095,4095,4095,0.0,324.7,economics_fees,0,0,,,,
+Earnings markets,mtb-earnings,mtb-earnings,,1,1,1,0,3982,3982,0,569,133,3982,3982,3982,3982,3982,0.0,208.7,economics_fees,0,0,,,,
+Earnings markets,ibkr-earnings,ibkr-earnings,,1,1,1,0,3718,3718,0,531,124,3718,3718,3718,3718,3718,0.0,194.1,economics_fees,0,0,,,,
+Earnings markets,unty-earnings,unty-earnings,,1,1,1,0,3004,3004,0,429,100,3004,3004,3004,3004,3004,0.0,307.7,economics_fees,0,0,,,,
+Earnings markets,stt-earnings,stt-earnings,,1,1,1,0,2870,2870,0,410,96,2870,2870,2870,2870,2870,0.0,162.1,economics_fees,0,0,,,,
+Earnings markets,pnc-earnings,pnc-earnings,,1,1,1,0,2375,2375,0,339,79,2375,2375,2375,2375,2375,0.0,186.0,economics_fees,0,0,,,,
+Earnings markets,usb-earnings,usb-earnings,,1,1,1,0,1593,1593,0,228,53,1593,1593,1593,1593,1593,0.0,186.0,economics_fees,0,0,,,,
+Earnings markets,schw-earnings,schw-earnings,,1,1,1,0,1262,1262,0,180,42,1262,1262,1262,1262,1262,0.0,186.1,economics_fees,0,0,,,,
+Earnings markets,cfg-earnings,cfg-earnings,,1,1,1,0,1055,1055,0,151,35,1055,1055,1055,1055,1055,0.0,210.1,economics_fees,0,0,,,,
+Earnings markets,unh-earnings,unh-earnings,,1,1,1,0,1016,1016,0,145,34,1016,1016,1016,1016,1016,0.0,323.8,economics_fees,0,0,,,,
+Earnings markets,wtfc-earnings,wtfc-earnings,,1,1,1,1,675,675,675,96,22,675,675,675,675,675,0.0,290.1,economics_fees,0,0,,,,
+Earnings markets,azo-earnings,azo-earnings,,1,1,0,0,1739,0,0,0,58,0,0,1739,1739,1739,0.0,285.6,economics_fees,0,0,,,,
+Earnings markets,kbh-earnings,kbh-earnings,,1,1,0,0,1435,0,0,0,48,0,0,1435,1435,1435,0.0,293.6,economics_fees,0,0,,,,
+Earnings markets,cbrl-earnings,cbrl-earnings,,1,1,0,0,1748,0,0,0,58,0,0,1748,1748,1748,0.0,376.1,economics_fees,0,0,,,,
+Earnings markets,ctas-earnings,ctas-earnings,,1,1,0,0,5008,0,0,0,167,0,0,5008,5008,5008,0.0,309.6,economics_fees,0,0,,,,
+Earnings markets,payx-earnings,payx-earnings,,1,1,0,0,3171,0,0,0,106,0,0,3171,3171,3171,0.0,309.6,economics_fees,0,0,,,,
+Earnings markets,cost-earnings,cost-earnings,,1,1,0,0,7640,0,0,0,255,0,0,7640,7640,7640,0.0,341.6,economics_fees,0,0,,,,
+Earnings markets,ccl-earnings,ccl-earnings,,1,1,0,0,2722,0,0,0,91,0,0,2722,2722,2722,0.0,281.0,economics_fees,0,0,,,,
+Earnings markets,mtn-earnings,mtn-earnings,,1,1,0,0,5410,0,0,0,180,0,0,5410,5410,5410,0.0,289.0,economics_fees,0,0,,,,
+Earnings markets,kmx-earnings,kmx-earnings,,1,1,0,0,4503,0,0,0,150,0,0,4503,4503,4503,0.0,305.0,economics_fees,0,0,,,,
+Earnings markets,cag-earnings,cag-earnings,,1,1,0,0,4278,0,0,0,143,0,0,4278,4278,4278,0.0,312.0,economics_fees,0,0,,,,
+Earnings markets,fds-earnings,fds-earnings,,1,1,0,0,3129,0,0,0,104,0,0,3129,3129,3129,0.0,329.0,economics_fees,0,0,,,,
+Earnings markets,jef-earnings,jef-earnings,,1,1,0,0,3188,0,0,0,106,0,0,3188,3188,3188,0.0,290.9,economics_fees,0,0,,,,
+Earnings markets,mu-earnings,mu-earnings,,1,1,0,0,6843,0,0,0,228,0,0,6843,6843,6843,0.0,337.0,economics_fees,0,0,,,,
+Earnings markets,acn-earnings,acn-earnings,,1,1,0,0,4249,0,0,0,142,0,0,4249,4249,4249,0.0,183.8,economics_fees,0,0,,,,
+Earnings markets,nke-earnings,nke-earnings,,1,1,0,0,2569,0,0,0,86,0,0,2569,2569,2569,0.0,361.0,economics_fees,0,0,,,,
+Earnings markets,mkc-earnings,mkc-earnings,,1,1,0,0,1113,0,0,0,37,0,0,1113,1113,1113,0.0,185.3,economics_fees,0,0,,,,
+Earnings markets,lw-earnings,lw-earnings,,1,1,0,0,996,0,0,0,33,0,0,996,996,996,0.0,304.1,economics_fees,0,0,,,,
+Earnings markets,pep-earnings,pep-earnings,,1,1,0,0,7958,0,0,0,265,0,0,7958,7958,7958,0.0,204.7,economics_fees,0,0,,,,
+Earnings markets,dal-earnings,dal-earnings,,1,1,0,0,3616,0,0,0,121,0,0,3616,3616,3616,0.0,228.6,economics_fees,0,0,,,,
+"Economic data releases (CPI, jobs, GDP...)",us-annual-inflation,us-annual-inflation,,1,1,1,0,274681,274681,0,39240,9156,274681,274681,274681,274681,274681,0.0,791.1,economics_fees,1,12,12447,0.03,economics_fees,www.bls.gov(1)
+"Economic data releases (CPI, jobs, GDP...)",us-monthly-inflation,us-monthly-inflation,,1,1,1,0,97593,97593,0,13942,3253,97593,97593,97593,97593,97593,0.0,791.1,economics_fees,1,9,13341,0.02,economics_fees,www.bls.gov(1)
+"Economic data releases (CPI, jobs, GDP...)",core-cpi-mom,core-cpi-mom,,1,1,1,0,93880,93880,0,13411,3129,93880,93880,93880,93880,93880,0.0,796.5,economics_fees,1,7,3371,0.04,economics_fees,www.bls.gov(1)
+"Economic data releases (CPI, jobs, GDP...)",china-gdp,china-gdp,,1,1,1,0,91853,91853,0,13122,3062,91853,91853,91853,91853,91853,0.0,2262.1,economics_fees,1,9,1859,0.07,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",core-cpi,core-cpi,,1,1,1,0,60459,60459,0,8637,2015,60459,60459,60459,60459,60459,0.0,791.1,economics_fees,1,10,3714,0.01,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",inflation-china-annual,inflation-china-annual,,1,1,1,0,43980,43980,0,6283,1466,43980,43980,43980,43980,43980,0.0,823.0,economics_fees,1,5,4188,0.01,economics_fees,www.stats.gov.cn(1)
+"Economic data releases (CPI, jobs, GDP...)",ppi-yoy,ppi-yoy,,1,1,1,0,39522,39522,0,5646,1317,39522,39522,39522,39522,39522,0.0,810.7,economics_fees,1,10,5122,0.01,economics_fees,www.bls.gov(1)
+"Economic data releases (CPI, jobs, GDP...)",inflation-argentina-monthly,inflation-argentina-monthly,,1,1,1,0,34388,34388,0,4913,1146,34388,34388,34388,34388,34388,0.0,768.5,economics_fees,1,8,4232,0.01,economics_fees,www.indec.gob.ar(1)
+"Economic data releases (CPI, jobs, GDP...)",university-of-michigan-consumer-sentiment,university-of-michigan-consumer-sentiment,,1,1,0,0,12601,0,0,0,420,0,0,12601,12601,12601,0.0,393.4,economics_fees,1,7,3029,0.03,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",canada-gdp-mom,canada-gdp-mom,,1,1,0,0,17928,0,0,0,598,0,0,17928,17928,17928,0.0,492.9,economics_fees,1,6,1707,0.01,economics_fees,www150.statcan.gc.ca(1)
+"Economic data releases (CPI, jobs, GDP...)",core-pce-mom,core-pce-mom,,1,1,0,0,29528,0,0,0,984,0,0,29528,29528,29528,0.0,829.4,economics_fees,1,7,7200,0.01,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",core-pce-yoy,core-pce-yoy,,1,1,0,0,79449,0,0,0,2648,0,0,79449,79449,79449,0.0,809.7,economics_fees,1,7,2203,0.03,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",ism-manufacturing-pmi,ism-manufacturing-pmi,,1,1,0,0,21131,0,0,0,704,0,0,21131,21131,21131,0.0,703.6,economics_fees,1,10,12758,0.02,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",unemployment,unemployment,,1,1,0,0,36234,0,0,0,1208,0,0,36234,36234,36234,0.0,663.9,economics_fees,1,9,10228,0.02,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",jobs-added,jobs-added,,1,1,0,0,26289,0,0,0,876,0,0,26289,26289,26289,0.0,669.9,economics_fees,1,7,5871,0.01,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",ism-services-pmi,ism-services-pmi,,1,1,0,0,24525,0,0,0,818,0,0,24525,24525,24525,0.0,754.0,economics_fees,1,10,2472,0.029,economics_fees,
+Esports matches,League of Legends,league-of-legends,1.58,204,283,19,1,227655179,83289788,158706,11898541,7588506,5025355,8714876,225494,2329458,804435,0.0,32.5,sports_fees_v3,18,130,131770,0.01,sports_fees_v3,gol.gg(10); www.twitch.tv(8)
+Esports matches,Counter-Strike,counter-strike,0.33,875,1449,330,65,269087141,60693969,5354642,8670567,8969571,17829,300843,26434,300774,185705,0.008,23.2,sports_fees_v3,382,1212,5741,0.04,sports_fees_v2,kick.com(280); hltv.org(67); www.twitch.tv(32); www.kick.com(3)
+Esports matches,Dota 2,dota-2,1.5,258,292,121,4,209368502,25361132,1370581,3623019,6978950,151139,437823,192867,2476809,717015,0.0,21.0,sports_fees_v3,24,334,21446,0.03,sports_fees_v3,kick.com(13); www.twitch.tv(11)
+Esports matches,Valorant,valorant,4.0,52,53,8,0,48235659,8716186,0,1245169,1607855,701600,2577496,1066799,1810508,910107,0.0,70.2,sports_fees_v3,10,40,5721,0.035,sports_fees_v3,www.twitch.tv(10)
+Esports matches,Esports (other),rainbow-six-siege,1.75,162,163,16,0,640796,87432,0,12490,21360,1661,16467,2253,8867,3931,0.0,24.8,sports_fees_v3,2,10,12988,0.285,sports_fees_v3,www.twitch.tv(2)
+Esports matches,Esports (other),overwatch,1.5,86,91,33,2,86056,35615,2381,5088,2869,846,2084,622,2097,946,0.055,19.8,sports_fees_v3,12,90,1587,0.415,sports_fees_v3,www.twitch.tv(10); liquipedia.net(2)
+Esports matches,Esports (other),honor-of-kings,1.42,132,145,25,0,112244,18824,0,2689,3741,569,1707,182,1934,774,0.221,25.3,sports_fees_v3,4,49,15999,0.175,sports_fees_v3,liquipedia.net(4)
+Esports matches,Esports (other),mobile-legends-bang-bang,1.0,151,163,30,0,90106,17271,0,2467,3004,244,1910,142,1828,553,0.006,66.2,sports_fees_v3,2,18,23335,0.05,sports_fees_v3,liquipedia.net(2)
+Esports matches,Esports (other),rocket-league,1.25,5,5,0,0,13627,0,0,0,454,0,0,1250,5776,2725,0.0,2.9,sports_fees_v3,0,0,,,,
+Esports matches,Esports (other),starcraft-2,0.67,23,24,0,0,29495,0,0,0,983,0,0,468,1291,1229,0.0,17.7,sports_fees_v3,1,4,0,1.0,sports_fees_v3,www.twitch.tv(1)
+FX daily up/down,USDMXN,usdmxn-daily-up-or-down,24.0,21,21,5,1,1047,834,20,119,35,20,460,10,30,50,0.0,33.0,finance_prices_fees,2,2,0,0.98,finance_prices_fees,pythdata.app(2)
+FX daily up/down,USDNOK,usdnok-daily-up-or-down,24.0,21,21,5,1,263,90,20,13,9,20,20,10,20,13,0.0,33.0,finance_prices_fees,1,1,0,0.98,finance_prices_fees,pythdata.app(1)
+FX daily up/down,USDBRL,usdbrl-daily-up-or-down,24.0,21,21,5,1,371,90,30,13,12,20,26,10,30,18,0.095,33.0,finance_prices_fees,1,1,0,0.98,finance_prices_fees,pythdata.app(1)
+FX daily up/down,EURUSD,eurusd-daily-up-or-down,24.0,21,21,5,1,787,80,40,11,26,10,32,10,40,37,0.048,33.0,finance_prices_fees,1,1,0,0.98,finance_prices_fees,pythdata.app(1)
+FX daily up/down,USDJPY,usdjpy-daily-up-or-down,24.0,21,21,5,1,264,60,20,9,9,10,20,10,20,13,0.048,33.0,finance_prices_fees,1,1,0,0.98,finance_prices_fees,pythdata.app(1)
+FX daily up/down,USDKRW,usdkrw-daily-up-or-down,24.0,21,21,5,1,238,50,10,7,8,10,10,10,10,11,0.0,33.0,finance_prices_fees,1,1,0,0.98,finance_prices_fees,pythdata.app(1)
+FX daily up/down,USDCHF,usdchf-daily-up-or-down,24.0,21,21,5,1,203,50,10,7,7,10,10,10,10,10,0.0,33.0,finance_prices_fees,1,1,0,0.98,finance_prices_fees,pythdata.app(1)
+FX daily up/down,USDSEK,usdsek-daily-up-or-down,24.0,21,21,5,1,738,50,10,7,25,10,10,10,16,35,0.048,33.0,finance_prices_fees,2,2,0,0.98,finance_prices_fees,pythdata.app(2)
+FX daily up/down,USDZAR,usdzar-daily-up-or-down,24.0,21,21,5,1,218,50,10,7,7,10,10,10,10,10,0.048,33.0,finance_prices_fees,1,1,0,0.98,finance_prices_fees,pythdata.app(1)
+FX daily up/down,GBPUSD,gbpusd-daily-up-or-down,24.0,21,21,5,1,978,40,0,6,33,10,16,10,20,47,0.095,33.0,finance_prices_fees,2,2,0,0.98,finance_prices_fees,pythdata.app(2)
+FX daily up/down,USDTRY,usdtry-daily-up-or-down,24.0,21,21,5,1,173,40,0,6,6,10,10,10,10,8,0.143,33.0,finance_prices_fees,1,1,0,0.98,finance_prices_fees,pythdata.app(1)
+Index/ETF daily up/down,SPX,spx-daily-up-or-down,24.0,21,21,5,1,1121576,347650,164019,49664,37386,43470,125984,43833,76202,53408,0.0,32.0,finance_prices_fees,1,1,27105,0.01,finance_prices_fees,www.wsj.com(1)
+Index/ETF daily up/down,SPY,spy-daily-up-or-down,24.0,21,21,5,1,468687,124515,32929,17788,15623,18013,37787,17650,41026,22318,0.0,32.0,finance_prices_fees,1,1,19985,0.01,finance_prices_fees,pythdata.app(1)
+Index/ETF daily up/down,SPX (open),spx-open-daily-up-or-down,24.0,21,21,5,1,489617,48114,7653,6873,16321,9033,14516,9033,17476,23315,0.0,32.0,finance_prices_fees,1,1,552,0.05,finance_prices_fees,www.wsj.com(1)
+Index/ETF daily up/down,DOW-JONES,dow-jones-daily-up-or-down,24.0,21,21,5,1,61373,18388,7960,2627,2046,1648,7631,1608,7960,2923,0.0,32.0,finance_prices_fees,1,1,6325,0.03,finance_prices_fees,www.wsj.com(1)
+Index/ETF daily up/down,RUSSELL-2000,russell-2000-daily-up-or-down,24.0,21,21,5,1,89067,12044,1362,1721,2969,1661,4791,2296,12834,4241,0.0,32.0,finance_prices_fees,1,1,56,0.53,finance_prices_fees,www.wsj.com(1)
+Index/ETF daily up/down,DXY,dxy-daily-up-or-down,24.0,21,21,5,1,3162,2092,400,299,105,400,742,40,400,151,0.0,33.0,finance_prices_fees,1,1,31,0.04,finance_prices_fees,app.pyth.com(1)
+Index/ETF daily up/down,EWY,ewy-daily-up-or-down,24.0,21,21,5,1,6302,1607,235,230,210,247,538,247,670,300,0.0,32.0,finance_prices_fees,1,1,871,0.02,finance_prices_fees,pythdata.app(1)
+Index/ETF daily up/down,NIK,nik-daily-up-or-down,24.0,21,21,5,1,2147,1334,0,191,72,40,721,30,159,102,0.286,27.4,finance_prices_fees,1,1,10,0.01,finance_prices_fees,www.wsj.com(1)
+Index/ETF daily up/down,FTSE-100,ftse-100-daily-up-or-down,24.0,21,21,5,1,7002,392,137,56,233,85,116,45,137,333,0.0,30.2,finance_prices_fees,1,1,5989,0.09,finance_prices_fees,www.wsj.com(1)
+Index/ETF daily up/down,DAX,dax-daily-up-or-down,24.0,21,21,5,1,3796,332,75,47,127,40,114,40,235,181,0.0,30.9,finance_prices_fees,1,1,5919,0.09,finance_prices_fees,www.wsj.com(1)
+Index/ETF daily up/down,HANG-SENG,hang-seng-daily-up-or-down,24.0,20,20,4,0,2283,211,0,30,76,50,65,32,241,114,0.05,27.4,finance_prices_fees,2,2,6,0.009,finance_prices_fees,www.wsj.com(2)
+Index/ETF daily up/down,SPY (open),spy-open-daily-up-or-down,24.0,21,21,5,1,1619,60,0,9,54,20,20,25,125,77,0.095,23.7,finance_prices_fees,1,1,26,0.96,finance_prices_fees,pythdata.app(1)
+Index/ETF hit-price (touch),EWY,ewy-hit-price-weekly,168.0,4,4,1,0,239614,55540,0,7934,7987,55540,55540,57166,66177,59904,0.0,166.0,finance_prices_fees,1,11,22349,0.05,finance_prices_fees,pythdata.app(1)
+Index/ETF hit-price (touch),SPY,spy-hit-price-weekly,168.0,4,4,1,0,205685,54267,0,7752,6856,54267,54267,52735,58172,51421,0.0,166.0,finance_prices_fees,1,13,80651,0.02,finance_prices_fees,pythdata.app(1)
+Index/ETF hit-price (touch),DXY,dxy-hit-price-weekly,168.0,4,4,1,0,11313,6401,0,914,377,6401,6401,1831,5134,2828,0.0,167.0,finance_prices_fees,1,13,11972,0.001,finance_prices_fees,app.pyth.com(1)
+Index/ETF hit-price (touch),DXY,dxy-hit-price-monthly,,1,1,0,0,74597,0,0,0,2487,0,0,74597,74597,74597,0.0,881.0,finance_prices_fees,1,15,7614,0.007,finance_prices_fees,app.pyth.com(1)
+Mention markets (what will X say),trump-weekly-mentions,trump-weekly-mentions,168.0,5,5,2,1,600587,513000,14115,73286,20020,256500,450408,18536,321918,120117,0.0,217.5,mentions_fees,1,12,2391,0.7,mentions_fees,
+Mention markets (what will X say),earnings-call-mentions,earnings-call-mentions,24.0,13,17,5,0,129548,27271,0,3896,4318,5241,6018,6355,13221,7620,0.0,113.3,mentions_fees,5,71,3015,0.02,mentions_fees,
+Mention markets (what will X say),lemonade-stand,lemonade-stand,168.0,4,4,1,0,24007,10909,0,1558,800,10909,10909,5298,9434,6002,0.0,124.1,mentions_fees,1,14,2365,0.011,mentions_fees,
+Mention markets (what will X say),starmer-pmqs,starmer-pmqs,340.0,2,2,1,0,45015,8454,0,1208,1500,8454,8454,22507,33750,22507,0.0,331.5,mentions_fees,1,15,7771,0.09,mentions_fees,
+Mention markets (what will X say),leavitt-next-briefing,leavitt-next-briefing,,1,1,1,0,7200,7200,0,1029,240,7200,7200,7200,7200,7200,0.0,22.7,mentions_fees,0,0,,,,
+Mention markets (what will X say),rogan-mentions,rogan-mentions,168.0,4,4,1,0,38714,5907,0,844,1290,5907,5907,8858,14072,9679,0.0,130.2,mentions_fees,1,14,1962,0.03,mentions_fees,
+Mention markets (what will X say),nyt-headlines,nyt-headlines,168.0,5,5,1,0,33688,4785,0,684,1123,4785,4785,6199,8970,6738,0.0,198.5,mentions_fees,0,0,,,,
+Mention markets (what will X say),mamdani-announcement-mentions,mamdani-announcement-mentions,,1,3,1,0,15406,3701,0,529,514,3701,3701,5099,6305,5135,0.0,38.7,mentions_fees,1,15,652,0.08,mentions_fees,
+Mention markets (what will X say),mrbeast-mentions,mrbeast-mentions,348.0,2,2,1,0,7669,2413,0,345,256,2413,2413,3834,4971,3834,0.0,101.3,mentions_fees,0,0,,,,
+Mention markets (what will X say),south-park-s29-mentions,south-park-s29-mentions,340.0,2,2,1,0,5294,1985,0,284,176,1985,1985,2647,3177,2647,0.0,137.0,mentions_fees,0,0,,,,
+Mention markets (what will X say),trump-post-weekly,trump-post-weekly,168.0,5,5,1,1,23029,1780,1780,254,768,1780,1780,5078,6552,4606,0.0,217.5,mentions_fees,1,11,411,0.29,mentions_fees,
+Mention markets (what will X say),all-in-podcast,all-in-podcast,168.0,4,4,1,0,14942,1246,0,178,498,1246,1246,3949,5417,3736,0.0,93.0,mentions_fees,0,0,,,,
+Mention markets (what will X say),big-brother-mentions,big-brother-mentions,48.0,5,5,0,0,56772,0,0,0,1892,0,0,5211,25200,11354,0.0,96.9,mentions_fees,0,0,,,,
+Mention markets (what will X say),president-curtis-mentions,president-curtis-mentions,168.0,2,2,0,0,8178,0,0,0,273,0,0,4089,4340,4089,0.0,110.1,mentions_fees,0,0,,,,
+Mention markets (what will X say),nfl-mentions,nfl-mentions,64.5,11,12,0,0,89714,0,0,0,2990,0,0,7818,9759,7476,0.0,48.0,mentions_fees,3,8,86,0.48,mentions_fees,
+Mention markets (what will X say),trump-monthly-mentions,trump-monthly-mentions,,1,1,0,0,58198,0,0,0,1940,0,0,58198,58198,58198,0.0,840.1,mentions_fees,1,5,511,0.51,mentions_fees,
+Mention markets (what will X say),trump-company-mentions,trump-company-mentions,,1,1,0,0,37178,0,0,0,1239,0,0,37178,37178,37178,0.0,843.9,mentions_fees,1,8,321,0.29,mentions_fees,
+Mention markets (what will X say),mrbeast-gaming-mentions,mrbeast-gaming-mentions,720.0,2,2,0,0,13001,0,0,0,433,0,0,6500,6965,6500,0.0,103.1,mentions_fees,1,12,64,0.96,mentions_fees,
+Sports games,Soccer,ucl-2025,2.25,4,36,36,1,71185316,71185316,44579,10169331,2372844,345654,6608378,345654,6608378,1977370,0.0,313.0,sports_fees_v3,132,2391,157194,0.01,sports_fees_v3,www.uefa.com(132)
+Sports games,Tennis,atp,1.0,534,1566,351,68,267592618,56552852,10906210,8078979,8919754,68593,342917,81402,430071,170877,0.001,21.8,sports_fees_v3,92,1434,50224,0.01,sports_fees_v3,www.atptour.com(92)
+Sports games,NFL,nfl-2026,3.92,32,152,28,4,453666625,56216549,10205952,8030936,15122221,74886,5583280,202703,8159505,2984649,0.039,167.9,zero_fees;sports_fees_nfl_cfb_oct26;sports_fees_v3,58,8266,347,0.395,sports_fees_nfl_cfb_oct26,www.nfl.com(58)
+Sports games,Soccer,premier-league-2025,2.5,14,49,19,4,91751154,49380618,4841907,7054374,3058372,1340306,6104271,200401,5157409,1872473,0.0,321.4,sports_fees_v3,153,2680,9903,0.04,sports_fees_v3,www.premierleague.com(153)
+Sports games,Tennis,wta,1.5,226,655,174,14,153096891,44048983,4592396,6292712,5103230,125447,667413,144230,552795,233736,0.0,27.3,sports_fees_v3,16,216,98758,0.01,sports_fees_v3,www.wtatennis.com(16)
+Sports games,Soccer,la-liga-2025,2.5,23,51,19,3,54013992,24700518,2048434,3528645,1800466,695333,3290519,16982,2480295,1059098,0.0,321.9,sports_fees_v3,164,3265,8447,0.05,sports_fees_v3,www.laliga.com(164)
+Sports games,College football,cfb-2026,0.5,113,466,123,3,143095493,21636294,567654,3090899,4769850,10671,570487,41567,956973,307072,0.088,281.4,sports_fees_nfl_cfb_oct26;zero_fees;sports_fees_v3,390,25087,635,0.22,sports_fees_nfl_cfb_oct26,www.ncaa.com(385)
+Sports games,Soccer,serie-a-2025,3.0,23,54,21,5,37551263,19142538,3448450,2734648,1251709,15141,2138494,16820,1910186,695394,0.019,328.4,sports_fees_v3,220,3980,6198,0.14,sports_fees_v3,www.legaseriea.it(220)
+Sports games,Soccer,uel-2025,2.25,2,35,35,0,18023567,18023567,0,2574795,600786,114211,944817,114211,944817,514959,0.0,312.5,sports_fees_v3,145,2658,15158,0.03,sports_fees_v3,www.uefa.com(145)
+Sports games,Soccer,mls-2025,2.5,27,130,63,1,27796812,14010261,310,2001466,926560,4348,644708,8749,614653,213822,0.015,319.5,sports_fees_v3;sports_fees_v2,365,6084,629,0.58,sports_fees_v3,www.mlssoccer.com(365)
+Sports games,NHL,nhl-2026,1.0,121,195,50,3,38292161,12545352,633812,1792193,1276405,185169,484762,159876,457381,196370,0.0,655.5,sports_fees_v3,191,968,184,0.16,sports_fees_v3,www.nhl.com(191)
+Sports games,NBA,nba-2026,2.0,42,66,26,0,27389578,12336440,0,1762349,912986,398763,792930,362402,674310,414994,0.0,166.1,sports_fees_v3,52,703,32516,0.045,sports_fees_v3,www.nba.com(52)
+Sports games,Soccer,bundesliga-2025,11.0,13,37,13,1,25102931,10687208,13441,1526744,836764,753567,1699275,423105,1524484,678458,0.027,321.5,sports_fees_v3,142,2410,6754,0.05,sports_fees_v3,www.bundesliga.com(142)
+Sports games,MLB,mlb,0.67,218,294,16,2,139776737,10576549,905507,1510936,4659225,10235,1840824,74738,1176541,475431,0.01,65.4,sports_fees_v3;sports_fees_v2,1,1,90816,0.001,sports_fees_v3,www.mlb.com(1)
+Sports games,Soccer,ligue-1-2025,3.5,15,41,17,3,18327448,9253446,52995,1321921,610915,196525,1484663,196525,1056684,447011,0.024,323.2,sports_fees_v3,135,2415,7883,0.052,sports_fees_v3,www.ligue1.com(135)
+Sports games,Soccer,brazil-serie-a,2.5,30,53,12,1,19106803,5516548,970184,788078,636893,447329,770690,360749,751364,360506,0.0,315.5,sports_fees_v3,126,2086,1456,0.12,sports_fees_v3,www.cbf.com.br(126)
+Sports games,Soccer,primera-divisin-argentina,2.5,44,76,17,3,14477232,5168785,1076402,738398,482574,245529,541174,155915,435271,190490,0.026,314.5,sports_fees_v3,102,2133,6578,0.06,sports_fees_v3,www.afa.com.ar(102)
+Sports games,Soccer,europa-conference-league,2.25,2,33,33,3,4864116,4864116,1064,694874,162137,90036,377962,90036,377962,147397,0.0,333.7,sports_fees_v3,112,1955,31454,0.02,sports_fees_v3,www.uefa.com(112)
+Sports games,Tennis,itf,0.5,920,7000,2057,368,25558678,4813697,391707,687671,851956,252,4777,668,9520,3651,0.259,21.6,sports_fees_v3,322,913,2417,0.03,sports_fees_v3,www.itftennis.com(322)
+Sports games,Soccer,saudi-professional-league,3.71,17,27,15,3,6652334,4784742,2409829,683535,221744,188086,761404,131349,563208,246383,0.0,331.6,sports_fees_v3,159,2720,582,0.43,sports_fees_v3,www.slstat.com(159)
+Sports games,Soccer,efl-championship,16.5,13,62,41,0,7240960,4462005,0,637429,241365,72969,282326,75273,282025,116790,0.0,322.0,sports_fees_v3,143,2356,994,0.17,sports_fees_v3,www.efl.com(143)
+Sports games,UFC/MMA/boxing,ufc,96.0,8,71,16,0,19154633,4398453,0,628350,638488,187010,666635,211352,645605,269784,0.0,294.4,sports_fees_v3,28,502,17249,0.02,sports_fees_v3,www.ufc.com(28)
+Sports games,Soccer,ere-2025,2.25,19,32,12,0,6907651,3395944,0,485135,230255,298321,492147,207947,492147,215864,0.0,316.5,sports_fees_v3,99,1691,891,0.135,sports_fees_v3,eredivisie.nl(99)
+Sports games,Soccer,afc-champions-league-elite-2026,2.25,9,16,10,0,5300290,3153110,0,450444,176676,277617,465916,277617,577699,331268,0.0,80.9,sports_fees_v3,1,2,0,1.0,sports_fees_v3,www.the-afc.com(1)
+Sports games,Soccer,tur-2025,3.0,18,32,12,1,6081960,3123157,965685,446165,202732,171180,583231,129901,465515,190061,0.031,332.6,sports_fees_v3,96,1594,1012,0.17,sports_fees_v3,tff.org(96)
+Sports games,Cricket,international-cricket,3.75,123,523,117,9,10725419,3063772,287494,437682,357514,0,63678,0,47298,20507,0.616,93.0,sports_fees_v3,136,360,8,0.98,sports_fees_v3,www.espncricinfo.com(136)
+Sports games,Basketball (other),euroleague-basketball,0.75,48,60,20,0,5085133,2915841,0,416549,169504,87968,219434,63504,126421,84752,0.0,148.2,sports_fees_v3,10,30,7216,0.045,sports_fees_v3,www.euroleaguebasketball.net(10)
+Sports games,Soccer,mex-2025,2.17,27,46,12,2,11894113,2636430,410,376633,396470,161998,470937,183099,601681,258568,0.0,320.2,sports_fees_v3,179,3316,1594,0.15,sports_fees_v3,ligamx.net(179)
+Sports games,Soccer,bundesliga-2,17.75,9,29,10,1,5174888,2510267,1281,358610,172496,153882,729991,144633,355573,178444,0.034,319.5,sports_fees_v3,101,1675,797,0.17,sports_fees_v3,www.bundesliga.com(101)
+Sports games,WNBA,wnba,12.0,37,43,2,1,20788009,2185510,918264,312216,692934,1092755,1232347,403072,967507,483442,0.093,170.8,sports_fees_v3,6,74,5215,0.115,sports_fees_v3,www.wnba.com(6)
+Sports games,Soccer,chinese-super-league,1.58,12,21,10,1,4234543,2080750,131,297250,141151,173602,471794,172331,461567,201645,0.0,326.8,sports_fees_v3,71,861,9539,0.04,sports_fees_v3,www.csl-china.com(71)
+Sports games,Soccer,primera-a,2.83,47,47,10,1,7594651,2069490,270194,295641,253155,195392,360037,121263,301481,161588,0.0,318.0,sports_fees_v3,125,1944,525,0.58,sports_fees_v3,dimayor.com.co(125)
+Sports games,Soccer,japan-j-league,2.54,15,34,13,0,4717383,1963347,0,280478,157246,143788,341712,144326,330595,138747,0.0,322.7,sports_fees_v3,152,2762,963,0.315,sports_fees_v3,www.jleague.jp(152)
+Sports games,Soccer,brazil-serie-b,4.0,47,54,10,1,7336728,1717383,265754,245340,244558,172125,282783,119542,260917,135865,0.0,315.5,sports_fees_v3,73,1553,1047,0.48,sports_fees_v3,www.cbf.com.br(73)
+Sports games,Soccer,lib-2025,24.0,2,3,3,0,1443147,1443147,0,206164,48105,580567,805536,580567,805536,481049,0.0,321.5,sports_fees_v3,11,187,40582,0.03,sports_fees_v3,conmebollibertadores.com(11)
+Sports games,Soccer,sud-2025,21.5,2,4,4,1,1394169,1394169,1462,199167,46472,240572,781513,240572,781513,348542,0.0,317.8,sports_fees_v3,12,191,48700,0.02,sports_fees_v3,www.conmebol.com(12)
+Sports games,Soccer,tur2-games,3.0,23,33,19,4,1675339,1379855,396132,197122,55845,48865,147022,21282,119200,50768,0.0,92.1,sports_fees_v3,44,644,111,0.95,sports_fees_v3,www.tff.org(44)
+Sports games,Soccer,la-liga-2,2.5,43,85,12,1,11436955,1311852,133818,187407,381232,101020,187567,71036,440395,134552,0.024,321.8,sports_fees_v3,119,1938,955,0.17,sports_fees_v3,www.laliga.com(119)
+Sports games,Soccer,a-league-soccer,10.0,5,6,6,0,1293469,1293469,0,184781,43116,210788,399332,210788,399332,215578,0.0,322.8,sports_fees_v3,61,1108,788,0.17,sports_fees_v3,www.a-league.com.au(61)
+Sports games,Soccer,primeira-liga,2.5,13,28,5,3,6554861,1150767,1150438,164395,218495,690,687430,81297,781880,234102,0.0,332.7,sports_fees_v3,93,1412,3873,0.16,sports_fees_v3,www.ligaportugal.pt(93)
+Sports games,Soccer,sweden-allsvenskan-2026,20.5,13,26,8,1,2332326,1068849,133062,152693,77744,108245,260719,76415,208591,89705,0.038,153.9,sports_fees_v3,49,758,13811,0.04,sports_fees_v3,www.allsvenskan.se(49)
+Sports games,Soccer,norway-eliteserien,2.5,16,30,9,0,2770735,1007239,0,143891,92358,132226,172777,81635,232041,92358,0.033,331.2,sports_fees_v3,102,1560,755,0.22,sports_fees_v3,www.eliteserien.no(102)
+Sports games,Soccer,poland-ekstraklasa,2.75,23,26,9,1,1904469,998356,22180,142622,63482,90381,214940,51864,170734,73249,0.038,125.3,sports_fees_v3,72,853,189,0.92,sports_fees_v3,ekstraklasa.org(72)
+Sports games,Soccer,denmark-superliga,13.5,13,26,8,1,2011594,954723,207927,136389,67053,132691,208013,69024,191986,77369,0.0,330.0,sports_fees_v3,65,1072,656,0.58,sports_fees_v3,superligaen.dk(65)
+Sports games,Soccer,k-league,21.5,11,23,6,0,2472106,925504,0,132215,82404,122599,287114,115593,198802,107483,0.0,322.5,sports_fees_v3,57,594,22882,0.035,sports_fees_v3,www.kleague.com(57)
+Sports games,Soccer,acl2-games,2.25,6,12,12,0,862016,862016,0,123145,28734,58486,122103,58486,122103,71835,0.0,30.6,sports_fees_v3,0,0,,,,
+Sports games,Soccer,uefa-womens-world-cup-qualification,0.5,19,32,16,0,2295339,807205,0,115315,76511,56576,80864,60667,112708,71729,0.0,155.6,sports_fees_v3,0,0,,,,
+Sports games,Soccer,austria-bundesliga-2026,10.75,11,18,6,0,978151,684738,0,97820,32605,119600,191095,24933,146408,54342,0.0,162.8,sports_fees_v3,35,557,9588,0.05,sports_fees_v3,www.bundesliga.at(35)
+Sports games,Soccer,serie-b,2.25,17,35,12,0,1793969,668364,0,95481,59799,50602,107213,35000,112062,51256,0.114,317.0,sports_fees_v3,158,2785,471,0.4,sports_fees_v3,www.legaserieb.it(158)
+Sports games,Cricket,cricwcl,20.0,20,80,20,0,1595235,663576,0,94797,53175,0,147544,0,91417,19940,0.6,151.3,sports_fees_v3,0,0,,,,
+Sports games,Soccer,argpn-games,1.0,51,84,18,1,2488199,655278,281517,93611,82940,21904,43626,20417,60511,29621,0.0,128.3,sports_fees_v3,95,1478,679,0.08,sports_fees_v3,www.afa.com.ar(95)
+Sports games,Soccer,ligue-2,18.0,8,21,9,1,1043808,598318,123297,85474,34794,52253,124775,42459,87380,49705,0.0,323.0,sports_fees_v3,106,1639,684,0.33,sports_fees_v3,www.ligue2.fr(106)
+Sports games,Basketball (other),cba,23.79,5,12,12,2,544236,544236,165794,77748,18141,47235,66233,47235,66233,45353,0.0,152.3,sports_fees_v3,28,40,836,0.635,sports_fees_v3,www.flashscore.com(28)
+Sports games,Soccer,egypt-1,3.0,8,13,7,3,846003,542263,336285,77466,28200,54288,137625,54877,90578,65077,0.0,334.0,sports_fees_v3,88,1573,758,0.58,sports_fees_v3,www.efa.com.eg(88)
+Sports games,Soccer,romania-1,13.38,21,21,8,2,1454271,526135,203767,75162,48476,61370,118396,25516,213919,69251,0.0,332.0,sports_fees_v3,79,1384,596,0.58,sports_fees_v3,www.lpf.ro(79)
+Sports games,Soccer,scottish-premiership,20.0,7,18,9,0,1101183,513536,0,73362,36706,11918,169489,19601,169876,61177,0.056,317.0,sports_fees_v3,98,1600,948,0.17,sports_fees_v3,spfl.co.uk(98)
+Sports games,Soccer,liga-1,3.0,22,22,9,0,1421330,496058,0,70865,47378,35562,110857,39846,116361,64606,0.0,316.7,sports_fees_v3,90,1912,897,0.58,sports_fees_v3,liga1.pe(90)
+Sports games,Soccer,col2-games,19.67,40,45,13,4,1788989,470675,215862,67239,59633,23950,62932,28233,99167,39755,0.0,36.6,sports_fees_v3,21,276,32389,0.02,sports_fees_v3,dimayor.com.co(21)
+Sports games,Soccer,nor2-games,25.5,11,38,16,0,1129931,469558,0,67080,37664,26245,52125,24476,63656,29735,0.0,131.6,sports_fees_v3,44,567,8164,0.07,sports_fees_v3,www.obosligaen.no(44)
+Sports games,Soccer,idn1-games,3.5,14,23,8,0,914449,457363,0,65338,30482,54866,88998,35113,81224,39759,0.087,71.0,sports_fees_v3,48,782,21964,0.03,sports_fees_v3,ileague.id(48)
+Sports games,Soccer,mex2-games,11.0,13,17,9,0,636525,445728,0,63675,21218,23012,116247,23012,68989,37443,0.0,89.8,sports_fees_v3,28,623,14330,0.06,sports_fees_v3,ligabbvaexpansion.mx(28)
+Sports games,Soccer,ned2-games,19.62,15,37,10,3,1820362,417299,132274,59614,60679,43701,55955,47684,82179,49199,0.0,142.0,sports_fees_v3,34,614,0,0.96,sports_fees_v3,www.keukenkampioendivisie.nl(34)
+Sports games,Soccer,japan-j2-league,3.0,20,61,11,1,3872129,415546,533,59364,129071,26910,100088,37490,166312,63478,0.0,322.2,sports_fees_v3,142,2692,1122,0.345,sports_fees_v3,www.jleague.jp(142)
+Sports games,Soccer,soccer-el1,82.75,7,45,15,1,1397348,412704,1574,58958,46578,16506,56038,16506,93238,31052,0.089,317.7,sports_fees_v3,319,5315,478,0.74,sports_fees_v3,www.efl.com(319)
+Sports games,Soccer,soccer-fpd,17.0,17,24,14,2,556806,398937,43336,56991,18560,20413,82890,17950,59971,23200,0.125,328.7,sports_fees_v3,69,975,447,0.74,sports_fees_v3,www.unafut.com(69)
+Sports games,Basketball (other),nbl,22.0,34,34,7,0,1543089,393752,0,56250,51436,53585,85286,41767,81110,45385,0.0,152.2,sports_fees_v3,7,17,6241,0.04,sports_fees_v3,www.nbl.com.au(7)
+Sports games,Soccer,bl3-games,19.0,14,30,20,0,478051,362499,0,51786,15935,13961,32802,12034,30000,15935,0.0,24.6,sports_fees_v3,30,720,19138,0.045,sports_fees_v3,www.dfb.de(30)
+Sports games,Basketball (other),kbl,21.5,25,29,11,1,652075,358309,60841,51187,21736,31872,60841,17446,33009,22485,0.0,75.6,sports_fees_v3,2,4,52230,0.315,sports_fees_v3,www.kbl.or.kr(2)
+Sports games,Soccer,lva1-games,24.0,13,14,6,2,554117,349449,228695,49921,18471,35894,121741,24725,59779,39580,0.0,68.8,sports_fees_v3,2,3,0,1.0,sports_fees_v3,www.virsliga.lv(2)
+Sports games,Soccer,gre1-games,2.0,16,23,6,0,875712,337389,0,48198,29190,46657,104602,20963,75833,38074,0.043,164.3,sports_fees_v3,40,736,6906,0.07,sports_fees_v3,www.slgr.gr(40)
+Sports games,Soccer,fin1-games,20.5,13,18,6,0,2100079,317538,0,45363,70003,58269,69718,57660,310574,116671,0.0,126.9,sports_fees_v3,24,209,21404,0.03,sports_fees_v3,www.veikkausliiga.com(24)
+Sports games,Soccer,soccer-ptc,1.0,20,77,27,0,425809,299429,0,42776,14194,8579,25268,1270,19354,5530,0.234,313.8,sports_fees_v3,55,549,0,1.0,sports_fees_v3,www.ligaportugal.pt(55)
+Sports games,Soccer,czechia-1,3.0,15,20,8,0,583598,276078,0,39440,19453,30090,62574,23305,56471,29180,0.0,330.0,sports_fees_v3,88,1570,533,0.58,sports_fees_v3,www.fortunaliga.cz(88)
+Sports games,Soccer,israel-premier-league-2026,12.25,11,14,7,1,472066,274652,83264,39236,15736,32818,72923,22506,78093,33719,0.0,167.3,sports_fees_v3,28,623,9140,0.065,sports_fees_v3,www.football.org.il(28)
+Sports games,Soccer,swe2-games,2.0,15,19,8,1,554578,274402,55990,39200,18486,28172,63030,16355,60683,29188,0.0,164.2,sports_fees_v3,55,657,14548,0.045,sports_fees_v3,www.superettan.se(55)
+Sports games,UFC/MMA/boxing,boxing,84.0,7,31,12,0,286639,271265,0,38752,9555,268,52429,256,3514,9246,0.0,53.5,sports_fees_v3,9,9,9,0.93,sports_fees_v3,www.espn.com(9)
+Sports games,Soccer,ukraine-premier-liha,19.0,16,22,8,1,620519,269574,90578,38511,20684,28431,57852,19570,64608,28205,0.091,313.0,sports_fees_v3,97,1624,450,0.74,sports_fees_v3,upl.ua(97)
+Sports games,Soccer,uae1-games,2.67,6,7,7,0,249473,249473,0,35639,8316,19982,86410,19982,86410,35639,0.0,117.6,sports_fees_v3,0,0,,,,
+Sports games,Soccer,soccer-gtm,4.25,33,45,18,3,821720,247827,56843,35404,27391,10982,31436,10138,32818,18260,0.089,324.7,sports_fees_v3,135,2119,412,0.75,sports_fees_v3,www.ligagt.org(135)
+Sports games,Soccer,uzb1-games,23.5,13,20,8,0,685956,241060,0,34437,22865,23988,58654,18517,95529,34298,0.1,24.1,sports_fees_v3,9,31,0,1.0,sports_fees_v3,pfl.uz(9)
+Sports games,Soccer,ecu1-games,2.5,20,20,8,1,689348,228223,59444,32603,22978,25973,47066,25973,72256,34467,0.0,99.4,sports_fees_v3,43,735,643,0.08,sports_fees_v3,www.ligapro.ec(43)
+Sports games,Soccer,indian-super-league,21.5,12,15,9,1,361553,218292,58790,31185,12052,17862,52541,16833,55666,24104,0.0,329.3,sports_fees_v3,61,1046,463,0.74,sports_fees_v3,www.indiansuperleague.com(61)
+Sports games,Soccer,est1-games,3.0,16,18,10,0,367203,216541,0,30934,12240,15813,45698,21010,35782,20400,0.0,70.0,sports_fees_v3,4,5,0,1.0,sports_fees_v3,jalgpall.ee(4)
+Sports games,Soccer,irl1-games,48.0,10,14,7,2,568695,192159,77511,27451,18956,24902,38329,25015,88008,40621,0.0,107.3,sports_fees_v3,18,233,8272,0.045,sports_fees_v3,www.leagueofireland.ie(18)
+Sports games,Soccer,chi2-games,11.75,19,28,8,0,1928656,187983,0,26855,64289,20869,38525,43763,142631,68881,0.0,25.4,sports_fees_v3,6,16,0,1.0,sports_fees_v3,www.thecfa.cn(6)
+Sports games,Soccer,bolivia-1,4.5,16,16,8,0,349500,186516,0,26645,11650,23864,33108,21980,33555,21844,0.0,316.7,sports_fees_v3,62,1289,470,0.74,sports_fees_v3,lfpb.com.bo(62)
+Sports games,Soccer,uslc,1.0,38,80,16,0,1038184,184314,0,26331,34606,7016,30419,5894,31058,12977,0.013,137.9,sports_fees_v3,70,978,7403,0.15,sports_fees_v3,www.uslchampionship.com(70)
+Sports games,Soccer,qat1-games,2.25,12,12,6,0,554720,181170,0,25881,18491,13254,69617,18695,117824,46227,0.0,114.8,sports_fees_v3,16,356,12971,0.06,sports_fees_v3,www.qsl.com.qa(16)
+Sports games,Soccer,isl1-games,16.75,10,16,6,1,415464,178937,65249,25562,13849,26160,49373,24669,34716,25967,0.0,144.6,sports_fees_v3,17,360,8201,0.06,sports_fees_v3,www.ksi.is(17)
+Sports games,Soccer,russian-premier-league,2.5,16,16,8,1,274853,176816,36629,25259,9162,14701,47989,12126,32811,17178,0.0,332.2,sports_fees_v3,79,1440,996,0.17,sports_fees_v3,premierliga.ru(79)
+Sports games,Soccer,ven1-games,2.0,11,17,7,0,303351,167115,0,23874,10112,21721,35711,11849,34223,17844,0.0,70.2,sports_fees_v3,0,0,,,,
+Sports games,Soccer,chl2-games,2.5,24,26,8,1,487555,160985,15133,22998,16252,15255,40208,14295,37546,18752,0.0,57.0,sports_fees_v3,10,15,0,1.0,sports_fees_v3,www.anfp.cl(10)
+Sports games,Basketball (other),bkjpn,1.0,54,107,22,9,454010,160476,84584,22925,15134,6510,12645,3187,9008,4243,0.0,169.8,sports_fees_v3,24,24,84,0.94,sports_fees_v3,www.bleague.jp(24)
+Sports games,Hockey (other),khl-2026,2.5,89,120,26,4,470531,159665,6816,22809,15684,2352,17029,1885,9760,3921,0.0,142.5,sports_fees_v3,24,24,55,0.11,sports_fees_v3,en.khl.ru(24)
+Sports games,Soccer,morocco-1,4.0,28,30,7,0,808671,158355,0,22622,26956,21885,43937,25397,59593,26956,0.0,203.0,sports_fees_v3,0,0,,,,
+Sports games,Soccer,blr1-games,3.0,19,19,11,3,176178,158073,75674,22582,5873,5865,37616,2851,26339,9273,0.0,165.5,sports_fees_v3,24,576,775,0.74,sports_fees_v3,abff.by(24)
+Sports games,Soccer,uru1-games,4.0,38,38,8,1,994754,156193,30999,22313,33158,16459,34697,19287,56611,26178,0.0,121.2,sports_fees_v3,43,684,1182,0.06,sports_fees_v3,www.auf.org.uy(43)
+Sports games,Soccer,par1-games,12.0,11,12,6,0,420143,153669,0,21953,14005,26148,36183,24191,57249,35012,0.0,134.0,sports_fees_v3,24,534,745,0.58,sports_fees_v3,www.apf.org.py(24)
+Sports games,Basketball (other),pro-a,2.5,26,32,8,1,289447,153578,9727,21940,9648,10014,42747,5254,18195,9045,0.0,61.7,sports_fees_v3,0,0,,,,
+Sports games,Soccer,soccer-hr1,21.0,12,14,5,0,396763,148449,0,21207,13225,28679,46988,16495,60328,28340,0.0,315.7,sports_fees_v3,66,970,469,0.74,sports_fees_v3,hnl.hr(66)
+Sports games,Basketball (other),liga-endesa,1.5,32,35,9,0,456502,143548,0,20507,15217,9312,30558,8809,23930,13043,0.0,157.2,sports_fees_v3,10,12,84,0.94,sports_fees_v3,www.acb.com(10)
+Sports games,Basketball (other),bkeurocup-games,0.5,31,48,16,0,319593,142605,0,20372,10653,7630,16113,5699,12649,6658,0.0,53.4,sports_fees_v3,16,48,6364,0.04,sports_fees_v3,www.eurocupbasketball.com(16)
+Sports games,Soccer,kaz1-games,2.0,17,18,10,0,303922,140826,0,20118,10131,10298,24955,12383,27441,16885,0.0,70.6,sports_fees_v3,36,307,473,0.74,sports_fees_v3,kff.kz(36)
+Sports games,Soccer,tha1-games,0.5,17,22,8,0,397256,139554,0,19936,13242,11931,32906,15975,38675,18057,0.0,69.6,sports_fees_v3,7,20,0,1.0,sports_fees_v3,thaileague.co.th(7)
+Sports games,Soccer,clf-games,5.5,28,33,4,0,1200886,138256,0,19751,40030,12427,86219,17161,112399,36390,0.03,44.7,sports_fees_v3,75,857,0,1.0,sports_fees_v3,www.flashscore.com(75)
+Sports games,Soccer,serc-games,3.0,8,30,30,5,135043,135043,40792,19292,4501,3064,8852,3064,8852,4501,0.0,64.4,sports_fees_v3,120,2670,571,0.74,sports_fees_v3,www.seriec.com(120)
+Sports games,Soccer,kor2-games,12.0,11,20,8,0,346204,134123,0,19160,11540,14713,27216,14713,30027,17310,0.0,154.7,sports_fees_v3,40,635,18125,0.05,sports_fees_v3,www.kleague.com(40)
+Sports games,Soccer,canpl-games,19.0,21,27,4,0,926155,129151,0,18450,30872,29534,49447,23758,70126,34302,0.185,78.3,sports_fees_v3,4,13,0,1.0,sports_fees_v3,www.cplsoccer.com(4)
+Sports games,Tennis,atp-doubles,1.5,193,451,115,13,963968,124503,23460,17786,32132,250,3290,328,5786,2137,0.091,39.7,sports_fees_v3,52,832,309,0.365,sports_fees_v3,www.atptour.com(52)
+Sports games,Soccer,saf1-games,21.5,6,12,8,0,136495,116673,0,16668,4550,15696,25397,6036,18496,11375,0.0,29.7,sports_fees_v3,0,0,,,,
+Sports games,Soccer,wsl-games,11.75,13,40,7,0,1076702,115715,0,16531,35890,15031,28476,6674,99977,26918,0.125,160.2,sports_fees_v3,36,648,7493,0.09,sports_fees_v3,www.wslfootball.com(36)
+Sports games,Soccer,aze1-games,4.0,14,16,6,0,213327,115716,0,16531,7111,16184,38857,4976,29156,13333,0.125,28.3,sports_fees_v3,10,92,0,1.0,sports_fees_v3,www.pfl.az(10)
+Sports games,Soccer,soccer-el2,2.5,8,65,17,0,768036,112570,0,16081,25601,6064,14492,6064,23441,11816,0.092,316.7,sports_fees_v3,237,4020,996,0.17,sports_fees_v3,www.efl.com(237)
+Sports games,Soccer,serbian-superliga-2026,2.0,17,18,7,0,324413,111669,0,15953,10814,9541,35281,16346,37142,18023,0.056,78.1,sports_fees_v3,15,50,0,1.0,sports_fees_v3,superliga.rs(15)
+Sports games,Tennis,wta-doubles,3.0,120,244,65,8,693320,106888,8775,15270,23111,505,3359,321,4832,2841,0.082,32.5,sports_fees_v3,10,160,1219,0.21,sports_fees_v3,www.wtatennis.com(10)
+Sports games,Soccer,fa-cup,76.75,6,93,32,0,557813,94813,0,13545,18594,2376,4534,3112,15302,5998,0.043,260.0,sports_fees_v3,529,11195,5173,0.04,sports_fees_v3,www.thefa.com(529)
+Sports games,Soccer,es3-games,2.25,20,36,20,0,128959,92093,0,13156,4299,3554,7459,3098,6829,3582,0.0,61.6,sports_fees_v3,0,0,,,,
+Sports games,Soccer,aze2-games,24.0,6,10,5,0,267417,87872,0,12553,8914,19585,30031,20284,62462,26742,0.0,31.3,sports_fees_v3,13,225,344,0.84,sports_fees_v3,www.pfl.az(13)
+Sports games,Soccer,hungary-nb1-2026,2.5,15,15,6,0,173280,86891,0,12413,5776,12842,23099,10346,21826,11552,0.0,158.3,sports_fees_v3,22,447,12066,0.065,sports_fees_v3,www.mlsz.hu(22)
+Sports games,Soccer,soccer-nwsl,3.0,27,44,8,0,694820,81879,0,11697,23161,9874,15638,10591,46128,15791,0.364,320.7,sports_fees_v3,98,1512,444,0.74,sports_fees_v3,www.nwslsoccer.com(98)
+Sports games,Basketball (other),basketball-series-a,1.0,30,32,8,0,259783,73937,0,10562,8659,5506,20602,5655,16238,8118,0.0,157.5,sports_fees_v3,8,20,576,0.135,sports_fees_v3,www.flashscoreusa.com(8)
+Sports games,Baseball (other),npb,24.0,34,73,7,0,672399,71608,0,10230,22413,9071,15355,5969,21449,9211,0.0,169.0,sports_fees_v3;sports_fees_v2,3,3,84,0.94,sports_fees_v3,npb.jp(3)
+Sports games,Soccer,ltu1-games,24.62,7,7,4,1,107091,61353,18364,8765,3570,15189,21888,15445,22622,15299,0.0,70.4,sports_fees_v3,2,2,0,0.999,sports_fees_v3,alyga.lt(2)
+Sports games,Soccer,slovenia-prvaliga-2026,2.88,13,13,5,0,153155,57928,0,8275,5105,9335,20592,8946,25305,11781,0.0,160.6,sports_fees_v3,14,70,0,1.0,sports_fees_v3,www.prvaliga.si(14)
+Sports games,Rugby,rugby-champions-cup,2.25,8,12,12,0,54598,54598,0,7800,1820,1500,14963,1500,14963,4550,0.0,324.9,sports_fees_v3,0,0,,,,
+Sports games,Baseball (other),kbo,24.0,22,60,3,0,1552833,52993,0,7570,51761,15026,31335,11999,27851,25881,0.0,329.1,sports_fees_v3;sports_fees_v2,4,4,32759,0.01,sports_fees_v3,www.koreabaseball.com(4)
+Sports games,Basketball (other),bkbsl,3.75,25,31,8,1,222562,52342,11215,7477,7419,4856,11989,4735,12851,7179,0.0,157.0,sports_fees_v3,9,9,84,0.94,sports_fees_v3,www.tbl.org.tr(9)
+Sports games,Hockey (other),shl-2026,44.25,14,62,14,0,198059,50816,0,7259,6602,2281,7403,2286,6626,3194,0.0,145.2,sports_fees_v3,15,15,36,0.94,sports_fees_v3,www.eliteprospects.com(15)
+Sports games,Soccer,soccer-svk1,2.5,10,19,6,0,131600,50644,0,7235,4387,7768,13760,6049,14283,6926,0.105,313.4,sports_fees_v3,92,1370,447,0.74,sports_fees_v3,nikeliga.sk(92)
+Sports games,Basketball (other),basketball-champions-league,1.5,14,27,8,0,140337,46097,0,6585,4678,6997,7749,3104,9063,5198,0.0,158.4,sports_fees_v3,8,8,6308,0.2,sports_fees_v3,www.championsleague.basketball(8)
+Sports games,Basketball (other),bkaba,10.5,21,28,9,3,120006,40045,18180,5721,4000,4299,9932,3448,9773,4286,0.0,159.0,sports_fees_v3,21,21,84,0.94,sports_fees_v3,www.aba-liga.com(21)
+Sports games,Table tennis,setkameua-games,0.08,5382,7765,1931,259,70781,39834,6,5691,2359,0,0,0,0,9,0.957,21.1,sports_fees_v3,579,2017,31,0.94,sports_fees_v3,setkacup.com(579)
+Sports games,Soccer,idn2-games,19.75,19,38,4,0,782241,38698,0,5528,26075,10146,13658,12551,50551,20585,0.237,19.6,sports_fees_v3,13,115,0,1.0,sports_fees_v3,ileague.id(13)
+Sports games,Hockey (other),cehl-2026,1.0,40,68,13,0,176237,33441,0,4777,5875,2189,3588,1503,6210,2592,0.0,143.9,sports_fees_v3,16,16,6768,0.04,sports_fees_v3,www.hokej.cz(16)
+Sports games,Soccer,cafcl-games,10.5,5,5,5,0,32511,32511,0,4644,1084,2502,16359,2502,16359,6502,0.0,28.0,sports_fees_v3,0,0,,,,
+Sports games,Hockey (other),ahl-2026,1.0,55,91,32,0,50520,29727,0,4247,1684,424,2767,188,1474,555,0.044,147.6,sports_fees_v3,35,35,40,0.94,sports_fees_v3,theahl.com(35)
+Sports games,Basketball (other),lnb,22.71,31,31,8,2,48467,28188,14661,4027,1616,2150,7455,858,3535,1563,0.0,69.4,sports_fees_v3,6,12,13449,0.03,sports_fees_v3,www.laliganacional.com.ar(6)
+Sports games,Hockey (other),snhl-2026,24.0,19,67,14,0,86045,27507,0,3930,2868,563,6735,466,3829,1284,0.0,146.2,sports_fees_v3,20,20,36,0.94,sports_fees_v3,www.nationalleague.ch(20)
+Sports games,Soccer,usl1-games,2.0,18,25,8,0,147365,27310,0,3901,4912,974,7397,3894,10321,5895,0.0,22.4,sports_fees_v3,15,192,31,0.93,sports_fees_v3,www.uslleagueone.com(15)
+Sports games,Hockey (other),liiga-games,22.0,28,71,18,0,110759,24847,0,3550,3692,910,2510,1001,4388,1560,0.014,44.4,sports_fees_v3,7,7,7456,0.02,sports_fees_v3,liiga.fi(7)
+Sports games,Basketball (other),bkisrsl-games,1.75,14,14,7,3,29858,23237,10140,3320,995,2030,7833,1248,6364,2133,0.0,49.6,sports_fees_v3,0,0,,,,
+Sports games,Soccer,fro1-games,2.25,2,2,2,0,21752,21752,0,3107,725,10876,12719,10876,12719,10876,0.0,66.7,sports_fees_v3,0,0,,,,
+Sports games,Soccer,soccer-unl,3.0,29,208,4,0,210980466,21428,0,3061,7032682,4987,7766,124344,2808481,1014329,0.0,320.0,sports_fees_v3,40,93,0,1.0,sports_fees_v3,www.uefa.com(40)
+Sports games,Sports (other),cfl,16.5,16,16,5,0,59872,20690,0,2956,1996,3892,7582,2881,8302,3742,0.0,106.0,sports_fees_v3,4,10,638,0.05,sports_fees_v3,www.cfl.ca(4)
+Sports games,Hockey (other),dehl-2026,24.0,24,64,14,0,69416,20268,0,2895,2314,672,3408,670,2481,1085,0.016,145.5,sports_fees_v3,15,15,36,0.94,sports_fees_v3,www.penny-del.org(15)
+Sports games,Soccer,nln-games,168.0,2,18,6,0,42336,20191,0,2884,1411,3435,4797,1926,5606,2352,0.0,21.9,sports_fees_v3,0,0,,,,
+Sports games,Basketball (other),bkvtb,19.75,23,26,10,0,77759,18981,0,2712,2592,1083,4653,1527,7906,2991,0.0,154.0,sports_fees_v3,7,7,3282,0.42,sports_fees_v3,www.vtb-league.com(7)
+Sports games,Basketball (other),bkplk-games,5.0,24,24,8,1,47201,18534,3151,2648,1573,2514,3328,1537,3674,1967,0.0,48.8,sports_fees_v3,0,0,,,,
+Sports games,Soccer,nls-games,84.0,3,18,7,0,33474,18475,0,2639,1116,2336,4175,1177,4094,1860,0.0,21.7,sports_fees_v3,3,72,35646,0.02,sports_fees_v3,www.thenationalleague.org.uk(3)
+Sports games,Soccer,ja3-games,4.0,6,12,6,0,48915,17302,0,2472,1630,1509,6433,2619,11061,4076,0.0,19.3,sports_fees_v3,0,0,,,,
+Sports games,Cricket,csa-t20,167.0,4,24,8,6,32677,15820,6941,2260,1089,1116,3402,60,5820,1362,0.5,55.3,sports_fees_v3,0,0,,,,
+Sports games,Soccer,bra3-games,23.0,10,16,1,0,450035,14416,0,2059,15001,14416,14416,24401,38876,28127,0.0,58.2,sports_fees_v3,5,5,0,1.0,sports_fees_v3,www.cbf.com.br(5)
+Sports games,Soccer,nirl1-games,21.62,9,24,6,0,120540,13042,0,1863,4018,1338,4651,3722,10283,5022,0.042,113.0,sports_fees_v3,49,647,10204,0.06,sports_fees_v3,www.nifootballleague.com(49)
+Sports games,Basketball (other),bklkl-games,2.33,26,26,5,1,44410,13028,2537,1861,1480,2537,3924,1268,3851,1708,0.0,49.8,sports_fees_v3,0,0,,,,
+Sports games,Darts,modus,0.33,426,426,104,15,45741,12385,2472,1769,1525,12,329,6,298,107,0.383,37.3,sports_fees_v3,35,35,12,0.5,sports_fees_v3,modussuperseries.com(35)
+Sports games,Basketball (other),bknbb-games,9.25,5,7,7,4,10094,10094,6420,1442,336,1544,2187,1544,2187,1442,0.0,48.9,sports_fees_v3,4,12,10357,0.02,sports_fees_v3,lnb.com.br(4)
+Sports games,Basketball (other),bkkls-games,3.75,23,24,8,4,13855,9623,4931,1375,462,1220,1457,546,1279,577,0.167,15.4,sports_fees_v3,0,0,,,,
+Sports games,UFC/MMA/boxing,zuffa,,1,10,1,0,16798,7695,0,1099,560,7695,7695,560,3881,1680,0.0,264.9,sports_fees_v3,6,67,44,0.94,sports_fees_v3,www.ufc.com(6)
+Sports games,Cricket,cricranji-games,168.0,2,51,51,3,6507,6507,4974,930,217,0,96,0,96,128,0.627,178.6,sports_fees_v3,45,135,0,1.0,sports_fees_v3,www.bcci.tv(45)
+Sports games,Hockey (other),hockeychl-games,0.88,15,22,10,0,20079,4821,0,689,669,186,1025,323,1847,913,0.136,71.3,sports_fees_v3,0,0,,,,
+Sports games,Soccer,tpe1-games,336.0,3,5,3,0,5749,2952,0,422,192,0,2362,150,2830,1150,0.4,11.1,sports_fees_v3,0,0,,,,
+Sports games,Golf,lpga-tour,252.0,3,22,8,0,5119,2551,0,364,171,0,767,0,1060,233,0.773,147.6,sports_fees_v3,13,596,4,0.99,sports_fees_v3,www.lpga.com(12)
+Sports games,Darts,pdcdarts,0.5,62,129,44,2,54484,2355,780,336,1816,4,143,15,607,422,0.419,25.5,sports_fees_v3,2,2,0,1.0,sports_fees_v3,www.pdc.tv(2)
+Sports games,Chess,titled-tuesday,168.0,6,18,4,0,9736,2257,0,322,325,381,945,351,1146,541,0.0,170.8,sports_fees_v3,4,264,9676,0.275,sports_fees_v3,www.chess.com(3)
+Sports games,Baseball (other),cpbl,24.0,24,37,2,0,23121,2217,0,317,771,1108,1701,358,1240,625,0.054,169.7,sports_fees_v3;sports_fees_v2,2,2,1366,0.48,sports_fees_v3,www.cpbl.com.tw(2)
+Sports games,Sports (other),mlp,1.5,39,282,127,0,22631,1975,0,282,754,0,0,0,2,80,0.897,20.7,sports_fees_v3,12,12,0,1.0,sports_fees_v3,ppatour.com(12)
+Sports games,Table tennis,setkamemd-games,0.25,1200,1204,289,40,16094,1681,10,240,536,0,0,0,0,13,0.91,25.3,sports_fees_v3,71,283,23,0.94,sports_fees_v3,setkacup.com(71)
+Sports games,Sports (other),power-slap,,1,8,8,0,1150,1150,0,164,38,20,345,20,345,144,0.0,6.8,sports_fees_v3,5,13,0,1.0,sports_fees_v3,www.powerslap.com(5)
+Sports games,Table tennis,setkamecz-games,0.25,1566,1587,372,59,8984,1044,910,149,299,0,0,0,0,6,0.957,18.9,sports_fees_v3,60,252,28,0.94,sports_fees_v3,setkacup.com(60)
+Sports games,Volleyball/handball,vbefeler-games,2.5,3,5,5,0,779,779,0,111,26,135,212,135,212,156,0.0,43.3,sports_fees_v3,1,2,2,0.98,sports_fees_v3,www.tvf.org.tr(1)
+Sports games,Rugby,rueuchall-games,4.75,6,9,9,0,664,664,0,95,22,0,220,0,220,74,0.556,10.0,sports_fees_v3,0,0,,,,
+Sports games,Golf,dp-world-tour,168.0,5,42,7,0,119810,651,0,93,3994,0,260,0,1631,2853,0.595,147.1,sports_fees_v3,12,785,6,0.99,sports_fees_v3,www.europeantour.com(11)
+Sports games,Volleyball/handball,vbliguea-games,0.75,5,7,7,0,598,598,0,85,20,56,158,56,158,85,0.0,30.7,sports_fees_v3,7,19,2364,0.45,sports_fees_v3,www.lnv.fr(7)
+Sports games,Sports (other),aflw-games,2.17,35,35,8,0,1463,581,0,83,49,0,174,0,51,42,0.743,101.5,sports_fees_v3,8,8,1621,0.105,sports_fees_v3,www.afl.com.au(8)
+Sports games,Volleyball/handball,vbplusliga-games,3.0,6,6,6,0,447,447,0,64,15,56,112,56,112,75,0.0,46.4,sports_fees_v3,5,7,49,0.12,sports_fees_v3,www.plusliga.pl(5)
+Sports games,Volleyball/handball,vbligueaw-games,0.75,9,10,4,0,802,345,0,49,27,76,125,56,140,80,0.0,38.3,sports_fees_v3,6,18,1,0.98,sports_fees_v3,www.lnv.fr(6)
+Sports games,Volleyball/handball,vbsuperlega-games,1.0,4,4,4,0,321,321,0,46,11,56,124,56,124,80,0.0,49.3,sports_fees_v3,1,2,0,1.0,sports_fees_v3,www.legavolley.it(1)
+Sports games,Volleyball/handball,vbbelligaa-games,4.0,2,3,3,2,168,168,112,24,6,56,56,56,56,56,0.0,63.3,sports_fees_v3,1,3,1,0.98,sports_fees_v3,www.volleybelgium.be(1)
+Sports games,Sports (other),uci-cycling,420.0,3,4,1,0,34749,100,0,14,1158,100,100,446,23834,8687,0.0,485.5,sports_fees_v3,0,0,,,,
+Sports games,Volleyball/handball,vb2bundesliga-games,0.5,10,14,1,1,960,56,56,8,32,56,56,59,88,69,0.0,168.8,sports_fees_v3,0,0,,,,
+Sports games,Volleyball/handball,vbsvleague-games,,1,1,1,1,56,56,56,8,2,56,56,56,56,56,0.0,70.4,sports_fees_v3,0,0,,,,
+Sports games,Volleyball/handball,hbbundesliga-games,21.5,30,36,9,1,138,16,5,2,5,0,6,0,8,4,0.833,58.2,sports_fees_v3,0,0,,,,
+Sports games,Volleyball/handball,hbsuperliga-games,37.5,13,13,3,2,21,6,6,1,1,0,5,0,5,2,0.846,31.3,sports_fees_v3,0,0,,,,
+Sports games,Soccer,bel1-games,2.5,12,18,0,0,836349,0,0,0,27878,0,0,35093,100842,46464,0.056,167.2,sports_fees_v3,53,841,15270,0.04,sports_fees_v3,www.proleague.be(53)
+Sports games,Soccer,switzerland-super-league,11.25,5,12,0,0,425687,0,0,0,14190,0,0,37287,60278,35474,0.083,154.8,sports_fees_v3,33,555,8310,0.055,sports_fees_v3,www.football.ch(33)
+Sports games,Soccer,bulgaria-parva-liga-2026,2.5,9,9,0,0,161640,0,0,0,5388,0,0,11413,32663,17960,0.0,158.9,sports_fees_v3,39,592,7715,0.06,sports_fees_v3,bfunion.bg(39)
+Sports games,Soccer,u20wwc-games,24.0,6,11,0,0,417298,0,0,0,13910,0,0,3116,114043,37936,0.273,67.5,sports_fees_v3,4,9,0,1.0,sports_fees_v3,www.fifa.com(4)
+Sports games,Soccer,bel2-games,12.0,7,9,0,0,88930,0,0,0,2964,0,0,4374,20372,9881,0.0,159.9,sports_fees_v3,24,534,18159,0.075,sports_fees_v3,www.proleague.be(24)
+Sports games,Golf,korn-ferry-tour,252.0,3,27,0,0,780,0,0,0,26,0,0,0,68,29,0.778,108.4,sports_fees_v3,0,0,,,,
+Sports games,Soccer,fifa-friendly,3.0,58,96,0,0,28207442,0,0,0,940248,0,0,111477,858138,293828,0.031,312.7,sports_fees_v3,13,105,0,1.0,sports_fees_v3,www.fifa.com(13)
+Sports games,Soccer,womens-champions-league,2.25,8,36,0,0,7285847,0,0,0,242862,0,0,48278,498902,202385,0.0,333.5,sports_fees_v3,60,918,355,0.74,sports_fees_v3,www.uefa.com(60)
+Sports games,Soccer,soccer-nlc,24.0,2,36,0,0,205711,0,0,0,6857,0,0,591,19043,5714,0.417,317.0,sports_fees_v3,156,2893,462,0.74,sports_fees_v3,www.knvb.nl(156)
+Sports games,Soccer,concacaf-nations-league,2.0,60,145,1,1,12130958,0,0,0,404365,0,0,16564,266751,83662,0.262,317.3,sports_fees_v3,3,14,0,1.0,sports_fees_v3,www.concacaf.com(3)
+Sports games,Volleyball/handball,hblnh-games,22.0,22,31,8,0,0,0,0,0,0,0,0,0,0,0,1.0,72.2,sports_fees_v3,0,0,,,,
+Sports games,Volleyball/handball,vbeuro-games,4.0,16,17,0,0,82644,0,0,0,2755,0,0,1651,11323,4861,0.0,64.0,sports_fees_v3,0,0,,,,
+Sports games,Volleyball/handball,hbnbi-games,24.0,8,12,4,0,0,0,0,0,0,0,0,0,0,0,1.0,29.9,sports_fees_v3,1,1,20,0.02,sports_fees_v3,www.mksz.hu(1)
+Sports games,Soccer,soccer-enl,20.38,9,68,1,0,1111971,0,0,0,37066,0,0,10081,28065,16353,0.103,314.7,sports_fees_v3,213,3391,827,0.74,sports_fees_v3,www.thenationalleague.org.uk(213)
+Sports games,Soccer,copa-del-rey,1.75,15,22,1,1,25879,0,0,0,863,0,0,595,2314,1176,0.091,288.0,sports_fees_v3,298,5438,451,0.74,sports_fees_v3,www.rfef.es(298)
+Sports games,Table tennis,setkawoua-games,0.5,202,202,30,0,45,0,0,0,1,0,0,0,0,0,0.995,22.6,sports_fees_v3,10,18,0,1.0,sports_fees_v3,setkacup.com(10)
+Sports games,Volleyball/handball,hbeliteserien-games,23.25,15,21,3,0,5,0,0,0,0,0,0,0,0,0,0.952,21.7,sports_fees_v3,0,0,,,,
+Sports games,Tennis,daviscup-games,1.08,11,11,0,0,674704,0,0,0,22490,0,0,52050,110438,61337,0.0,53.1,sports_fees_v3,0,0,,,,
+Sports games,Cricket,cricodc,,1,3,0,0,33021,0,0,0,1101,0,0,0,26417,11007,0.667,169.8,sports_fees_v3,0,0,,,,
+Sports games,Rugby,nrl-games,123.75,4,4,0,0,94591,0,0,0,3153,0,0,6603,55172,23648,0.0,147.3,sports_fees_v3,0,0,,,,
+Sports games,Cricket,cricodcl2w,,1,3,0,0,1021,0,0,0,34,0,0,0,817,340,0.667,144.3,sports_fees_v3,0,0,,,,
+Sports games,Basketball (other),bkbbl,2.0,28,39,0,0,432371,0,0,0,14412,0,0,7694,21840,11086,0.0,157.1,sports_fees_v3,7,7,84,0.94,sports_fees_v3,www.easycredit-bbl.de(7)
+Sports games,Volleyball/handball,hbasobal-games,15.5,20,21,5,0,40,0,0,0,1,0,0,0,0,2,0.952,60.4,sports_fees_v3,1,1,0,1.0,sports_fees_v3,asobal.es(1)
+Sports games,Cricket,t20-premier-league-women,4.0,4,16,0,0,2581,0,0,0,86,0,0,0,438,161,0.75,58.3,sports_fees_v3,0,0,,,,
+Sports games,Volleyball/handball,hbhandbold-games,2.0,29,30,7,0,30,0,0,0,1,0,0,0,0,1,0.967,57.6,sports_fees_v3,0,0,,,,
+Sports games,Sports (other),pll,,1,1,0,0,82,0,0,0,3,0,0,82,82,82,0.0,123.9,sports_fees_v3,3,3,1,0.97,sports_fees_v3,premierlacrosseleague.com(3)
+Sports games,Cricket,cricetpl,,1,4,0,0,28215,0,0,0,940,0,0,0,19750,7054,0.75,24.6,sports_fees_v3,0,0,,,,
+Sports games,Rugby,rugby-top-14,14.25,13,22,0,0,34557,0,0,0,1152,0,0,218,5520,1571,0.045,326.2,sports_fees_v3,14,42,279,0.595,sports_fees_v3,www.lnr.fr(14)
+Sports games,Cricket,caribbean-premier-league,,1,4,0,0,141218,0,0,0,4707,0,0,0,98853,35305,0.75,48.4,sports_fees_v3,0,0,,,,
+Sports games,Soccer,argcopa-games,100.25,2,4,0,0,210765,0,0,0,7026,0,0,50484,106916,52691,0.25,152.9,sports_fees_v3,0,0,,,,
+Sports games,Soccer,afcq-games,3.0,10,24,0,0,3341263,0,0,0,111375,0,0,104317,310799,139219,0.0,45.1,sports_fees_v3,0,0,,,,
+Sports games,Soccer,uwec-games,0.25,2,2,0,0,5382,0,0,0,179,0,0,2691,4258,2691,0.0,0.7,sports_fees_v3,0,0,,,,
+Sports games,Rugby,rugby-premiership,19.33,13,15,0,0,21409,0,0,0,714,0,0,72,3268,1427,0.067,325.9,sports_fees_v3,10,30,717,0.59,sports_fees_v3,www.premiershiprugby.com(10)
+Sports games,Rugby,united-rugby-championship,2.5,15,24,0,0,12342,0,0,0,411,0,0,146,1222,514,0.167,327.8,sports_fees_v3,16,48,278,0.625,sports_fees_v3,www.unitedrugby.com(16)
+Sports games,Soccer,soccer-scoc,19.5,2,30,0,0,26860,0,0,0,895,0,0,0,1597,895,0.7,289.2,sports_fees_v3,181,3264,463,0.755,sports_fees_v3,www.scottishfa.co.uk(181)
+Sports games,Rugby,super-league-games,95.0,3,3,0,0,122,0,0,0,4,0,0,54,66,41,0.333,158.0,sports_fees_v3,2,2,17,0.74,sports_fees_v3,www.superleague.co.uk(2)
+Sports games,Soccer,primera-division,2.5,8,8,0,0,467684,0,0,0,15589,0,0,42578,114689,58460,0.0,324.2,sports_fees_v3,59,1246,1030,0.21,sports_fees_v3,anfp.cl(59)
+Sports games,Sports (other),afl-games,,1,1,0,0,8725,0,0,0,291,0,0,8725,8725,8725,0.0,176.1,sports_fees_v3,0,0,,,,
+Sports games,Cricket,crickcct20,24.0,13,52,0,0,43627,0,0,0,1454,0,0,0,3215,839,0.654,81.9,sports_fees_v3,0,0,,,,
+Sports games,Golf,pga-tour,168.0,2,17,0,0,29652,0,0,0,988,0,0,0,2972,1744,0.529,175.9,sports_fees_v3,12,804,50,0.98,sports_fees_v3,www.pgatour.com(11)
+Sports games,Soccer,wsl2-games,2.0,2,6,0,0,46910,0,0,0,1564,0,0,4345,16005,7818,0.0,68.1,sports_fees_v3,24,534,593,0.66,sports_fees_v3,www.wslfootball.com(24)
+Sports games,Cricket,womens-national-cricket-league,2.0,4,12,0,0,183347,0,0,0,6112,0,0,5,37970,15279,0.5,87.1,sports_fees_v3,0,0,,,,
+Sports games,Soccer,pt2-games,4.5,9,9,0,0,74607,0,0,0,2487,0,0,7664,15273,8290,0.0,27.0,sports_fees_v3,27,648,15068,0.07,sports_fees_v3,www.ligaportugal.pt(27)
+Sports games,Soccer,soccer-auc,,1,1,0,0,118678,0,0,0,3956,0,0,118678,118678,118678,0.0,324.1,sports_fees_v3,4,4,0,0.999,sports_fees_v3,www.a-league.com.au(4)
+Sports games,Cricket,sheffield-shield,13.5,3,9,0,0,567,0,0,0,19,0,0,0,187,63,0.778,140.0,sports_fees_v3,9,27,1,1.0,sports_fees_v3,www.cricket.com.au(9)
+Sports games,Volleyball/handball,hbehfcl-games,22.0,8,15,6,0,5,0,0,0,0,0,0,0,0,0,0.933,23.6,sports_fees_v3,10,10,1017,0.48,sports_fees_v3,ehfcl.eurohandball.com(10)
+Stock above-strike ladder,GOOGL,googl-multi-strikes-weekly,24.0,21,21,5,1,211020,67890,8549,9699,7034,12695,23489,7515,25809,10049,0.0,32.0,finance_prices_fees,1,5,12786,0.02,finance_prices_fees,pythdata.app(1)
+Stock above-strike ladder,AMZN,amzn-multi-strikes-weekly,24.0,21,21,5,1,106107,57978,24642,8283,3537,7352,22164,1490,18447,5053,0.0,32.0,finance_prices_fees,1,5,15546,0.11,finance_prices_fees,pythdata.app(1)
+Stock above-strike ladder,NVDA,nvda-multi-strikes-weekly,24.0,21,21,5,1,119164,56269,17605,8038,3972,8628,20134,3006,17605,5674,0.0,32.0,finance_prices_fees,1,5,5322,0.214,finance_prices_fees,pythdata.app(1)
+Stock above-strike ladder,MSFT,msft-multi-strikes-weekly,24.0,21,21,5,1,186648,50600,22013,7229,6222,11207,18150,6182,18409,8888,0.0,32.0,finance_prices_fees,2,6,3143,0.04,finance_prices_fees,pythdata.app(2)
+Stock above-strike ladder,TSLA,tsla-multi-strikes-weekly,24.0,21,21,5,1,82231,31072,11736,4439,2741,5821,11274,2110,8603,3916,0.0,32.0,finance_prices_fees,1,5,3135,0.18,finance_prices_fees,pythdata.app(1)
+Stock above-strike ladder,GOOGLE,google-multi-strikes-weekly,168.0,4,4,1,0,78054,27899,0,3986,2602,27899,27899,23871,27593,19513,0.0,166.0,finance_prices_fees,1,13,6656,0.07,finance_prices_fees,pythdata.app(1)
+Stock above-strike ladder,META,meta-multi-strikes-daily,24.0,21,21,5,1,103813,22378,446,3197,3460,1546,10080,2131,11774,4943,0.0,32.0,finance_prices_fees,1,5,1722,0.02,finance_prices_fees,pythdata.app(1)
+Stock above-strike ladder,AAPL,aapl-multi-strikes-weekly,24.0,21,21,5,1,65447,21129,9944,3018,2182,2303,7964,2120,6990,3117,0.0,32.0,finance_prices_fees,1,5,4746,0.03,finance_prices_fees,pythdata.app(1)
+Stock above-strike ladder,NETFLIX,netflix-multi-strikes-weekly,168.0,4,4,1,0,28037,15771,0,2253,935,15771,15771,5054,13145,7009,0.0,166.0,finance_prices_fees,1,13,6180,0.08,finance_prices_fees,pythdata.app(1)
+Stock above-strike ladder,PALANTIR,palantir-multi-strikes-weekly,168.0,4,4,1,0,13961,12450,0,1779,465,12450,12450,636,8908,3490,0.0,166.0,finance_prices_fees,1,13,13027,0.07,finance_prices_fees,pythdata.app(1)
+Stock above-strike ladder,SPACEX,spacex-multi-strikes-weekly,168.0,4,4,1,0,15651,10240,0,1463,522,10240,10240,2487,8157,3913,0.0,166.0,finance_prices_fees,1,13,10392,0.09,finance_prices_fees,pythdata.app(1)
+Stock above-strike ladder,MICRON,micron-multi-strikes-weekly,168.0,4,4,1,0,36448,7561,0,1080,1215,7561,7561,5485,19060,9112,0.0,166.0,finance_prices_fees,1,13,12444,0.07,finance_prices_fees,pythdata.app(1)
+Stock above-strike ladder,MICROSOFT,microsoft-multi-strikes-weekly,168.0,4,4,1,0,11753,6785,0,969,392,6785,6785,2236,5721,2938,0.0,166.0,finance_prices_fees,1,13,6446,0.09,finance_prices_fees,pythdata.app(1)
+Stock above-strike ladder,META,meta-multi-strikes-weekly,168.0,4,4,1,0,46461,5872,0,839,1549,5872,5872,11398,18590,11615,0.0,166.0,finance_prices_fees,1,13,8854,0.07,finance_prices_fees,pythdata.app(1)
+Stock above-strike ladder,OPENDOOR,opendoor-multi-strikes-weekly,168.0,4,4,1,0,8626,4012,0,573,288,4012,4012,2011,3484,2157,0.0,166.0,finance_prices_fees,1,10,2706,0.1,finance_prices_fees,pythdata.app(1)
+Stock above-strike ladder,NVIDIA,nvidia-multi-strikes-weekly,168.0,4,4,1,0,17162,3447,0,492,572,3447,3447,3137,8321,4290,0.0,166.0,finance_prices_fees,1,13,9364,0.06,finance_prices_fees,pythdata.app(1)
+Stock above-strike ladder,TESLA,tesla-multi-strikes-weekly,168.0,4,4,1,0,16918,3076,0,439,564,3076,3076,4537,6866,4229,0.0,166.0,finance_prices_fees,1,13,10072,0.07,finance_prices_fees,pythdata.app(1)
+Stock above-strike ladder,APPLE,apple-multi-strikes-weekly,168.0,4,4,1,0,19557,2855,0,408,652,2855,2855,1631,11982,4889,0.0,166.0,finance_prices_fees,1,13,6494,0.2,finance_prices_fees,pythdata.app(1)
+Stock above-strike ladder,AMAZON,amazon-multi-strikes-weekly,168.0,4,4,1,0,7671,1020,0,146,256,1020,1020,1710,3468,1918,0.0,166.0,finance_prices_fees,1,13,3915,0.12,finance_prices_fees,pythdata.app(1)
+Stock daily up/down,TSLA,tsla-daily-up-down,24.0,21,21,5,1,85019,17783,5140,2540,2834,2144,6643,2241,7645,4049,0.0,32.0,finance_prices_fees,1,1,763,0.03,finance_prices_fees,pythdata.app(1)
+Stock daily up/down,NVDA,nvda-daily-up-down,24.0,21,21,5,1,56863,16546,6985,2364,1895,2158,5948,2217,4392,2708,0.0,32.0,finance_prices_fees,1,1,734,0.04,finance_prices_fees,pythdata.app(1)
+Stock daily up/down,AAPL,aapl-daily-up-down,24.0,21,21,5,1,61170,11795,4521,1685,2039,1684,4136,1732,4679,2913,0.0,32.0,finance_prices_fees,1,1,1227,0.01,finance_prices_fees,pythdata.app(1)
+Stock daily up/down,GOOGL,googl-daily-up-down,24.0,21,21,5,1,54733,10554,2619,1508,1824,1434,3454,1844,4626,2606,0.0,32.0,finance_prices_fees,1,1,1236,0.03,finance_prices_fees,pythdata.app(1)
+Stock daily up/down,MSFT,msft-daily-up-down,24.0,21,21,5,1,66863,8851,4007,1264,2229,1037,3219,2038,4714,3184,0.0,32.0,finance_prices_fees,1,1,1072,0.01,finance_prices_fees,pythdata.app(1)
+Stock daily up/down,META,meta-daily-up-down,24.0,21,21,5,1,76568,7272,3012,1039,2552,1778,2538,1827,8744,3646,0.0,32.0,finance_prices_fees,1,1,813,0.03,finance_prices_fees,pythdata.app(1)
+Stock daily up/down,SPCX,spcx-daily-up-or-down,24.0,21,21,5,1,17126,6868,5128,981,571,368,3375,513,1569,816,0.0,32.0,finance_prices_fees,1,1,210,0.06,finance_prices_fees,pythdata.app(1)
+Stock daily up/down,MU,mu-daily-up-or-down,24.0,21,21,5,1,26470,6047,1475,864,882,1125,1949,831,2414,1260,0.0,32.0,finance_prices_fees,1,1,194,0.72,finance_prices_fees,pythdata.app(1)
+Stock daily up/down,AMZN,amzn-daily-up-down,24.0,21,21,5,1,34485,5994,731,856,1149,731,2401,969,3369,1642,0.0,32.0,finance_prices_fees,1,1,1237,0.01,finance_prices_fees,pythdata.app(1)
+Stock daily up/down,PLTR,pltr-daily-up-or-down,24.0,21,21,5,1,31617,4254,603,608,1054,603,1468,714,3255,1506,0.0,32.0,finance_prices_fees,1,1,496,0.03,finance_prices_fees,pythdata.app(1)
+Stock daily up/down,NFLX,nflx-daily-up-or-down,24.0,21,21,5,1,23470,4200,715,600,782,825,1205,891,2103,1118,0.0,32.0,finance_prices_fees,1,1,829,0.02,finance_prices_fees,pythdata.app(1)
+Stock daily up/down,OPEN,open-daily-up-or-down,24.0,21,21,5,1,16926,3066,424,438,564,424,1103,716,1371,806,0.0,32.0,finance_prices_fees,1,1,399,0.02,finance_prices_fees,pythdata.app(1)
+Stock daily up/down,HOOD,hood-daily-up-or-down,24.0,21,21,5,1,25361,2867,228,410,845,328,1153,771,1598,1208,0.0,32.0,finance_prices_fees,1,1,765,0.06,finance_prices_fees,pythdata.app(1)
+Stock daily up/down,ABNB,abnb-daily-up-or-down,24.0,21,21,5,1,18128,2761,192,394,604,516,1047,759,1632,863,0.0,32.0,finance_prices_fees,1,1,362,0.04,finance_prices_fees,pythdata.app(1)
+Stock daily up/down,RKLB,rklb-daily-up-or-down,24.0,21,21,5,1,35117,2506,515,358,1171,515,806,679,3956,1672,0.0,32.0,finance_prices_fees,1,1,8106,0.07,finance_prices_fees,pythdata.app(1)
+Stock daily up/down,COIN,coin-daily-up-or-down,24.0,21,21,5,1,10141,1782,470,255,338,230,640,187,1083,483,0.0,32.0,finance_prices_fees,1,1,673,0.04,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),NVIDIA,nvidia-hit-price-weekly,168.0,4,4,1,0,113269,50533,0,7219,3776,50533,50533,23588,44714,28317,0.0,166.0,finance_prices_fees,1,14,51548,0.02,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),TESLA,tesla-hit-price-weekly,168.0,4,4,1,0,126159,43373,0,6196,4205,43373,43373,29499,40525,31540,0.0,166.0,finance_prices_fees,1,14,79119,0.01,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),PALANTIR,palantir-hit-price-weekly,168.0,4,4,1,0,114096,41088,0,5870,3803,41088,41088,28197,37299,28524,0.0,166.0,finance_prices_fees,1,16,17375,0.02,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),COINBASE,coinbase-hit-price-weekly,168.0,4,4,1,0,130528,40377,0,5768,4351,40377,40377,33191,39084,32632,0.0,166.0,finance_prices_fees,1,12,48914,0.03,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),META,meta-hit-price-weekly,168.0,4,4,1,0,145852,35653,0,5093,4862,35653,35653,29351,62340,36463,0.0,166.0,finance_prices_fees,1,14,103861,0.03,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),ROCKET-LAB,rocket-lab-hit-price-weekly,168.0,4,4,1,0,128754,28907,0,4130,4292,28907,28907,32262,34929,32189,0.0,166.0,finance_prices_fees,1,13,12427,0.03,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),MICRON,micron-hit-price-weekly,168.0,4,4,1,0,107985,28796,0,4114,3599,28796,28796,26817,33216,26996,0.0,166.0,finance_prices_fees,1,14,24467,0.03,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),GOOGLE,google-hit-price-weekly,168.0,4,4,1,0,129171,28726,0,4104,4306,28726,28726,33261,44590,32293,0.0,166.0,finance_prices_fees,1,14,10160,0.03,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),ROBINHOOD,robinhood-hit-price-weekly,168.0,4,4,1,0,130072,26736,0,3819,4336,26736,26736,33154,45443,32518,0.0,166.0,finance_prices_fees,1,13,42242,0.03,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),MICROSOFT,microsoft-hit-price-weekly,168.0,4,4,1,0,163064,26382,0,3769,5435,26382,26382,30205,68187,40766,0.0,166.0,finance_prices_fees,1,14,22544,0.041,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),APPLE,apple-hit-price-weekly,168.0,4,4,1,0,88941,22787,0,3255,2965,22787,22787,22609,24074,22235,0.0,166.0,finance_prices_fees,1,14,43591,0.02,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),AMAZON,amazon-hit-price-weekly,168.0,4,4,1,0,79226,18315,0,2616,2641,18315,18315,18435,24428,19807,0.0,166.0,finance_prices_fees,1,16,9893,0.02,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),AIRBNB,airbnb-hit-price-weekly,168.0,4,4,1,0,107652,15922,0,2275,3588,15922,15922,22349,42543,26913,0.0,166.0,finance_prices_fees,1,14,14359,0.06,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),OPENDOOR,opendoor-hit-price-weekly,168.0,4,4,1,0,62804,15179,0,2168,2093,15179,15179,15713,17016,15701,0.0,166.0,finance_prices_fees,1,14,24159,0.04,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),SPACEX,spacex-hit-price-weekly,168.0,4,4,1,0,23580,14931,0,2133,786,14931,14931,3813,12198,5895,0.0,166.0,finance_prices_fees,1,13,9784,0.08,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),NETFLIX,netflix-hit-price-weekly,168.0,4,4,1,0,46025,10101,0,1443,1534,10101,10101,10120,15317,11506,0.0,166.0,finance_prices_fees,1,14,77462,0.04,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),SKHY,skhy-hit-price-weekly,168.0,4,4,1,0,13681,5518,0,788,456,5518,5518,3943,5236,3420,0.0,166.0,finance_prices_fees,1,15,2516,0.04,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),MSTR,mstr-hit-price-weekly,168.0,4,4,1,0,4391,1205,0,172,146,1205,1205,1155,1353,1098,0.0,166.0,finance_prices_fees,1,14,3687,0.62,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),APPLE,apple-hit-price-monthly,,1,1,0,0,48296,0,0,0,1610,0,0,48296,48296,48296,0.0,881.8,finance_prices_fees,1,14,98796,0.03,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),MICROSOFT,microsoft-hit-price-monthly,,1,1,0,0,73260,0,0,0,2442,0,0,73260,73260,73260,0.0,880.7,finance_prices_fees,1,16,70051,0.04,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),AMAZON,amazon-hit-price-monthly,,1,1,0,0,45116,0,0,0,1504,0,0,45116,45116,45116,0.0,881.7,finance_prices_fees,1,14,169703,0.26,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),GOOGLE,google-hit-price-monthly,,1,1,0,0,66301,0,0,0,2210,0,0,66301,66301,66301,0.0,881.8,finance_prices_fees,1,14,156058,0.05,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),META,meta-hit-price-monthly,,1,1,0,0,125755,0,0,0,4192,0,0,125755,125755,125755,0.0,880.6,finance_prices_fees,1,16,147889,0.03,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),TESLA,tesla-hit-price-monthly,,1,1,0,0,70373,0,0,0,2346,0,0,70373,70373,70373,0.0,880.8,finance_prices_fees,1,15,149823,0.04,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),NVIDIA,nvidia-hit-price-monthly,,1,1,0,0,97412,0,0,0,3247,0,0,97412,97412,97412,0.0,881.7,finance_prices_fees,1,16,138198,0.089,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),NETFLIX,netflix-hit-price-monthly,,1,1,0,0,35833,0,0,0,1194,0,0,35833,35833,35833,0.0,880.5,finance_prices_fees,1,13,100545,0.04,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),PALANTIR,palantir-hit-price-monthly,,1,1,0,0,54073,0,0,0,1802,0,0,54073,54073,54073,0.0,881.8,finance_prices_fees,1,16,138537,0.05,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),OPENDOOR,opendoor-hit-price-monthly,,1,1,0,0,33784,0,0,0,1126,0,0,33784,33784,33784,0.0,881.8,finance_prices_fees,1,12,41822,0.143,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),ROCKET-LAB,rocket-lab-hit-price-monthly,,1,1,0,0,52235,0,0,0,1741,0,0,52235,52235,52235,0.0,881.8,finance_prices_fees,1,18,125358,0.011,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),AIRBNB,airbnb-hit-price-monthly,,1,1,0,0,66747,0,0,0,2225,0,0,66747,66747,66747,0.0,881.7,finance_prices_fees,1,19,102211,0.067,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),MICRON,micron-hit-price-monthly,,1,1,0,0,27469,0,0,0,916,0,0,27469,27469,27469,0.0,881.7,finance_prices_fees,1,17,36657,0.177,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),MSTR,mstr-hit-price-monthly,,1,1,0,0,2174,0,0,0,72,0,0,2174,2174,2174,0.0,881.8,finance_prices_fees,1,16,2561,0.15,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),SKHY,skhy-hit-price-monthly,,1,1,0,0,2793,0,0,0,93,0,0,2793,2793,2793,0.0,881.8,finance_prices_fees,1,21,1376,0.14,finance_prices_fees,pythdata.app(1)
+Stock hit-price (touch),SPACEX,spacex-hit-price-monthly,,1,1,0,0,12180,0,0,0,406,0,0,12180,12180,12180,0.0,881.8,finance_prices_fees,1,18,31957,0.141,finance_prices_fees,pythdata.app(1)
+Stock price range (neg-risk buckets),SPCX,spcx-neg-risk-weekly,168.0,4,4,1,0,54852,50276,0,7182,1828,50276,50276,2068,36080,13713,0.0,166.0,finance_prices_fees,1,11,6485,0.08,finance_prices_fees,
+Stock price range (neg-risk buckets),MU,mu-neg-risk-weekly,168.0,4,4,1,0,13748,10417,0,1488,458,10417,10417,1479,7773,3437,0.0,166.0,finance_prices_fees,1,11,7937,0.17,finance_prices_fees,
+Stock price range (neg-risk buckets),GOOGL,googl-neg-risk-weekly,168.0,4,4,1,0,30331,10247,0,1464,1011,10247,10247,9655,10418,7583,0.0,166.0,finance_prices_fees,1,11,5437,0.1,finance_prices_fees,
+Stock price range (neg-risk buckets),NVDA,nvda-neg-risk-weekly,168.0,4,4,1,0,29536,9911,0,1416,985,9911,9911,7121,9363,7384,0.0,166.0,finance_prices_fees,1,11,12765,0.347,finance_prices_fees,
+Stock price range (neg-risk buckets),AMZN,amzn-neg-risk-weekly,168.0,4,4,1,0,10529,8485,0,1212,351,8485,8485,775,6177,2632,0.0,166.0,finance_prices_fees,1,11,6655,0.07,finance_prices_fees,
+Stock price range (neg-risk buckets),META,meta-neg-risk-weekly,168.0,4,4,1,0,15375,7626,0,1089,513,7626,7626,3722,7142,3844,0.0,166.0,finance_prices_fees,1,11,6721,0.09,finance_prices_fees,
+Stock price range (neg-risk buckets),OPEN,open-neg-risk-weekly,168.0,4,4,1,0,8605,4762,0,680,287,4762,4762,1567,3863,2151,0.0,166.0,finance_prices_fees,1,11,9122,0.419,finance_prices_fees,
+Stock price range (neg-risk buckets),MSFT,msft-neg-risk-weekly,168.0,4,4,1,0,10432,4640,0,663,348,4640,4640,2711,4629,2608,0.0,166.0,finance_prices_fees,1,11,8906,0.828,finance_prices_fees,
+Stock price range (neg-risk buckets),NFLX,nflx-neg-risk-weekly,168.0,4,4,1,0,9590,3350,0,479,320,3350,3350,2517,3325,2398,0.0,166.0,finance_prices_fees,1,11,7443,0.009,finance_prices_fees,
+Stock price range (neg-risk buckets),TSLA,tsla-neg-risk-weekly,168.0,4,4,1,0,9603,2724,0,389,320,2724,2724,2388,3062,2401,0.0,166.0,finance_prices_fees,1,11,5826,0.32,finance_prices_fees,
+Stock price range (neg-risk buckets),PLTR,pltr-neg-risk-weekly,168.0,4,4,1,0,4040,2584,0,369,135,2584,2584,585,2017,1010,0.0,166.0,finance_prices_fees,1,11,4919,0.08,finance_prices_fees,
+Stock price range (neg-risk buckets),AAPL,aapl-neg-risk-weekly,168.0,4,4,1,0,11369,410,0,59,379,410,410,1887,6078,2842,0.0,166.0,finance_prices_fees,1,11,12199,0.418,finance_prices_fees,
+Tweet/post counts,Elon Musk,elon-tweets,72.0,8,8,2,0,26403192,8380389,0,1197198,880106,4190194,4238584,2787883,4819764,3300399,0.0,252.0,culture_fees,4,90,213814,0.001,culture_fees,x.com(4)
+Tweet/post counts,Elon Musk,elon-tweets-48h,48.0,13,13,3,1,9361818,2147079,658236,306726,312061,658236,826161,648510,1019073,720140,0.0,95.9,culture_fees,2,20,42113,0.002,culture_fees,x.com(2)
+Tweet/post counts,Donald Trump,trump-truth-social,72.0,8,8,2,0,537373,152307,0,21758,17912,76153,87135,56994,96771,67172,0.0,252.0,culture_fees,4,30,18454,0.001,culture_fees,truthsocial.com(4)
+Tweet/post counts,White House,whitehouse-daily-tweets,84.0,9,9,3,1,132610,45863,13273,6552,4420,13553,17940,13553,21348,14734,0.0,241.1,culture_fees,3,28,7770,0.005,culture_fees,x.com(3)
+Tweet/post counts,Zelenskyy,zelenskyy-tweets,72.0,8,8,2,0,122644,38941,0,5563,4088,19470,21080,14698,22878,15331,0.0,252.0,culture_fees,4,40,7269,0.015,culture_fees,x.com(4)
+Tweet/post counts,Khamenei,khamenei-daily-tweets,72.0,8,8,2,0,152725,28944,0,4135,5091,14472,18676,19251,25323,19091,0.0,252.0,culture_fees,4,52,11012,0.009,culture_fees,x.com(4)
+Tweet/post counts,Ted Cruz,ted-cruz-daily-tweets,72.0,8,8,2,0,58435,15850,0,2264,1948,7925,9465,7429,8896,7304,0.0,252.0,culture_fees,4,33,2555,0.007,culture_fees,x.com(4)
+Tweet/post counts,CZ,cz-tweets,72.0,8,8,2,0,60359,15832,0,2262,2012,7916,10005,7800,10154,7545,0.0,252.0,culture_fees,4,43,4418,0.01,culture_fees,x.com(4)
+Tweet/post counts,NYC Mayor,nycmayor-tweets,72.0,8,8,2,0,73620,14876,0,2125,2454,7438,8158,8774,11516,9203,0.0,252.0,culture_fees,4,43,3821,0.002,culture_fees,x.com(4)
+Tweet/post counts,elon-tweet-mention,elon-tweet-mention,168.0,5,5,1,1,22219,1857,1857,265,741,1857,1857,4014,7175,4444,0.0,217.6,mentions_fees,1,10,665,0.1,mentions_fees,
+Tweet/post counts,Elon Musk,elon-tweet-daily,,1,1,0,0,466791,0,0,0,15560,0,0,466791,466791,466791,0.0,561.1,politics_fees,1,5,19382,0.001,culture_fees,x.com(1)
+"Economic data releases (CPI, jobs, GDP...)",us-recession-by,us-recession-by,,,,,,,,,,,,,,,,,,,2,2,39831,0.01,economics_fees,
+Central-bank rate decisions,How many Fed rate cuts in 2026?,how-many-fed-rate-cuts-in-2026,,,,,,,,,,,,,,,,,,,1,13,3742589,0.001,economics_fees,
+Central-bank rate decisions,fed-emergency-rate-cut,fed-emergency-rate-cut,,,,,,,,,,,,,,,,,,,1,1,15071,0.013,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",gdp-quarterly,gdp-quarterly,,,,,,,,,,,,,,,,,,,2,13,5616,0.0105,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",Negative GDP growth in 2026?,negative-gdp-growth-in-2026,,,,,,,,,,,,,,,,,,,1,1,1343,0.015,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",How high will inflation get in 2026?,how-high-will-inflation-get-in-2026,,,,,,,,,,,,,,,,,,,1,5,46768,0.02,economics_fees,
+Central-bank rate decisions,What will Fed Rate hit before 2027?,what-will-fed-rate-hit-before-2027,,,,,,,,,,,,,,,,,,,1,20,213919,0.008,economics_fees,
+Central-bank rate decisions,Fed rate cut by...?,fed-rate-cut-by-629,,,,,,,,,,,,,,,,,,,1,7,116639,0.001,economics_fees,
+Central-bank rate decisions,ECB rate cut in 2026?,ecb-rate-cut-in-2026,,,,,,,,,,,,,,,,,,,1,1,4343,0.02,economics_fees,
+Esports matches,League of Legends,lol-worlds-2026-winning-region-226,,,,,,,,,,,,,,,,,,,1,6,826939,0.01,sports_fees_v2,
+Crypto hit-price (touch),LIGHTER,lighter-hit-price-monthly,,,,,,,,,,,,,,,,,,,1,8,108755,0.012,crypto_fees_v2,
+"Economic data releases (CPI, jobs, GDP...)",inflation-canada-annual,inflation-canada-annual,,,,,,,,,,,,,,,,,,,1,8,4160,0.009,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",How high will US unemployment go in 2026,how-high-will-us-unemployment-go-in-2026,,,,,,,,,,,,,,,,,,,1,5,20394,0.008,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",inflation-uk-annual,inflation-uk-annual,,,,,,,,,,,,,,,,,,,2,15,4876,0.094,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",Eurozone Annual Inflation 2026,eurozone-2026-annual-inflation,,,,,,,,,,,,,,,,,,,1,9,20329,0.045,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",China Annual Inflation 2026,china-annual-inflation-2026,,,,,,,,,,,,,,,,,,,1,9,8034,0.001,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",inflation-argentina-annual,inflation-argentina-annual,,,,,,,,,,,,,,,,,,,1,7,9216,0.005,economics_fees,
+Central-bank rate decisions,What will the Fed rate be at the end of ,what-will-the-fed-rate-be-at-the-end-of-2026,,,,,,,,,,,,,,,,,,,1,15,152505,0.001,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",China Annual GDP Growth 2026,china-annual-gdp-growth-2026,,,,,,,,,,,,,,,,,,,1,10,124013,0.001,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",eurozone-gdp,eurozone-gdp,,,,,,,,,,,,,,,,,,,1,9,12922,0.001,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",UK Annual GDP Growth 2026,uk-annual-gdp-growth-2026,,,,,,,,,,,,,,,,,,,1,7,13008,0.011,economics_fees,
+Central-bank rate decisions,Predicted Fed rate under each Fed Chair,major-rate-cut-chances-under-each-fed-chair-948,,,,,,,,,,,,,,,,,,,1,2,2500,0.022,economics_fees,
+Esports matches,Esports (other),will-moistcr1tikal-get-a-haircut-in-2026,,,,,,,,,,,,,,,,,,,1,1,3,0.96,culture_fees,
+"Economic data releases (CPI, jobs, GDP...)",Brazil Annual Inflation 2026,brazil-annual-inflation-2026,,,,,,,,,,,,,,,,,,,1,10,14136,0.003,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",2026 World GDP Growth,2026-world-gdp-growth,,,,,,,,,,,,,,,,,,,1,9,8147,0.001,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",South Africa Annual Inflation 2026,south-africa-annual-inflation-2026,,,,,,,,,,,,,,,,,,,1,10,12546,0.003,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",Will Canada have the highest unemploymen,will-canada-have-the-highest-unemployment-rate-since-2016-this-year,,,,,,,,,,,,,,,,,,,1,1,617,0.087,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",South Korea Annual Inflation 2026,south-korea-annual-inflation-2026,,,,,,,,,,,,,,,,,,,1,7,3217,0.003,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",India Annual Inflation 2026,india-annual-inflation-2026,,,,,,,,,,,,,,,,,,,1,7,6163,0.015,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",Mexico Annual Inflation 2026,mexico-annual-inflation-2026,,,,,,,,,,,,,,,,,,,1,8,3525,0.013,economics_fees,
+Esports matches,League of Legends,will-t1-beat-grok-ai-in-2026,,,,,,,,,,,,,,,,,,,1,1,6459,0.007,sports_fees_v2,
+Central-bank rate decisions,Christine Lagarde out as ECB president i,christine-lagarde-out-as-ecb-president-in-2026,,,,,,,,,,,,,,,,,,,1,1,961,0.13,politics_fees,
+Central-bank rate decisions,Bank of England rate hike in 2026?,bank-of-england-rate-hike-in-2026,,,,,,,,,,,,,,,,,,,1,1,3336,0.002,economics_fees,
+Esports matches,League of Legends,will-faker-win-a-finals-mvp-award-at-an-international-event-in-2026,,,,,,,,,,,,,,,,,,,1,1,17266,0.001,sports_fees_v2,
+Esports matches,Counter-Strike,will-faze-win-a-tier-1-event-in-2026,,,,,,,,,,,,,,,,,,,1,1,5271,0.001,sports_fees_v2,
+Central-bank rate decisions,Bank of Canada Rate Hike in 2026?,bank-of-canada-rate-hike-in-2026,,,,,,,,,,,,,,,,,,,1,1,3103,0.12,economics_fees,
+Sports games,Cricket,legends-league-cricket,,,,,,,,,,,,,,,,,,,2,4,2,0.995,sports_fees_v2,www.espncricinfo.com(2)
+Sports games,Basketball (other),bkgr1,,,,,,,,,,,,,,,,,,,1,1,7,0.977,sports_fees_v2,www.esake.gr(1)
+Sports games,Soccer,2026-soccer-brazil-srie-b-winner,,,,,,,,,,,,,,,,,,,1,10,656,0.001,sports_fees_v2,polymarket-upload.s3.us-east-2.amazonaws.com(1)
+Sports games,Soccer,2026-soccer-chinese-super-league-winner,,,,,,,,,,,,,,,,,,,1,2,1530,0.016,sports_fees_v2,polymarket-upload.s3.us-east-2.amazonaws.com(1)
+Sports games,Soccer,2026-soccer-norway-eliteserien-winner,,,,,,,,,,,,,,,,,,,1,6,2136,0.25,sports_fees_v2,polymarket-upload.s3.us-east-2.amazonaws.com(1)
+Sports games,Soccer,2026-soccer-k-league-winner,,,,,,,,,,,,,,,,,,,1,2,39,0.038,sports_fees_v2,polymarket-upload.s3.us-east-2.amazonaws.com(1)
+Sports games,Soccer,2026-soccer-brazil-srie-a-winner,,,,,,,,,,,,,,,,,,,1,7,13104,0.002,sports_fees_v2,polymarket-upload.s3.us-east-2.amazonaws.com(1)
+Sports games,Soccer,2026-soccer-chile-primera-winner,,,,,,,,,,,,,,,,,,,1,5,748,0.28,sports_fees_v2,polymarket-upload.s3.us-east-2.amazonaws.com(1)
+Sports games,Soccer,2026-soccer-peru-liga-1-winner,,,,,,,,,,,,,,,,,,,1,16,566,0.56,sports_fees_v2,polymarket-upload.s3.us-east-2.amazonaws.com(1)
+Sports games,Soccer,2026-soccer-copa-libertadores-winner,,,,,,,,,,,,,,,,,,,1,3,4451,0.001,sports_fees_v2,polymarket-upload.s3.us-east-2.amazonaws.com(1)
+Sports games,Soccer,2026-soccer-bolivia-lfpb-winner,,,,,,,,,,,,,,,,,,,1,10,73,0.58,sports_fees_v2,polymarket-upload.s3.us-east-2.amazonaws.com(1)
+Sports games,Soccer,soccer-trsk,,,,,,,,,,,,,,,,,,,2,12,5,0.655,sports_fees_v2,tff.org(2)
+Sports games,Cricket,t20-brisbane-champions-league,,,,,,,,,,,,,,,,,,,1,3,0,1.0,sports_fees_v2,www.espncricinfo.com(1)
+Sports games,Cricket,pakistan-super-league,,,,,,,,,,,,,,,,,,,6,14,1,0.99,sports_fees_v2,www.espncricinfo.com(6)
+"Economic data releases (CPI, jobs, GDP...)",UK Recession in 2026?,uk-recession-in-2026,,,,,,,,,,,,,,,,,,,1,1,646,0.02,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",Japan recession in 2026?,japan-recession-in-2026,,,,,,,,,,,,,,,,,,,1,1,229,0.02,economics_fees,
+Tweet/post counts,,will-elon-musk-tweet-about-hyperliquid-by,,,,,,,,,,,,,,,,,,,1,3,1217,0.01,crypto_fees_v2,
+Esports matches,Esports (other),mlb-the-show-27-cover-athlete,,,,,,,,,,,,,,,,,,,1,30,708,0.11,sports_fees_v2,
+Esports matches,Counter-Strike,fnatic-mergeracquisition-announced-by,,,,,,,,,,,,,,,,,,,1,3,86,0.76,sports_fees_v3,
+Esports matches,Counter-Strike,will-zywoo-reach-36-hltv-mvp-awards-by-december-31-2026,,,,,,,,,,,,,,,,,,,1,1,8140,0.012,sports_fees_v2,
+Esports matches,Counter-Strike,will-valve-add-sticker-trade-ups-before-november-20260608173609897,,,,,,,,,,,,,,,,,,,1,1,435,0.013,sports_fees_v2,
+Esports matches,Esports (other),will-valve-officially-release-deadlock-before-2027-20260615174246158,,,,,,,,,,,,,,,,,,,1,1,496,0.32,culture_fees,
+Central-bank rate decisions,fomc,fomc,,,,,,,,,,,,,,,,,,,3,15,802579,0.01,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",Japan Core CPI YoY in 2026,japan-core-cpi-yoy-in-2026-20260617224131789,,,,,,,,,,,,,,,,,,,1,6,11888,0.002,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",Japan Core-Core CPI YoY in 2026,japan-core-core-cpi-yoy-in-2026-20260617223728725,,,,,,,,,,,,,,,,,,,1,6,3052,0.007,economics_fees,
+Esports matches,League of Legends,will-faker-win-an-international-title-in-2026-20260620014711222,,,,,,,,,,,,,,,,,,,1,1,103,0.04,sports_fees_v2,lolesports.com(1)
+Central-bank rate decisions,How many Fed rate hikes in 2026?,how-many-fed-rate-hikes-in-2026-20260623190717369,,,,,,,,,,,,,,,,,,,1,5,184001,0.01,economics_fees,
+Esports matches,League of Legends,will-a-player-pick-teemo-in-a-tier-1-leagueevent-this-year-20260624131200269,,,,,,,,,,,,,,,,,,,1,1,5,0.944,sports_fees_v2,lolesports.com(1)
+Sports games,Cricket,criccoppat10,,,,,,,,,,,,,,,,,,,2,4,0,0.998,sports_fees_v2,www.espncricinfo.com(2)
+Sports games,Cricket,cricecsbg,,,,,,,,,,,,,,,,,,,1,3,0,1.0,sports_fees_v2,www.espncricinfo.com(1)
+Esports matches,Valorant,will-valorant-viewership-surpass-cs2-viewership-at-a-major-in-2026-20260630155452900,,,,,,,,,,,,,,,,,,,1,1,28,0.047,sports_fees_v2,
+Esports matches,Valorant,will-tarik-have-a-boxing-fight-with-fns-in-2026-20260630175008083,,,,,,,,,,,,,,,,,,,1,1,58,0.182,sports_fees_v2,
+Sports games,Cricket,cricjcl,,,,,,,,,,,,,,,,,,,1,3,0,1.0,sports_fees_v2,www.espncricinfo.com(1)
+Central-bank rate decisions,bank-of-canada-decision,bank-of-canada-decision,,,,,,,,,,,,,,,,,,,2,10,33528,0.0035,economics_fees,
+Esports matches,Counter-Strike,will-cs2-add-a-shootout-ot-by-december-31-20260716151243553,,,,,,,,,,,,,,,,,,,1,1,952,0.02,sports_fees_v3,
+Esports matches,Counter-Strike,will-arrowcs-eat-a-bug-on-stream-by-december-31-20260715213055256,,,,,,,,,,,,,,,,,,,1,1,125,0.364,culture_fees,
+Esports matches,Valorant,will-tenz-be-elected-the-new-riot-games-ceo-in-2026-20260715203936418,,,,,,,,,,,,,,,,,,,1,1,183,0.007,sports_fees_v3,
+Esports matches,Valorant,will-zekken-leave-mibr-in-2026-20260715205615632,,,,,,,,,,,,,,,,,,,1,1,50,0.42,sports_fees_v3,
+Sports games,NFL,pro-football-cardinals-vspt-rams-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,1431,0.444,sports_fees_v3,
+Sports games,NFL,pro-football-cardinals-vspt-seahawks-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,167,0.17,sports_fees_v3,
+Sports games,NFL,pro-football-49ers-vspt-seahawks-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,549,0.03,sports_fees_v3,
+Sports games,NFL,pro-football-rams-vspt-seahawks-season-series-winner,,,,,,,,,,,,,,,,,,,1,3,432,0.09,sports_fees_v3,
+Sports games,NFL,pro-football-rams-vspt-49ers-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,1124,0.676,sports_fees_v3,
+Sports games,NFL,pro-football-cardinals-vspt-49ers-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,374,0.16,sports_fees_v3,
+Sports games,NFL,pro-football-giants-vspt-commanders-season-series-winner,,,,,,,,,,,,,,,,,,,1,3,2919,0.49,sports_fees_v3,
+Sports games,NFL,pro-football-eagles-vspt-commanders-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,482,0.721,sports_fees_v3,
+Sports games,NFL,pro-football-eagles-vspt-giants-season-series-winner,,,,,,,,,,,,,,,,,,,1,3,260,0.17,sports_fees_v3,
+Sports games,NFL,pro-football-packers-vspt-vikings-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,245,0.37,sports_fees_v3,
+Sports games,NFL,pro-football-lions-vspt-vikings-season-series-winner,,,,,,,,,,,,,,,,,,,1,3,301,0.488,sports_fees_v3,
+Sports games,NFL,pro-football-lions-vspt-packers-season-series-winner,,,,,,,,,,,,,,,,,,,1,3,376,0.13,sports_fees_v3,
+Sports games,NFL,pro-football-bears-vspt-vikings-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,380,0.84,sports_fees_v3,
+Sports games,NFL,pro-football-bears-vspt-packers-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,288,0.2,sports_fees_v3,
+Sports games,NFL,pro-football-bears-vspt-lions-season-series-winner,,,,,,,,,,,,,,,,,,,1,3,259,0.21,sports_fees_v3,
+Sports games,NFL,pro-football-saints-vspt-buccaneers-season-series-winner,,,,,,,,,,,,,,,,,,,1,3,78,0.17,sports_fees_v3,
+Sports games,NFL,pro-football-panthers-vspt-buccaneers-season-series-winner,,,,,,,,,,,,,,,,,,,1,3,343,0.07,sports_fees_v3,
+Sports games,NFL,pro-football-panthers-vspt-saints-season-series-winner,,,,,,,,,,,,,,,,,,,1,3,387,0.48,sports_fees_v3,
+Sports games,NFL,pro-football-falcons-vspt-buccaneers-season-series-winner,,,,,,,,,,,,,,,,,,,1,3,449,0.08,sports_fees_v3,
+Sports games,NFL,pro-football-falcons-vspt-saints-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,49,0.49,sports_fees_v3,
+Sports games,NFL,pro-football-falcons-vspt-panthers-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,1055,0.15,sports_fees_v3,
+Sports games,NFL,pro-football-cowboys-vspt-eagles-season-series-winner,,,,,,,,,,,,,,,,,,,1,3,300,0.31,sports_fees_v3,
+Sports games,NFL,pro-football-cowboys-vspt-giants-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,1214,0.19,sports_fees_v3,
+Sports games,NFL,pro-football-cowboys-vspt-commanders-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,529,0.03,sports_fees_v3,
+Sports games,NFL,pro-football-raiders-vspt-chargers-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,47,0.69,sports_fees_v3,
+Sports games,NFL,pro-football-chiefs-vspt-raiders-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,310,0.23,sports_fees_v3,
+Sports games,NFL,pro-football-chiefs-vspt-chargers-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,208,0.14,sports_fees_v3,
+Sports games,NFL,pro-football-broncos-vspt-chiefs-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,239,0.09,sports_fees_v3,
+Sports games,NFL,pro-football-broncos-vspt-raiders-season-series-winner,,,,,,,,,,,,,,,,,,,1,3,479,0.058,sports_fees_v3,
+Sports games,NFL,pro-football-broncos-vspt-chargers-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,331,0.08,sports_fees_v3,
+Sports games,NFL,pro-football-jaguars-vspt-titans-season-series-winner,,,,,,,,,,,,,,,,,,,1,3,224,0.07,sports_fees_v3,
+Sports games,NFL,pro-football-colts-vspt-jaguars-season-series-winner,,,,,,,,,,,,,,,,,,,1,3,1120,0.88,sports_fees_v3,
+Sports games,NFL,pro-football-colts-vspt-titans-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,4218,0.784,sports_fees_v3,
+Sports games,NFL,pro-football-texans-vspt-colts-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,228,0.826,sports_fees_v3,
+Sports games,NFL,pro-football-texans-vspt-jaguars-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,33,0.97,sports_fees_v3,
+Sports games,NFL,pro-football-texans-vspt-titans-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,256,0.39,sports_fees_v3,
+Sports games,NFL,pro-football-bills-vspt-patriots-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,1326,0.28,sports_fees_v3,
+Sports games,NFL,pro-football-bills-vspt-jets-season-series-winner,,,,,,,,,,,,,,,,,,,1,3,328,0.322,sports_fees_v3,
+Sports games,NFL,pro-football-bills-vspt-dolphins-season-series-winner,,,,,,,,,,,,,,,,,,,1,3,536,0.11,sports_fees_v3,
+Sports games,NFL,pro-football-dolphins-vspt-patriots-season-series-winner,,,,,,,,,,,,,,,,,,,1,3,1529,0.2,sports_fees_v3,
+Sports games,NFL,pro-football-dolphins-vspt-jets-season-series-winner,,,,,,,,,,,,,,,,,,,1,3,287,0.29,sports_fees_v3,
+Sports games,NFL,pro-football-patriots-vspt-jets-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,175,0.43,sports_fees_v3,
+Sports games,NFL,pro-football-ravens-vspt-steelers-season-series-winner,,,,,,,,,,,,,,,,,,,1,3,381,0.5,sports_fees_v3,
+Sports games,NFL,pro-football-ravens-vspt-browns-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,843,0.256,sports_fees_v3,
+Sports games,NFL,pro-football-bengals-vspt-steelers-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,417,0.271,sports_fees_v3,
+Sports games,NFL,pro-football-ravens-vspt-bengals-season-series-winner,,,,,,,,,,,,,,,,,,,1,3,639,0.19,sports_fees_v3,
+Sports games,NFL,pro-football-bengals-vspt-browns-season-series-winner,,,,,,,,,,,,,,,,,,,1,3,1093,0.4,sports_fees_v3,
+Sports games,NFL,pro-football-browns-vspt-steelers-season-series-winner,,,,,,,,,,,,,,,,,,,1,2,665,0.931,sports_fees_v3,
+Sports games,Soccer,soccer-atc,,,,,,,,,,,,,,,,,,,52,807,469,0.745,sports_fees_v3,www.oefb.at(52)
+Sports games,Soccer,soccer-brco,,,,,,,,,,,,,,,,,,,17,191,377,0.925,sports_fees_v3,www.cbf.com.br(17)
+Sports games,Soccer,scotland-league-cup,,,,,,,,,,,,,,,,,,,3,5,0,1.0,sports_fees_v3,spfl.co.uk(3)
+Sports games,Tennis,will-novak-djokovic-announce-his-retirement-byptptpt-20260722162440703,,,,,,,,,,,,,,,,,,,1,2,495,0.017,politics_fees,
+Sports games,Soccer,soccer-lec,,,,,,,,,,,,,,,,,,,2,6,0,0.999,sports_fees_v3,www.leaguescup.com(2)
+Central-bank rate decisions,bank-of-russia-decision,bank-of-russia-decision,,,,,,,,,,,,,,,,,,,2,8,28200,0.0105,economics_fees,
+Central-bank rate decisions,ecb-interest-rates,ecb-interest-rates,,,,,,,,,,,,,,,,,,,2,10,39558,0.0105,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",south-korea-gdp,south-korea-gdp,,,,,,,,,,,,,,,,,,,1,8,3404,0.03,economics_fees,
+Sports games,Cricket,crickerala,,,,,,,,,,,,,,,,,,,4,12,0,1.0,sports_fees_v3,www.espncricinfo.com(4)
+Sports games,Soccer,efl-cup,,,,,,,,,,,,,,,,,,,43,739,10440,0.05,sports_fees_v3,www.efl.com(43)
+Sports games,Cricket,cricmukono,,,,,,,,,,,,,,,,,,,24,70,0,1.0,sports_fees_v3,www.espncricinfo.com(24)
+Sports games,Sports (other),wll,,,,,,,,,,,,,,,,,,,1,1,0,0.98,sports_fees_v3,thewll.com(1)
+Sports games,F1/motorsport,will-alix-earle-attend-an-f1-race-in-2026-20260728202933346,,,,,,,,,,,,,,,,,,,1,1,326,0.03,culture_fees,
+Esports matches,Valorant,will-fns-announce-a-2028-presidential-run-by-the-end-of-the-year-20260715211830939,,,,,,,,,,,,,,,,,,,1,1,6,0.93,sports_fees_v3,
+Central-bank rate decisions,reserve-bank-of-new-zealand-decision,reserve-bank-of-new-zealand-decision,,,,,,,,,,,,,,,,,,,2,10,6527,0.01,economics_fees,
+Central-bank rate decisions,dissent-at-fed-meeting,dissent-at-fed-meeting,,,,,,,,,,,,,,,,,,,3,15,6746,0.01,economics_fees,
+Sports games,Soccer,liga-mx-2026-apertura-top-goalscorer-20260729164435034,,,,,,,,,,,,,,,,,,,1,16,73,0.74,sports_fees_v3,www.ligamx.net(1)
+Esports matches,League of Legends,league-of-legends-global-power-rankings-post-worlds-rank-1-20260729165154424,,,,,,,,,,,,,,,,,,,1,25,42450,0.02,sports_fees_v3,
+Central-bank rate decisions,bank-of-england-decision,bank-of-england-decision,,,,,,,,,,,,,,,,,,,2,10,25278,0.02,economics_fees,www.bankofengland.co.uk(1)
+"Economic data releases (CPI, jobs, GDP...)",germany-gdp,germany-gdp,,,,,,,,,,,,,,,,,,,1,6,2385,0.002,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",euro-gdp,euro-gdp,,,,,,,,,,,,,,,,,,,1,7,2823,0.082,economics_fees,
+"Economic data releases (CPI, jobs, GDP...)",mexico-gdp,mexico-gdp,,,,,,,,,,,,,,,,,,,1,8,2522,0.03,economics_fees,
+Central-bank rate decisions,bank-of-japan,bank-of-japan,,,,,,,,,,,,,,,,,,,2,10,47118,0.0055,economics_fees,
+Esports matches,League of Legends,will-faker-become-president-of-south-korea-by-the-end-of-the-year-20260803154756715,,,,,,,,,,,,,,,,,,,1,1,1086,0.022,sports_fees_v3,
+Esports matches,League of Legends,will-caedrel-reach-challenger-before-the-end-of-the-year-20260803221259035,,,,,,,,,,,,,,,,,,,1,1,242,0.07,sports_fees_v3,
+Sports games,Soccer,soccer-skc,,,,,,,,,,,,,,,,,,,1,1,0,1.0,sports_fees_v3,www.slstat.com(1)
+Central-bank rate decisions,bank-of-brazil-decision,bank-of-brazil-decision,,,,,,,,,,,,,,,,,,,2,10,9048,0.006,economics_fees,
+Esports matches,League of Legends,which-teams-will-make-a-roster-change-before-december-20260806154016844,,,,,,,,,,,,,,,,,,,1,40,4545,0.02,sports_fees_v3,
+Esports matches,Valorant,which-players-will-leave-their-team-in-2026-20260805220300453,,,,,,,,,,,,,,,,,,,1,20,1131,0.01,sports_fees_v3,
+Esports matches,Esports (other),esports-awards-2026-esports-game-of-the-year-20260806164106509,,,,,,,,,,,,,,,,,,,1,12,5842,0.01,sports_fees_v3,
+Sports games,Soccer,dfb-pokal,,,,,,,,,,,,,,,,,,,81,1492,6499,0.59,sports_fees_v3,www.dfb.de(81)
+Sports games,Soccer,soccer-grc,,,,,,,,,,,,,,,,,,,41,759,460,0.74,sports_fees_v3,www.epo.gr(41)
+Sports games,Cricket,cricjclt10,,,,,,,,,,,,,,,,,,,4,4,0,1.0,sports_fees_v3,www.espncricinfo.com(4)
+Esports matches,Esports (other),esports-awards-esports-content-creator-of-the-year-20260806165627995,,,,,,,,,,,,,,,,,,,1,11,6835,0.01,sports_fees_v3,
+Esports matches,Esports (other),esports-awards-esports-content-group-of-the-year-20260806165240383,,,,,,,,,,,,,,,,,,,1,12,6156,0.01,sports_fees_v3,
+Esports matches,Esports (other),esports-awards-streamer-of-the-year-20260806165104112,,,,,,,,,,,,,,,,,,,1,12,3817,0.01,sports_fees_v3,
+Esports matches,Esports (other),esports-awards-esports-personality-of-the-year-20260806164938421,,,,,,,,,,,,,,,,,,,1,12,1770,0.29,sports_fees_v3,
+Esports matches,Esports (other),esports-awards-mobile-game-of-the-year-20260806164529015,,,,,,,,,,,,,,,,,,,1,6,1858,0.21,sports_fees_v3,
+"Economic data releases (CPI, jobs, GDP...)",uk-gdp,uk-gdp,,,,,,,,,,,,,,,,,,,1,7,2842,0.008,economics_fees,
+Esports matches,Counter-Strike,will-ropz-get-pulled-over-again-in-2026,,,,,,,,,,,,,,,,,,,1,1,102,0.08,sports_fees_v3,
+Sports games,Basketball (other),bkfibaqam,,,,,,,,,,,,,,,,,,,1,3,4,0.96,sports_fees_v3,www.fiba.basketball(1)
+"Economic data releases (CPI, jobs, GDP...)",japan-gdp,japan-gdp,,,,,,,,,,,,,,,,,,,1,10,4586,0.029,economics_fees,
+Esports matches,Counter-Strike,will-furia-make-a-roster-change-by-december-31,,,,,,,,,,,,,,,,,,,1,1,548,0.22,sports_fees_v3,
+Esports matches,Valorant,will-boaster-retire-from-professional-valorant-in-2026,,,,,,,,,,,,,,,,,,,1,1,18,0.29,sports_fees_v3,
+Sports games,Soccer,itc-2025,,,,,,,,,,,,,,,,,,,2,2,0,1.0,sports_fees_v3,www.legaseriea.it(2)
+Central-bank rate decisions,bank-of-korea-decision,bank-of-korea-decision,,,,,,,,,,,,,,,,,,,2,10,9876,0.013,economics_fees,
+Esports matches,League of Legends,joe-marsh-out-as-t1-ceo-by-december-31,,,,,,,,,,,,,,,,,,,1,1,18,0.94,sports_fees_v3,
+Esports matches,Counter-Strike,will-team-spirit-make-a-roster-change-by-december-31,,,,,,,,,,,,,,,,,,,1,1,439,0.14,sports_fees_v3,www.hltv.org(1)
+Esports matches,Counter-Strike,will-team-falcons-make-a-roster-change-by-december-31,,,,,,,,,,,,,,,,,,,1,1,664,0.023,sports_fees_v3,www.hltv.org(1)
+Esports matches,Counter-Strike,will-mouz-make-a-roster-change-by-december-31,,,,,,,,,,,,,,,,,,,1,1,350,0.3,sports_fees_v3,www.hltv.org(1)
+Esports matches,Counter-Strike,will-9z-make-a-roster-change-by-december-31,,,,,,,,,,,,,,,,,,,1,1,251,0.35,sports_fees_v3,www.hltv.org(1)
+Esports matches,Counter-Strike,will-team-vitality-make-a-roster-change-by-december-31,,,,,,,,,,,,,,,,,,,1,1,338,0.42,sports_fees_v3,www.hltv.org(1)
+Esports matches,Counter-Strike,will-natus-vincere-make-a-roster-change-by-december-31,,,,,,,,,,,,,,,,,,,1,1,531,0.18,sports_fees_v3,www.hltv.org(1)
+Esports matches,Counter-Strike,will-legacy-make-a-roster-change-by-december-31,,,,,,,,,,,,,,,,,,,1,1,625,0.01,sports_fees_v3,www.hltv.org(1)
+Esports matches,Counter-Strike,will-betboom-make-a-roster-change-by-december-31,,,,,,,,,,,,,,,,,,,1,1,387,0.22,sports_fees_v3,www.hltv.org(1)
+Esports matches,Counter-Strike,will-team-aurora-make-a-roster-change-by-december-31,,,,,,,,,,,,,,,,,,,1,1,824,0.01,sports_fees_v3,www.hltv.org(1)
+Esports matches,Counter-Strike,will-g2-esports-make-a-roster-change-by-december-31,,,,,,,,,,,,,,,,,,,1,1,550,0.36,sports_fees_v3,www.hltv.org(1)
+Esports matches,Counter-Strike,will-faze-make-a-roster-change-by-december-31,,,,,,,,,,,,,,,,,,,1,1,239,0.3,sports_fees_v3,www.hltv.org(1)
+Sports games,Baseball (other),lmb-games,,,,,,,,,,,,,,,,,,,1,1,2,0.96,sports_fees_v3,www.lmb.com.mx(1)
+Esports matches,Dota 2,will-valve-release-a-new-dota-2-hero-by-december-31,,,,,,,,,,,,,,,,,,,1,1,16,0.493,culture_fees,
+Esports matches,Counter-Strike,will-valve-add-cobblestone-to-the-map-pool-by-2,,,,,,,,,,,,,,,,,,,1,2,623,0.011,sports_fees_v3,
+Central-bank rate decisions,bank-of-israel-decision,bank-of-israel-decision,,,,,,,,,,,,,,,,,,,1,3,19023,0.019,economics_fees,
+Central-bank rate decisions,fed-3-parlay,fed-3-parlay,,,,,,,,,,,,,,,,,,,2,14,44119,0.01,economics_fees,
+Esports matches,Valorant,valorant-offseason-zekken-next-team-1788364450495,,,,,,,,,,,,,,,,,,,1,12,8521,0.03,sports_fees_v3,
+Esports matches,Valorant,valorant-offseason-primmie-next-team-1788364450495,,,,,,,,,,,,,,,,,,,1,12,2981,0.011,sports_fees_v3,
+Esports matches,Valorant,valorant-offseason-demon1-next-team-1788364450495,,,,,,,,,,,,,,,,,,,1,12,3790,0.01,sports_fees_v3,
+Esports matches,Valorant,valorant-offseason-chronicle-next-team-1788364450495,,,,,,,,,,,,,,,,,,,1,13,2361,0.053,sports_fees_v3,
+Esports matches,Valorant,valorant-offseason-derke-next-team-1788364450495,,,,,,,,,,,,,,,,,,,1,13,3681,0.01,sports_fees_v3,
+Esports matches,Valorant,valorant-offseason-oxy-next-team-1788364450495,,,,,,,,,,,,,,,,,,,1,12,4191,0.003,sports_fees_v3,
+Esports matches,League of Legends,will-jynxzi-reach-gold-rank-in-league-of-legends-by-2026,,,,,,,,,,,,,,,,,,,1,1,14,0.49,culture_fees,www.twitch.tv(1)
+"Economic data releases (CPI, jobs, GDP...)",brazil-gdp,brazil-gdp,,,,,,,,,,,,,,,,,,,1,7,2840,0.05,economics_fees,
+Esports matches,Valorant,valorant-offseason-boaster-next-team-1788882258365,,,,,,,,,,,,,,,,,,,1,25,5453,0.19,sports_fees_v3,
+Esports matches,League of Legends,worlds-2026-winner,,,,,,,,,,,,,,,,,,,1,16,2105432,0.01,sports_fees_v3,lolesports.com(1)
+Esports matches,League of Legends,worlds-2026-finals-mvp,,,,,,,,,,,,,,,,,,,1,52,82203,0.01,sports_fees_v3,lolesports.com(1)
+Esports matches,League of Legends,worlds-2026-team-to-make-grand-finals,,,,,,,,,,,,,,,,,,,1,16,169975,0.016,sports_fees_v3,lolesports.com(1)
+Earnings markets,fdx-earnings,fdx-earnings,,,,,,,,,,,,,,,,,,,2,2,24,0.4,economics_fees,seekingalpha.com(2)
+Esports matches,League of Legends,will-g2-caps-get-a-hair-transplant-in-2026,,,,,,,,,,,,,,,,,,,1,1,27,0.7,sports_fees_v3,
+Esports matches,League of Legends,will-a-western-team-win-worlds-2026,,,,,,,,,,,,,,,,,,,1,1,8231,0.01,sports_fees_v3,lolesports.com(1)
+Sports games,Soccer,usoc-games,,,,,,,,,,,,,,,,,,,6,115,21639,0.05,sports_fees_v3,www.ussoccer.com(6)
+Central-bank rate decisions,fed-rate-hike,fed-rate-hike,,,,,,,,,,,,,,,,,,,1,1,122951,0.02,economics_fees,
+Esports matches,Esports (other),esports-awards-2026-esports-commercial-partner-of-the-year,,,,,,,,,,,,,,,,,,,1,11,1688,0.4,sports_fees_v3,esportsawards.com(1)
+Esports matches,Esports (other),esports-awards-2026-esports-tournament-organiser-of-the-year,,,,,,,,,,,,,,,,,,,1,9,1143,0.042,sports_fees_v3,esportsawards.com(1)
+Mention markets (what will X say),mentions,what-will-announcers-say-during-tsarukyan-vs-ruffy-at-ufc-331,,,,,,,,,,,,,,,,,,,1,1,26,0.96,mentions_fees,
+Esports matches,Esports (other),esports-awards-2026-esports-supporting-service-of-the-year,,,,,,,,,,,,,,,,,,,1,11,2559,0.124,sports_fees_v3,esportsawards.com(1)
+Esports matches,Counter-Strike,will-broky-join-a-team-before-2027,,,,,,,,,,,,,,,,,,,1,1,193,0.217,sports_fees_v3,www.hltv.org(1)
+Esports matches,League of Legends,will-dardo-be-named-fnatic-lol-general-manager-by,,,,,,,,,,,,,,,,,,,1,3,10,0.94,sports_fees_v3,
+Esports matches,League of Legends,lol-offseason-deft-next-team-1790107563296,,,,,,,,,,,,,,,,,,,1,24,10263,0.007,sports_fees_v3,
+Esports matches,League of Legends,total-unique-champions-played-at-worlds-2026,,,,,,,,,,,,,,,,,,,1,5,2253,0.025,sports_fees_v3,lol.fandom.com(1)
+Esports matches,League of Legends,will-chovy-leave-genptg-in-2026,,,,,,,,,,,,,,,,,,,1,1,536,0.02,sports_fees_v3,liquipedia.net(1)
+Esports matches,Counter-Strike,which-teams-will-qualify-to-pgl-major-singapore-2026,,,,,,,,,,,,,,,,,,,1,51,2458,0.069,sports_fees_v3,www.pglesports.com(1)
+Central-bank rate decisions,What will the Fed rate be at the end of ,what-will-the-fed-rate-be-at-the-end-of-2027,,,,,,,,,,,,,,,,,,,1,15,7884,0.023,economics_fees,
+Mention markets (what will X say),trump-food-mentions,trump-food-mentions,,,,,,,,,,,,,,,,,,,1,4,205,0.878,mentions_fees,
+Esports matches,Dota 2,will-valve-release-dota-2-dark-carnival-act-2-by-december-31,,,,,,,,,,,,,,,,,,,1,1,136,0.24,culture_fees,www.dota2.com(1)
+Esports matches,Counter-Strike,will-valve-add-sticker-trade-ups-by,,,,,,,,,,,,,,,,,,,1,4,21,0.93,sports_fees_v3,
+Esports matches,Counter-Strike,will-valve-add-first-cs2-operation-by-2026-27,,,,,,,,,,,,,,,,,,,1,5,278,0.056,sports_fees_v3,
+Esports matches,Valorant,total-tech-pauses-in-the-valorant-champions-2026-playoffs,,,,,,,,,,,,,,,,,,,1,3,9,0.94,sports_fees_v3,www.youtube.com(1)
+Esports matches,League of Legends,most-kills-at-worlds-2026,,,,,,,,,,,,,,,,,,,1,99,11728,0.19,sports_fees_v3,lol.fandom.com(1)
+Esports matches,League of Legends,how-many-pentakills-will-there-be-at-worlds-2026,,,,,,,,,,,,,,,,,,,1,4,428,0.14,sports_fees_v3,lol.fandom.com(1)
+Esports matches,League of Legends,most-played-champion-at-worlds-2026,,,,,,,,,,,,,,,,,,,1,104,4929,0.077,sports_fees_v3,lol.fandom.com(1)
+Esports matches,League of Legends,will-a-western-team-reach-the-worlds-2026-knockout-stage,,,,,,,,,,,,,,,,,,,1,1,1126,0.02,sports_fees_v3,lolesports.com(1)
+Esports matches,League of Legends,will-more-than-one-western-team-reach-the-worlds-2026-knockout-stage,,,,,,,,,,,,,,,,,,,1,1,49,0.19,sports_fees_v3,lolesports.com(1)
+Esports matches,League of Legends,will-a-western-team-reach-the-worlds-2026-grand-final,,,,,,,,,,,,,,,,,,,1,1,5755,0.02,sports_fees_v3,lolesports.com(1)
+Esports matches,League of Legends,will-gen-g-and-t1-meet-in-the-worlds-2026-grand-final,,,,,,,,,,,,,,,,,,,1,1,2758,0.01,sports_fees_v3,lolesports.com(1)
+Esports matches,League of Legends,region-with-the-most-teams-in-the-worlds-2026-knockout-stage,,,,,,,,,,,,,,,,,,,1,7,3758,0.02,sports_fees_v3,lolesports.com(1)
+Esports matches,League of Legends,will-humzhs-subathon-end-by,,,,,,,,,,,,,,,,,,,1,5,18,0.91,culture_fees,humzh.tv(1)
+Sports games,F1/motorsport,f1-singapore-grand-prix-safety-car-2026-10-11,,,,,,,,,,,,,,,,,,,1,1,12,0.248,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-singapore-grand-prix-h2h-2026-10-11,,,,,,,,,,,,,,,,,,,1,1,0,1.0,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-united-states-grand-prix-winner-2026-10-25,,,,,,,,,,,,,,,,,,,1,23,84177,0.01,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-united-states-grand-prix-constructor-scores-1st-2026-10-25,,,,,,,,,,,,,,,,,,,1,11,2123,0.49,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-united-states-grand-prix-driver-pole-position-2026-10-24,,,,,,,,,,,,,,,,,,,1,23,11689,0.36,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-united-states-grand-prix-constructor-pole-position-2026-10-24,,,,,,,,,,,,,,,,,,,1,11,1351,0.49,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-united-states-grand-prix-driver-fastest-lap-2026-10-25,,,,,,,,,,,,,,,,,,,1,23,269,0.95,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-united-states-grand-prix-constructor-fastest-lap-2026-10-25,,,,,,,,,,,,,,,,,,,1,11,133,0.96,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-united-states-grand-prix-safety-car-2026-10-25,,,,,,,,,,,,,,,,,,,1,1,176,0.69,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-united-states-grand-prix-red-flag-2026-10-25,,,,,,,,,,,,,,,,,,,1,1,79,0.79,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-united-states-grand-prix-practice-1-fastest-lap-2026-10-23,,,,,,,,,,,,,,,,,,,1,23,3815,0.5,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-united-states-grand-prix-practice-2-fastest-lap-2026-10-23,,,,,,,,,,,,,,,,,,,1,23,4015,0.5,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-united-states-grand-prix-practice-3-fastest-lap-2026-10-24,,,,,,,,,,,,,,,,,,,1,23,44,0.99,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-united-states-grand-prix-h2h-2026-10-25,,,,,,,,,,,,,,,,,,,1,23,69,0.79,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-united-states-grand-prix-driver-podium-2026-10-25,,,,,,,,,,,,,,,,,,,1,23,5788,0.1,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-mexican-grand-prix-winner-2026-11-01,,,,,,,,,,,,,,,,,,,1,23,16952,0.5,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-mexican-grand-prix-constructor-scores-1st-2026-11-01,,,,,,,,,,,,,,,,,,,1,11,23,0.998,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-mexican-grand-prix-driver-pole-position-2026-10-31,,,,,,,,,,,,,,,,,,,1,23,3927,0.5,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-mexican-grand-prix-constructor-pole-position-2026-10-31,,,,,,,,,,,,,,,,,,,1,11,1573,0.49,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-mexican-grand-prix-driver-fastest-lap-2026-11-01,,,,,,,,,,,,,,,,,,,1,23,99,0.98,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-mexican-grand-prix-constructor-fastest-lap-2026-11-01,,,,,,,,,,,,,,,,,,,1,11,1103,0.499,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-mexican-grand-prix-safety-car-2026-11-01,,,,,,,,,,,,,,,,,,,1,1,174,0.7,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-mexican-grand-prix-red-flag-2026-11-01,,,,,,,,,,,,,,,,,,,1,1,103,0.89,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-mexican-grand-prix-practice-1-fastest-lap-2026-10-30,,,,,,,,,,,,,,,,,,,1,23,44,0.99,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-mexican-grand-prix-practice-2-fastest-lap-2026-10-30,,,,,,,,,,,,,,,,,,,1,23,3814,0.5,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-mexican-grand-prix-practice-3-fastest-lap-2026-10-31,,,,,,,,,,,,,,,,,,,1,23,3814,0.5,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-mexican-grand-prix-h2h-2026-11-01,,,,,,,,,,,,,,,,,,,1,23,44,0.98,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-mexican-grand-prix-driver-podium-2026-11-01,,,,,,,,,,,,,,,,,,,1,23,291,0.88,sports_fees_v3,www.formula1.com(1)
+Central-bank rate decisions,central-bank-of-chile-decision,central-bank-of-chile-decision,,,,,,,,,,,,,,,,,,,2,10,1982,0.3395,economics_fees,www.bcentral.cl(2)
+Esports matches,Counter-Strike,draculan-season-7-winner-1791301162077,,,,,,,,,,,,,,,,,,,1,16,1879,0.46,sports_fees_v3,www.hltv.org(1)
+Earnings markets,ally-earnings,ally-earnings,,,,,,,,,,,,,,,,,,,2,2,201,0.35,economics_fees,seekingalpha.com(2)
+Earnings markets,bfc-earnings,bfc-earnings,,,,,,,,,,,,,,,,,,,1,1,271,0.04,economics_fees,seekingalpha.com(1)
+Earnings markets,cof-earnings,cof-earnings,,,,,,,,,,,,,,,,,,,2,2,220,0.285,economics_fees,seekingalpha.com(2)
+Earnings markets,efx-earnings,efx-earnings,,,,,,,,,,,,,,,,,,,2,2,261,0.115,economics_fees,seekingalpha.com(2)
+Earnings markets,hal-earnings,hal-earnings,,,,,,,,,,,,,,,,,,,1,1,39,0.66,economics_fees,seekingalpha.com(1)
+Earnings markets,has-earnings,has-earnings,,,,,,,,,,,,,,,,,,,1,1,60,0.67,economics_fees,seekingalpha.com(1)
+Earnings markets,key-earnings,key-earnings,,,,,,,,,,,,,,,,,,,1,1,109,0.56,economics_fees,seekingalpha.com(1)
+Earnings markets,mbwm-earnings,mbwm-earnings,,,,,,,,,,,,,,,,,,,1,1,418,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,mmm-earnings,mmm-earnings,,,,,,,,,,,,,,,,,,,1,1,71,0.44,economics_fees,seekingalpha.com(1)
+Earnings markets,msci-earnings,msci-earnings,,,,,,,,,,,,,,,,,,,1,1,662,0.03,economics_fees,seekingalpha.com(1)
+Earnings markets,nflx-earnings,nflx-earnings,,,,,,,,,,,,,,,,,,,1,1,340,0.29,economics_fees,seekingalpha.com(1)
+Earnings markets,tsla-earnings,tsla-earnings,,,,,,,,,,,,,,,,,,,1,1,703,0.04,economics_fees,seekingalpha.com(1)
+Earnings markets,ual-earnings,ual-earnings,,,,,,,,,,,,,,,,,,,1,1,614,0.04,economics_fees,seekingalpha.com(1)
+Earnings markets,cme-earnings,cme-earnings,,,,,,,,,,,,,,,,,,,1,1,359,0.04,economics_fees,seekingalpha.com(1)
+Earnings markets,iart-earnings,iart-earnings,,,,,,,,,,,,,,,,,,,1,1,155,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,ibm-earnings,ibm-earnings,,,,,,,,,,,,,,,,,,,1,1,725,0.07,economics_fees,seekingalpha.com(1)
+Earnings markets,kmi-earnings,kmi-earnings,,,,,,,,,,,,,,,,,,,1,1,746,0.05,economics_fees,seekingalpha.com(1)
+Earnings markets,mco-earnings,mco-earnings,,,,,,,,,,,,,,,,,,,1,1,104,0.52,economics_fees,seekingalpha.com(1)
+Earnings markets,mktx-earnings,mktx-earnings,,,,,,,,,,,,,,,,,,,1,1,353,0.1,economics_fees,seekingalpha.com(1)
+Earnings markets,t-earnings,t-earnings,,,,,,,,,,,,,,,,,,,1,1,1194,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,txn-earnings,txn-earnings,,,,,,,,,,,,,,,,,,,1,1,1031,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,ubsi-earnings,ubsi-earnings,,,,,,,,,,,,,,,,,,,1,1,310,0.19,economics_fees,seekingalpha.com(1)
+Earnings markets,wdfc-earnings,wdfc-earnings,,,,,,,,,,,,,,,,,,,1,1,1256,0.02,economics_fees,seekingalpha.com(1)
+Earnings markets,aal-earnings,aal-earnings,,,,,,,,,,,,,,,,,,,1,1,631,0.04,economics_fees,seekingalpha.com(1)
+Earnings markets,bx-earnings,bx-earnings,,,,,,,,,,,,,,,,,,,1,1,721,0.05,economics_fees,seekingalpha.com(1)
+Earnings markets,stba-earnings,stba-earnings,,,,,,,,,,,,,,,,,,,1,1,322,0.18,economics_fees,seekingalpha.com(1)
+Sports games,Soccer,canch-games,,,,,,,,,,,,,,,,,,,3,43,922,0.58,sports_fees_v3,canadasoccer.com(3)
+Esports matches,League of Legends,worlds-2026-team-to-reach-knockout-stage,,,,,,,,,,,,,,,,,,,1,16,18330,0.11,sports_fees_v3,lolesports.com(1)
+Esports matches,League of Legends,worlds-2026-teams-to-go-3-0-in-swiss-stage,,,,,,,,,,,,,,,,,,,1,16,73751,0.023,sports_fees_v3,lolesports.com(1)
+Esports matches,League of Legends,worlds-2026-teams-to-go-0-3-in-swiss-stage,,,,,,,,,,,,,,,,,,,1,16,116903,0.024,sports_fees_v3,lolesports.com(1)
+Earnings markets,ge-kpis,ge-kpis,,,,,,,,,,,,,,,,,,,1,5,994,0.031,finance_prices_fees,
+Earnings markets,rtx-kpis,rtx-kpis,,,,,,,,,,,,,,,,,,,1,5,483,0.209,finance_prices_fees,
+Earnings markets,nflx-kpis,nflx-kpis,,,,,,,,,,,,,,,,,,,1,5,4099,0.01,finance_prices_fees,
+Earnings markets,ual-kpis,ual-kpis,,,,,,,,,,,,,,,,,,,1,5,852,0.14,finance_prices_fees,
+Sports games,F1/motorsport,f1-brazilian-grand-prix-winner-2026-11-08,,,,,,,,,,,,,,,,,,,1,23,13222,0.5,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-brazilian-grand-prix-constructor-scores-1st-2026-11-08,,,,,,,,,,,,,,,,,,,1,11,23,0.98,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-brazilian-grand-prix-driver-pole-position-2026-11-07,,,,,,,,,,,,,,,,,,,1,23,44,0.99,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-brazilian-grand-prix-constructor-pole-position-2026-11-07,,,,,,,,,,,,,,,,,,,1,11,2254,0.49,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-brazilian-grand-prix-driver-fastest-lap-2026-11-08,,,,,,,,,,,,,,,,,,,1,23,44,0.99,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-brazilian-grand-prix-constructor-fastest-lap-2026-11-08,,,,,,,,,,,,,,,,,,,1,11,542,0.49,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-brazilian-grand-prix-safety-car-2026-11-08,,,,,,,,,,,,,,,,,,,1,1,104,0.8,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-brazilian-grand-prix-red-flag-2026-11-08,,,,,,,,,,,,,,,,,,,1,1,103,0.89,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-brazilian-grand-prix-practice-1-fastest-lap-2026-11-06,,,,,,,,,,,,,,,,,,,1,23,44,0.99,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-brazilian-grand-prix-practice-2-fastest-lap-2026-11-06,,,,,,,,,,,,,,,,,,,1,23,35,0.99,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-brazilian-grand-prix-practice-3-fastest-lap-2026-11-07,,,,,,,,,,,,,,,,,,,1,23,44,0.99,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-brazilian-grand-prix-h2h-2026-11-08,,,,,,,,,,,,,,,,,,,1,23,44,0.98,sports_fees_v3,www.formula1.com(1)
+Sports games,F1/motorsport,f1-brazilian-grand-prix-driver-podium-2026-11-08,,,,,,,,,,,,,,,,,,,1,23,23,0.97,sports_fees_v3,www.formula1.com(1)
+Earnings markets,abt-kpis,abt-kpis,,,,,,,,,,,,,,,,,,,1,5,1038,0.009,finance_prices_fees,
+Earnings markets,dhr-kpis,dhr-kpis,,,,,,,,,,,,,,,,,,,1,5,862,0.04,finance_prices_fees,
+Earnings markets,nee-kpis,nee-kpis,,,,,,,,,,,,,,,,,,,1,5,1318,0.08,finance_prices_fees,
+Earnings markets,t-kpis,t-kpis,,,,,,,,,,,,,,,,,,,1,5,470,0.227,finance_prices_fees,
+Earnings markets,tmo-kpis,tmo-kpis,,,,,,,,,,,,,,,,,,,1,5,1187,0.01,finance_prices_fees,
+Earnings markets,ibm-kpis,ibm-kpis,,,,,,,,,,,,,,,,,,,1,5,756,0.07,finance_prices_fees,
+Earnings markets,lrcx-kpis,lrcx-kpis,,,,,,,,,,,,,,,,,,,2,10,789,0.065,finance_prices_fees,
+Earnings markets,txn-kpis,txn-kpis,,,,,,,,,,,,,,,,,,,1,5,1312,0.098,finance_prices_fees,
+Earnings markets,hon-kpis,hon-kpis,,,,,,,,,,,,,,,,,,,1,5,727,0.03,finance_prices_fees,
+Earnings markets,pg-kpis,pg-kpis,,,,,,,,,,,,,,,,,,,1,5,1625,0.009,finance_prices_fees,
+Earnings markets,axp-kpis,axp-kpis,,,,,,,,,,,,,,,,,,,1,5,517,0.29,finance_prices_fees,
+Earnings markets,vz-kpis,vz-kpis,,,,,,,,,,,,,,,,,,,1,5,514,0.046,finance_prices_fees,
+Earnings markets,glw-kpis,glw-kpis,,,,,,,,,,,,,,,,,,,1,5,413,0.17,finance_prices_fees,
+Earnings markets,ko-kpis,ko-kpis,,,,,,,,,,,,,,,,,,,1,5,1617,0.01,finance_prices_fees,
+Earnings markets,spgi-kpis,spgi-kpis,,,,,,,,,,,,,,,,,,,1,5,796,0.22,finance_prices_fees,
+Earnings markets,stx-kpis,stx-kpis,,,,,,,,,,,,,,,,,,,1,5,453,0.27,finance_prices_fees,
+Earnings markets,aph-kpis,aph-kpis,,,,,,,,,,,,,,,,,,,1,5,1180,0.1,finance_prices_fees,
+Earnings markets,vrt-kpis,vrt-kpis,,,,,,,,,,,,,,,,,,,1,5,1509,0.01,finance_prices_fees,
+Earnings markets,googl-kpis,googl-kpis,,,,,,,,,,,,,,,,,,,3,15,597,0.15,finance_prices_fees,
+Earnings markets,msft-kpis,msft-kpis,,,,,,,,,,,,,,,,,,,2,10,1074,0.18,finance_prices_fees,
+Earnings markets,tmus-kpis,tmus-kpis,,,,,,,,,,,,,,,,,,,1,5,428,0.3,finance_prices_fees,
+Esports matches,League of Legends,will-a-north-american-team-reach-the-worlds-2026-knockout-stage,,,,,,,,,,,,,,,,,,,1,1,356,0.02,sports_fees_v3,lolesports.com(1)
+Esports matches,League of Legends,will-a-european-team-reach-the-worlds-2026-knockout-stage,,,,,,,,,,,,,,,,,,,1,1,93,0.28,sports_fees_v3,lolesports.com(1)
+Esports matches,Counter-Strike,will-team-falcons-win-another-tier-1-event-before-the-singapore-major,,,,,,,,,,,,,,,,,,,1,1,8,0.62,sports_fees_v3,liquipedia.net(1)
+Esports matches,Valorant,will-d4v41-retire-from-professional-valorant-in-2026,,,,,,,,,,,,,,,,,,,1,1,5,0.88,sports_fees_v3,
+Esports matches,Valorant,will-stax-retire-from-professional-valorant-in-2026,,,,,,,,,,,,,,,,,,,1,1,3,0.96,sports_fees_v3,
+Esports matches,Valorant,will-nats-retire-from-professional-valorant-in-2026,,,,,,,,,,,,,,,,,,,1,1,77,0.24,sports_fees_v3,
+Esports matches,Valorant,will-paper-rex-keep-both-f0rsaken-and-jinggg-for-2027,,,,,,,,,,,,,,,,,,,1,1,105,0.16,sports_fees_v3,liquipedia.net(1)
+Esports matches,Counter-Strike,cs2-offseason-m0nesy-next-team-1791819577515,,,,,,,,,,,,,,,,,,,1,20,5214,0.01,sports_fees_v3,
+Esports matches,League of Legends,worlds-2026-grand-final-region-matchup,,,,,,,,,,,,,,,,,,,1,4,584,0.72,sports_fees_v3,lolesports.com(1)
+Esports matches,League of Legends,worlds-2026-grand-final-series-score,,,,,,,,,,,,,,,,,,,1,3,326,0.15,sports_fees_v3,lolesports.com(1)
+Esports matches,League of Legends,will-the-worlds-2026-champion-be-a-first-time-worlds-winner,,,,,,,,,,,,,,,,,,,1,1,2,0.97,sports_fees_v3,lolesports.com(1)
+Esports matches,League of Legends,will-t1-win-a-fourth-straight-worlds-title,,,,,,,,,,,,,,,,,,,1,1,137,0.59,sports_fees_v3,lolesports.com(1)
+Esports matches,League of Legends,will-any-game-at-worlds-2026-last-50-minutes-or-more,,,,,,,,,,,,,,,,,,,1,1,78,0.59,sports_fees_v3,lolesports.com(1)
+Esports matches,League of Legends,lol-offseason-diable-next-team-1791819428713,,,,,,,,,,,,,,,,,,,1,35,6183,0.4,sports_fees_v3,
+Esports matches,Valorant,will-paper-rex-keep-their-starting-five-for-2027,,,,,,,,,,,,,,,,,,,1,1,23,0.86,sports_fees_v3,liquipedia.net(1)
+Esports matches,Valorant,will-loud-keep-their-starting-five-for-2027,,,,,,,,,,,,,,,,,,,1,1,48,0.33,sports_fees_v3,liquipedia.net(1)
+Esports matches,Valorant,will-yay-return-to-professional-valorant-in-2027,,,,,,,,,,,,,,,,,,,1,1,54,0.88,sports_fees_v3,liquipedia.net(1)
+Earnings markets,lin-kpis,lin-kpis,,,,,,,,,,,,,,,,,,,1,5,412,0.1,finance_prices_fees,
+Earnings markets,lly-kpis,lly-kpis,,,,,,,,,,,,,,,,,,,2,10,451,0.165,finance_prices_fees,
+Earnings markets,intc-kpis,intc-kpis,,,,,,,,,,,,,,,,,,,2,10,474,0.215,finance_prices_fees,
+Earnings markets,sbux-kpis,sbux-kpis,,,,,,,,,,,,,,,,,,,1,5,1296,0.02,finance_prices_fees,
+Earnings markets,abbv-kpis,abbv-kpis,,,,,,,,,,,,,,,,,,,2,10,384,0.105,finance_prices_fees,
+Earnings markets,aapl-kpis,aapl-kpis,,,,,,,,,,,,,,,,,,,6,30,286,0.19,finance_prices_fees,
+Earnings markets,klac-kpis,klac-kpis,,,,,,,,,,,,,,,,,,,1,5,602,0.09,finance_prices_fees,
+Mention markets (what will X say),warsh-mentions,warsh-mentions,,,,,,,,,,,,,,,,,,,1,20,11278,0.02,mentions_fees,
+Earnings markets,yum-kpis,yum-kpis,,,,,,,,,,,,,,,,,,,1,5,3161,0.01,finance_prices_fees,
+Earnings markets,amd-kpis,amd-kpis,,,,,,,,,,,,,,,,,,,1,5,302,0.18,finance_prices_fees,
+Earnings markets,bkng-kpis,bkng-kpis,,,,,,,,,,,,,,,,,,,1,4,241,0.2,finance_prices_fees,
+Earnings markets,mcd-kpis,mcd-kpis,,,,,,,,,,,,,,,,,,,1,5,1344,0.05,finance_prices_fees,
+Earnings markets,qcom-kpis,qcom-kpis,,,,,,,,,,,,,,,,,,,1,5,235,0.19,finance_prices_fees,
+Earnings markets,ttwo-kpis,ttwo-kpis,,,,,,,,,,,,,,,,,,,1,5,500,0.15,finance_prices_fees,
+Earnings markets,tgt-kpis,tgt-kpis,,,,,,,,,,,,,,,,,,,1,4,1450,0.01,finance_prices_fees,
+Earnings markets,nvda-kpis,nvda-kpis,,,,,,,,,,,,,,,,,,,2,10,867,0.12,finance_prices_fees,
+Earnings markets,wmt-kpis,wmt-kpis,,,,,,,,,,,,,,,,,,,2,10,1476,0.035,finance_prices_fees,
+Earnings markets,adi-kpis,adi-kpis,,,,,,,,,,,,,,,,,,,1,3,315,0.01,finance_prices_fees,
+Earnings markets,dks-kpis,dks-kpis,,,,,,,,,,,,,,,,,,,1,5,4356,0.081,finance_prices_fees,
+Earnings markets,dell-kpis,dell-kpis,,,,,,,,,,,,,,,,,,,1,4,442,0.08,finance_prices_fees,
+Earnings markets,snow-kpis,snow-kpis,,,,,,,,,,,,,,,,,,,1,5,389,0.47,finance_prices_fees,
+Earnings markets,kr-kpis,kr-kpis,,,,,,,,,,,,,,,,,,,1,4,419,0.23,finance_prices_fees,
+Earnings markets,azo-kpis,azo-kpis,,,,,,,,,,,,,,,,,,,1,5,908,0.327,finance_prices_fees,
+Earnings markets,snps-kpis,snps-kpis,,,,,,,,,,,,,,,,,,,1,4,383,0.14,finance_prices_fees,
+Earnings markets,avgo-kpis,avgo-kpis,,,,,,,,,,,,,,,,,,,1,5,464,0.19,finance_prices_fees,
+Earnings markets,mu-kpis,mu-kpis,,,,,,,,,,,,,,,,,,,3,15,732,0.06,finance_prices_fees,
+Earnings markets,gis-kpis,gis-kpis,,,,,,,,,,,,,,,,,,,1,6,2148,0.02,finance_prices_fees,
+Esports matches,League of Legends,most-banned-champion-at-worlds-2026,,,,,,,,,,,,,,,,,,,1,105,784,0.43,sports_fees_v3,lol.fandom.com(1)
+Sports games,Table tennis,wtt,,,,,,,,,,,,,,,,,,,125,125,26,0.94,sports_fees_v3,worldtabletennis.com(125)
+Earnings markets,meta-earnings,meta-earnings,,,,,,,,,,,,,,,,,,,1,1,1420,0.217,economics_fees,seekingalpha.com(1)
+Earnings markets,cbre-earnings,cbre-earnings,,,,,,,,,,,,,,,,,,,1,1,1028,0.04,economics_fees,seekingalpha.com(1)
+Earnings markets,cour-earnings,cour-earnings,,,,,,,,,,,,,,,,,,,1,1,166,0.41,economics_fees,seekingalpha.com(1)
+Earnings markets,dow-earnings,dow-earnings,,,,,,,,,,,,,,,,,,,1,1,997,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,gd-earnings,gd-earnings,,,,,,,,,,,,,,,,,,,1,1,582,0.05,economics_fees,seekingalpha.com(1)
+Earnings markets,hon-earnings,hon-earnings,,,,,,,,,,,,,,,,,,,1,1,593,0.04,economics_fees,seekingalpha.com(1)
+Earnings markets,imax-earnings,imax-earnings,,,,,,,,,,,,,,,,,,,1,1,562,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,lmt-earnings,lmt-earnings,,,,,,,,,,,,,,,,,,,1,1,214,0.45,economics_fees,seekingalpha.com(1)
+Earnings markets,pcg-earnings,pcg-earnings,,,,,,,,,,,,,,,,,,,1,1,266,0.06,economics_fees,seekingalpha.com(1)
+Earnings markets,pg-earnings,pg-earnings,,,,,,,,,,,,,,,,,,,1,1,267,0.06,economics_fees,seekingalpha.com(1)
+Earnings markets,ssnc-earnings,ssnc-earnings,,,,,,,,,,,,,,,,,,,1,1,587,0.04,economics_fees,seekingalpha.com(1)
+Earnings markets,tfx-earnings,tfx-earnings,,,,,,,,,,,,,,,,,,,1,1,654,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,tsco-earnings,tsco-earnings,,,,,,,,,,,,,,,,,,,1,1,506,0.001,economics_fees,seekingalpha.com(1)
+Earnings markets,unp-earnings,unp-earnings,,,,,,,,,,,,,,,,,,,1,1,689,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,axp-earnings,axp-earnings,,,,,,,,,,,,,,,,,,,1,1,1229,0.04,economics_fees,seekingalpha.com(1)
+Earnings markets,cflt-earnings,cflt-earnings,,,,,,,,,,,,,,,,,,,1,1,484,0.001,economics_fees,seekingalpha.com(1)
+Earnings markets,xom-earnings,xom-earnings,,,,,,,,,,,,,,,,,,,1,1,395,0.09,economics_fees,seekingalpha.com(1)
+Earnings markets,pipr-earnings,pipr-earnings,,,,,,,,,,,,,,,,,,,1,1,559,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,ea-earnings,ea-earnings,,,,,,,,,,,,,,,,,,,1,1,443,0.28,economics_fees,seekingalpha.com(1)
+Earnings markets,vz-earnings,vz-earnings,,,,,,,,,,,,,,,,,,,1,1,234,0.38,economics_fees,seekingalpha.com(1)
+Earnings markets,arcc-earnings,arcc-earnings,,,,,,,,,,,,,,,,,,,1,1,516,0.04,economics_fees,seekingalpha.com(1)
+Earnings markets,ba-earnings,ba-earnings,,,,,,,,,,,,,,,,,,,1,1,204,0.11,economics_fees,seekingalpha.com(1)
+Earnings markets,csgp-earnings,csgp-earnings,,,,,,,,,,,,,,,,,,,1,1,185,0.105,economics_fees,seekingalpha.com(1)
+Earnings markets,czr-earnings,czr-earnings,,,,,,,,,,,,,,,,,,,1,1,439,0.03,economics_fees,seekingalpha.com(1)
+Earnings markets,ebay-earnings,ebay-earnings,,,,,,,,,,,,,,,,,,,1,1,489,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,googl-earnings,googl-earnings,,,,,,,,,,,,,,,,,,,1,1,1024,0.03,economics_fees,seekingalpha.com(1)
+Earnings markets,hlt-earnings,hlt-earnings,,,,,,,,,,,,,,,,,,,1,1,406,0.23,economics_fees,seekingalpha.com(1)
+Earnings markets,hood-earnings,hood-earnings,,,,,,,,,,,,,,,,,,,1,1,319,0.19,economics_fees,seekingalpha.com(1)
+Earnings markets,ivz-earnings,ivz-earnings,,,,,,,,,,,,,,,,,,,1,1,172,0.2,economics_fees,seekingalpha.com(1)
+Earnings markets,jblu-earnings,jblu-earnings,,,,,,,,,,,,,,,,,,,1,1,295,0.13,economics_fees,seekingalpha.com(1)
+Earnings markets,ko-earnings,ko-earnings,,,,,,,,,,,,,,,,,,,1,1,507,0.04,economics_fees,seekingalpha.com(1)
+Earnings markets,nxpi-earnings,nxpi-earnings,,,,,,,,,,,,,,,,,,,1,1,235,0.14,economics_fees,seekingalpha.com(1)
+Earnings markets,pjt-earnings,pjt-earnings,,,,,,,,,,,,,,,,,,,1,1,623,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,pypl-earnings,pypl-earnings,,,,,,,,,,,,,,,,,,,1,1,354,0.25,economics_fees,seekingalpha.com(1)
+Earnings markets,rcl-earnings,rcl-earnings,,,,,,,,,,,,,,,,,,,1,1,280,0.09,economics_fees,seekingalpha.com(1)
+Earnings markets,sofi-earnings,sofi-earnings,,,,,,,,,,,,,,,,,,,1,1,269,0.26,economics_fees,seekingalpha.com(1)
+Earnings markets,spgi-earnings,spgi-earnings,,,,,,,,,,,,,,,,,,,1,1,312,0.33,economics_fees,seekingalpha.com(1)
+Earnings markets,v-earnings,v-earnings,,,,,,,,,,,,,,,,,,,1,1,266,0.08,economics_fees,seekingalpha.com(1)
+Earnings markets,cmg-earnings,cmg-earnings,,,,,,,,,,,,,,,,,,,1,1,763,0.02,economics_fees,seekingalpha.com(1)
+Earnings markets,ups-earnings,ups-earnings,,,,,,,,,,,,,,,,,,,1,1,950,0.02,economics_fees,seekingalpha.com(1)
+Earnings markets,cvna-earnings,cvna-earnings,,,,,,,,,,,,,,,,,,,1,1,1059,0.059,economics_fees,seekingalpha.com(1)
+Earnings markets,etsy-earnings,etsy-earnings,,,,,,,,,,,,,,,,,,,1,1,1148,0.1,economics_fees,seekingalpha.com(1)
+Earnings markets,f-earnings,f-earnings,,,,,,,,,,,,,,,,,,,1,1,530,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,grmn-earnings,grmn-earnings,,,,,,,,,,,,,,,,,,,1,1,663,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,hesm-earnings,hesm-earnings,,,,,,,,,,,,,,,,,,,1,1,93,0.4,economics_fees,seekingalpha.com(1)
+Earnings markets,lh-earnings,lh-earnings,,,,,,,,,,,,,,,,,,,1,1,131,0.41,economics_fees,seekingalpha.com(1)
+Earnings markets,mgm-earnings,mgm-earnings,,,,,,,,,,,,,,,,,,,1,1,387,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,msft-earnings,msft-earnings,,,,,,,,,,,,,,,,,,,1,1,798,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,orly-earnings,orly-earnings,,,,,,,,,,,,,,,,,,,1,1,139,0.35,economics_fees,seekingalpha.com(1)
+Earnings markets,roku-earnings,roku-earnings,,,,,,,,,,,,,,,,,,,1,1,864,0.029,economics_fees,seekingalpha.com(1)
+Earnings markets,tday-earnings,tday-earnings,,,,,,,,,,,,,,,,,,,1,1,3596,0.73,economics_fees,seekingalpha.com(1)
+Earnings markets,tdoc-earnings,tdoc-earnings,,,,,,,,,,,,,,,,,,,1,1,612,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,tmus-earnings,tmus-earnings,,,,,,,,,,,,,,,,,,,1,1,227,0.02,economics_fees,seekingalpha.com(1)
+Earnings markets,wing-earnings,wing-earnings,,,,,,,,,,,,,,,,,,,1,1,333,0.09,economics_fees,seekingalpha.com(1)
+Earnings markets,amzn-earnings,amzn-earnings,,,,,,,,,,,,,,,,,,,1,1,451,0.11,economics_fees,seekingalpha.com(1)
+Earnings markets,ares-earnings,ares-earnings,,,,,,,,,,,,,,,,,,,1,1,593,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,cat-earnings,cat-earnings,,,,,,,,,,,,,,,,,,,1,1,244,0.28,economics_fees,seekingalpha.com(1)
+Earnings markets,dbx-earnings,dbx-earnings,,,,,,,,,,,,,,,,,,,1,1,473,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,ed-earnings,ed-earnings,,,,,,,,,,,,,,,,,,,1,1,824,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,h-earnings,h-earnings,,,,,,,,,,,,,,,,,,,1,1,235,0.16,economics_fees,seekingalpha.com(1)
+Earnings markets,hog-earnings,hog-earnings,,,,,,,,,,,,,,,,,,,1,1,544,0.04,economics_fees,seekingalpha.com(1)
+Earnings markets,ice-earnings,ice-earnings,,,,,,,,,,,,,,,,,,,1,1,571,0.03,economics_fees,seekingalpha.com(1)
+Earnings markets,lly-earnings,lly-earnings,,,,,,,,,,,,,,,,,,,1,1,534,0.02,economics_fees,seekingalpha.com(1)
+Earnings markets,mnst-earnings,mnst-earnings,,,,,,,,,,,,,,,,,,,1,1,441,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,mrk-earnings,mrk-earnings,,,,,,,,,,,,,,,,,,,1,1,725,0.06,economics_fees,seekingalpha.com(1)
+Earnings markets,mstr-earnings,mstr-earnings,,,,,,,,,,,,,,,,,,,1,1,971,0.049,economics_fees,seekingalpha.com(1)
+Earnings markets,pton-earnings,pton-earnings,,,,,,,,,,,,,,,,,,,1,1,331,0.1,economics_fees,seekingalpha.com(1)
+Earnings markets,real-earnings,real-earnings,,,,,,,,,,,,,,,,,,,1,1,363,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,rivn-earnings,rivn-earnings,,,,,,,,,,,,,,,,,,,1,1,349,0.009,economics_fees,seekingalpha.com(1)
+Earnings markets,rblx-earnings,rblx-earnings,,,,,,,,,,,,,,,,,,,1,1,667,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,sbux-earnings,sbux-earnings,,,,,,,,,,,,,,,,,,,1,1,617,0.039,economics_fees,seekingalpha.com(1)
+Earnings markets,shak-earnings,shak-earnings,,,,,,,,,,,,,,,,,,,1,1,141,0.3,economics_fees,seekingalpha.com(1)
+Earnings markets,sndk-earnings,sndk-earnings,,,,,,,,,,,,,,,,,,,1,1,461,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,tw-earnings,tw-earnings,,,,,,,,,,,,,,,,,,,1,1,430,0.08,economics_fees,seekingalpha.com(1)
+Earnings markets,yelp-earnings,yelp-earnings,,,,,,,,,,,,,,,,,,,1,1,881,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,cboe-earnings,cboe-earnings,,,,,,,,,,,,,,,,,,,1,1,238,0.33,economics_fees,seekingalpha.com(1)
+Earnings markets,cl-earnings,cl-earnings,,,,,,,,,,,,,,,,,,,1,1,62,0.57,economics_fees,seekingalpha.com(1)
+Earnings markets,cvx-earnings,cvx-earnings,,,,,,,,,,,,,,,,,,,1,1,496,0.04,economics_fees,seekingalpha.com(1)
+Earnings markets,dkng-earnings,dkng-earnings,,,,,,,,,,,,,,,,,,,1,1,275,0.11,economics_fees,seekingalpha.com(1)
+Earnings markets,mog-a-earnings,mog-a-earnings,,,,,,,,,,,,,,,,,,,1,1,1173,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,aptv-earnings,aptv-earnings,,,,,,,,,,,,,,,,,,,1,1,590,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,khc-earnings,khc-earnings,,,,,,,,,,,,,,,,,,,1,1,602,0.02,economics_fees,seekingalpha.com(1)
+Earnings markets,rddt-earnings,rddt-earnings,,,,,,,,,,,,,,,,,,,1,1,694,0.01,economics_fees,seekingalpha.com(1)
+Earnings markets,net-earnings,net-earnings,,,,,,,,,,,,,,,,,,,1,1,794,0.03,economics_fees,seekingalpha.com(1)
+Earnings markets,hgv-earnings,hgv-earnings,,,,,,,,,,,,,,,,,,,1,1,463,0.02,economics_fees,seekingalpha.com(1)
+Earnings markets,way-earnings,way-earnings,,,,,,,,,,,,,,,,,,,1,1,751,0.03,economics_fees,seekingalpha.com(1)
+Earnings markets,txrh-earnings,txrh-earnings,,,,,,,,,,,,,,,,,,,1,1,76,0.48,economics_fees,seekingalpha.com(1)
+Sports games,Volleyball/handball,vbligueb-games,,,,,,,,,,,,,,,,,,,8,22,12,0.96,sports_fees_v3,www.lnv.fr(8)
+Sports games,Tennis,wta-tournament-winner-2026-136226,,,,,,,,,,,,,,,,,,,1,21,30557,0.001,sports_fees_v3,www.wtatennis.com(1)
+Sports games,Tennis,atp-tournament-winner-2026-135011,,,,,,,,,,,,,,,,,,,1,23,11775,0.07,sports_fees_v3,www.atptour.com(1)
+Sports games,Tennis,wta-tournament-winner-2026-136230,,,,,,,,,,,,,,,,,,,1,23,849,0.21,sports_fees_v3,www.wtatennis.com(1)
+Sports games,Tennis,atp-tournament-winner-2026-135017,,,,,,,,,,,,,,,,,,,1,25,13634,0.2,sports_fees_v3,www.atptour.com(1)
+Esports matches,Dota 2,pari-universe-winner,,,,,,,,,,,,,,,,,,,1,10,499,0.22,sports_fees_v3,
+Esports matches,Counter-Strike,pgl-masters-bucharest-2026-winner,,,,,,,,,,,,,,,,,,,1,16,57438,0.03,sports_fees_v3,www.hltv.org(1)
+Esports matches,Counter-Strike,will-insani-leave-mibr-before-2027,,,,,,,,,,,,,,,,,,,1,1,26,0.44,sports_fees_v3,www.hltv.org(1)
+Esports matches,Dota 2,dota-2-patch-7pt42-released-by,,,,,,,,,,,,,,,,,,,1,3,710,0.01,culture_fees,www.dota2.com(1)
+Sports games,Volleyball/handball,vbcl-games,,,,,,,,,,,,,,,,,,,2,2,627,0.575,sports_fees_v3,www.cev.eu(2)
+Mention markets (what will X say),mentions,what-will-trump-say-during-his-midterm-rally-in-north-carolina-october-20,,,,,,,,,,,,,,,,,,,1,20,16620,0.01,mentions_fees,
+Sports games,Volleyball/handball,vbbundesliga-games,,,,,,,,,,,,,,,,,,,1,1,31,0.94,sports_fees_v3,www.volleyball-bundesliga.de(1)

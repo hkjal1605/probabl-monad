@@ -1,7 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import {
-  formatPriceRawX18,
-  formatShareAmount,
   MAX_ORDER_UINT128,
   parsePriceRawX18,
   parseShareAmount,
@@ -13,33 +11,34 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { decodeFunctionData } from "viem";
 import { OutcomePrice } from "../src/components/market/OutcomePrice";
-import { executionImpact, executionPoints } from "../src/lib/markets/history";
+import { resolvingSoon } from "../src/lib/markets/calendar";
 import {
-  groupMarkets,
-  impactPercent,
-  marketCategory,
-  marketCategoryFromPathname,
-  marketCategoryFromSlug,
-  marketCategoryPath,
-  midpoint,
-  mostTraded,
-} from "../src/lib/markets/presentation";
+  CALENDAR_TAB,
+  CATEGORY_TABS,
+  eventTime,
+  inMarketTab,
+  isPriceLadder,
+  ladderCadence,
+  marketTabFromPathname,
+  marketTabFromSlug,
+  marketTabPath,
+  marketTabSlug,
+  marketTopic,
+  visibleTabs,
+} from "../src/lib/markets/categories";
+import { impactLine } from "../src/lib/markets/history";
+import { groupMarkets, impactPercent, midpoint } from "../src/lib/markets/presentation";
 import { outcomeLabel, safeExternalUrl } from "../src/lib/markets/resolution";
 import { conditionalPositionRows } from "../src/lib/portfolio/positions";
-import {
-  csvCell,
-  orderHistoryCsv,
-  tradeHistoryCsv,
-  walletTradeRows,
-  wholeReserved,
-} from "../src/lib/portfolio/presentation";
+import { walletTradeRows, wholeReserved } from "../src/lib/portfolio/presentation";
 import { createActionScope } from "../src/lib/trading/action-scope";
-import { marketPriceBound, quantityForSpend } from "../src/lib/trading/entry";
+import { marketPriceBasis, marketPriceBound, quantityForSpend } from "../src/lib/trading/entry";
 import { previewOrder } from "../src/lib/trading/order";
 import { MarketDetailPageSkeleton } from "../src/modules/MarketDetailPageModule/components/MarketDetailPageSkeleton";
 import { MarketsPageSkeleton } from "../src/modules/MarketsPageModule/components/MarketsPageSkeleton";
 import { mergeOrderPages } from "../src/services/orders";
 import { createUiStore } from "../src/stores/ui-store";
+import type { MarketView } from "../src/types/api";
 import { fixtureMarkets, fixtureState as state } from "./fixtures/protocol";
 
 const market = required(fixtureMarkets[0]);
@@ -48,20 +47,20 @@ function required<T>(value: T | undefined | null): T {
   return value;
 }
 const exchange = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
-describe("market category routes", () => {
-  test("maps every visible category to its canonical URL and rejects unknown slugs", () => {
-    expect(marketCategoryPath("All")).toBe("/");
-    for (const category of ["Macro", "Earnings", "Policy", "Other"] as const) {
-      const path = `/category/${category.toLowerCase()}`;
-      expect(marketCategoryPath(category)).toBe(path);
-      expect(marketCategoryFromSlug(category.toLowerCase())).toBe(category);
+describe("market tab routes", () => {
+  test("maps every tab to its canonical URL and back, and rejects unknown slugs", () => {
+    expect(marketTabPath("All")).toBe("/");
+    expect(marketTabPath(CALENDAR_TAB)).toBe("/calendar");
+    expect(marketTabPath("Price Ladder")).toBe("/category/price-ladder");
+    for (const tab of CATEGORY_TABS) {
+      expect(marketTabFromSlug(marketTabSlug(tab))).toBe(tab);
+      expect(marketTabFromPathname(`${marketTabPath(tab)}/`)).toBe(tab);
     }
-    expect(marketCategoryFromSlug("all")).toBeNull();
-    expect(marketCategoryFromSlug("unknown")).toBeNull();
-    expect(marketCategoryFromPathname("/")).toBe("All");
-    expect(marketCategoryFromPathname("/category/macro")).toBe("Macro");
-    expect(marketCategoryFromPathname("/category/earnings/")).toBe("Earnings");
-    expect(marketCategoryFromPathname("/markets/example")).toBeNull();
+    expect(marketTabFromSlug("all")).toBeNull();
+    expect(marketTabFromSlug("unknown")).toBeNull();
+    expect(marketTabFromPathname("/")).toBe("All");
+    expect(marketTabFromPathname("/calendar")).toBe(CALENDAR_TAB);
+    expect(marketTabFromPathname("/markets/example")).toBeNull();
   });
 });
 describe("markets loading state", () => {
@@ -83,36 +82,157 @@ describe("markets loading state", () => {
   });
 });
 describe("category featured markets", () => {
-  test("the most traded are the open markets with the most 24-hour volume, then book depth", () => {
-    const listed = (id: string, volume24h: number | null, depthUsd: number, lifecycle = "open") =>
+  test("resolving soon: the next three calendar entries still trading, each its most traded market", () => {
+    const now = Date.UTC(2026, 9, 22, 12);
+    const at = (hours: number) => new Date(now + hours * 3_600_000).toISOString();
+    const listed = (
+      id: string,
+      hours: number,
+      patch: Partial<MarketView> = {},
+      event: Partial<NonNullable<MarketView["event"]>> = {},
+    ) =>
       ({
         ...market,
         id,
-        volume24h,
-        lifecycle,
-        yes: { ...market.yes, depthUsd },
-        no: { ...market.no, depthUsd: 0 },
-      }) as typeof market;
-    const ranked = mostTraded([
-      listed("a", 0, 10),
-      listed("b", 500, 0),
-      listed("c", 0, 99),
-      listed("d", 9_999, 0, "resolved"),
-      listed("e", null, 50),
-    ]);
-    expect(ranked.map((m) => m.id)).toEqual(["b", "c", "e", "a"]);
+        lifecycle: "open",
+        cutoff: at(hours - 0.5),
+        event: { endTime: at(hours), result: null, ...event },
+        mapping: { ...market.mapping, conditionId: `0x${id.padStart(64, "0")}` },
+        ...patch,
+      }) as MarketView;
+    // Two strikes of one Kalshi ladder fix together: one calendar entry, shown by its busier strike.
+    const ladder = (id: string, level: string, volume24h: number) =>
+      listed(
+        id,
+        2,
+        {
+          question: `Bitcoin price on Oct 22, 2026: $${level} or above?`,
+          volume24h,
+          mapping: {
+            ...market.mapping,
+            source: "kalshi",
+            conditionId: `0x${id.padStart(64, "0")}`,
+          },
+        },
+        { series: "KXBTCD", eventTicker: "KXBTCD-26OCT2217" },
+      );
+    const markets = [
+      listed("a1", 30),
+      ladder("b1", "84,500", 10),
+      ladder("b2", "85,250", 90),
+      listed("c1", 5),
+      listed("d1", -1),
+      listed("e1", 1, { lifecycle: "awaiting-resolution" }),
+      listed("f1", 50),
+    ];
+    expect(resolvingSoon(markets, now).map((m) => m.id)).toEqual(["b2", "c1", "a1"]);
   });
 
-  test("classifies the selected Clarity Act event as policy", () => {
-    expect(marketCategory({ ...market, question: "Clarity Act signed into law in 2026?" })).toBe(
-      "Policy",
+  test("topics, price ladders and their cadence come from the venue series and the question", () => {
+    const at = (hours: number) =>
+      new Date(Date.UTC(2026, 9, 21, 12) + hours * 3_600_000).toISOString();
+    const listed = (
+      question: string,
+      event: Partial<NonNullable<MarketView["event"]>> = {},
+      hours = 400 * 24,
+    ) => ({
+      ...market,
+      question,
+      tradingOpen: at(0),
+      cutoff: at(hours - 0.5),
+      event: { endTime: at(hours), result: null, ...event },
+    });
+    const cases: [ReturnType<typeof listed>, string, boolean, "daily" | "weekly" | null][] = [
+      [listed("Will the U.S. invade Iran before 2027?"), "Geopolitics", false, null],
+      [
+        listed("Will the Fed increase interest rates by 25 bps after the December 2026 meeting?"),
+        "Economy",
+        false,
+        null,
+      ],
+      [
+        listed("Will CPI rise more than 0.2% in October 2026?", { series: "KXCPI" }),
+        "Economy",
+        false,
+        null,
+      ],
+      [
+        listed("Will NVIDIA be the largest company in the world by market cap on December 31?"),
+        "Tech",
+        false,
+        null,
+      ],
+      [
+        listed("Will Flávio Bolsonaro win the 2026 Brazilian presidential election?", {}, 96),
+        "Politics",
+        false,
+        null,
+      ],
+      [
+        listed(
+          "Will the 7-day moving average of transit calls through the Strait of Hormuz be above 60?",
+          { series: "KXHORMUZNORM" },
+        ),
+        "Geopolitics",
+        false,
+        null,
+      ],
+      [listed("Will Nvidia beat quarterly earnings?"), "Earnings", false, null],
+      [
+        listed("Bitcoin price on Oct 22, 2026: $83,500 or above?", { series: "KXBTCD" }, 20),
+        "Crypto",
+        true,
+        "daily",
+      ],
+      [
+        listed(
+          "Will the gold close price be above 4134.99 USD/t.oz on October 23, 2026 at 5:00 PM EDT?",
+          { series: "KXGOLDW" },
+          72,
+        ),
+        "Commodities",
+        true,
+        "weekly",
+      ],
+      [
+        listed(
+          "Will the Nasdaq-100 be above 29609.99 at the end of Oct 21, 2026 at 4pm EDT?",
+          { series: "KXNASDAQ100U" },
+          20,
+        ),
+        "Stocks",
+        true,
+        "daily",
+      ],
+      [listed("Will Bitcoin reach $90,000 by December 31, 2026?"), "Crypto", true, null],
+      [
+        listed("Will the maximum WTI front month settle price reach $120.01 by Dec 31, 2026?", {
+          series: "KXWTIMAX",
+        }),
+        "Commodities",
+        true,
+        null,
+      ],
+    ];
+    for (const [m, topic, ladder, cadence] of cases) {
+      expect(marketTopic(m), m.question).toBe(topic as ReturnType<typeof marketTopic>);
+      expect(isPriceLadder(m), m.question).toBe(ladder);
+      expect(ladderCadence(m), m.question).toBe(cadence);
+    }
+    // A runoff's stale venue date (the first round's) yields to the later trading cutoff.
+    expect(eventTime({ ...listed("x", {}, 96), event: { endTime: at(-400), result: null } })).toBe(
+      Date.parse(at(95.5)),
     );
-  });
-
-  test("every seeded demo event renders under its reviewed category tab", async () => {
-    const { DEMO_MARKET_SEED } = await import("../../../scripts/evm/seed-policy.ts");
-    for (const seed of DEMO_MARKET_SEED)
-      expect(marketCategory({ ...market, question: seed.question }), seed.slug).toBe(seed.category);
+    // Daily, weekly and price-ladder tabs; the topics with markets; the calendar last.
+    const tabs = visibleTabs(cases.map(([m]) => m) as never);
+    expect(tabs.slice(0, 5)).toEqual(["All", "Daily", "Weekly", "Price Ladder", "Earnings"]);
+    expect(tabs.at(-1)).toBe(CALENDAR_TAB);
+    expect(inMarketTab(cases[7]![0], "Daily") && !inMarketTab(cases[7]![0], "Weekly")).toBe(true);
+    expect(visibleTabs([market])).not.toContain("Geopolitics");
+    // A tab whose markets have all stopped trading is left out.
+    const stopped = cases.map(([m]) => ({ ...(m as typeof market), lifecycle: "frozen" as const }));
+    expect(visibleTabs(stopped)).toEqual(["All", CALENDAR_TAB]);
+    expect(visibleTabs([...stopped, market])).toEqual(visibleTabs([market]));
   });
 });
 describe("canonical order windows", () => {
@@ -178,6 +298,21 @@ describe("token amount entry", () => {
     expect(previewOrder("0.0000001", "1", { ...m, baseStep: "1" }).valid).toBe(false);
     expect(parseShareAmount(quantityForSpend("1", "3", m), m) % BigInt(m.baseStep)).toBe(0n);
   });
+  test("a spend that rounds below the market's minimum order value names the least that works", () => {
+    const m = { ...market, baseStep: "1000000000000000", minNotional: "1000000" };
+    const symbol = m.quoteTokenMetadata?.symbol ?? "USDC";
+    // 1 at a 52.24 worst price buys 0.019 shares, worth 0.99256: under the minimum of 1.
+    expect(() => quantityForSpend("1", "52.24", m)).toThrow(
+      `The smallest order here is 1.05 ${symbol} at this price.`,
+    );
+    expect(quantityForSpend("1.05", "52.24", m)).toBe(quantityForSpend("1.0448", "52.24", m));
+    expect(quantityForSpend("2", "52.24", m)).toBe("0.038");
+    expect(quantityForSpend("1", "52.24", { ...m, minNotional: "100000" })).toBe("0.019");
+    // Without a minimum, the least is one step's value.
+    expect(() => quantityForSpend("0.05", "52.24", { ...m, minNotional: "0" })).toThrow(
+      `The smallest order here is 0.06 ${symbol} at this price.`,
+    );
+  });
   test("invalid input, uint128 overflow, and insufficient budgets are rejected", () => {
     for (const spend of [
       "-1",
@@ -217,6 +352,36 @@ describe("token amount entry", () => {
     for (const bps of [-1, 1.1, 10000, Number.NaN])
       expect(() => marketPriceBound(market, "YES", "buy", bps)).toThrow();
   });
+  test("with no book on its side, a market order is bounded 5% off the token's reference price", () => {
+    const now = Math.floor(Date.now() / 1000);
+    const empty = { ...market.yes, bestAskExact: null, bestBidExact: null };
+    const m = {
+      ...market,
+      priceTickRawX18: "10000",
+      yes: empty,
+      spotReference: {
+        token: market.base.token,
+        symbol: market.ticker,
+        source: "robinhood:TEST",
+        kind: "stock" as const,
+        status: "available" as const,
+        priceUsd: 100,
+        priceTimestamp: now,
+        fetchedAt: now,
+        valuationCompatible: false,
+      },
+    };
+    expect(marketPriceBasis(m, "YES", "buy")).toBe("reference");
+    expect(marketPriceBasis(market, "YES", "buy")).toBe("book");
+    const { spotReference: _, ...unpriced } = m;
+    expect(marketPriceBasis(unpriced, "YES", "buy")).toBeNull();
+    const reference = parsePriceRawX18("100", m);
+    const buy = parsePriceRawX18(marketPriceBound(m, "YES", "buy"), m);
+    const sell = parsePriceRawX18(marketPriceBound(m, "YES", "sell"), m);
+    expect(buy % 10000n).toBe(0n);
+    expect(buy * 10000n <= reference * 10500n && buy * 10000n > reference * 10400n).toBe(true);
+    expect(sell * 10000n >= reference * 9500n && sell * 10000n < reference * 9600n).toBe(true);
+  });
 });
 describe("wallet action scoping", () => {
   test("double clicks cannot start a second action", () => {
@@ -244,7 +409,7 @@ describe("wallet action scoping", () => {
   test("provider-scoped stores share no wallet intent or filters between requests", () => {
     const a = createUiStore(),
       b = createUiStore();
-    a.getState().setFilters({ category: "Macro", view: "Matrix" });
+    a.getState().setFilters({ category: "Economy", view: "Matrix" });
     a.getState().setPrefill({
       intent: "close",
       marketId: market.id,
@@ -254,7 +419,7 @@ describe("wallet action scoping", () => {
     });
     expect(b.getState().filters.category).toBe("All");
     expect(b.getState().prefill).toBeNull();
-    expect(a.getState().filters.category).toBe("Macro");
+    expect(a.getState().filters.category).toBe("Economy");
     expect(Object.keys(a.getState()).some((key) => /token|session|secret/i.test(key))).toBe(false);
   });
 });
@@ -455,23 +620,6 @@ describe("honest market, portfolio and evidence presentation", () => {
       expect(safeExternalUrl(url)).toBeNull();
     expect(safeExternalUrl("https://example.com/evidence")).toBe("https://example.com/evidence");
   });
-  test("CSV escapes labels and spreadsheet formula injection without losing exact raw-unit quantities", () => {
-    expect(csvCell('a,"b"')).toBe('"a,""b"""');
-    expect(csvCell("=1+1")).toBe('"\'=1+1"');
-    expect(csvCell("\t@SUM(A1)")).toContain("'");
-    const order = {
-      ...required(state.orders[0]),
-      marketId: market.id,
-      quantity: "1000001",
-      filled: "1",
-      limitPriceRawX18: "123456789",
-    };
-    const csv = orderHistoryCsv([order], [market]);
-    expect(csv.split("\r\n")[0]).toContain('"Limit (USDC)"');
-    expect(csv).toContain(formatShareAmount(1000001n, market));
-    expect(csv).toContain(formatPriceRawX18(123456789n, market));
-    expect(csv).toContain("Updated block");
-  });
   test("wallet trade history includes only fills belonging to the connected wallet orders", () => {
     const order = required(state.orders[0]);
     const trade = {
@@ -488,7 +636,6 @@ describe("honest market, portfolio and evidence presentation", () => {
     const rows = walletTradeRows([trade, unrelated], [order], [market]);
     expect(rows).toHaveLength(1);
     expect(rows[0]?.side).toBe("Buy");
-    expect(tradeHistoryCsv(rows)).toContain('"255.25"');
   });
   test("wallet trade history identifies self-matches without double-counting the fill", () => {
     const buy = required(state.orders[0]);
@@ -519,15 +666,21 @@ describe("honest market, portfolio and evidence presentation", () => {
     const rows = walletTradeRows([makerFill, takerFill], [buy, sell], [market]);
     expect(rows.map((row) => row.side)).toEqual(["Sell", "Buy"]);
   });
-  test("historical impact waits for both branch executions and respects market and time boundaries", () => {
-    const points = [
-      { id: "a", at: 1, branch: 0, price: 200 },
-      { id: "b", at: 2, branch: 1, price: 100 },
-      { id: "c", at: 3, branch: 0, price: 210 },
-    ];
-    expect(executionImpact(points.slice(0, 1))).toEqual([]);
-    expect(executionImpact(points).map((p) => p.price)).toEqual([100, 110.00000000000001]);
-    expect(executionPoints(state.trades, { ...market, id: "different" })).toEqual([]);
-    expect(executionPoints(state.trades, market, Number.MAX_SAFE_INTEGER)).toEqual([]);
+  test("impact is YES's premium over NO at each recorded time with both prices, no trade needed", () => {
+    const impact = impactLine({
+      yes: [
+        { time: 60, value: 110 },
+        { time: 120, value: 104 },
+        { time: 180, value: 99 },
+      ],
+      no: [
+        { time: 60, value: 100 },
+        { time: 180, value: 110 },
+      ],
+    });
+    expect(impact.map((p) => p.time)).toEqual([60, 180]);
+    expect(impact[0]?.value).toBeCloseTo(10);
+    expect(impact[1]?.value).toBeCloseTo(-10);
+    expect(impactLine({ yes: [{ time: 60, value: 1 }], no: [] })).toEqual([]);
   });
 });

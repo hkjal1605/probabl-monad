@@ -35,7 +35,10 @@ abstract contract DeltaVaultBase is
     /// @notice Pauses deposits and quoting.
     bytes32 public constant GUARDIAN_ROLE = keccak256("GUARDIAN_ROLE");
 
-    uint256 public constant MAX_MARKETS = 8;
+    /// @dev Deposits and withdrawals are in kind across every registered market, so their gas
+    ///      grows with this bound (about 0.1M per market with claims): 48 keeps an LP's exit far
+    ///      below a block's gas (VaultMarketLimit.t.sol).
+    uint256 public constant MAX_MARKETS = 48;
     uint256 public constant MAX_ORDERS = 48;
     uint256 public constant MAX_BAND_BPS = 5000;
     uint256 public constant MAX_CUTOFF_BUFFER = 7 days;
@@ -246,6 +249,7 @@ abstract contract DeltaVaultBase is
     error CrossedQuotes();
     error StaleOracle();
     error SequencerDown();
+    error QuoteSigner();
 
     constructor(Config memory c)
         ERC20(c.name, c.symbol)

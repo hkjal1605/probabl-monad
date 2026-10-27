@@ -148,22 +148,13 @@ export function TradingPermissionCard() {
                     </dd>
                   </div>
                   {permission.baseDecimals !== null && (
-                    <>
-                      <div>
-                        <dt className="font-medium text-muted-foreground">Remaining share limit</dt>
-                        <dd className="tabular-nums">
-                          {formatTokenAmount(BigInt(grant.remainingBase), permission.baseDecimals)}{" "}
-                          shares
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="font-medium text-muted-foreground">Shares per sell</dt>
-                        <dd className="tabular-nums">
-                          {formatTokenAmount(BigInt(grant.maxOrderBase), permission.baseDecimals)}{" "}
-                          shares
-                        </dd>
-                      </div>
-                    </>
+                    <div>
+                      <dt className="font-medium text-muted-foreground">Shares per sell</dt>
+                      <dd className="tabular-nums">
+                        {formatTokenAmount(BigInt(grant.maxOrderBase), permission.baseDecimals)}{" "}
+                        shares
+                      </dd>
+                    </div>
                   )}
                   <div>
                     <dt className="font-medium text-muted-foreground">Expires</dt>

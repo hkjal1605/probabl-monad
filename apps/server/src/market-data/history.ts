@@ -1,16 +1,20 @@
-/** Price history for the market charts: every open market's YES and NO book midpoints and its
- * stock's reference price, recorded once a minute. */
+/** Price history for the market charts: every open market's YES and NO midpoints and its stock's
+ * reference price, recorded once a minute. A branch's midpoint takes the best bid and ask of its
+ * book and of the RFQ makers' current prices together, so markets the Δ-vaults quote only over
+ * RFQ chart too. */
 import type { Database, MinutePrices } from "@conditional-stocks/db";
-import { bookMidpoints, type IndexerService } from "@conditional-stocks/indexer";
+import { bookTops, type IndexerService, midpointOf } from "@conditional-stocks/indexer";
 import { SPOT_BATCH_SIZE, tokenPriceUsd } from "@conditional-stocks/shared/spot-prices";
+import type { QuotePrice } from "../rfq/hub.ts";
 import type { SpotPriceSource } from "./robinhood.ts";
 
 /** How far into each minute the recorder reads: blocks of the minute's first seconds land. */
 const RECORD_DELAY_MS = 2_000;
 
-/** Records every open market's prices once a minute: midpoints from the in-memory books and one
- * batched read of the stocks' reference prices (USD per whole token, as the markets show them),
- * then one insert. Every API process may record; a minute's first write is kept. */
+/** Records every open market's prices once a minute: midpoints from the in-memory books and RFQ
+ * prices and one batched read of the stocks' reference prices (USD per whole token, as the
+ * markets show them), then one insert. Every API process may record; a minute's first write is
+ * kept. */
 export class PriceRecorder {
   private timer: ReturnType<typeof setTimeout> | undefined;
   private stopped = false;
@@ -20,6 +24,8 @@ export class PriceRecorder {
       indexer: Pick<IndexerService, "domain" | "trading" | "tokens">;
       prices: SpotPriceSource;
       db: Pick<Database, "recordPrices">;
+      /** The RFQ makers' current prices (`RfqHub.prices`). */
+      quotes?: () => QuotePrice[];
       onError?: (error: unknown) => void;
     },
   ) {}
@@ -51,7 +57,22 @@ export class PriceRecorder {
     const s = indexer.trading();
     const markets = [...s.markets.values()].filter((m) => m.state === 2);
     if (!markets.length) return;
-    const midpoints = bookMidpoints(s, BigInt(Math.floor(nowMs / 1000)));
+    const tops = bookTops(s, BigInt(Math.floor(nowMs / 1000)));
+    const quotes = new Map((this.deps.quotes?.() ?? []).map((q) => [`${q.market}:${q.branch}`, q]));
+    /** A branch's midpoint between the better of the book's and the makers' bid and ask. */
+    const midpoint = (market: number, branch: 0 | 1) => {
+      const book = tops.get(market)?.[branch] ?? {},
+        quote = quotes.get(`${market}:${branch}`);
+      const better = (
+        a: bigint | null | undefined,
+        b: bigint | null | undefined,
+        high: boolean,
+      ): bigint | null => (a == null ? (b ?? null) : b == null || (high ? a > b : a < b) ? a : b);
+      return midpointOf({
+        bid: better(book.bid, quote?.bid, true),
+        ask: better(book.ask, quote?.ask, false),
+      });
+    };
     const bases = [...new Set(markets.map((m) => m.base))];
     const spot = new Map<string, number | null>();
     for (let i = 0; i < bases.length; i += SPOT_BATCH_SIZE) {
@@ -71,13 +92,12 @@ export class PriceRecorder {
     await db.recordPrices(
       indexer.domain,
       markets.map((m): MinutePrices => {
-        const mid = midpoints.get(m.id),
-          usd = spot.get(m.base.toLowerCase());
+        const usd = spot.get(m.base.toLowerCase());
         return {
           market: m.id,
           minute,
-          yes: mid?.yes ?? null,
-          no: mid?.no ?? null,
+          yes: midpoint(m.id, 0),
+          no: midpoint(m.id, 1),
           spot: usd === null || usd === undefined ? null : String(usd),
         };
       }),

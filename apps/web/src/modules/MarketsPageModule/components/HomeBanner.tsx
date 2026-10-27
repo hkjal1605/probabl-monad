@@ -1,59 +1,37 @@
 "use client";
-import type { UTCTimestamp } from "lightweight-charts";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
+
+import { ArrowRight, CalendarDays } from "lucide-react";
 import Link from "next/link";
-import { type ReactNode, useMemo, useState } from "react";
-import {
-  type LightweightChartSeries,
-  LightweightPriceChart,
-} from "@/components/market/LightweightPriceChart";
+import { useEffect, useMemo, useState } from "react";
+import { LazyPriceChart } from "@/components/market/LazyPriceChart";
 import { ProbabilityGauge } from "@/components/market/ProbabilityGauge";
+import { dollars, dollarTicks, priceSeries } from "@/components/market/priceSeries";
 import { useUiStore } from "@/components/providers/UiStateProvider";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage, AvatarLazyImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { usePriceHistory } from "@/hooks/useProtocolData";
-import { formatCompactUsd, formatUsd, shortDate } from "@/lib/format/display";
-import { type LinePoint, priceLines } from "@/lib/markets/history";
+import { shortTime } from "@/lib/format/display";
+import { resolvingSoon } from "@/lib/markets/calendar";
+import { eventTime, type MarketTab, marketTopic } from "@/lib/markets/categories";
+import { priceLines } from "@/lib/markets/history";
 import { marketPath } from "@/lib/markets/identity";
 import {
-  bookDepthUsd,
   byTrading,
   currentSpotUsd,
   eventKey,
   eventMonogram,
-  type MarketCategory,
-  marketCategory,
   midpoint,
-  mostTraded,
-  spotImpactPercent,
 } from "@/lib/markets/presentation";
-import { safeExternalUrl } from "@/lib/markets/resolution";
 import { cn } from "@/lib/utils";
 import type { MarketView } from "@/types/api";
-
-/** Chart and outcome values: dollars per whole token. */
-const dollars = (value: number) => formatUsd(value);
-const wholeDollars = new Intl.NumberFormat("en-US", {
-  currency: "USD",
-  maximumFractionDigits: 0,
-  style: "currency",
-});
-/** Axis ticks: whole dollars when every tick is one, else cents. */
-const dollarTicks = (values: number[]) =>
-  values.every((value) => Math.abs(value - Math.round(value)) < 1e-9)
-    ? values.map((value) => wholeDollars.format(value))
-    : values.map(dollars);
-const signed = (value: number) => `${value >= 0 ? "+" : "−"}${Math.abs(value).toFixed(1)}%`;
-const line = (points: LinePoint[]) =>
-  points.map((p) => ({ time: p.time as UTCTimestamp, value: p.value }));
 
 function EventImage({ market, className }: { market: MarketView; className?: string }) {
   return (
     <Avatar className={cn("rounded-xl after:rounded-xl", className)}>
       {market.imageUrl && (
-        <AvatarImage
+        <AvatarLazyImage
           src={market.imageUrl}
           alt=""
           referrerPolicy="no-referrer"
@@ -74,49 +52,6 @@ function StockIcon({ market, className }: { market: MarketView; className?: stri
   );
 }
 
-/** One outcome's live value, as Polymarket lists outcomes: a colored key, its name, its price. */
-function Outcome({
-  color,
-  label,
-  value,
-  detail,
-}: {
-  color: LightweightChartSeries["colorToken"];
-  label: string;
-  value: number | null;
-  detail: ReactNode;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4 border-border/60 border-b py-3 last:border-0">
-      <dt className="flex items-center gap-2.5 text-base text-foreground">
-        <span
-          aria-hidden="true"
-          className="size-2.5 rounded-full"
-          style={{ backgroundColor: `var(--${color})` }}
-        />
-        {label}
-      </dt>
-      <dd className="text-right">
-        <span className="block font-semibold text-xl text-foreground tabular-nums leading-none">
-          {value === null ? "—" : dollars(value)}
-        </span>
-        <span className="mt-1.5 block text-muted-foreground text-xs tabular-nums">{detail}</span>
-      </dd>
-    </div>
-  );
-}
-
-function VersusSpot({ value }: { value: number | null }) {
-  return value === null ? (
-    <>No spot reference</>
-  ) : (
-    <>
-      <span className={value >= 0 ? "text-positive" : "text-destructive"}>{signed(value)}</span> vs
-      spot
-    </>
-  );
-}
-
 /** The selected market's prices over time: YES and NO book midpoints and the stock's spot, as
  * recorded each minute, ending at the live values. */
 function EventChart({
@@ -128,27 +63,17 @@ function EventChart({
 }) {
   const history = usePriceHistory(market.id);
   const { yes, no, spot } = live;
-  const series = useMemo<LightweightChartSeries[]>(() => {
-    const lines = priceLines(history.points, market, { yes, no, spot });
-    return [
-      { id: "yes", label: "If YES", colorToken: "positive", data: line(lines.yes) },
-      { id: "no", label: "If NO", colorToken: "danger", data: line(lines.no) },
-      {
-        id: "spot",
-        label: "Spot",
-        colorToken: "info",
-        lineStyle: "dashed",
-        data: line(lines.spot),
-      },
-    ];
-  }, [history.points, market, yes, no, spot]);
+  const series = useMemo(
+    () => priceSeries(priceLines(history.points, market, { yes, no, spot })),
+    [history.points, market, yes, no, spot],
+  );
   const empty =
     !history.isPending && series.every((s) => s.data.length < 2)
       ? "Prices are recorded every minute: the chart fills in as they arrive."
       : undefined;
   return (
-    <div className="relative min-h-64 md:min-h-0">
-      <LightweightPriceChart
+    <div className="relative min-h-64 flex-1 lg:min-h-0">
+      <LazyPriceChart
         variant="banner"
         series={series}
         formatValue={dollars}
@@ -195,27 +120,38 @@ function StockPicker({
   );
 }
 
-/** The event leading the selected category: its question and probability, one of its stocks'
- * prices if YES, if NO and spot, and their chart. */
+/** Whether the screen is md wide or wider, read once mounted: a phone leaves the featured event
+ * out (the feed's first card is the same event), so its chart and price history never load there. */
+function useWide() {
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    const query = matchMedia("(min-width: 48rem)");
+    const update = () => setWide(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  return wide;
+}
+
+/** The event leading the selected category: its question and probability, and one of its
+ * stocks' prices if YES, if NO and spot over time. */
 function FeaturedEvent({ assets }: { assets: MarketView[] }) {
   const event = assets[0] as MarketView;
   const [selected, setSelected] = useState(() => ([...assets].sort(byTrading)[0] ?? event).id);
   const market = assets.find((asset) => asset.id === selected) ?? event;
   const live = { yes: midpoint(market.yes), no: midpoint(market.no), spot: currentSpotUsd(market) };
-  const volume = assets.reduce((sum, asset) => sum + (asset.volume24h ?? 0), 0);
-  const liquidity = assets.reduce((sum, asset) => sum + bookDepthUsd(asset), 0);
-  const source = safeExternalUrl(event.mapping.polymarketUrl);
+  const wide = useWide();
   return (
     <Card
       variant="market"
-      className="fade-in-0 flex min-h-0 animate-in flex-col p-4 duration-500 motion-reduce:animate-none sm:p-5"
+      className="fade-in-0 flex min-h-0 animate-in flex-col p-4 duration-500 motion-reduce:animate-none max-md:hidden sm:p-5 lg:col-span-2"
     >
       <header className="flex items-start gap-4">
         <EventImage market={event} className="size-14" />
         <div className="min-w-0 flex-1">
           <p className="text-muted-foreground text-sm">
-            {marketCategory(event)} ·{" "}
-            {assets.length === 1 ? event.ticker : `${assets.length} stocks`}
+            {marketTopic(event)} · {assets.length === 1 ? event.ticker : `${assets.length} stocks`}
           </p>
           <h2 className="mt-1 text-balance font-semibold text-foreground text-xl leading-snug tracking-tight sm:text-2xl lg:line-clamp-2">
             <Link
@@ -234,57 +170,19 @@ function FeaturedEvent({ assets }: { assets: MarketView[] }) {
           <StockPicker assets={assets} value={market.id} onChange={setSelected} />
         </div>
       )}
-      <div className="mt-5 grid min-h-0 flex-1 gap-6 md:grid-cols-[minmax(0,4fr)_minmax(0,9fr)]">
-        <div className="flex min-w-0 flex-col gap-4">
-          <dl className="flex flex-col">
-            <Outcome
-              color="positive"
-              label="If YES"
-              value={live.yes}
-              detail={<VersusSpot value={spotImpactPercent(market, "YES")} />}
-            />
-            <Outcome
-              color="danger"
-              label="If NO"
-              value={live.no}
-              detail={<VersusSpot value={spotImpactPercent(market, "NO")} />}
-            />
-            <Outcome color="info" label="Spot" value={live.spot} detail="Live price" />
-          </dl>
-          <Button
-            size="lg"
-            className="mt-auto w-full sm:w-fit"
-            nativeButton={false}
-            render={<Link href={marketPath(market)} />}
-          >
-            Trade {market.ticker}
-            <ArrowRight data-icon="inline-end" aria-hidden="true" />
-          </Button>
-        </div>
-        <EventChart market={market} live={live} />
+      {/* The chart's legend carries the live YES, NO and spot prices. */}
+      <div className="mt-5 flex min-h-0 flex-1 flex-col gap-4">
+        {wide && <EventChart market={market} live={live} />}
+        <Button
+          size="lg"
+          className="w-full sm:w-fit"
+          nativeButton={false}
+          render={<Link href={marketPath(market)} />}
+        >
+          Trade {market.ticker}
+          <ArrowRight data-icon="inline-end" aria-hidden="true" />
+        </Button>
       </div>
-      <footer className="mt-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-border border-t pt-4 text-muted-foreground text-sm">
-        <span className="tabular-nums">
-          {formatCompactUsd(volume)} Vol · {formatCompactUsd(liquidity)} liquidity
-        </span>
-        <span className="flex items-center gap-2">
-          Ends {shortDate(market.cutoff)}
-          {source && (
-            <>
-              <span aria-hidden="true">·</span>
-              <a
-                href={source}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="inline-flex items-center gap-0.5 transition-colors hover:text-foreground"
-              >
-                Polymarket
-                <ArrowUpRight aria-hidden="true" className="size-3.5" />
-              </a>
-            </>
-          )}
-        </span>
-      </footer>
     </Card>
   );
 }
@@ -311,9 +209,9 @@ function BuyPrice({ market, branch }: { market: MarketView; branch: "YES" | "NO"
   );
 }
 
-function TradedMarket({ market }: { market: MarketView }) {
+function ResolvingMarket({ market }: { market: MarketView }) {
   return (
-    <li className="flex flex-col gap-2">
+    <li className="flex flex-col gap-2 max-md:w-[80%] max-md:shrink-0 max-md:snap-start max-md:justify-between max-md:rounded-xl max-md:bg-card max-md:p-3">
       <div className="flex items-start gap-3">
         <div className="relative shrink-0">
           <EventImage market={market} className="size-11" />
@@ -330,7 +228,7 @@ function TradedMarket({ market }: { market: MarketView }) {
             {market.question}
           </Link>
           <p className="mt-1 text-muted-foreground text-xs tabular-nums">
-            {market.ticker} · {formatCompactUsd(market.volume24h ?? 0)} vol
+            {market.ticker} · Resolves {shortTime(new Date(eventTime(market)).toISOString())}
           </p>
         </div>
       </div>
@@ -342,57 +240,74 @@ function TradedMarket({ market }: { market: MarketView }) {
   );
 }
 
-/** The markets traded most in the last 24 hours, whatever the category. */
-function MostTraded({ markets }: { markets: MarketView[] }) {
+/** The events resolving next, whatever the category (each as its most traded market), and the
+ * way to the full calendar. */
+function ResolvingSoon({
+  markets,
+  onViewCalendar,
+}: {
+  markets: MarketView[];
+  onViewCalendar: () => void;
+}) {
   return (
-    <Card variant="market" className="flex flex-col p-4 sm:p-5">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="font-semibold text-foreground text-lg tracking-tight">Most Traded</h2>
-        <span className="text-muted-foreground text-xs">Last 24 hours</span>
-      </div>
+    <Card
+      variant="market"
+      className="flex min-w-0 flex-col p-4 max-md:overflow-visible max-md:rounded-none max-md:bg-transparent max-md:p-0 sm:p-5"
+    >
+      <h2 className="font-semibold text-foreground text-lg tracking-tight">Resolving soon</h2>
       {markets.length ? (
-        <ul className="mt-4 flex min-h-0 flex-1 flex-col justify-between gap-4">
+        // On a phone the markets are cards in a row that swipes sideways, the next one peeking in.
+        <ul className="mt-4 flex min-h-0 flex-1 flex-col justify-between gap-4 max-md:-mx-4 max-md:mt-3 max-md:snap-x max-md:snap-mandatory max-md:scroll-px-4 max-md:flex-row max-md:justify-start max-md:gap-3 max-md:overflow-x-auto max-md:px-4 max-md:[scrollbar-width:none]">
           {markets.map((market) => (
-            <TradedMarket key={market.id} market={market} />
+            <ResolvingMarket key={market.id} market={market} />
           ))}
         </ul>
       ) : (
         <p className="m-auto py-10 text-center text-muted-foreground text-sm">
-          No market is trading yet.
+          No market resolves soon.
         </p>
       )}
+      <Button variant="outline" className="mt-4 w-full max-md:mt-3" onClick={onViewCalendar}>
+        <CalendarDays data-icon="inline-start" />
+        View Calendar
+      </Button>
     </Card>
   );
 }
 
-/** The top of the markets page: the selected category's leading event with its price chart
- * (about two thirds of the width), and the most traded markets beside it. */
+/** The top of the markets page, on the market grid's columns and gaps: the selected category's
+ * leading event with its price chart across two columns, and the events resolving next in the
+ * third, lined up with the cards below. */
 export function HomeBanner({
   featured,
   category,
   markets,
+  onViewCalendar,
 }: {
   /** The first event of the selected category (its markets), if any. */
   featured: MarketView[] | undefined;
-  category: MarketCategory;
-  /** Every listed market: the most traded do not depend on the category. */
+  category: MarketTab;
+  /** Every listed market: what resolves next does not depend on the category. */
   markets: MarketView[];
+  /** Opens the calendar, as its category tab does. */
+  onViewCalendar: () => void;
 }) {
-  const traded = useMemo(() => mostTraded(markets), [markets]);
+  // Read when the markets change, not on a clock: the list refreshes, and so does this.
+  const resolving = useMemo(() => resolvingSoon(markets, Date.now()), [markets]);
   const event = featured?.[0];
   return (
-    <section
-      aria-label="Featured markets"
-      className="mb-6 grid gap-4 lg:h-[33rem] lg:grid-cols-[minmax(0,65fr)_minmax(0,35fr)]"
-    >
+    <section aria-label="Featured markets" className="mb-3 grid gap-3 lg:h-[28rem] lg:grid-cols-3">
       {event && featured ? (
         <FeaturedEvent key={eventKey(event)} assets={featured} />
       ) : (
-        <Card variant="market" className="flex min-h-80 items-center justify-center p-6">
+        <Card
+          variant="market"
+          className="flex min-h-80 items-center justify-center p-6 max-md:hidden lg:col-span-2"
+        >
           <p className="text-muted-foreground text-sm">No {category} markets are listed yet.</p>
         </Card>
       )}
-      <MostTraded markets={traded} />
+      <ResolvingSoon markets={resolving} onViewCalendar={onViewCalendar} />
     </section>
   );
 }

@@ -1,4 +1,5 @@
 "use client";
+import { formatTokenAmount } from "@conditional-stocks/domain";
 import {
   type AtomicPlan,
   formatBps,
@@ -40,6 +41,9 @@ interface Preparation {
   notional: string;
   plan: AtomicPlan;
   exchange: string;
+  /** Approved RFQ makers online for a market order: they quote it at submission, and the order
+   * fills from their quotes and the book together, best price first. */
+  rfq?: { makers: number };
   /** Idempotency key of the delegated submission: retries never place a second order. */
   clientId: string;
 }
@@ -129,10 +133,14 @@ export function useOrderTicket({ market }: { market: MarketView }) {
   const { busy: permissionBusy, run: runPermissionAction } = useAsyncAction(
     [wallet.account, permission?.delegate].join(":"),
   );
+  // The quote expires at its deadline: one timer at that moment, not a clock.
   useEffect(() => {
     if (!preparation) return;
-    const timer = setInterval(() => setNowSeconds(Math.floor(Date.now() / 1000)), 1000);
-    return () => clearInterval(timer);
+    const tick = () => setNowSeconds(Math.floor(Date.now() / 1000));
+    const left = Number(preparation.plan.deadline) * 1000 - Date.now();
+    if (left <= 0) return tick();
+    const timer = setTimeout(tick, left + 50);
+    return () => clearTimeout(timer);
   }, [preparation]);
   const quoteExpired = preparation
     ? BigInt(preparation.plan.deadline) <= BigInt(nowSeconds)
@@ -148,6 +156,12 @@ export function useOrderTicket({ market }: { market: MarketView }) {
     )
       throw new Error("Deposit assets and enable trading in Portfolio before placing an order.");
     if (legError) throw new Error(legError);
+    // The exchange refuses an order worth less than the market's minimum at the order's price.
+    const minimum = BigInt(market.minNotional ?? "0");
+    if (minimum > 0n && BigInt(preview.costRaw) < minimum)
+      throw new Error(
+        `Orders here must be worth at least ${formatTokenAmount(minimum, market.quoteTokenDecimals)} ${quoteSymbol} at the order's price.`,
+      );
     if (permission.grant.maxFeeBps < maxFeeBps)
       throw new Error(
         `This market's ${formatBps(maxFeeBps)} fee is above your trading permission's ${formatBps(permission.grant.maxFeeBps)} fee cap. Revoke the trading permission in Portfolio and approve it again to raise the cap.`,
@@ -204,6 +218,7 @@ export function useOrderTicket({ market }: { market: MarketView }) {
       notional: result.notional,
       plan: result.plan,
       exchange: result.exchange,
+      ...(result.rfq ? { rfq: result.rfq } : {}),
       clientId: crypto.randomUUID(),
       funding: {
         balanceSufficient: positions.isDataFresh && balance >= required,

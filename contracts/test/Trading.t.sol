@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import { ConditionalStocksAdmin } from "../src/ConditionalStocksAdmin.sol";
 import { ConditionalStocksBase } from "../src/ConditionalStocksBase.sol";
 import { Base, MockToken, Vm } from "./Base.t.sol";
 
@@ -21,7 +22,7 @@ contract TradingTest is Base {
 
     function _split(address user, uint8 collateral, uint256 amount) internal {
         vm.prank(user);
-        cs.split(market, collateral, amount);
+        ConditionalStocksAdmin(address(cs)).split(market, collateral, amount);
     }
 
     function testDepositWithdraw() public {
@@ -58,7 +59,7 @@ contract TradingTest is Base {
         eq(acct(bob, NO).base, 10 * NVDA, "no");
         eq(view_.backing(market).base, 10 * NVDA, "backing");
         vm.prank(bob);
-        cs.merge(market, 1, 4 * NVDA);
+        ConditionalStocksAdmin(address(cs)).merge(market, 1, 4 * NVDA);
         eq(view_.backing(market).base, 6 * NVDA, "backing after merge");
         eq(credit(bob, address(stock)), 10_000e18 - 6 * NVDA, "credit");
     }

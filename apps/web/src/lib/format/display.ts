@@ -16,6 +16,27 @@ const usd = new Intl.NumberFormat("en-US", {
   style: "currency",
 });
 
+// Formatters are costly to build and every render formats many values: one per digit count.
+const fixed = new Map<number, Intl.NumberFormat>();
+const fixedDigits = (digits: number) => {
+  let format = fixed.get(digits);
+  if (!format) {
+    format = new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    });
+    fixed.set(digits, format);
+  }
+  return format;
+};
+const dateTime = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" });
+const monthDay = new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short" });
+const monthDayYear = new Intl.DateTimeFormat("en-US", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
+
 export const formatUsd = (value: number | null) =>
   value === null ? "Unavailable" : usd.format(value);
 export const formatCompactNumber = (value: number) => compact.format(value);
@@ -27,28 +48,30 @@ export const formatNumber = (value: number | null, digits?: number) =>
     ? "—"
     : digits === undefined
       ? decimal.format(value)
-      : new Intl.NumberFormat("en-US", {
-          minimumFractionDigits: digits,
-          maximumFractionDigits: digits,
-        }).format(value);
+      : fixedDigits(digits).format(value);
 export const shortAddress = (value: string, size = 4) =>
   value.length <= size * 2 + 2 ? value : `${value.slice(0, size + 2)}…${value.slice(-size)}`;
 export const formatTime = (value: string | null) =>
-  value
-    ? new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(
-        new Date(value),
-      )
-    : "Not available";
+  value ? dateTime.format(new Date(value)) : "Not available";
+const monthDayTime = new Intl.DateTimeFormat("en-US", {
+  day: "numeric",
+  month: "short",
+  hour: "numeric",
+  minute: "2-digit",
+});
+/** A short local time for tables, "Oct 22, 3:22 AM", in full when it is not this year's. */
+export const shortTime = (value: string, now = new Date()) => {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "—"
+    : (date.getFullYear() === now.getFullYear() ? monthDayTime : dateTime).format(date);
+};
 /** A short local date, "Dec 31", with the year when it is not this year's. */
 export const shortDate = (value: string, now = new Date()) => {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? "—"
-    : new Intl.DateTimeFormat("en-US", {
-        day: "numeric",
-        month: "short",
-        ...(date.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }),
-      }).format(date);
+    : (date.getFullYear() === now.getFullYear() ? monthDay : monthDayYear).format(date);
 };
 export const timeUntil = (value: string, now = Date.now()) => {
   const milliseconds = new Date(value).getTime() - now;

@@ -5,8 +5,11 @@ import {
   packMakers,
   packPlan,
   parseOrder,
+  type QuoteFill,
   quote,
   U32_MAX,
+  U96_MAX,
+  unpackOrder,
   unsigned,
 } from "./protocol.ts";
 
@@ -38,6 +41,9 @@ export interface AtomicPlan {
   filledQuantity: string;
   remainingQuantity: string;
   executionQuote: string;
+  /** Signed RFQ quotes the placement fills first, each up to its `fill` (`placeWithQuotes`);
+   * the makers above then fill what remains. */
+  quotes?: QuoteFill[];
 }
 
 /** Best-price, FIFO-within-price planner over the confirmed book. */
@@ -182,10 +188,31 @@ export function parseAtomicPlan(value: unknown, order: OrderWire): AtomicPlan {
     seen.add(key);
     remaining -= quantity;
   }
+  if (p.quotes !== undefined) {
+    if (!Array.isArray(p.quotes) || p.quotes.length > MAX_MAKERS)
+      throw new Error("Invalid execution plan");
+    for (const q of p.quotes) {
+      const terms = unpackOrder(unsigned(q?.terms, (1n << 256n) - 1n));
+      const fill = unsigned(q.fill, U96_MAX);
+      unsigned(q.nonce, (1n << 256n) - 1n);
+      if (
+        terms.market !== Number(o.marketId) ||
+        terms.branch !== o.branch ||
+        terms.side === o.side ||
+        fill === 0n ||
+        fill > terms.quantity ||
+        fill > remaining ||
+        ![q.r, q.vs].every((word) => typeof word === "string" && /^0x[0-9a-fA-F]{64}$/.test(word))
+      )
+        throw new Error("Invalid quote leg");
+      remaining -= fill;
+    }
+  }
   for (const rate of [p.makerFeeBps, p.takerFeeBps])
     if (!Number.isInteger(rate) || rate < 0 || rate > MAX_FEE_BPS)
       throw new Error("Invalid fee guard");
-  if (p.makers.length && p.takerFeeBps > o.maxFeeBps) throw new Error("Taker fee exceeds cap");
+  if ((p.makers.length || p.quotes?.length) && p.takerFeeBps > o.maxFeeBps)
+    throw new Error("Taker fee exceeds cap");
   const minFill = unsigned(p.minFill);
   if (
     unsigned(p.deadline) > BigInt(o.expiry) ||

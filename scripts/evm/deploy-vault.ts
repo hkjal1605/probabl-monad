@@ -10,6 +10,7 @@
  *
  * PRICE_FEED must be the Chainlink feed of the token itself (tokenized-equity feeds already
  * include the issuer's multiplier). Verify it and every role against official sources first. */
+
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { parseTokenAmount } from "@conditional-stocks/domain";
@@ -19,6 +20,7 @@ import {
   deltaVaultGrantRole,
   deltaVaultSetCaps,
 } from "@conditional-stocks/evm-client";
+import { MONAD_TESTNET, nativeCurrency } from "@conditional-stocks/shared/chains";
 import {
   createPublicClient,
   createWalletClient,
@@ -39,6 +41,7 @@ const NETWORKS: Record<number, { name: string; mainnet: boolean; sequencer?: `0x
   84532: { name: "Base Sepolia", mainnet: false },
   4663: { name: "Robinhood Chain", mainnet: true },
   46630: { name: "Robinhood Chain Testnet", mainnet: false },
+  [MONAD_TESTNET]: { name: "Monad Testnet", mainnet: false },
 };
 const feedAbi = parseAbi([
   "function decimals() view returns (uint8)",
@@ -89,7 +92,7 @@ const rpc = required("RPC_URL");
 const chain = defineChain({
   id: chainId,
   name: network.name,
-  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  nativeCurrency: nativeCurrency(chainId),
   rpcUrls: { default: { http: [rpc] } },
 });
 const client = createPublicClient({ chain, transport: http(rpc) });

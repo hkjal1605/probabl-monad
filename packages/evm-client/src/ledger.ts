@@ -25,6 +25,18 @@ export interface Account {
   base: bigint;
   notional: bigint;
 }
+/** What an owner's stock claims on one market branch cost, by the average-cost method. Claims
+ * gained without a price (a split, a transfer, the other branch of a whole-token sell, fees and
+ * rebates) are held but not priced; claims leaving take priced and unpriced ones in proportion,
+ * so the average price and the share priced hold. */
+export interface CostBasis {
+  /** Raw stock claims held, including those resting claim-funded sells reserve. */
+  held: bigint;
+  /** Of those, raw claims bought in fills. */
+  priced: bigint;
+  /** Raw quote paid for the priced claims, net of maker rebates. */
+  cost: bigint;
+}
 export interface MarketState {
   id: number;
   base: Address;
@@ -120,6 +132,8 @@ export interface ChainState {
   markets: Map<number, MarketState>;
   /** Key `${market}:${branch}:${owner}`. */
   accounts: Map<string, Account>;
+  /** Stock claims' cost basis, keyed as `accounts`. */
+  bases: Map<string, CostBasis>;
   /** Open orders plus closed ones not yet evicted after finalization. */
   orders: Map<string, OrderState>;
   traders: Map<Address, TraderState>;
@@ -146,6 +160,7 @@ export function emptyState(quote: Address): ChainState {
     credits: new Map(),
     markets: new Map(),
     accounts: new Map(),
+    bases: new Map(),
     orders: new Map(),
     traders: new Map(),
     grants: new Map(),
@@ -231,6 +246,35 @@ class Replica {
   }
   claim(market: number, branch: number, collateral: number, owner: Address, delta: bigint) {
     this.account(market, branch, owner, collateral === 0 ? { quote: delta } : { base: delta });
+  }
+  /** Stock claims an owner gains: bought for `cost` raw quote, or unpriced without one. Only
+   * changes of ownership move the basis; order reservations and releases do not. */
+  gain(market: number, branch: number, owner: Address, amount: bigint, cost?: bigint) {
+    if (amount <= 0n) return;
+    const key = accountKey(market, branch, owner);
+    const b = this.s.bases.get(key) ?? { held: 0n, priced: 0n, cost: 0n };
+    this.s.bases.set(
+      key,
+      cost === undefined
+        ? { ...b, held: b.held + amount }
+        : { held: b.held + amount, priced: b.priced + amount, cost: b.cost + cost },
+    );
+  }
+  /** Stock claims leaving an owner (sold, merged, redeemed or transferred). */
+  lose(market: number, branch: number, owner: Address, amount: bigint) {
+    const key = accountKey(market, branch, owner);
+    const b = this.s.bases.get(key);
+    if (!b || amount <= 0n) return;
+    if (amount >= b.held) {
+      this.s.bases.delete(key);
+      return;
+    }
+    const held = b.held - amount;
+    this.s.bases.set(key, {
+      held,
+      priced: (b.priced * held) / b.held,
+      cost: (b.cost * held) / b.held,
+    });
   }
   market(id: number) {
     const m = this.s.markets.get(id);
@@ -408,11 +452,20 @@ export function applyTransaction(
           m.backing[side] += amount;
           r.claim(m.id, 0, c, owner, yes);
           r.claim(m.id, 1, c, owner, no);
+          // Split stock claims carry no price.
+          if (c === 1) {
+            r.gain(m.id, 0, owner, yes);
+            r.gain(m.id, 1, owner, no);
+          }
         } else {
           r.claim(m.id, 0, c, owner, -yes);
           r.claim(m.id, 1, c, owner, -no);
           m.backing[side] -= amount;
           r.credit(owner, token, amount);
+          if (c === 1) {
+            r.lose(m.id, 0, owner, yes);
+            r.lose(m.id, 1, owner, no);
+          }
         }
         break;
       }
@@ -423,6 +476,11 @@ export function applyTransaction(
           branch = (asset % 3) - 1;
         r.claim(m.id, branch, c, addr(a.from), -bi(a.amount));
         r.claim(m.id, branch, c, addr(a.to), bi(a.amount));
+        // The receiver's claims carry no price.
+        if (c === 1) {
+          r.lose(m.id, branch, addr(a.from), bi(a.amount));
+          r.gain(m.id, branch, addr(a.to), bi(a.amount));
+        }
         break;
       }
       case "FeesClaimed": {
@@ -432,6 +490,7 @@ export function applyTransaction(
           branch = (asset % 3) - 1;
         m.fees[branch]![c === 0 ? "quote" : "base"] -= bi(a.amount);
         r.claim(m.id, branch, c, addr(a.to), bi(a.amount));
+        if (c === 1) r.gain(m.id, branch, addr(a.to), bi(a.amount));
         break;
       }
       case "OrdersInvalidated": {
@@ -596,6 +655,12 @@ export function applyTransaction(
           else m.fees[branch]!.quote -= rebate;
         }
         a.makerRebate = rebate;
+        // The buyer's claims cost the quote it paid, less a resting buyer's rebate. A
+        // claim-funded seller's claims leave; a whole-token seller keeps the other branch's.
+        r.gain(m.id, branch, buyer.owner, q - buyerFee, quoteAmount - (takerBuys ? 0n : rebate));
+        if (seller.fundingKind === 0) r.gain(m.id, inactive, seller.owner, q);
+        else r.lose(m.id, branch, seller.owner, q);
+        if (takerBuys) r.gain(m.id, branch, maker.owner, rebate);
         if (improvement !== 0n) {
           if (buyer.fundingKind === 0) r.credit(buyer.owner, s.quote, improvement);
           else r.claim(m.id, branch, 0, buyer.owner, improvement);
@@ -613,6 +678,84 @@ export function applyTransaction(
           o.updatedBlock = e.block;
           if (o.remaining === 0n) o.status = "filled";
         }
+        break;
+      }
+      case "QuoteFilled": {
+        // A fill of a maker's signed quote: the maker rests no order, so its side moves here
+        // (base to a buying taker, quote to a selling one, from its credit or branch claims).
+        const m = r.market(num(a.market));
+        const fill = bi(a.fill),
+          amounts = bi(a.amounts),
+          fees = bi(a.fees);
+        const q = fill & ((1n << 96n) - 1n),
+          takerSeq = (fill >> 128n) & U32_MAX,
+          branch = Number((fill >> 160n) & 0xffn),
+          makerClaim = ((fill >> 168n) & 0xffn) !== 0n,
+          ticks = fill >> 176n,
+          quoteAmount = amounts & ((1n << 128n) - 1n),
+          improvement = amounts >> 128n,
+          buyerFee = fees & ((1n << 128n) - 1n),
+          sellerFee = fees >> 128n;
+        const maker = addr(a.maker);
+        const taker = r.order(orderKeyString(m.id, branch, takerSeq));
+        const takerBuys = taker.side === 0;
+        const takerPrice = priceOf(m, taker.ticks);
+        const reduction =
+          quote(taker.remaining, takerPrice, true) - quote(taker.remaining - q, takerPrice, true);
+        if (
+          q <= 0n ||
+          q > taker.remaining ||
+          quoteAmount !== (q * priceOf(m, ticks)) / WAD ||
+          improvement !== (takerBuys ? reduction - quoteAmount : 0n)
+        )
+          throw new Error(`Quote fill replay diverged in ${e.transactionHash}`);
+        const inactive = 1 - branch;
+        const delivered = takerBuys ? q : quoteAmount,
+          collateral = takerBuys ? 1 : 0;
+        if (makerClaim) r.claim(m.id, branch, collateral, maker, -delivered);
+        else {
+          r.credit(maker, r.token(m, collateral), -delivered);
+          r.claim(m.id, inactive, collateral, maker, delivered);
+          if (takerBuys) m.backing.base += q;
+          else m.backing.quote += quoteAmount;
+        }
+        // The taker's side comes out of its reservation, as in a Trade.
+        if (taker.fundingKind === 0) {
+          if (takerBuys) m.backing.quote += quoteAmount;
+          else m.backing.base += q;
+          r.claim(m.id, inactive, takerBuys ? 0 : 1, taker.owner, takerBuys ? quoteAmount : q);
+        }
+        const [buyer, seller] = takerBuys ? [taker.owner, maker] : [maker, taker.owner];
+        r.claim(m.id, branch, 1, buyer, q - buyerFee);
+        m.fees[branch]!.base += buyerFee;
+        r.claim(m.id, branch, 0, seller, quoteAmount - sellerFee);
+        m.fees[branch]!.quote += sellerFee;
+        const rebate = makerRebate(takerBuys ? buyerFee : sellerFee, m.rebateBps);
+        if (rebate !== 0n) {
+          r.claim(m.id, branch, takerBuys ? 1 : 0, maker, rebate);
+          if (takerBuys) m.fees[branch]!.base -= rebate;
+          else m.fees[branch]!.quote -= rebate;
+        }
+        a.makerRebate = rebate;
+        // As in a Trade; a quoting maker sells from its claims or from whole tokens.
+        r.gain(m.id, branch, buyer, q - buyerFee, quoteAmount - (takerBuys ? 0n : rebate));
+        if (takerBuys) {
+          if (makerClaim) r.lose(m.id, branch, maker, q);
+          else r.gain(m.id, inactive, maker, q);
+          r.gain(m.id, branch, maker, rebate);
+        } else if (taker.fundingKind === 0) r.gain(m.id, inactive, taker.owner, q);
+        else r.lose(m.id, branch, taker.owner, q);
+        if (improvement !== 0n) {
+          if (taker.fundingKind === 0) r.credit(taker.owner, s.quote, improvement);
+          else r.claim(m.id, branch, 0, taker.owner, improvement);
+        }
+        r.account(m.id, branch, taker.owner, { notional: -reduction });
+        if (takerBuys) m.openNotional -= reduction;
+        taker.remaining -= q;
+        taker.filled += q;
+        taker.feesPaid += takerBuys ? buyerFee : sellerFee;
+        taker.updatedBlock = e.block;
+        if (taker.remaining === 0n) taker.status = "filled";
         break;
       }
       case "OrderCancelled": {
@@ -635,24 +778,30 @@ export function applyTransaction(
   return changes;
 }
 
-/** Execution details of a Trade, resolved against a replica that already applied it (both
- * orders remain in the replica until finalized eviction). */
+/** The events that record a fill: against a resting order, or against a signed RFQ quote. */
+export const isFill = (name: string) => name === "Trade" || name === "QuoteFilled";
+
+/** Execution details of a fill, resolved against a replica that already applied it (both
+ * orders remain in the replica until finalized eviction). A quote fill names its maker and
+ * price itself: no maker order exists. */
 export function tradeDetails(s: ChainState, e: DecodedEvent) {
   const fill = BigInt(e.args.fill as bigint);
   const market = Number(e.args.market);
   const branch = Number((fill >> 160n) & 0xffn);
   const makerKey = orderKeyString(market, branch, (fill >> 96n) & U32_MAX);
   const takerKey = orderKeyString(market, branch, (fill >> 128n) & U32_MAX);
-  const maker = s.orders.get(makerKey),
+  const quoted = e.name === "QuoteFilled";
+  const maker = quoted ? undefined : s.orders.get(makerKey),
     taker = s.orders.get(takerKey),
     m = s.markets.get(market);
+  const ticks = quoted ? fill >> 176n : maker?.ticks;
   return {
     makerKey,
     takerKey,
-    maker: maker?.owner ?? null,
+    maker: quoted ? getAddress(e.args.maker as string) : (maker?.owner ?? null),
     taker: taker?.owner ?? null,
     takerSide: taker?.side ?? null,
-    price: maker && m ? (maker.ticks * m.tick).toString() : null,
+    price: ticks !== undefined && m ? (ticks * m.tick).toString() : null,
     /** Paid to the maker by the replay (see `DecodedEvent`). */
     makerRebate: e.args.makerRebate === undefined ? null : String(e.args.makerRebate),
   };
@@ -695,6 +844,7 @@ export function cloneState(s: ChainState): ChainState {
       ]),
     ),
     accounts: new Map([...s.accounts].map(([k, v]) => [k, { ...v }])),
+    bases: new Map([...s.bases].map(([k, v]) => [k, { ...v }])),
     orders: new Map([...s.orders].map(([k, v]) => [k, { ...v }])),
     traders: new Map([...s.traders].map(([k, v]) => [k, { ...v }])),
     grants: new Map([...s.grants].map(([k, v]) => [k, { ...v }])),
@@ -733,6 +883,7 @@ const ACCOUNT_FIELDS = { quote: "b", base: "b", notional: "b" } satisfies Record
   keyof Account,
   Kind
 >;
+const BASIS_FIELDS = { held: "b", priced: "b", cost: "b" } satisfies Record<keyof CostBasis, Kind>;
 const TRADER_FIELDS = { epoch: "b", delegationEpoch: "b" } satisfies Record<
   keyof TraderState,
   Kind
@@ -768,6 +919,7 @@ const columns = (fields: Record<string, Kind>) => {
   return { names, bigint: names.map((name) => fields[name] === "b") };
 };
 const ACCOUNT = columns(ACCOUNT_FIELDS),
+  BASIS = columns(BASIS_FIELDS),
   TRADER = columns(TRADER_FIELDS),
   ORDER = columns(ORDER_FIELDS);
 const pack = (c: ReturnType<typeof columns>, value: object, lead: unknown[] = []) => {
@@ -801,8 +953,12 @@ const untag = (value: unknown): unknown =>
         : Object.fromEntries(Object.entries(value).map(([k, v]) => [k, untag(v)]))
       : value;
 
-/** 3: markets carry their fee rates. 4: and their maker rebate. */
-const CHECKPOINT_VERSION = 4;
+/** 3: markets carry their fee rates. 4: and their maker rebate. 5: stock claims' cost basis. */
+const CHECKPOINT_VERSION = 5;
+
+/** A checkpoint from before the replica tracked something it needs (an older version): the
+ * replica is rebuilt from the deployment block instead. */
+export class StaleCheckpointError extends Error {}
 
 /** Compact JSON form of a replica (see `restoreState`). */
 export function encodeCheckpoint(s: ChainState): string {
@@ -818,6 +974,7 @@ export function encodeCheckpoint(s: ChainState): string {
     grants: tag([...s.grants.values()]),
     credits: [...s.credits].map(([key, amount]) => [key, amount.toString()]),
     accounts: [...s.accounts].map(([key, a]) => pack(ACCOUNT, a, [key])),
+    bases: [...s.bases].map(([key, b]) => pack(BASIS, b, [key])),
     orders: [...s.orders.values()].map((o) => pack(ORDER, o)),
     traders: [...s.traders].map(([owner, t]) => pack(TRADER, t, [owner])),
   });
@@ -825,8 +982,13 @@ export function encodeCheckpoint(s: ChainState): string {
 
 /** Replica from a checkpoint in either form (`encodeCheckpoint` or legacy `serializeState`). */
 export function restoreState(text: string): ChainState {
-  if (!text.startsWith('{"v":')) return deserializeState(text);
+  if (!text.startsWith('{"v":')) {
+    const s = deserializeState(text);
+    if (!(s.bases instanceof Map)) throw new StaleCheckpointError("Checkpoint has no cost basis");
+    return s;
+  }
   const c = JSON.parse(text);
+  if (c.v < CHECKPOINT_VERSION) throw new StaleCheckpointError(`Checkpoint version ${c.v}`);
   if (c.v !== CHECKPOINT_VERSION) throw new Error(`Unsupported checkpoint version ${c.v}`);
   const markets = untag(c.markets) as MarketState[];
   const grants = untag(c.grants) as GrantState[];
@@ -848,6 +1010,9 @@ export function restoreState(text: string): ChainState {
         row[0] as string,
         unpack<Account>(ACCOUNT, row, 1),
       ]),
+    ),
+    bases: new Map(
+      (c.bases as unknown[][]).map((row) => [row[0] as string, unpack<CostBasis>(BASIS, row, 1)]),
     ),
     orders: new Map(
       (c.orders as unknown[][]).map((row) => {

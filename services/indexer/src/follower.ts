@@ -30,8 +30,10 @@ import {
   type DecodedEvent,
   decodeLog,
   emptyState,
+  isFill,
   type OrderState,
   restoreState,
+  StaleCheckpointError,
   type Touched,
   type TradeDetails,
   touched,
@@ -106,7 +108,9 @@ interface BlockEvents {
 /** Largest gap filled header by header; beyond it the tip catches up with ranged eth_getLogs. */
 const MAX_GAP = 50n;
 const LOG_CONCURRENCY = 4;
-const HEADER_CONCURRENCY = 32;
+/** Header reads in flight: public endpoints rate-limit bursts (a replay from the deployment
+ * block reads one header per block with logs when the logs carry no timestamp). */
+const HEADER_CONCURRENCY = 4;
 const MAX_LOG_RANGE = 100_000n;
 /** Bounds of the learned block interval, which paces adaptive polling. */
 const MIN_POLL_MS = 250;
@@ -220,8 +224,16 @@ export class ChainFollower {
   async start() {
     const { db, domain } = this.options;
     const checkpoint = await db?.checkpoint(domain);
-    if (checkpoint) {
-      const restored = readCheckpoint(checkpoint.state);
+    // A checkpoint from an older replica lacks state it now keeps: the replica is rebuilt from
+    // the deployment block (persisting history again is idempotent).
+    let restored: ChainState | undefined;
+    try {
+      restored = checkpoint ? readCheckpoint(checkpoint.state) : undefined;
+    } catch (error) {
+      if (!(error instanceof StaleCheckpointError)) throw error;
+      this.options.onError?.(new Error(`Replaying from the deployment block: ${error.message}`));
+    }
+    if (restored) {
       if (getAddress(restored.quote) !== getAddress(this.options.quote))
         throw new Error("Checkpoint belongs to another deployment");
       this.base = restored;
@@ -231,7 +243,20 @@ export class ChainFollower {
     this.confirmed = cloneState(this.base);
     this.head = this.baseTip();
     this.advancedAt = Date.now();
-    const advanced = await this.tick();
+    // The first pass catches up from the checkpoint (or the deployment block). A failed read
+    // (a rate limit, a node hiccup) is retried with backoff from where the pass got to, rather
+    // than failing the start and losing the progress.
+    let advanced = false;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        advanced = await this.tick();
+        break;
+      } catch (error) {
+        if (this.stopped) throw error;
+        this.options.onError?.(error);
+        await new Promise((resolve) => setTimeout(resolve, Math.min(30_000, 1_000 * 2 ** attempt)));
+      }
+    }
     this.ready = true;
     this.schedule(this.delay(advanced));
   }
@@ -471,7 +496,7 @@ export class ChainFollower {
       for (const batch of transactions(list)) {
         applyTransaction(this.confirmed, batch, own);
         for (const e of batch)
-          if (e.name === "Trade") trades.set(tradeKey(e), tradeDetails(this.confirmed, e));
+          if (isFill(e.name)) trades.set(tradeKey(e), tradeDetails(this.confirmed, e));
       }
       merge(changes, own);
       this.pending.push({ ...block, events: list, changes: own });
@@ -558,7 +583,7 @@ export class ChainFollower {
       applyTransaction(this.base, batch, own);
       // Orders stay in the replica until evicted below, so both parties resolve.
       for (const e of batch)
-        if (e.name === "Trade") trades.set(tradeKey(e), tradeDetails(this.base, e));
+        if (isFill(e.name)) trades.set(tradeKey(e), tradeDetails(this.base, e));
     }
     merge(changes, own);
     this.base.block = tip.number;
@@ -635,7 +660,11 @@ export class ChainFollower {
    * when the node includes them, then from known headers, then from one header per block. */
   private async blocksOf(logs: Log[], stamps: Map<Hex, bigint>): Promise<BlockEvents[]> {
     const live = logs.filter((log) => !log.removed);
-    const stamped = (log: Log) => (log as Log & { blockTimestamp?: Hex | bigint }).blockTimestamp;
+    // Some nodes (Robinhood Chain's) send `blockTimestamp: "0x0"` in logs: zero means unknown.
+    const stamped = (log: Log) => {
+      const stamp = (log as Log & { blockTimestamp?: Hex | bigint }).blockTimestamp;
+      return stamp === undefined || BigInt(stamp) === 0n ? undefined : stamp;
+    };
     const missing = [
       ...new Set(
         live

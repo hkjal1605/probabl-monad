@@ -78,6 +78,62 @@ test("records each open market's book midpoints and its stock's price per whole 
   ]);
 });
 
+test("a branch the RFQ makers price records the midpoint of the better bid and ask", async () => {
+  const s = emptyState(QUOTE);
+  for (const id of [1, 2])
+    s.markets.set(id, {
+      id,
+      base: TSLA,
+      state: 2,
+      cutoff: BigInt(NOW + 3_600),
+      tick: 10n,
+    } as never);
+  // Market 1's YES book: 1,000 bid, 1,200 ask.
+  for (const [key, side, ticks] of [
+    ["a", 0, 100n],
+    ["b", 1, 120n],
+  ] as const)
+    s.orders.set(key, {
+      market: 1,
+      branch: 0,
+      side,
+      ticks,
+      status: "open",
+      expiry: BigInt(NOW + 600),
+      owner: QUOTE,
+      epoch: 0n,
+    } as never);
+  const rows: { market: number; yes: bigint | null; no: bigint | null }[] = [];
+  await new PriceRecorder({
+    indexer: {
+      domain: "test",
+      trading: () => s,
+      tokens: { identity: new Map(), live: new Map() },
+    } as never,
+    prices: {
+      getPrices: async () => ({
+        source: "robinhood",
+        displayOnly: true,
+        chainId: 1,
+        asOf: NOW,
+        prices: [],
+      }),
+    },
+    db: { recordPrices: async (_domain, minute) => void rows.push(...(minute as never[])) },
+    quotes: () => [
+      { market: 1, branch: 0, bid: 1_050n, ask: 1_250n, at: NOW_MS },
+      { market: 1, branch: 1, bid: 900n, ask: 1_000n, at: NOW_MS },
+      // One-sided: no midpoint.
+      { market: 2, branch: 0, bid: null, ask: 500n, at: NOW_MS },
+    ],
+  }).record(NOW_MS);
+  expect(rows.map(({ market, yes, no }) => ({ market, yes, no }))).toEqual([
+    // YES: the makers' 1,050 bid and the book's 1,200 ask; NO: the makers' alone.
+    { market: 1, yes: 1_125n, no: 950n },
+    { market: 2, yes: null, no: null },
+  ]);
+});
+
 test("histories cover their range in at most 360 points; `all` starts at the first record", async () => {
   const reads: [number, number][] = [];
   const db = {

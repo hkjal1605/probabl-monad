@@ -1,6 +1,6 @@
 {
   "chainId": 46630,
-  "exchange": "0x1879c9161E56f274Fd107C6265bc5a80aA0B49B5",
+  "exchange": "0x0641D31Fc01A5B96487F60c793b17aB538372185",
   "quote": "0x509E319A1bA0C429596A05294594D884F5610D73",
   "admin": "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0",
   "guardian": "0x3c75eE21AF23832057760433Bf95DA9f9c0c7c41",
@@ -12,239 +12,612 @@
   },
   "vaults": [
     {
-      "symbol": "TSLA",
-      "token": "0xC9f9c86933092BbbfFF3CCb4b105A4A94bf3Bd4E",
-      "priceFeed": "0x3775baC90DAf126828f2eEc4d49F0EE7089C9685",
-      "keeper": "0x172268f29D4AB5e328dD9416845Dd16Df92643dD",
+      "symbol": "USO",
+      "token": "0xE2d4641BE09103ff557c298bB45Eb3DC502687EB",
+      "priceFeed": "0x759db2D98a9CB6F121B7114C0183ce18Ff7C3883",
+      "keeper": "0x596B40D55785024f88ec282427Ba2Ce6508779d8",
       "caps": {
-        "quote": "100000",
-        "base": "1000"
+        "quote": "1000000",
+        "base": "6269"
       },
       "seed": {
-        "quote": "179",
-        "base": "0.5"
+        "quote": "100000",
+        "base": "626.825629"
       },
-      "deposit": {
-        "quote": "1639",
-        "base": "4.5"
-      },
-      "markets": [
-        {
-          "market": 1,
-          "risk": {
-            "bandBps": 1500,
-            "cutoffBuffer": 3600,
-            "maxOrder": "150",
-            "maxResting": "1200",
-            "maxImbalance": "2"
-          }
-        },
-        {
-          "market": 9,
-          "risk": {
-            "bandBps": 1500,
-            "cutoffBuffer": 3600,
-            "maxOrder": "150",
-            "maxResting": "1200",
-            "maxImbalance": "2"
-          }
-        },
-        {
-          "market": 10,
-          "risk": {
-            "bandBps": 1500,
-            "cutoffBuffer": 3600,
-            "maxOrder": "150",
-            "maxResting": "1200",
-            "maxImbalance": "2"
-          }
-        }
-      ],
-      "vault": "0x506C964F7c61C824884fc035ae33D4F6b1440887",
-      "deploymentBlock": "127017936",
-      "transactionHash": "0xaf3d588cedb39df285531d18654fa33dcf1f0f381a67794f71ee36d3a57d4361",
-      "seeded": true,
-      "deposited": true
+      "markets": [],
+      "vault": "0xf806BF2aEc1552d0efd6224d2f35612024Dfb41b",
+      "deploymentBlock": "139592667",
+      "transactionHash": "0xc915ab981b7f5f803d8b545afb7034f1e35cb28ef3623eb1aad8bb4e590bce54",
+      "seeded": true
     },
     {
-      "symbol": "AMZN",
-      "token": "0x5884aD2f920c162CFBbACc88C9C51AA75eC09E02",
-      "priceFeed": "0x05ebC8a330e5dFbade8F7912286B5Ada4EcE618a",
-      "keeper": "0x3266A0541a767cE71B231D8dAe1Eac7ecDC5A1e8",
+      "symbol": "XOM",
+      "token": "0xbA663601922B5332617395c7C52016e3E843b205",
+      "priceFeed": "0x1bEe37a3eb6F842Fcda86943e7c316C612C78873",
+      "keeper": "0xaF7779dE5718787E62039f640ea2853Ff6e7f103",
       "caps": {
-        "quote": "100000",
-        "base": "1000"
+        "quote": "1000000",
+        "base": "5641"
       },
       "seed": {
-        "quote": "126",
-        "base": "0.5"
+        "quote": "100000",
+        "base": "564.031698"
       },
-      "deposit": {
-        "quote": "1152",
-        "base": "4.5"
-      },
-      "markets": [
-        {
-          "market": 2,
-          "risk": {
-            "bandBps": 1500,
-            "cutoffBuffer": 3600,
-            "maxOrder": "100",
-            "maxResting": "800",
-            "maxImbalance": "2"
-          }
-        },
-        {
-          "market": 8,
-          "risk": {
-            "bandBps": 1500,
-            "cutoffBuffer": 3600,
-            "maxOrder": "100",
-            "maxResting": "800",
-            "maxImbalance": "2"
-          }
-        },
-        {
-          "market": 11,
-          "risk": {
-            "bandBps": 1500,
-            "cutoffBuffer": 3600,
-            "maxOrder": "100",
-            "maxResting": "800",
-            "maxImbalance": "2"
-          }
-        }
-      ],
-      "vault": "0x5428BB13eA9c8CE2324D7e655Df4756908071BC5",
-      "deploymentBlock": "127018236",
-      "transactionHash": "0x9c517d7231e0823c39a29db7d3a7dd2ee78c4546934403dabf204f5126d8e7d0",
-      "seeded": true,
-      "deposited": true
+      "markets": [],
+      "vault": "0x9282f37e0Ac1D650cA10aa85319b0581245Db6Ca",
+      "deploymentBlock": "139593055",
+      "transactionHash": "0xfb7ba97fe1eaff8c5fa26fea954b67c07327a9420c6dd341da50d377cc4e5d8b",
+      "seeded": true
     },
     {
-      "symbol": "PLTR",
-      "token": "0x1FBE1a0e43594b3455993B5dE5Fd0A7A266298d0",
-      "priceFeed": "0x55b76717C9cC90f5044FA422ac496049b2491cfb",
-      "keeper": "0x8E10a7F1685B2E06A722060975bE25b129b608D6",
+      "symbol": "PR",
+      "token": "0x3F3437F10da3CAE7C404223f4d37ff4d63760491",
+      "priceFeed": "0x9Fe14D30A719b0368E350f1673eA98026A282d72",
+      "keeper": "0x1E9455e34f2e58848279C9aE64dBb10f0384DCE2",
       "caps": {
-        "quote": "100000",
-        "base": "1000"
+        "quote": "1000000",
+        "base": "40282"
       },
       "seed": {
-        "quote": "94",
-        "base": "0.5"
+        "quote": "100000",
+        "base": "4028.197381"
       },
-      "deposit": {
-        "quote": "863",
-        "base": "4.5"
-      },
-      "markets": [
-        {
-          "market": 3,
-          "risk": {
-            "bandBps": 1500,
-            "cutoffBuffer": 3600,
-            "maxOrder": "100",
-            "maxResting": "800",
-            "maxImbalance": "2"
-          }
-        },
-        {
-          "market": 7,
-          "risk": {
-            "bandBps": 1500,
-            "cutoffBuffer": 3600,
-            "maxOrder": "100",
-            "maxResting": "800",
-            "maxImbalance": "2"
-          }
-        }
-      ],
-      "vault": "0xF5eE777A3C633230A60DaC855860cb4ff3C12869",
-      "deploymentBlock": "127018546",
-      "transactionHash": "0xaf2a6f3b830fcc57cfec133adbd53eeaeb49381304cdadcec3b784a9cb6d363e",
-      "seeded": true,
-      "deposited": true
+      "markets": [],
+      "vault": "0x303a28b114fD6b134D89972aC8ed1e905Edd89a8",
+      "deploymentBlock": "139593470",
+      "transactionHash": "0xb50b15833097449e38997c4f6ab72ef43c539cd72e5949a4453694fea8d3c658",
+      "seeded": true
     },
     {
-      "symbol": "NFLX",
-      "token": "0x3b8262A63d25f0477c4DDE23F83cfe22Cb768C93",
-      "priceFeed": "0x1Baa50056b13aC863F837eD91adaCB4Ac584CC83",
-      "keeper": "0xfEE41eA7B15ABA146F1316464d0180F21fb6a5cb",
+      "symbol": "CCL",
+      "token": "0x3950d048C2B292C99B146562d2E76c81e3CB2Df6",
+      "priceFeed": "0x112BC9D65c1f92Cc80AEb8e055BeC5DD97080f22",
+      "keeper": "0xbd8e92e9cA460fc128FEE142dE78A20581a72ce6",
       "caps": {
-        "quote": "100000",
-        "base": "1000"
+        "quote": "1000000",
+        "base": "36894"
       },
       "seed": {
-        "quote": "35",
-        "base": "0.5"
+        "quote": "100000",
+        "base": "3689.356207"
       },
-      "deposit": {
-        "quote": "321",
-        "base": "4.5"
-      },
-      "markets": [
-        {
-          "market": 4,
-          "risk": {
-            "bandBps": 1500,
-            "cutoffBuffer": 3600,
-            "maxOrder": "60",
-            "maxResting": "480",
-            "maxImbalance": "2"
-          }
-        }
-      ],
-      "vault": "0x1d0501CB9BD1e0fe55afa9D7dA3EcE1dfDe1C60B",
-      "deploymentBlock": "127018851",
-      "transactionHash": "0x8fa252294d8146475a662919322bd3a6bc8b70e97b6ecf4ce3560ebf53f877a3",
-      "seeded": true,
-      "deposited": true
+      "markets": [],
+      "vault": "0xbF3E5cb8CD537BE3Fadd264D2a55c1Ba85Bd9dA4",
+      "deploymentBlock": "139593855",
+      "transactionHash": "0x8f08fa0b40dc120e063c1190f96a7989565e1b15e2767ee2fb39ee86ce67c598",
+      "seeded": true
     },
     {
-      "symbol": "AMD",
-      "token": "0x71178BAc73cBeb415514eB542a8995b82669778d",
-      "priceFeed": "0x16cfe20B7a1a81F4210f3214144F36E0d45582F9",
-      "keeper": "0x6de87d2E9545A0C8Bb01E763265C0A6dcFE5a110",
+      "symbol": "BA",
+      "token": "0x468D9aF737F55c900ce48Cc41e59FAA9058D004D",
+      "priceFeed": "0x72Cc9C32aCdD77A3AFae7105E2969004FA02f8c2",
+      "keeper": "0x40fD7A6a0D21C09dAA07c966465daF9ADe084959",
       "caps": {
-        "quote": "100000",
-        "base": "1000"
+        "quote": "1000000",
+        "base": "5248"
       },
       "seed": {
-        "quote": "314",
-        "base": "0.5"
+        "quote": "100000",
+        "base": "524.727797"
       },
-      "deposit": {
-        "quote": "2879",
-        "base": "4.5"
+      "markets": [],
+      "vault": "0xa7E9c812BdF6F9476211C1b498de316df4312d36",
+      "deploymentBlock": "139594199",
+      "transactionHash": "0xbe6909d4ca7842e033973abdef9507f0f89b0b16d003c327728d7e423da2cced",
+      "seeded": true
+    },
+    {
+      "symbol": "SPY",
+      "token": "0xC5d93b499a2978cDde005e4BBAFd28fDFeAB815b",
+      "priceFeed": "0xAa1F76c082bb631C347e80f1690f99A7A9b2FDE9",
+      "keeper": "0x440e31538C72732fB93b8E2C88B49a01A6451D1c",
+      "caps": {
+        "quote": "1000000",
+        "base": "1295"
       },
-      "markets": [
-        {
-          "market": 5,
-          "risk": {
-            "bandBps": 1500,
-            "cutoffBuffer": 3600,
-            "maxOrder": "300",
-            "maxResting": "2400",
-            "maxImbalance": "2"
-          }
-        },
-        {
-          "market": 6,
-          "risk": {
-            "bandBps": 1500,
-            "cutoffBuffer": 3600,
-            "maxOrder": "300",
-            "maxResting": "2400",
-            "maxImbalance": "2"
-          }
-        }
-      ],
-      "vault": "0xCF9EB2415a51E26Acf88C76CE6c5bf445fb48F3c",
-      "deploymentBlock": "127019101",
-      "transactionHash": "0xf52a8dd5da17c2d947ebf08dc307560eaa282bdb1c3e329f3864d687ce2b71cb",
-      "seeded": true,
-      "deposited": true
+      "seed": {
+        "quote": "100000",
+        "base": "129.414618"
+      },
+      "markets": [],
+      "vault": "0x27eec8Ccbdfb39D891cFa77228498C4ea901558F",
+      "deploymentBlock": "139594574",
+      "transactionHash": "0x2c7687b2769b598d4e1963df7c62078eeb5ce96ce467aef51945b02c893692a2",
+      "seeded": true
+    },
+    {
+      "symbol": "QQQ",
+      "token": "0x51c642306e19E0ad18e4c6F860f1A21f9eB199B2",
+      "priceFeed": "0xfEe06D3f2dD1bEf7F08b535031e2C3aA446d142A",
+      "keeper": "0x27AE62f39b26d5F3f218779913b940faec88EB53",
+      "caps": {
+        "quote": "1000000",
+        "base": "1391"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "139.099111"
+      },
+      "markets": [],
+      "vault": "0x8C9356f7eBCd1a8F8a9a15e49B556d0f43F7a729",
+      "deploymentBlock": "139594973",
+      "transactionHash": "0xe3694e9a18ba58ab5f8b7d4573069c990be257121f1d47c3949f547acbdd9677",
+      "seeded": true
+    },
+    {
+      "symbol": "MSTR",
+      "token": "0x8b23487dc53F69f4d405859dfF7b6f77fb6dC639",
+      "priceFeed": "0x91F0082E5B0F4e66d5Af5CAf499ece19b766a0ad",
+      "keeper": "0xf26687F1a2943d6f257ba7F8d6da6C7e2aA46514",
+      "caps": {
+        "quote": "1000000",
+        "base": "6985"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "698.421567"
+      },
+      "markets": [],
+      "vault": "0xDF4B1A64FcFc080DcB92f39Ad62C1fB55bA7E8F8",
+      "deploymentBlock": "139595334",
+      "transactionHash": "0x99c51ad6df5cd56d7a5b289c2536f1068a9040b3466de21c951c5d5f4ada79eb",
+      "seeded": true
+    },
+    {
+      "symbol": "COIN",
+      "token": "0x7E9969fDA400d034A7a68598E8b895108812Ba9e",
+      "priceFeed": "0x6665bcEE5C8FBE7aBFcE8B30f4a70f548DeDD83B",
+      "keeper": "0x386aB43Aa5eA4cF57D60cdE806d2177c1fcce420",
+      "caps": {
+        "quote": "1000000",
+        "base": "5869"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "586.833796"
+      },
+      "markets": [],
+      "vault": "0x96baC8a7AB287dBF92D27c0c8dd8bAbCb9Cf663f",
+      "deploymentBlock": "139595681",
+      "transactionHash": "0xcb2d1946b66cd5faf01a052602dd3b1adf67c8bd07604a92a17388e118a19d61",
+      "seeded": true
+    },
+    {
+      "symbol": "CRCL",
+      "token": "0x9Ab9F6FCA39138Ac32c25599C59Bb35AD57B4620",
+      "priceFeed": "0x84d503b8B4195113C2E3cc877E74857c4509c80A",
+      "keeper": "0xADA6F19FB125f38679C06A2691D8b4794a36e12C",
+      "caps": {
+        "quote": "1000000",
+        "base": "11637"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "1163.660059"
+      },
+      "markets": [],
+      "vault": "0xA051087B07eEABae5a8a14793d8cE468B76C6a93",
+      "deploymentBlock": "139596082",
+      "transactionHash": "0xe3cb6e23a18bc2fbdfb57f2eb103ff5fbfb6091f3a125937223e26456b0f3aef",
+      "seeded": true
+    },
+    {
+      "symbol": "GLXY",
+      "token": "0x7818c4DCe480a056B6705Aed2236FF2C9C787413",
+      "priceFeed": "0x35Dd9AFe23a92e4Dc0A1B8b685846B970255b4f7",
+      "keeper": "0x8251957360eDB8fF7e7E6bD74257F044CaDb6A9E",
+      "caps": {
+        "quote": "1000000",
+        "base": "63594"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "6359.300476"
+      },
+      "markets": [],
+      "vault": "0xF29C9024ED6a9b0F3FA28849EbaB66173ba80166",
+      "deploymentBlock": "139596490",
+      "transactionHash": "0x2451fadfe64d53afda5111e297aed12d11a0d67c959d636ef126139a573f231c",
+      "seeded": true
+    },
+    {
+      "symbol": "CLSK",
+      "token": "0x81f86Ae547C5f03743E979A47133463003271d40",
+      "priceFeed": "0x39E19Dc01F19352F0297B118410074F84340d90E",
+      "keeper": "0x15453193bE38B2cbA1462b495D2d0C259Be81B8d",
+      "caps": {
+        "quote": "1000000",
+        "base": "117856"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "11785.50383"
+      },
+      "markets": [],
+      "vault": "0x2847fbB0FE274A5397C9e5Ae1d0Ab680d7e34ba7",
+      "deploymentBlock": "139596911",
+      "transactionHash": "0xb2e2f114e460630dfd2ad31e260aa708363357d3fb766263eaa3c3160dbc4140",
+      "seeded": true
+    },
+    {
+      "symbol": "IREN",
+      "token": "0x2B9eaa17E1168d3418738984C513513dcfaD00DA",
+      "priceFeed": "0x52818458b880975f2739386c8Ae7e3fF051d3f0B",
+      "keeper": "0xC5D1d8813B81e5d3dA000cf2d246efE8D5155Cd0",
+      "caps": {
+        "quote": "1000000",
+        "base": "37987"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "3798.670465"
+      },
+      "markets": [],
+      "vault": "0xAdF44Aba3c30f8CCBEC641F4836473A38a636390",
+      "deploymentBlock": "139597331",
+      "transactionHash": "0x0bbed8b7125e353773512ba65b6fdf0253a391e9af6814721a9ce59830c51e5f",
+      "seeded": true
+    },
+    {
+      "symbol": "WULF",
+      "token": "0xa36426E0b6d60d5B19aF8296EAb04D5557E3B7cB",
+      "priceFeed": "0x58a8eB6a1b228be31DdEb8cFe498098071Ca7B84",
+      "keeper": "0x5AC427E3c3F743Ec2Fe047743a96b47d6545f285",
+      "caps": {
+        "quote": "1000000",
+        "base": "82885"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "8288.437629"
+      },
+      "markets": [],
+      "vault": "0x6f605Ab2B0Ca3d5c19b4788436595645b0F6345e",
+      "deploymentBlock": "139597752",
+      "transactionHash": "0x402d8f8b38ca19d2113e73f8c9806ccedc2240cedbbaeb7504d7005c231a659f",
+      "seeded": true
+    },
+    {
+      "symbol": "BULL",
+      "token": "0xD4CC5Bd28936469fE902Bf943c0C8780CF20E546",
+      "priceFeed": "0xE5B6a26FdaD96f11fc2ab97C088c76eeF9A14497",
+      "keeper": "0x781AAAc3dFBd38e1C62904B3f35f3F51b7fBFd0D",
+      "caps": {
+        "quote": "1000000",
+        "base": "166806"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "16680.567139"
+      },
+      "markets": [],
+      "vault": "0x864d69A74839d80f0500c6D88ECC54A0001253Bc",
+      "deploymentBlock": "139598149",
+      "transactionHash": "0x06be8ebb537f2d77f22df7c1750e94e596f7f352213c16c88687b0343a3224b6",
+      "seeded": true
+    },
+    {
+      "symbol": "SLV",
+      "token": "0x260EBB0D61F73Eb4B12FcaAD5EF6771b54d62c0f",
+      "priceFeed": "0x4173a383a169bC1bc3421F753B099005AAC40C06",
+      "keeper": "0x54AB9c6019FD8105ee19A0F0dd865dB6cC1f37ea",
+      "caps": {
+        "quote": "1000000",
+        "base": "19172"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "1917.157698"
+      },
+      "markets": [],
+      "vault": "0x1CFfcEF5E2C6BBdd243ECbCe171BC23E4A0C7092",
+      "deploymentBlock": "139598487",
+      "transactionHash": "0xabaf2e097f7ea84472ac36101a2bba42a71fd5c6ffe820246f125f057cadc20e",
+      "seeded": true
+    },
+    {
+      "symbol": "GLD",
+      "token": "0x60b6B05F4e0c2DB22Fe37765cbcb83c0d83c9e5b",
+      "priceFeed": "0x7b5090F8f02955e95DC307066f52e90148D25C93",
+      "keeper": "0x8927B26498a7423f4f75c57b5282889eB20F049E",
+      "caps": {
+        "quote": "1000000",
+        "base": "2641"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "264.042472"
+      },
+      "markets": [],
+      "vault": "0x76BFD5909643C5f3A53Af4391d81DFA8A43F7A2F",
+      "deploymentBlock": "139598867",
+      "transactionHash": "0x535842d85cfed52fd77d97f748978247c37faf95b87de93385367acb45ddafa2",
+      "seeded": true
+    },
+    {
+      "symbol": "SHY",
+      "token": "0xA279af42c25b9F859fF1354f38bCDB43fe7D1b50",
+      "priceFeed": "0x5EfB62EF6Db37a2b101232E253584040e19aea6B",
+      "keeper": "0x3b8ADD9a563Ea709F3d1a6917DBaAF032B7938f5",
+      "caps": {
+        "quote": "1000000",
+        "base": "12301"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "1230.087951"
+      },
+      "markets": [],
+      "vault": "0x1ea7a39D614E62572ef0713016C8B52D876eD30A",
+      "deploymentBlock": "139599254",
+      "transactionHash": "0xccbe9f4ec9c54f1b2e84f14a46914ecbf0fd74ae46cbe8b0ecb5a20b7f598225",
+      "seeded": true
+    },
+    {
+      "symbol": "BND",
+      "token": "0x961c2c51A54DFc933D244724400e0927365eC8dE",
+      "priceFeed": "0xb7f603d5410B08b56B13bFC317ebF04FcBa9F7BA",
+      "keeper": "0x42829b527c2c3f10fB6fDD7B673d20Bf184D05c7",
+      "caps": {
+        "quote": "1000000",
+        "base": "14142"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "1414.12713"
+      },
+      "markets": [],
+      "vault": "0x91C04d31a5d468574bed74E0EC070ca6674D7f20",
+      "deploymentBlock": "139599597",
+      "transactionHash": "0xc463fddce406b10132010340b30e0b52c679bec60df4e9a975b8ad47b6a5c31c",
+      "seeded": true
+    },
+    {
+      "symbol": "NU",
+      "token": "0xe6062b64C6f2059D6bDf5cfFA8A8945FaaC6665e",
+      "priceFeed": "0x4024Ce97A263A8381170727C7411cDDbF2C93AEd",
+      "keeper": "0x8345883DeDaDEC85cEd94d6D8FA632d87C57d43D",
+      "caps": {
+        "quote": "1000000",
+        "base": "65855"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "6585.446163"
+      },
+      "markets": [],
+      "vault": "0xe3f6472D0761C62262cd20712d7AEF36bFc25eB4",
+      "deploymentBlock": "139599959",
+      "transactionHash": "0x4b2ecf282e26b895c5b4cac03a5078624ef77c0f18c1a14fcd6f4def2965f587",
+      "seeded": true
+    },
+    {
+      "symbol": "SOFI",
+      "token": "0x729D282f64cF1143e2E7959Aa5737FB3EF218472",
+      "priceFeed": "0x9823d00617F8b8864FF4d3B402d0E5e97516063b",
+      "keeper": "0x8e88072160b21BE24eAefea856f46e70884E76d2",
+      "caps": {
+        "quote": "1000000",
+        "base": "68097"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "6809.669731"
+      },
+      "markets": [],
+      "vault": "0x92d4c1Bd32362B734387c104178fd329006E7022",
+      "deploymentBlock": "139600299",
+      "transactionHash": "0xc8e53750f2ce744435a1f75d8208a22f94f0ece2d903ccbc2f0f85a5d89de9ab",
+      "seeded": true
+    },
+    {
+      "symbol": "NVDA",
+      "token": "0x5b85fD3b8C7476eF67efa32AC3539325D51aC222",
+      "priceFeed": "0x4141c54e732FCdF1b9Af95945993BCf0ab8F07cA",
+      "keeper": "0xF66eF5C8d077c75b18A4302bc9db2a141a3D56bf",
+      "caps": {
+        "quote": "1000000",
+        "base": "4609"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "460.828793"
+      },
+      "markets": [],
+      "vault": "0x87fF759E142f9929434E3c2f549889aC9B4F5633",
+      "deploymentBlock": "139600648",
+      "transactionHash": "0x6aa25de52fc99e404fbe3c8618cff7a80609f281a57342a8ede3975e971d175f",
+      "seeded": true
+    },
+    {
+      "symbol": "CRWV",
+      "token": "0xCC24B17Ca56c83dA8DF48a4129D6A4EC1b65FAAE",
+      "priceFeed": "0x098a0fD94D7AEC9505A9C66dd7f631d10F038018",
+      "keeper": "0x9Be1Cec95E8b44F2C4c937144Cdf16Eb1F048333",
+      "caps": {
+        "quote": "1000000",
+        "base": "16212"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "1621.139661"
+      },
+      "markets": [],
+      "vault": "0xd69282EE2bf138962362112Ac995F5e9F1C72746",
+      "deploymentBlock": "139601001",
+      "transactionHash": "0x65e0ecb67a219d09dd5fef6d22e1df4b9cb6a43008384b976e5cda0a10debd1d",
+      "seeded": true
+    },
+    {
+      "symbol": "AAPL",
+      "token": "0x360D2dEfb979911f4091F42Acc5995C32551eb31",
+      "priceFeed": "0xD82aeB62702deE5ba7dC5C8b3ca9f2bC277abba1",
+      "keeper": "0x67845d429707aa62e93c9412838269c614A72e26",
+      "caps": {
+        "quote": "1000000",
+        "base": "2934"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "293.337395"
+      },
+      "markets": [],
+      "vault": "0xcA2773036Bb45226739a4Dd95EF5CF3E297de708",
+      "deploymentBlock": "139601381",
+      "transactionHash": "0x4c65aa58a853ecf80ff6d64e9b501dc998e56f9f2071c9f0169844d1342c4441",
+      "seeded": true
+    },
+    {
+      "symbol": "SMH",
+      "token": "0x99a05329e9D3052f67F888488dfEF5FdcA7A2956",
+      "priceFeed": "0x0dFe5633939b415c4cfE65aE8671f80E52da4dF8",
+      "keeper": "0x97B4848A7A69492008574eD6E79ac7aF17Dd0989",
+      "caps": {
+        "quote": "1000000",
+        "base": "1827"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "182.601709"
+      },
+      "markets": [],
+      "vault": "0xA2ebFd24a8df276194A0D60c648b612beFA1EF07",
+      "deploymentBlock": "139601724",
+      "transactionHash": "0xebb03dff05b8503340d7fbfb74e2aba3879339f1bc3b065a36831eb34795115d",
+      "seeded": true
+    },
+    {
+      "symbol": "EWT",
+      "token": "0xF09B35853E598DD26737A0817c6987e9ff1B194D",
+      "priceFeed": "0x2A98f6183418261c698A96Ea75534f5A23017D6B",
+      "keeper": "0xA6D8B649A43d94C34692963A4a3a9AA4bA1021bE",
+      "caps": {
+        "quote": "1000000",
+        "base": "9322"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "932.140193"
+      },
+      "markets": [],
+      "vault": "0x785bD1B4BE3B8800A9647ECcA12E1F2cF62A4AfF",
+      "deploymentBlock": "139602090",
+      "transactionHash": "0x0a1513552eeecfd0e86a3660e767f32afb2da01092e4fad32106d054de6121e1",
+      "seeded": true
+    },
+    {
+      "symbol": "DJT",
+      "token": "0x431a9e3B056cA9B063Ae17A48c24b364f39Bf4c5",
+      "priceFeed": "0xB2e63192227d7EdbCd0D1fE2601776Ba6f66d0Fc",
+      "keeper": "0x6dfF7eAbDc2cedBdaCf9163dd984E74b5cAB7767",
+      "caps": {
+        "quote": "1000000",
+        "base": "156863"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "15686.274509"
+      },
+      "markets": [],
+      "vault": "0xBAbCF61FCFE61Da7590a326bccc614C2E3FfeeED",
+      "deploymentBlock": "139602424",
+      "transactionHash": "0x8c20ea18a616b1bb4bfd80013ae6d5a97f27cf3d44cdc1815f9654504a4a45c0",
+      "seeded": true
+    },
+    {
+      "symbol": "WETH",
+      "token": "0x5a57588e4ccd7752D0845ffa337240995B7441f0",
+      "priceFeed": "0xf72E14ca962C3abc033D9ef78A94C2aC45F1d360",
+      "keeper": "0xd52638b963357006b38b3D41F4Ef0991dE9bad35",
+      "caps": {
+        "quote": "1000000",
+        "base": "411"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "41.046434"
+      },
+      "markets": [],
+      "vault": "0xaA99eF49D18721C500a12b8736B22FD3758D7DD3",
+      "deploymentBlock": "139602743",
+      "transactionHash": "0x262ec44feccfb0c17bf6c71330d8d5dacee72cd5edfd26696e5ac78145dded1d",
+      "seeded": true
+    },
+    {
+      "symbol": "cbBTC",
+      "token": "0x2C1815A78C5C2F6b8e79319CD82C3cD88b5F01EC",
+      "priceFeed": "0xFB6E76B40E8826F6Ce85E9c3dEaCbF43D4d963b8",
+      "keeper": "0xcd1636C4753727722248357946dC811eD1676FAc",
+      "caps": {
+        "quote": "1000000",
+        "base": "13"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "1.209774"
+      },
+      "markets": [],
+      "vault": "0xf0fC54368F8f7Da8148AEc48A2429833a9f933Bb",
+      "deploymentBlock": "139603089",
+      "transactionHash": "0x2d036f1bbe11e10fc700e9daaf56cd3d665937a18b64d3ba6d9fe2ff762bd6ac",
+      "seeded": true
+    },
+    {
+      "symbol": "SOL",
+      "token": "0x84D2e527F11F4bfb7bbD9224173025C5B7d90F4c",
+      "priceFeed": "0x92bE3c82228cEE4f2080f671ea9F09168063D88A",
+      "keeper": "0xb1F604330eaD01D8D78b45dED233daDB60fD9635",
+      "caps": {
+        "quote": "1000000",
+        "base": "9454"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "945.315663"
+      },
+      "markets": [],
+      "vault": "0xF9eb7c68DcE30Ad1acC2d9c4ACDB2e6fA0927A9D",
+      "deploymentBlock": "139603477",
+      "transactionHash": "0x76a140ef246876fccbb316389aa405aeb4c24a8b8e602d72cf4428cf69b52922",
+      "seeded": true
+    },
+    {
+      "symbol": "XRP",
+      "token": "0x4548F35d22248aC5a1a2E89B02D9b23a558D7661",
+      "priceFeed": "0xE13bd4e007de07BFB9c545e469ad6A9D79BDfBA2",
+      "keeper": "0xa357D2921cae9b8bEcD6d4d4447fF7C4A648534d",
+      "caps": {
+        "quote": "1000000",
+        "base": "757916"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "75791.591827"
+      },
+      "markets": [],
+      "vault": "0x65A77154184DFD85296D5A9DAb5f6cCD5B473F14",
+      "deploymentBlock": "139603846",
+      "transactionHash": "0xdc01236070a9ddc7fd02a237f1101e908a3a66cd30ef8fedc63fbbf68f969378",
+      "seeded": true
+    },
+    {
+      "symbol": "DOGE",
+      "token": "0x44336c1e1A3823C047BBA611bB28E9C7A3fba0ff",
+      "priceFeed": "0x3Ce8C7FE457b9b76D01e886f5a94515f6bd390AD",
+      "keeper": "0x98527bEd8FA8c7E7586352e714fd5efc451682AD",
+      "caps": {
+        "quote": "1000000",
+        "base": "12338663"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "1233866.273079"
+      },
+      "markets": [],
+      "vault": "0x1B5cbF074e09817D75f2bBf4D317aAD5E414445B",
+      "deploymentBlock": "139604261",
+      "transactionHash": "0xb292e7f21e2c1db41870c41c74200828ae04d25b571e7357a8b8a1cfc0e08c27",
+      "seeded": true
     }
   ]
 }

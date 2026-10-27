@@ -5,11 +5,12 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
   useSyncExternalStore,
 } from "react";
 import { protocolConfig } from "@/config/protocol";
-import { publicClient } from "@/lib/trading/rpc";
+import { waitForReceipt } from "@/lib/trading/rpc";
 import { createWalletController, type WalletState } from "@/lib/wallet/controller";
 import { discoverWallets, walletSources } from "@/lib/wallet/injected";
 import { captureInvite, forgetInvite, pendingInvite } from "@/lib/wallet/invite";
@@ -46,7 +47,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       storage: browserStorage,
       origin: () => window.location.origin,
       api: browserApiOrigin,
-      client: publicClient,
+      waitForReceipt,
       request: requestJson,
       clearCache: clearWalletStores,
     }),
@@ -77,24 +78,22 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setInvite(null);
     }
   }, [invite, state.member, state.inviteError]);
-  return (
-    <Context.Provider
-      value={{
-        ...state,
-        invite,
-        connect: controller.connect,
-        disconnect: controller.disconnect,
-        ensureNetwork: controller.ensureNetwork,
-        authenticate,
-        joinWithInvite: controller.joinWithInvite,
-        invalidateSession: controller.invalidateSession,
-        refreshSession: controller.refreshSession,
-        sendTransaction: controller.sendTransaction,
-      }}
-    >
-      {children}
-    </Context.Provider>
+  const value = useMemo(
+    () => ({
+      ...state,
+      invite,
+      connect: controller.connect,
+      disconnect: controller.disconnect,
+      ensureNetwork: controller.ensureNetwork,
+      authenticate,
+      joinWithInvite: controller.joinWithInvite,
+      invalidateSession: controller.invalidateSession,
+      refreshSession: controller.refreshSession,
+      sendTransaction: controller.sendTransaction,
+    }),
+    [state, invite, controller, authenticate],
   );
+  return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 
 export function useWallet() {

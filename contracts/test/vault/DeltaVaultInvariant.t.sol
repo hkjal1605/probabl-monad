@@ -229,7 +229,7 @@ contract VaultHandler {
         address from = takers[seed % takers.length];
         amount = 1 + amount % 1e9;
         vm.startPrank(from);
-        try cs.split(market, base ? 1 : 0, amount) {
+        try ConditionalStocksAdmin(address(cs)).split(market, base ? 1 : 0, amount) {
             view_.transferClaim(market, uint8(seed % 2), base ? 1 : 0, address(vault), amount);
         } catch { }
         vm.stopPrank();

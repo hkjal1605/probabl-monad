@@ -2,7 +2,7 @@ import { address, approve, deposit, unsigned, withdraw } from "@conditional-stoc
 import { creditOf } from "@conditional-stocks/evm-client/ledger";
 import type { IndexerService } from "@conditional-stocks/indexer";
 import type { Hono } from "hono";
-import { erc20Abi, type PublicClient } from "viem";
+import { erc20Abi, maxUint256, type PublicClient } from "viem";
 import type { Auth } from "../auth/routes.ts";
 
 /** Vault transfers of the authenticated wallet only; no caller-supplied owner is accepted. */
@@ -44,7 +44,9 @@ export function mountCustody(app: Hono, indexer: IndexerService, client: PublicC
     if (balance < amount) throw new Error("Insufficient wallet balance");
     return {
       transactions: [
-        ...(allowance < amount ? [approve(token, exchange, amount)] : []),
+        // The first deposit of a token approves the exchange without limit, so later deposits
+        // of it are one transaction (an unlimited allowance is never spent down).
+        ...(allowance < amount ? [approve(token, exchange, maxUint256)] : []),
         deposit(exchange, token, amount),
       ],
     };

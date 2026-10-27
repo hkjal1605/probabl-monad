@@ -35,14 +35,14 @@ contract Handler {
         address a = _actor(seed);
         amount = base ? 1e15 * (1 + amount % 5_000) : 1e6 * (1 + amount % 50_000);
         vm.prank(a);
-        try cs.split(market, base ? 1 : 0, amount) { } catch { }
+        try ConditionalStocksAdmin(address(cs)).split(market, base ? 1 : 0, amount) { } catch { }
     }
 
     function merge(uint256 seed, bool base, uint256 amount) external {
         address a = _actor(seed);
         amount = base ? 1e15 * (1 + amount % 5_000) : 1e6 * (1 + amount % 50_000);
         vm.prank(a);
-        try cs.merge(market, base ? 1 : 0, amount) { } catch { }
+        try ConditionalStocksAdmin(address(cs)).merge(market, base ? 1 : 0, amount) { } catch { }
     }
 
     function place(uint256 seed, uint8 flags, uint64 ticks, uint256 qty, uint256 makerSeed)
@@ -125,8 +125,8 @@ contract InvariantTest is Base {
         actors.push(bot);
         for (uint256 i; i < actors.length; ++i) {
             vm.startPrank(actors[i]);
-            cs.split(market, 0, 400_000e6);
-            cs.split(market, 1, 4_000e18);
+            ConditionalStocksAdmin(address(cs)).split(market, 0, 400_000e6);
+            ConditionalStocksAdmin(address(cs)).split(market, 1, 4_000e18);
             vm.stopPrank();
         }
         handler = new Handler(cs, market, actors);

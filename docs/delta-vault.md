@@ -214,7 +214,7 @@ Everything else is permissionless or held by a separate role:
 - Anyone can **settle** a resolved market: its orders are released, its claims redeemed, and it is dropped from the vault.
 - The **guardian** pauses deposits and quoting. The pause also invalidates every resting vault order at once.
 - **Withdrawals are never paused.** The admin may rate-limit net outflow per day, but never below 10% of supply.
-- A vault holds at most 8 markets and 48 orders, so every loop is bounded.
+- A vault holds at most 48 markets and 48 orders, so every loop is bounded. Deposits and withdrawals move claims in every market, so the market cap bounds their gas: with all 48 markets holding claims, a withdrawal costs about 4.3M gas and a deposit about 5.3M (`VaultMarketLimit.t.sol` keeps both under 8M).
 
 **What the keeper is trusted with.** Within those bounds the keeper chooses prices. A compromised keeper key could trade against an accomplice at the edges of the band, up to the caps, until the guardian pauses. The defenses:
 - keep bands tight,
@@ -227,7 +227,7 @@ Everything else is permissionless or held by a separate role:
 |---|---|---|
 | Admin | Grant and revoke roles, set deposit caps and the withdrawal limit, unpause. Its transfer is two-step with a delay. | Touch holdings or block withdrawals |
 | Curator | Add and remove markets (only markets holding no claims), set each market's band, caps and cutoff buffer, set order limits | Quote or move funds |
-| Keeper | Post and cancel quotes, merge paired claims | Leave the on-chain bounds |
+| Keeper | Post and cancel quotes, sign RFQ quotes, merge paired claims | Leave the on-chain bounds |
 | Guardian | Pause (invalidating every quote), cancel every quote | Unpause |
 
 ### The keeper
@@ -249,11 +249,67 @@ The market's quotes are pulled when any of these holds:
 - the issuer paused the token,
 - the market is near cutoff or closed,
 - the vault is paused,
+- the guardian paused the exchange,
 - the **consistency breaker** fires: other traders' books imply a probability far from Polymarket's, where p = (s − N) ⁄ (Y − N) from their branch mid-prices.
 
 A vault-wide **drawdown latch** halts all quoting until an operator clears it. It compares the vault's holdings per share with a daily checkpoint, **both marked at the same current prices**, so stock moves, deposits and withdrawals never count; only trading losses do.
 
 Resolved markets are settled promptly. Paired claims are merged back into credit.
+
+**Ladder markets.** A Kalshi "above $K at a fixing" market on another asset (e.g. MSTR if Bitcoin closes above $K at 5 pm) takes its anchor from the driver, not from the config.
+- **The formula.** δ₀ = β·σ·√τ·φ(Φ⁻¹(p)) / (p(1−p)), the stock's expected price if the driver closes above the strike minus if it closes below. Here β is the stock's beta to the driver, σ the driver's daily volatility, τ the days left to the fixing and p the event's probability.
+- **How it moves.** At even odds the gap is 1.6·β·σ·√τ. It reprices with p and shrinks to zero at the fixing, so YES quotes sit above spot and NO quotes below (the other way round for a negative β).
+- **Configuration.** `drivers` gives each series' σ (e.g. `"KXBTCD": { "dailyVolBps": 281 }`) and each vault's `betas` its stock's β per series (`"KXBTCD": 1.54` for MSTR). A market whose override sets `anchorBps` keeps it, and `maxGapBps` bounds both.
+
+**New markets.** The keeper quotes every market its vault registers, with the config's default `model` unless a market overrides it. Market automation's `curate-vaults` job registers new markets on the vault's stock as they are created (`docs/market-automation.md`), and settlement frees their slots once they resolve.
+
+### RFQ quoting
+
+With `rfq.enabled`, the vault answers market orders over the API's RFQ stream (`docs/rfq.md`)
+instead of resting ladders on the book (`rfq.bookQuotes` keeps both). Limit orders still rest
+from other traders, and the book fills first at equal prices.
+
+**Pricing one request.** The keeper prices from memory and answers in about a millisecond:
+- **Inputs.** The probability streams from the Polymarket ingestor, the spot price is polled every
+  2 s, and the vault's balances come from the keeper's replica of the exchange.
+- **Size impact.** A fill of q shares walks the imbalance I by q, and the price walks with it
+  linearly, so the fill's average price is the price at the walk's midpoint:
+  - selling YES: ask = s(1 + (1−p)·δ̂(I − q/2))·(1 + h)
+  - buying YES: bid = s(1 + (1−p)·δ̂(I + q/2))·(1 − h)
+  - NO likewise, with N = s(1 − p·δ̂).
+- **Spread.** h is the book's half-spread plus `rfq.edgeBps`, for the option a firm quote gives
+  while it lives.
+- **In-flight quotes.** Quotes still outstanding count as filled. They raise the I the next request
+  prices from, and they come off the caps and funds until they expire or are reported lost, so
+  concurrent requests never overcommit the vault.
+- **Size.** At most what the imbalance cap leaves (resting orders and outstanding quotes counted),
+  the order cap and the model's `orderQuote`, and what one funding source can deliver: branch
+  claims first, then credit above the withdrawal reserve.
+- **Refusals.** The vault declines rather than quote outside the margin inside its band, beyond
+  the taker's limit, or past the cutoff buffer. It also declines under every condition that pulls
+  the book's quotes: stale references, skew, oracle disagreement, a jump with its cooldown, the
+  fee cap, a pause, or the drawdown latch.
+
+**Settlement.** The keeper signs each quote with its keeper wallet, and the nonce names the vault
+as the maker. The exchange asks the vault to accept each fill (`acceptQuote`). The vault checks
+the signer's `KEEPER_ROLE` and the same bounds it enforces on resting orders: band, lifetime,
+cutoff buffer, per-order cap, and the worst-case imbalance after the fill. So a compromised
+keeper key is bounded exactly as before. The fill then comes straight out of the vault's
+holdings inside the taker's own transaction. Nothing rests, no requote transaction is paid, and
+fees and maker rebates apply as on any fill.
+
+**Why it stays event-neutral.** Each fill sells YES-world stock for YES-world dollars, or the NO
+equivalent, at the conditional price, so neither world's wealth changes (§4). What the vault
+carries is the gap position I. The imbalance cap bounds it, and δ̂ skews every price toward the
+flow that brings it back to flat.
+
+**What it earns.** Profit comes from three sources:
+- the spread on every fill;
+- the maker rebate;
+- the impact that later offsetting flow pays back.
+
+The cost is losses to informed flow on δ. One extra signature check per fill costs about 50k gas,
+paid by the taker's transaction.
 
 **v2: fully on-chain.** Traders would swap directly against a contract that reads Pyth. The hard part is still a trustworthy on-chain probability feed, since no production one exists. In v1 the keeper supplies p off-chain, and the vault bounds what it can do with it.
 
@@ -308,7 +364,7 @@ Historically, conditional markets didn't exist, so Δ was never observed. It can
 2. **Configure.** The curator sets the order limits: lifetime, oracle age (above a day for equity feeds) and fee cap. Then, for each event, it adds the market with its band, per-order and resting caps, imbalance cap and cutoff buffer, in the admin console under Vault controls.
 3. **Seed.** The admin makes the first deposit, which sets the vault's initial USDC/NVDA ratio and locks 1,000 shares.
 4. **Run the keeper.** One process quotes every Δ-vault. Its config lists the vaults, each with its own keeper wallet that holds only `KEEPER_ROLE` (separate wallets keep one vault's transactions from ever waiting on another's), and a default Δ-model (δ₀, impact, bound, size) for every market a vault registers, with per-market overrides or `disabled` where needed. The keeper reads each vault's markets from the chain every round, so markets the curator adds, or that settle, need no restart. Run it with `VK_MODE=live` and `--execute`.
-5. **List it.** Add the vault to `DELTA_VAULT_ADDRESSES` (the API) and `NEXT_PUBLIC_DELTA_VAULTS` (the UIs, which never take vault addresses from the API).
+5. **List it.** Add the vault to `DELTA_VAULT_ADDRESSES` (the API) and `NEXT_PUBLIC_DELTA_VAULTS` (the UIs, which never take vault addresses from the API). To quote through RFQ, approve the vault's address as an RFQ maker (admin console → RFQ makers), give its key to the keeper in `VK_RFQ_API_KEYS`, and set `rfq.enabled`.
 6. **Incidents.**
    - The guardian pauses: deposits and quoting stop, and every resting quote is invalidated at once.
    - After review, the admin unpauses.

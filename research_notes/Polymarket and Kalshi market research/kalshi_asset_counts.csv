@@ -1,0 +1,122 @@
+kind,asset,name,proxy_tokens,events,markets,vol24,vol,oi,link_types,top_event,top_event_title,earliest_close
+crypto,BTC,BTC,,47,744,2035401,81186857,24444143,price:712; mention (what a speaker says):17; political/policy reference:9; crypto event:6,KXBTCD-26OCT2003,"BTC price on Oct 20, 2026 at 3am EDT?",2026-10-20T06:45:00Z
+crypto,ZEC,ZEC,,5,186,87511,212442,27255,price:186,KXZECMAXMON-ZEC-26OCT31,How high will ZEC get in October?,2026-10-20T06:45:00Z
+crypto,BNB,BNB,,11,387,67652,107661,9587,price:387,KXBNBD-26OCT2317,"BNB price on Oct 23, 2026 at 5pm EDT?",2026-10-20T06:45:00Z
+crypto,ETH,ETH,,15,829,61855,16631304,2137579,price:827; political/policy reference:1; crypto event:1,KXETHD-26OCT2317,"ETH price on Oct 23, 2026 at 5pm EDT?",2026-10-20T06:45:00Z
+crypto,SOL,SOL,,16,893,24804,1332412,376674,price:891; political/policy reference:1; crypto event:1,KXSOL15M-26OCT200245,SOL 15 min · $104.4647 target,2026-10-20T06:45:00Z
+crypto,XRP,XRP,,15,386,20834,565936,288850,price:384; political/policy reference:1; crypto event:1,KXXRP15M-26OCT200245,XRP 15 min · $1.3007 target,2026-10-20T06:45:00Z
+crypto,DOGE,DOGE,,15,299,3409,703856,277347,price:297; political/policy reference:1; crypto event:1,KXDOGE15M-26OCT200245,DOGE 15 min · $0.0792681 target,2026-10-20T06:45:00Z
+crypto,HYPE,HYPE,,12,822,1408,25307,11309,price:821; political/policy reference:1,KXHYPED-26OCT2317,"HYPE price on Oct 23, 2026 at 5pm EDT?",2026-10-20T06:45:00Z
+crypto,NEAR,NEAR,,3,25,853,25072,6138,price:25,KXNEARY-27JAN0100,NEAR price at the end of the year? ,2026-10-20T06:45:00Z
+crypto,SHIB,SHIB,,3,59,571,32423,6597,price:58; crypto event:1,KXSHIBAD-26OCT2017,"Shiba Inu price on Oct 20, 2026 at 5pm EDT?",2026-10-20T21:00:00Z
+crypto,LINK,LINK,,1,1,223,78250,28459,crypto event:1,KXCRYPTORETURNY-26,Which of these cryptocurrencies will have a positive return in 2026?,2027-01-01T15:00:00Z
+crypto,LTC,LTC,,1,1,56,21865,4637,crypto event:1,KXCRYPTORETURNY-26,Which of these cryptocurrencies will have a positive return in 2026?,2027-01-01T15:00:00Z
+crypto,DOT,DOT,,1,1,12,29408,7678,crypto event:1,KXCRYPTORETURNY-26,Which of these cryptocurrencies will have a positive return in 2026?,2027-01-01T15:00:00Z
+crypto,XLM,XLM,,1,1,8,56247,12784,crypto event:1,KXCRYPTORETURNY-26,Which of these cryptocurrencies will have a positive return in 2026?,2027-01-01T15:00:00Z
+crypto,ADA,ADA,,1,1,0,84,84,political/policy reference:1,KXTREASBUYCRYPTO-26AUG,Which cryptocurrencies will the Treasury purchase during Trump's term?,2029-01-21T04:59:00Z
+token,SPCX,Space Exploration Technologies Corp. Class A Common Stock,,49,154,103916,5195319,2542580,tech/product:65; mention (what a speaker says):35; fundamentals (earnings/KPIs):27; corporate event:15; macro (rate/price proxy):8; company other:2; platform/content ranking:1; political/policy reference:1,KXSPACEXCOUNT-26OCT,How many launches will SpaceX have in October?,2026-10-26T14:00:00Z
+token,GOOGL,Alphabet Class A,,70,392,96666,5758221,2667196,platform/content ranking:186; tech/product:93; fundamentals (earnings/KPIs):50; mention (what a speaker says):32; corporate event:20; price:8; company other:2; political/policy reference:1,KXLLM1-26DEC31,Best AI at the end of 2026?,2026-10-21T03:59:00Z
+token,TTWO,Take-Two Interactive Software,,18,261,83363,5008873,2066289,platform/content ranking:260; price:1,KXFEATURE-26GTA6,Grand Theft Auto VI: The Album · Features,2026-11-01T03:59:00Z
+token,TSLA,Tesla,,26,153,32030,2083202,850744,fundamentals (earnings/KPIs):92; mention (what a speaker says):31; corporate event:13; product price:11; tech/product:5; company other:1,KXCOMPANYACTIONMERGER-27,When will Tesla and SpaceX merge?,2026-11-01T04:59:00Z
+token,AMZN,Amazon,,24,95,15612,484924,191978,mention (what a speaker says):30; fundamentals (earnings/KPIs):28; platform/content ranking:26; tech/product:4; corporate event:4; company other:2; political/policy reference:1,KXAMZNCC-26NOV07,Amazon Credit Card Spend in October,2026-10-23T14:00:00Z
+token,LULU,Lululemon,,2,30,13065,61309,22431,fundamentals (earnings/KPIs):30,KXLULUCC-26NOV07,Lululemon Credit Card Spend in October,2026-11-07T03:29:00Z
+token,DJT,Trump Media & Technology Group,,2,8,8254,30203,16598,political/policy reference:8,KXTRUMPENDORSEMENTS-26OCT23,How many people will Trump endorse on Truth Social this week? (10/17-10/23),2026-10-24T14:00:00Z
+token,NFLX,Netflix,,18,52,8168,114395,55174,mention (what a speaker says):24; fundamentals (earnings/KPIs):17; platform/content ranking:6; company other:2; corporate event:2; product price:1,KXEARNINGSMENTIONNFLX-26OCT20,What will Netflix say during their next earnings call?,2026-11-01T15:00:00Z
+token,GME,GameStop,,1,1,8155,3565774,1197919,corporate event:1,KXACQANNOUNCEEBAY-27JAN01,Will GameStop acquire eBay in 2026?,2027-01-01T04:59:00Z
+token,AAPL,Apple,,14,44,4932,1779613,480179,mention (what a speaker says):20; corporate event:8; product price:7; fundamentals (earnings/KPIs):6; company other:1; political/policy reference:1; platform/content ranking:1,KXIPHONERELEASE-IPHONE18,When will Apple release the iPhone 18?,2026-11-12T15:00:00Z
+token,META,Meta Platforms,,23,92,3903,332536,108611,fundamentals (earnings/KPIs):53; mention (what a speaker says):18; tech/product:16; political/policy reference:2; corporate event:2; company other:1,KXEARNINGSMENTIONMETA-26OCT21,What will Meta say during their next earnings call?,2026-10-23T14:00:00Z
+token,RBLX,Roblox,,5,43,3212,135633,40487,fundamentals (earnings/KPIs):42; corporate event:1,KXRBLX-26OCTHOURS,Roblox hours engaged in Q3,2027-01-01T04:59:00Z
+token,XOM,ExxonMobil Holdings Corporation,,4,10,1532,10228,6367,fundamentals (earnings/KPIs):7; political/policy reference:2; mention (what a speaker says):1,KXEXXONCC-26NOV07,ExxonMobil Credit Card Spend in October,2026-11-01T15:00:00Z
+token,CCL,Carnival Corporation,,3,40,1499,147907,49695,fundamentals (earnings/KPIs):26; mention (what a speaker says):14,KXCCLA-28JANALBD,Carnival Cruise available lower berth days in 2026,2027-04-01T15:00:00Z
+token,LLY,Eli Lilly,,4,32,1151,35647,13426,mention (what a speaker says):17; fundamentals (earnings/KPIs):13; platform/content ranking:1; corporate event:1,KXEARNINGSMENTIONLLY-26OCT29,What will Eli Lilly say during their next earnings call?,2026-11-07T03:29:00Z
+token,CVNA,Carvana,,3,33,1087,120247,53557,fundamentals (earnings/KPIs):20; mention (what a speaker says):13,KXEARNINGSMENTIONCVNA-26OCT28,What will Carvana say during their next earnings call?,2026-11-11T15:00:00Z
+token,MSFT,Microsoft,,11,40,1086,63079,17431,mention (what a speaker says):32; tech/product:3; corporate event:3; political/policy reference:2,KXMSFTMENTION-26OCT28,What will Jay Parikh say during GitHub Universe Keynote?,2026-10-23T14:00:00Z
+token,LMT,Lockheed,,5,43,963,92119,22953,fundamentals (earnings/KPIs):27; mention (what a speaker says):15; corporate event:1,KXLMT-26OCTF35,Lockheed Martin F-35 deliveries in Q3,2027-01-01T04:59:00Z
+token,RDDT,Reddit,,4,38,933,18956,10185,fundamentals (earnings/KPIs):21; mention (what a speaker says):16; corporate event:1,KXRDDT-26OCTDAU,Reddit daily active uniques in Q3,2026-11-12T15:00:00Z
+token,RIVN,Rivian Automotive,,3,42,781,87626,27383,fundamentals (earnings/KPIs):30; mention (what a speaker says):12,KXEARNINGSMENTIONRIVN-26OCT29,What will Rivian say during their next earnings call?,2027-01-27T21:00:00Z
+token,JNJ,Johnson & Johnson,,2,17,763,2215,1542,mention (what a speaker says):16; corporate event:1,KXEARNINGSMENTIONJNJ-27JAN26,What will Johnson & Johnson say during their next earnings call?,2027-01-01T15:00:00Z
+token,ORCL,Oracle,,5,43,423,14523,6227,mention (what a speaker says):35; fundamentals (earnings/KPIs):8,KXTRUMPSAYCOMPANY-26NOV01,What companies will Trump say in October?,2026-11-01T15:00:00Z
+token,DELL,Dell,,2,2,333,2573,2008,macro (rate/price proxy):1; mention (what a speaker says):1,KXTRUMPSAYCOMPANY-26NOV01,What companies will Trump say in October?,2026-11-01T15:00:00Z
+token,COST,Costco,,5,54,322,91274,36661,fundamentals (earnings/KPIs):29; mention (what a speaker says):21; macro (rate/price proxy):4,KXCOSTCC-26NOV07,Costco Credit Card Spend in October,2026-11-07T03:29:00Z
+token,FICO,Fair Isaac,,2,2,319,935,877,mention (what a speaker says):2,KXEARNINGSMENTIONALLY-26OCT20,What will Ally Financial say during their next earnings call?,2027-01-18T13:00:00Z
+token,BA,Boeing,,8,38,316,407101,57862,fundamentals (earnings/KPIs):19; mention (what a speaker says):17; corporate event:2,KXBAA-28JANDELIV,Boeing commercial airplane deliveries in 2026,2026-11-04T15:00:00Z
+token,NVDA,NVIDIA,,15,38,285,142697,47805,mention (what a speaker says):26; fundamentals (earnings/KPIs):6; tech/product:4; political/policy reference:1; corporate event:1,KXUSACOMPANYSTAKE-27JAN01,Which companies will the US take a stake in this year?,2026-10-23T14:00:00Z
+token,CRWV,CoreWeave,,5,32,204,9279,8689,fundamentals (earnings/KPIs):31; corporate event:1,KXCRWVA-27FEBPOWER,CoreWeave contracted power capacity in fiscal 2026,2027-01-01T04:59:00Z
+token,DDOG,Datadog,,2,15,200,15972,7611,fundamentals (earnings/KPIs):15,KXDDOG-26NOVCUST100K,Datadog customers over $100k ARR in Q3,2027-03-06T05:00:00Z
+token,ADBE,Adobe,,2,29,151,706,692,mention (what a speaker says):29,KXADBEMENTION-26NOV10,What will Shantanu Narayen say during Adobe MAX Opening Keynote?,2026-11-24T15:00:00Z
+token,BABA,Alibaba,,12,13,127,79037,64708,tech/product:13,KXCHINAAI-26OCT31,Top Chinese AI company this month,2026-10-23T14:00:00Z
+token,HIMS,Hims & Hers Health,,5,46,126,69486,22561,fundamentals (earnings/KPIs):26; mention (what a speaker says):19; company other:1,KXEARNINGSMENTIONHIMS-26NOV02,What will Hims say during their next earnings call?,2026-11-07T03:29:00Z
+token,SNOW,Snowflake,,5,44,110,1422,1153,fundamentals (earnings/KPIs):25; mention (what a speaker says):18; corporate event:1,KXSNOWMENTION-26NOV03,What will Snowflake CEO say during his agentic enterprise keynote?,2026-11-17T15:00:00Z
+token,RGTI,Rigetti Computing,,1,1,105,775,608,mention (what a speaker says):1,KXTRUMPSAYCOMPANY-26NOV01,What companies will Trump say in October?,2026-11-01T15:00:00Z
+token,INTC,Intel,,6,33,69,25468,14543,fundamentals (earnings/KPIs):16; mention (what a speaker says):16; political/policy reference:1,KXEARNINGSMENTIONINTC-26OCT22,What will Intel say during their next earnings call?,2026-11-01T15:00:00Z
+token,SOFI,SoFi Technologies,,4,15,18,12962,5352,fundamentals (earnings/KPIs):13; platform/content ranking:1; corporate event:1,KXSOFI-26OCTMEM,SoFi members in Q3,2027-01-01T04:59:00Z
+token,PLTR,Palantir Technologies,,6,44,16,121643,45173,fundamentals (earnings/KPIs):21; mention (what a speaker says):20; political/policy reference:2; corporate event:1,KXEARNINGSMENTIONPLTR-26NOV02,What will Palantir say during their next earnings call?,2026-11-16T15:00:00Z
+token,TSM,Taiwan Semiconductor Manufacturing,,3,3,12,29589,10891,mention (what a speaker says):2; corporate event:1,KXUSACOMPANYSTAKE-27JAN01,Which companies will the US take a stake in this year?,2026-11-05T09:00:00Z
+token,COIN,Coinbase,,4,16,5,10492,2391,fundamentals (earnings/KPIs):14; company other:1; mention (what a speaker says):1,KXSUPERBOWLAD-SB2027,Which brands will advertise during the Big Game?,2027-01-21T12:30:00Z
+token,MSTR,Strategy Inc.,,3,13,4,27817,10304,macro (rate/price proxy):11; platform/content ranking:1; corporate event:1,KXNWSAYLOR-26,"Michael Saylor net worth on Dec 31, 2026",2026-12-31T15:00:00Z
+token,ASTS,AST SpaceMobile,,1,12,2,1051,1047,mention (what a speaker says):12,KXEARNINGSMENTIONASTS-26NOV10,What will AST SpaceMobile say during their next earnings call?,2027-02-22T15:00:00Z
+token,RKLB,Rocket Lab Corporation,,4,32,1,36278,23277,corporate event:18; tech/product:14,KXRKLBLAUNCH-NEUT,When will Rocket Lab Corporation launch Neutron,2026-11-01T04:59:00Z
+token,F,Ford Motor,,2,27,0,57829,27916,fundamentals (earnings/KPIs):27,KXFA-28JANUSSALES,Ford US vehicle sales volume in 2026,2027-07-31T14:00:00Z
+token,NU,Nu,,2,17,0,2103,1423,fundamentals (earnings/KPIs):17,KXNUA-28JANCUST,Nu Holdings customers in 2026,2027-03-13T05:00:00Z
+token,FUTU,Futu Holdings,,2,14,0,1321,382,fundamentals (earnings/KPIs):14,KXFUTUA-27MARFUNDED,Futu total funded accounts in fiscal 2026,2027-03-19T05:00:00Z
+token,PATH,UiPath,,1,6,0,401,401,fundamentals (earnings/KPIs):6,KXPATHA-27MARCUST1M,UiPath customers with arr of at least $1m in fiscal 2027,2027-06-08T05:00:00Z
+token,FIG,Figma,,3,12,0,2433,1055,fundamentals (earnings/KPIs):11; corporate event:1,KXFIGA-27FEBHIARR,Figma paid customers >$100k arr in fiscal 2026,2027-01-01T04:59:00Z
+token,BULL,Webull,,2,15,0,7305,3781,fundamentals (earnings/KPIs):15,KXBULL-26NOVFUNDED,Webull funded accounts in Q3,2027-03-10T05:00:00Z
+token,ZM,Zoom,,2,11,0,330,205,fundamentals (earnings/KPIs):11,KXZMA-27FEBCUST100K,Zoom customers with over $100k in TTM revenue in fiscal 2027,2027-03-23T05:00:00Z
+token,SHOP,Shopify,,3,13,0,15344,5384,fundamentals (earnings/KPIs):12; mention (what a speaker says):1,KXSHOPA-27FEBGMV,Shopify gross merchandise volume in fiscal 2026,2026-11-12T15:00:00Z
+token,NET,"Cloudflare, Inc. Class A common stock",,3,14,0,1132,981,fundamentals (earnings/KPIs):13; corporate event:1,KXSP500ADDQ-26DEC31,Which companies will be added to the S&P 500 in Q4?,2027-01-01T04:59:00Z
+token,SNAP,Snap,,2,17,0,12176,4288,fundamentals (earnings/KPIs):17,KXSNAP-26OCTDAU,Snap daily active users in Q3,2027-02-24T04:00:00Z
+token,FTNT,Fortinet,,1,1,0,178,120,mention (what a speaker says):1,KXEARNINGSMENTIONINTC-26OCT22,What will Intel say during their next earnings call?,2027-03-31T14:00:00Z
+token,ZETA,Zeta Global,,2,18,0,1003,680,fundamentals (earnings/KPIs):18,KXZETAA-27FEBSSC,Zeta super-scaled customers (>$1m) in 2026,2027-03-04T05:00:00Z
+token,MU,Micron Technology,,2,2,0,32332,11600,corporate event:1; mention (what a speaker says):1,KXUSACOMPANYSTAKE-27JAN01,Which companies will the US take a stake in this year?,2026-11-01T15:00:00Z
+token,IONQ,IonQ,,2,2,0,31540,10350,corporate event:2,KXUSACOMPANYSTAKE-27JAN01,Which companies will the US take a stake in this year?,2027-01-01T04:59:00Z
+token,PFE,Pfizer,,1,1,0,11727,3481,corporate event:1,KXUSACOMPANYSTAKE-27JAN01,Which companies will the US take a stake in this year?,2027-01-01T04:59:00Z
+token,CSCO,Cisco Systems,,1,1,0,16,16,corporate event:1,KXDJIAREMOVE-27JAN01,Which companies will be removed from the Dow Jones Industrial Average in 2026?,2027-01-01T15:00:00Z
+token,CRM,Salesforce,,1,1,0,2,0,corporate event:1,KXDJIAREMOVE-27JAN01,Which companies will be removed from the Dow Jones Industrial Average in 2026?,2027-01-01T15:00:00Z
+token,UNH,UnitedHealth,,1,1,0,2,2,corporate event:1,KXDJIAREMOVE-27JAN01,Which companies will be removed from the Dow Jones Industrial Average in 2026?,2027-01-01T15:00:00Z
+token,WDAY,Workday,,1,1,0,3619,2629,corporate event:1,KXACQANNOUNCEWDAY-27JAN01,Will Silver Lake acquire Workday this year?,2027-01-01T04:59:00Z
+token,NBIS,Nebius Group,,3,3,0,2920,428,mention (what a speaker says):2; corporate event:1,KXACQANNOUNCEANNUAL-27JAN01,Which companies will be acquired this year?,2026-11-16T15:00:00Z
+token,ALAB,"Astera Labs, Inc.",,1,1,0,387,372,corporate event:1,KXSP500ADDQ-26DEC31,Which companies will be added to the S&P 500 in Q4?,2027-01-01T04:59:00Z
+token,MDB,MongoDB,,1,1,0,119,119,corporate event:1,KXSP500ADDQ-26DEC31,Which companies will be added to the S&P 500 in Q4?,2027-01-01T04:59:00Z
+token,CRCL,Circle Internet Group,,3,14,0,221,213,stock price / market cap:12; corporate event:2,KXSTABLETOTAL-26,USDC + USDT market cap at year end 2026?,2026-12-31T15:00:00Z
+token,CRDO,Credo Technology Group,,1,1,0,220,214,corporate event:1,KXSP500ADDQ-26DEC31,Which companies will be added to the S&P 500 in Q4?,2027-01-01T04:59:00Z
+token,CBRS,Cerebras Systems,,1,1,0,0,0,corporate event:1,KXSP500ADDQ-26DEC31,Which companies will be added to the S&P 500 in Q4?,2027-01-01T04:59:00Z
+token,TEAM,Atlassian Corporation,,1,1,0,0,0,corporate event:1,KXSP500ADDQ-26DEC31,Which companies will be added to the S&P 500 in Q4?,2027-01-01T04:59:00Z
+token,MRNA,Moderna,,1,1,0,400,200,corporate event:1,KXMSCIADDQ-26DEC31,Companies added to the MSCI USA Index in Q4?,2027-01-01T04:59:00Z
+token,OKLO,Oklo,,1,1,0,0,0,corporate event:1,KXMSCIADDQ-26DEC31,Companies added to the MSCI USA Index in Q4?,2027-01-01T04:59:00Z
+token,BB,Blackberry,,1,14,0,288,283,mention (what a speaker says):14,KXEARNINGSMENTIONBB-26DEC17,What will BlackBerry say during their next earnings call?,2026-12-31T15:00:00Z
+token,IBM,IBM,,2,2,0,10083,6449,tech/product:1; mention (what a speaker says):1,KXAIPARETO-26DEC31,Which AI companies will have a Pareto efficient model at the end of 2026?,2026-11-01T15:00:00Z
+token,AVAV,AeroVironment,,1,14,0,807,793,mention (what a speaker says):14,KXEARNINGSMENTIONAVAV-26DEC08,What will AeroVironment say during their next earnings call?,2027-03-22T15:00:00Z
+token,FISV,Fiserv,,1,1,0,21,21,mention (what a speaker says):1,KXEARNINGSMENTIONMA-26OCT29,What will Mastercard say during their next earnings call?,2027-02-10T15:00:00Z
+token,AVGO,Broadcom,,1,1,0,960,925,mention (what a speaker says):1,KXEARNINGSMENTIONAAPL-26OCT29,What will Apple say during their next earnings call?,2026-11-12T15:00:00Z
+token,AMD,AMD,,2,2,0,5524,3986,mention (what a speaker says):2,KXTRUMPSAYCOMPANY-26NOV01,What companies will Trump say in October?,2026-11-01T15:00:00Z
+token,NAVN,Navan,,1,1,0,0,0,mention (what a speaker says):1,KXEARNINGSMENTIONHLT-26OCT27,What will Hilton say during their next earnings call?,2027-01-25T13:00:00Z
+token,QCOM,Qualcomm,,1,1,0,101,82,mention (what a speaker says):1,KXTRUMPSAYCOMPANY-26NOV01,What companies will Trump say in October?,2026-11-01T15:00:00Z
+token_via_proxy,USO,United States Oil Fund,,60,985,826347,16703347,6520690,price:576; macro (rate/price proxy):384; fundamentals (earnings/KPIs):25,KXAAAGASW-26OCT26,US gas prices this week,2026-10-20T06:45:00Z
+token_via_proxy,XOM,ExxonMobil Holdings Corporation,,60,985,826347,16703347,6520690,price:576; macro (rate/price proxy):384; fundamentals (earnings/KPIs):25,KXAAAGASW-26OCT26,US gas prices this week,2026-10-20T06:45:00Z
+token_via_proxy,SGOV,iShares 0-3 Month Treasury Bond,,101,1365,252360,31831536,16526889,price:669; macro (rate/price proxy):665; company other:31,KXFEDDECISION-26OCT,Fed decision in Oct 2026?,2026-10-20T11:59:00Z
+token_via_proxy,SHY,iShares 1-3 Year Treasury Bond ETF,,99,1350,246490,31805882,16513065,macro (rate/price proxy):665; price:654; company other:31,KXFEDDECISION-26OCT,Fed decision in Oct 2026?,2026-10-20T19:30:00Z
+token_via_proxy,GLD,SPDR Gold Trust,,17,271,90823,988125,363645,price:270; corporate event:1,KXGOLDD-26OCT2017,"Gold price on Oct 20, 2026 at 5:00 PM EDT?",2026-10-20T06:45:00Z
+token_via_proxy,SPMO,Invesco S&P 500 Momentum ETF,,29,687,90556,11458680,6782137,price:637; corporate event:49; macro (rate/price proxy):1,KXINXY-26DEC31H1600,S&P close price end of 2026?,2026-10-20T14:00:00Z
+token_via_proxy,SPY,SPDR S&P 500 ETF Trust,,29,687,90556,11458680,6782137,price:637; corporate event:49; macro (rate/price proxy):1,KXINXY-26DEC31H1600,S&P close price end of 2026?,2026-10-20T14:00:00Z
+token_via_proxy,VTI,Vanguard Morningstar Total Stock Market ETF,,29,687,90556,11458680,6782137,price:637; corporate event:49; macro (rate/price proxy):1,KXINXY-26DEC31H1600,S&P close price end of 2026?,2026-10-20T14:00:00Z
+token_via_proxy,BND,Vanguard Total Bond Market ETF,,45,685,37703,1168900,416763,price:654; company other:31,KXUST10AD-26OCT20,"10Y US Treasury yield on Oct 20, 2026?",2026-10-20T19:30:00Z
+token_via_proxy,QQQ,Invesco QQQ,,15,2921,29534,5309744,3846783,price:2921,KXNASDAQ100Y-26DEC31H1600,Nasdaq-100 close price end of 2026?,2026-10-20T14:00:00Z
+token_via_proxy,SLV,iShares Silver Trust,,8,204,6295,82241,39599,price:203; corporate event:1,KXSILVERD-26OCT2017,"Silver price on Oct 20, 2026 at 5:00 PM EDT?",2026-10-20T06:45:00Z
+token_via_proxy,EWY,iShares MSCI South Korea fund,,1,2,0,3547,1652,price:2,KXKOSPI-26DEC31,How high will the KOSPI Composite Index get in 2026?,2027-01-01T15:00:00Z
+underlying,US gasoline (AAA retail),US gasoline (AAA retail),USO|XOM,30,525,662716,5296538,2125423,macro (rate/price proxy):334; price:191,KXAAAGASW-26OCT26,US gas prices this week,2026-10-20T06:45:00Z
+underlying,Fed funds / policy rate,Fed funds / policy rate,SGOV|SHY,54,665,208787,30636983,16096302,macro (rate/price proxy):665,KXFEDDECISION-26OCT,Fed decision in Oct 2026?,2026-10-26T12:24:00Z
+underlying,Oil (WTI/Brent),Oil (WTI/Brent),USO|XOM,30,460,163631,11406809,4395268,price:385; macro (rate/price proxy):50; fundamentals (earnings/KPIs):25,KXWTI-26OCT2014,"Oil Price (WTI) on Oct 20, 2026?",2026-10-20T06:45:00Z
+underlying,Copper,Copper,,5,132,108975,152008,45532,price:131; corporate event:1,KXCOPPERD-26OCT2017,"Copper price on Oct 20, 2026 at 5:00 PM EDT?",2026-10-20T06:45:00Z
+underlying,Gold,Gold,GLD,17,271,90823,988125,363645,price:270; corporate event:1,KXGOLDD-26OCT2017,"Gold price on Oct 20, 2026 at 5:00 PM EDT?",2026-10-20T06:45:00Z
+underlying,S&P 500,S&P 500,SPY|SPMO|VTI,29,687,90556,11458680,6782137,price:637; corporate event:49; macro (rate/price proxy):1,KXINXY-26DEC31H1600,S&P close price end of 2026?,2026-10-20T14:00:00Z
+underlying,US Treasury yields,US Treasury yields,SHY|SGOV|BND,45,685,37703,1168900,416763,price:654; company other:31,KXUST10AD-26OCT20,"10Y US Treasury yield on Oct 20, 2026?",2026-10-20T19:30:00Z
+underlying,Nasdaq-100,Nasdaq-100,QQQ,15,2921,29534,5309744,3846783,price:2921,KXNASDAQ100Y-26DEC31H1600,Nasdaq-100 close price end of 2026?,2026-10-20T14:00:00Z
+underlying,FX,FX,,18,253,19555,590902,33314,price:253,KXEURUSD-26OCT2010,"EUR/USD price range on Oct 20, 2026 at 10am EDT?",2026-10-20T06:45:00Z
+underlying,Natural gas,Natural gas,,8,210,15845,229309,86247,price:191; macro (rate/price proxy):19,KXNATGAS15M-26OCT200245,Natural Gas 15 min · $3.30338 target,2026-10-20T06:45:00Z
+underlying,Silver,Silver,SLV,8,204,6295,82241,39599,price:203; corporate event:1,KXSILVERD-26OCT2017,"Silver price on Oct 20, 2026 at 5:00 PM EDT?",2026-10-20T06:45:00Z
+underlying,Dow Jones,Dow Jones,,4,109,6195,27287,19349,price:81; corporate event:28,KXDJI-26OCT2016,"(Pyth Index.US30/USD) price on Oct 20, 2026 at 4pm EDT",2026-10-20T14:00:00Z
+underlying,SOFR / repo,SOFR / repo,SGOV,2,15,5870,25654,13824,price:15,KXSOFRD-26OCT20,"SOFR for October 19, 2026",2026-10-20T11:59:00Z
+underlying,Platinum/Palladium,Platinum/Palladium,,6,216,294,7109,2146,price:216,KXPLATINUM15M-26OCT200245,"Platinum 15 min · $1,648.300 target",2026-10-20T06:45:00Z
+underlying,Nikkei,Nikkei,,1,8,0,29654,24881,price:8,KXNIKKEI-26DEC31,How high will the Nikkei 225 get in 2026?,2027-01-01T15:00:00Z
+underlying,KOSPI,KOSPI,EWY,1,2,0,3547,1652,price:2,KXKOSPI-26DEC31,How high will the KOSPI Composite Index get in 2026?,2027-01-01T15:00:00Z

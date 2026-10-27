@@ -1,6 +1,8 @@
 "use client";
 import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
 import { LifecycleBadge } from "@/components/data/StatusBadge";
 import {
   Accordion,
@@ -34,16 +36,31 @@ import type { MarketView } from "@/types/api";
 import { fetchResolution } from "../utils/fetchResolution";
 
 const stages = ["open", "frozen", "awaiting-resolution", "resolved", "redeemable"];
+/** Cards shown at first and added per "Show more" (each resolved one reads its resolution). */
+const PAGE = 20;
 const labels = ["OPEN", "FROZEN", "REVIEW", "RESOLVED", "REDEEMABLE"];
-export function ResolutionClient({
-  markets: initial,
-  selected,
-}: {
-  markets: MarketView[];
-  selected?: string | undefined;
-}) {
+export function ResolutionClient({ markets: initial }: { markets: MarketView[] }) {
+  const selected = useSearchParams().get("market") ?? undefined;
   const query = useMarkets(initial),
     { markets } = query;
+  const [shown, setShown] = useState(PAGE);
+  // The linked market leads, so it shows whatever page it is on.
+  const listed = useMemo(
+    () =>
+      selected
+        ? [...markets.filter((m) => m.id === selected), ...markets.filter((m) => m.id !== selected)]
+        : markets,
+    [markets, selected],
+  );
+  const counts = useMemo(() => {
+    const count = (lifecycle: MarketView["lifecycle"]) =>
+      markets.filter((m) => m.lifecycle === lifecycle).length;
+    return {
+      open: count("open"),
+      review: count("awaiting-resolution"),
+      redeemable: count("redeemable"),
+    };
+  }, [markets]);
   return (
     <Page>
       <PageHeading
@@ -57,15 +74,9 @@ export function ResolutionClient({
         }
       >
         <div className="flex gap-6">
-          <Stat label="open" value={markets.filter((m) => m.lifecycle === "open").length} />
-          <Stat
-            label="in review"
-            value={markets.filter((m) => m.lifecycle === "awaiting-resolution").length}
-          />
-          <Stat
-            label="redeemable"
-            value={markets.filter((m) => m.lifecycle === "redeemable").length}
-          />
+          <Stat label="open" value={counts.open} />
+          <Stat label="in review" value={counts.review} />
+          <Stat label="redeemable" value={counts.redeemable} />
         </div>
       </PageHeading>
       {query.isError && (
@@ -76,10 +87,17 @@ export function ResolutionClient({
         />
       )}
       <div className="flex flex-col gap-3">
-        {markets.map((market) => (
+        {listed.slice(0, shown).map((market) => (
           <ResolutionCard key={market.id} market={market} selected={selected === market.id} />
         ))}
       </div>
+      {listed.length > shown && (
+        <div className="flex justify-center">
+          <Button variant="outline" size="sm" onClick={() => setShown((n) => n + PAGE)}>
+            Show {Math.min(PAGE, listed.length - shown)} more of {listed.length - shown}
+          </Button>
+        </div>
+      )}
       {!markets.length && !query.isError && (
         <Card variant="panel">
           {query.isFetching ? <LoadingState /> : <EmptyState>No markets are indexed.</EmptyState>}

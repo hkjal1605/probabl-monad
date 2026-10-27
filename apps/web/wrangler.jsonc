@@ -1,7 +1,12 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "probabl-ui",
-  "main": ".open-next/worker.js",
+  // The OpenNext app behind a small entry that serves venue images itself (worker.ts).
+  "main": "worker.ts",
+  // Runs before every `wrangler deploy` (and so `opennextjs-cloudflare deploy`), whichever build
+  // came first: OpenNext copies every monorepo .env value, backend secrets included, into the
+  // Worker's environment module, and this empties it.
+  "build": { "command": "bun scripts/cloudflare-sanitize.ts" },
   // Current UTC date supported by the pinned workerd runtime.
   "compatibility_date": "2026-09-07",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
@@ -10,7 +15,12 @@
   "keep_names": false,
   "workers_dev": true,
   "preview_urls": false,
-  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  // The link preview's video goes through worker.ts, which answers byte ranges (iOS needs them).
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS",
+    "run_worker_first": ["/og-video.mp4"]
+  },
   "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "probabl-ui" }],
   "observability": { "enabled": true },
   "dev": { "ip": "127.0.0.1", "port": 8787 },
@@ -18,7 +28,10 @@
     // The Robinhood Chain testnet app: `opennextjs-cloudflare deploy --env rh-testnet`.
     "rh-testnet": {
       "name": "probabl-ui-rh-testnet",
-      "routes": [{ "pattern": "rh-testnet.probabl.trade", "custom_domain": true }],
+      "routes": [
+        { "pattern": "probabl.trade", "custom_domain": true },
+        { "pattern": "rh-testnet.probabl.trade", "custom_domain": true }
+      ],
       "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "probabl-ui-rh-testnet" }]
     },
     // The Monad testnet app: `opennextjs-cloudflare deploy --env monad`.

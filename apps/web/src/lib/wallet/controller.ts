@@ -1,15 +1,7 @@
 import { assertSignInChallenge } from "@conditional-stocks/evm-client";
 import { nativeCurrency } from "@conditional-stocks/shared/chains";
 import { normalizeInviteCode } from "@conditional-stocks/shared/invites";
-import {
-  type Address,
-  getAddress,
-  type Hex,
-  isAddress,
-  type PublicClient,
-  stringToHex,
-  toHex,
-} from "viem";
+import { type Address, getAddress, type Hex, isAddress, stringToHex, toHex } from "viem";
 import { connectWallet, findWallet, type WalletHandle, type WalletSources } from "./injected";
 import {
   announcedSession,
@@ -84,8 +76,8 @@ interface Dependencies {
   origin(): string;
   /** The API's origin as requests reach it: whether cookies get there is checked per API. */
   api(): string;
-  /** Reads receipts from the deployment's RPC, not the wallet's. */
-  client(): Pick<PublicClient, "waitForTransactionReceipt">;
+  /** Waits for a transaction's receipt on the deployment's RPC, not the wallet's. */
+  waitForReceipt(hash: Hex): Promise<{ status: "success" | "reverted" }>;
   request: Request;
   clearCache(): void;
 }
@@ -104,6 +96,18 @@ const initialState: WalletState = {
   status: "idle",
 };
 const statusOf = (error: unknown) => (error as { status?: unknown } | null)?.status;
+const codeOf = (error: unknown) => (error as { code?: unknown } | null)?.code;
+/** The wallet does not know the chain (EIP-3326 4902; some wallets nest it or only say so). */
+const unknownChain = (error: unknown) => {
+  const e = error as { data?: { originalError?: { code?: unknown } }; message?: unknown } | null;
+  return (
+    codeOf(error) === 4902 ||
+    e?.data?.originalError?.code === 4902 ||
+    /unrecognized chain|not been added|unknown chain|wallet_addEthereumChain/i.test(
+      String(e?.message ?? ""),
+    )
+  );
+};
 
 /** One controller per mounted provider. No wallet/session state is created during SSR.
  *
@@ -286,15 +290,19 @@ export function createWalletController(deps: Dependencies) {
     publish({ error: null });
     try {
       let actual = await walletChain();
+      // The app shows the wallet's network at once, before any prompt is answered.
+      if (current() && state.account === owner) publish({ chainId: actual });
       if (actual !== chainId && interactive) {
         const provider = currentWallet();
-        try {
-          await provider.request({
+        const switchChain = () =>
+          provider.request({
             method: "wallet_switchEthereumChain",
             params: [{ chainId: toHex(chainId) }],
           });
+        try {
+          await switchChain();
         } catch (cause) {
-          if ((cause as { code?: number }).code !== 4902) throw cause;
+          if (!unknownChain(cause)) throw cause;
           await provider.request({
             method: "wallet_addEthereumChain",
             params: [
@@ -307,6 +315,8 @@ export function createWalletController(deps: Dependencies) {
               },
             ],
           });
+          // Most wallets switch to a chain they just added; the others are asked again.
+          if ((await walletChain()) !== chainId) await switchChain();
         }
         actual = await walletChain();
       }
@@ -316,7 +326,16 @@ export function createWalletController(deps: Dependencies) {
       if (actual !== chainId) throw new Error(`Switch your wallet to ${chainName} to continue.`);
     } catch (error) {
       if (current())
-        publish({ error: error instanceof Error ? error.message : "Network verification failed." });
+        publish({
+          error:
+            codeOf(error) === 4001
+              ? `Switch your wallet to ${chainName} to continue.`
+              : codeOf(error) === -32002
+                ? "Your wallet has a request waiting. Open it to continue."
+                : error instanceof Error
+                  ? error.message
+                  : "Network verification failed.",
+        });
       throw error;
     }
   };
@@ -461,7 +480,8 @@ export function createWalletController(deps: Dependencies) {
       remember(handle, owner);
       await ensureNetwork(!silent);
     } catch (error) {
-      if (mounted && !silent && pending === id)
+      // The network check already said why it failed, in words for this app.
+      if (mounted && !silent && pending === id && !state.error)
         publish({ error: error instanceof Error ? error.message : "Wallet connection failed." });
       throw error;
     } finally {
@@ -606,7 +626,7 @@ export function createWalletController(deps: Dependencies) {
           },
         ],
       })) as Hex;
-      const receipt = await deps.client().waitForTransactionReceipt({ hash, timeout: 180_000 });
+      const receipt = await deps.waitForReceipt(hash);
       if (receipt.status !== "success")
         throw new Error("Transaction failed. Its state changes were rolled back.");
       return hash;

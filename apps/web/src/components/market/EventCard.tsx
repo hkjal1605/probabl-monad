@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { memo } from "react";
+import { Avatar, AvatarFallback, AvatarLazyImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -17,15 +18,15 @@ import { ProbabilityGauge } from "./ProbabilityGauge";
 import { formatSpotUsd } from "./SpotReference";
 import { TokenIdentity } from "./TokenIdentity";
 
-export function EventCard({ markets }: { markets: MarketView[] }) {
+function EventCardView({ markets }: { markets: MarketView[] }) {
   const market = markets[0];
   if (!market) return null;
   return (
     <Card variant="market" className="min-w-0">
       <CardHeader className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
-        <Avatar className="aspect-square h-full min-h-12 w-auto self-stretch rounded-xl after:rounded-xl">
+        <Avatar className="size-12 self-start rounded-xl after:rounded-xl">
           {market.imageUrl && (
-            <AvatarImage
+            <AvatarLazyImage
               src={market.imageUrl}
               alt=""
               loading="lazy"
@@ -61,7 +62,11 @@ export function EventCard({ markets }: { markets: MarketView[] }) {
             {markets.map((asset) => {
               const spot = currentSpotUsd(asset);
               return (
-                <TableRow key={asset.id} className="relative border-0">
+                <TableRow
+                  key={asset.id}
+                  className="relative border-0"
+                  data-tour-market={asset.venue.marketId}
+                >
                   <TableCell className="w-px px-2">
                     <Link
                       href={marketPath(asset)}
@@ -93,3 +98,6 @@ export function EventCard({ markets }: { markets: MarketView[] }) {
     </Card>
   );
 }
+
+/** Re-renders only when its event's markets changes, not with every list update. */
+export const EventCard = memo(EventCardView);

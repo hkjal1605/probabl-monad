@@ -10,9 +10,45 @@ import {
   accountOf,
   type ChainState,
   grantKey,
+  type MarketState,
   traderOf,
 } from "@conditional-stocks/evm-client/ledger";
 import { type IndexerService, liveOrder } from "@conditional-stocks/indexer";
+
+/** The live resting orders on the other side of `order`'s book, as planner candidates. */
+export function bookCandidates(
+  s: ChainState,
+  m: MarketState,
+  order: Pick<OrderWire, "branch" | "side">,
+  now: bigint,
+): Candidate[] {
+  const candidates: Candidate[] = [];
+  for (const o of s.orders.values())
+    if (
+      o.market === m.id &&
+      o.branch === order.branch &&
+      o.side !== order.side &&
+      liveOrder(o, s, now)
+    )
+      candidates.push({
+        key: o.key,
+        sequence: o.seq,
+        remaining: o.remaining,
+        order: {
+          maker: o.owner,
+          marketId: String(o.market),
+          quantity: o.quantity.toString(),
+          limitPriceRawX18: (o.ticks * m.tick).toString(),
+          expiry: o.expiry.toString(),
+          maxFeeBps: o.maxFeeBps,
+          branch: o.branch,
+          side: o.side,
+          fundingKind: o.fundingKind,
+          tif: 0,
+        },
+      });
+  return candidates;
+}
 
 /** Plans an order against the confirmed replica (no RPC, no database). The contract enforces
  * every rule again; these checks give actionable errors before a wallet prompt. */
@@ -54,34 +90,9 @@ export function createOrderPlan(indexer: IndexerService) {
         traderOf(s, order.maker).delegationEpoch,
         now,
       );
-    const candidates: Candidate[] = [];
-    for (const o of s.orders.values())
-      if (
-        o.market === m.id &&
-        o.branch === order.branch &&
-        o.side !== order.side &&
-        liveOrder(o, s, now)
-      )
-        candidates.push({
-          key: o.key,
-          sequence: o.seq,
-          remaining: o.remaining,
-          order: {
-            maker: o.owner,
-            marketId: String(o.market),
-            quantity: o.quantity.toString(),
-            limitPriceRawX18: (o.ticks * m.tick).toString(),
-            expiry: o.expiry.toString(),
-            maxFeeBps: o.maxFeeBps,
-            branch: o.branch,
-            side: o.side,
-            fundingKind: o.fundingKind,
-            tif: 0,
-          },
-        });
     const plan = planOrder({
       order,
-      candidates,
+      candidates: bookCandidates(s, m, order, now),
       now,
       step: m.step,
       nextSequence: m.seq[order.branch]!,

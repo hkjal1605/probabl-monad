@@ -2,10 +2,12 @@
 
 import { formatTokenAmount } from "@conditional-stocks/domain";
 import { formatBps, MAX_FEE_BPS } from "@conditional-stocks/evm-client";
-import { FileSearch, LoaderCircle, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { EVENT_SOURCE_NAMES, type EventSource } from "@conditional-stocks/market-data";
+import { LoaderCircle, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
+import { EventMarketField } from "@/components/forms/EventMarketField";
 import { useAdmin } from "@/components/providers/AdminProvider";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { adminRequest, type EvidenceView, fetchMarketMetadata } from "@/lib/admin-api";
+import { adminRequest, type EvidenceView, fetchEventMetadata } from "@/lib/admin-api";
 import type { TokenCheck, TokenInfo } from "@/lib/chain";
 import { dateTimeInputToUnixSeconds, unixSecondsToDateTimeInput } from "@/lib/date-time";
 import { short } from "@/lib/format";
@@ -74,7 +76,8 @@ const feeText = (name: keyof MarketFees, bps: string) =>
 
 export function CreateMarketForm() {
   const admin = useAdmin();
-  const [marketSlug, setMarketSlug] = useState("");
+  const [venue, setVenue] = useState<EventSource>("polymarket");
+  const [marketRef, setMarketRef] = useState("");
   const [source, setSource] = useState<MarketSource | null>(null);
   const [assets, setAssets] = useState<AssetInput[]>([{ id: 0, token: "" }]);
   const nextId = useRef(1);
@@ -120,7 +123,7 @@ export function CreateMarketForm() {
     run(async (check) => {
       setSource(null);
       setConfirmed(false);
-      const snapshot = await fetchMarketMetadata<MarketSource>(admin.token ?? "", marketSlug);
+      const snapshot = await fetchEventMetadata<MarketSource>(admin.token ?? "", venue, marketRef);
       check();
       const defaults = {
         tradingOpen: unixSecondsToDateTimeInput(String(Math.floor(Date.now() / 1000))),
@@ -234,37 +237,37 @@ export function CreateMarketForm() {
       <fieldset disabled={busy || started} className="flex flex-col gap-5">
         <Card className="ring-0">
           <CardHeader>
-            <CardTitle>1. Choose one Polymarket condition</CardTitle>
+            <CardTitle>1. Choose one event market</CardTitle>
           </CardHeader>
           <CardContent>
-            <Label htmlFor="creation-market-slug">Polymarket market slug</Label>
-            <div className="mt-2 flex gap-3">
-              <Input
-                id="creation-market-slug"
-                aria-describedby="creation-slug-help"
-                autoCapitalize="none"
-                spellCheck={false}
-                maxLength={512}
-                value={marketSlug}
-                placeholder="clarity-act-signed-into-law-in-2026"
-                onChange={(event) => {
-                  setMarketSlug(event.target.value);
-                  setSource(null);
-                  setConfirmed(false);
-                }}
-              />
-              <Button onClick={fetchSource} disabled={!marketSlug.trim()}>
-                <FileSearch />
-                Fetch and normalize
-              </Button>
-            </div>
-            <p id="creation-slug-help" className="mt-2 text-xs text-muted-foreground">
-              Paste the individual market slug, not a full URL. Fetch once and reuse its immutable
-              metadata for every asset market below.
-            </p>
+            <EventMarketField
+              id="creation-market"
+              source={venue}
+              onSourceChange={(next) => {
+                setVenue(next);
+                setMarketRef("");
+                setSource(null);
+                setConfirmed(false);
+              }}
+              value={marketRef}
+              onChange={(value) => {
+                setMarketRef(value);
+                setSource(null);
+                setConfirmed(false);
+              }}
+              onFetch={fetchSource}
+              action="Fetch and normalize"
+              help="Fetch once and reuse its immutable metadata for every asset market below."
+            />
             {source && (
               <div className="mt-4 rounded-xl bg-secondary p-4">
                 <p className="font-semibold">{source.normalized.question}</p>
+                <p className="mt-2 text-xs">
+                  {EVENT_SOURCE_NAMES[source.normalized.source]} ·{" "}
+                  {source.normalized.source === "kalshi"
+                    ? source.normalized.ticker
+                    : source.normalized.slug}
+                </p>
                 <p className="mt-2 break-all font-mono text-xs">
                   Condition: {source.normalized.conditionId}
                 </p>
@@ -388,10 +391,9 @@ export function CreateMarketForm() {
                   <CardTitle>3. Review stock tokens, caps, fees and shared timing</CardTitle>
                   <p className="text-sm text-muted-foreground">
                     {rows.length} {rows.length === 1 ? "market" : "separate markets"} will share
-                    this Polymarket condition. Quantities (step, maximum quantity) are raw units of
-                    each stock token; notional caps are quote raw units. Maker and taker fees are
-                    whole bps (100 = 1%), set per market and fixed once it is created. Review every
-                    market.
+                    this event. Quantities (step, maximum quantity) are raw units of each stock
+                    token; notional caps are quote raw units. Maker and taker fees are whole bps
+                    (100 = 1%), set per market and fixed once it is created. Review every market.
                   </p>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-5">
@@ -421,7 +423,7 @@ export function CreateMarketForm() {
                       className="text-xs text-muted-foreground sm:col-span-2"
                     >
                       Enter both times in UTC, not your local timezone. Opening defaults to now;
-                      cutoff defaults to Polymarket's scheduled end. Seconds are preserved and
+                      cutoff defaults to the event market's scheduled end. Seconds are preserved and
                       converted to Unix timestamps automatically when preparing the markets.
                     </p>
                     <div className="sm:col-span-2">

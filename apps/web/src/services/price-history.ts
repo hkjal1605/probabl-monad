@@ -17,9 +17,12 @@ export interface PriceHistory {
   points: PriceHistoryPoint[];
 }
 
-/** Every recorded price of a market (public id), at most 360 points. */
-export const getPriceHistory = (marketId: string, signal?: AbortSignal) =>
+export type PriceHistoryRange = PriceHistory["range"];
+
+/** A market's (public id) recorded prices over `range` (the last day, week, month or all of
+ * them), at most 360 points. */
+export const getPriceHistory = (marketId: string, range: PriceHistoryRange, signal?: AbortSignal) =>
   requestJson<PriceHistory>(
-    `/v1/markets/${encodeURIComponent(marketId)}/price-history?range=all`,
+    `/v1/markets/${encodeURIComponent(marketId)}/price-history?range=${range}`,
     signal ? { signal } : {},
   );

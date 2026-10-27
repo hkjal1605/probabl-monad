@@ -33,7 +33,7 @@ test("a round reads the spot prices once, each event once, the issuers once and 
       expect(tokens).toEqual([quote, ...bases]);
       return { prices: [] } as never;
     },
-    polymarket: async (_origin, market) => {
+    event: async (_origin, market) => {
       calls.events.push(market);
       return { market };
     },
@@ -44,8 +44,8 @@ test("a round reads the spot prices once, each event once, the issuers once and 
   const [, , event] = await Promise.all([
     tick.spotPrices(),
     tick.spotPrices(),
-    tick.polymarket(3, "0xaa"),
-    tick.polymarket(6, "0xBB"),
+    tick.event(3, "0xaa"),
+    tick.event(6, "0xBB"),
     tick.issuers(),
     tick.issuers(),
     tick.gasFees(),

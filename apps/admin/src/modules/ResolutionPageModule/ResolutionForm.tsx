@@ -1,11 +1,18 @@
 "use client";
 
+import {
+  EVENT_SOURCE_NAMES,
+  type EventMarket,
+  type EventSource,
+  kalshiPayout,
+} from "@conditional-stocks/market-data";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, FileSearch, Gavel, LoaderCircle } from "lucide-react";
+import { CheckCircle2, Gavel, LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import { QueryStatus } from "@/components/data/QueryStatus";
+import { EventMarketField } from "@/components/forms/EventMarketField";
 import { useAdmin } from "@/components/providers/AdminProvider";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -22,24 +29,25 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { adminConfig } from "@/config/protocol";
-import { adminRequest, type EvidenceView, fetchMarketMetadata, readVenues } from "@/lib/admin-api";
+import { adminRequest, type EvidenceView, fetchEventMetadata, readVenues } from "@/lib/admin-api";
 import { short } from "@/lib/format";
 
 interface Market {
   id: string;
   state: number;
-  polymarketConditionId: string;
+  eventSource: EventSource;
+  eventConditionId: string;
 }
 interface Snapshot {
-  normalized: {
-    canonicalUrl: string;
-    conditionId: string;
-    question: string;
-    resolutionStatus: string | null;
-  };
+  normalized: EventMarket;
   rawHash: string;
   snapshotId: string;
 }
+const PAYOUTS = {
+  yes: { denominator: "1", no: "0", yes: "1" },
+  no: { denominator: "1", no: "1", yes: "0" },
+  invalid: { denominator: "2", no: "1", yes: "1" },
+} as const;
 const isPolygonAddress = (value: string) => /^0x[0-9a-fA-F]{40}$/.test(value);
 const zeroAddress = "0x0000000000000000000000000000000000000000";
 export function ResolutionForm() {
@@ -53,7 +61,7 @@ export function ResolutionForm() {
     (market) => market.state === 3 || market.state === 4,
   );
   const [marketId, setMarketId] = useState("");
-  const [marketSlug, setMarketSlug] = useState("");
+  const [marketRef, setMarketRef] = useState("");
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [outcome, setOutcome] = useState<"yes" | "no" | "invalid">("yes");
   const [officialUrl, setOfficialUrl] = useState("");
@@ -64,16 +72,20 @@ export function ResolutionForm() {
   const [polygonBlockHash, setPolygonBlockHash] = useState("");
   const [busy, setBusy] = useState(false);
   const [packet, setPacket] = useState<EvidenceView | null>(null);
+  const selected = markets.find((m) => m.id === marketId);
+  const venue = selected?.eventSource ?? "polymarket";
+  // Kalshi settles off chain: its markets resolve only to the result its API finalized.
+  const kalshiFinal =
+    snapshot?.normalized.source === "kalshi" ? kalshiPayout(snapshot.normalized) : null;
   const fetchMetadata = async () => {
     setSnapshot(null);
     setBusy(true);
     try {
-      const value = await fetchMarketMetadata<Snapshot>(admin.token ?? "", marketSlug);
-      if (
-        value.normalized.conditionId.toLowerCase() !==
-        markets.find((m) => m.id === marketId)?.polymarketConditionId.toLowerCase()
-      )
-        throw new Error("Polymarket snapshot does not match the selected indexed market");
+      const value = await fetchEventMetadata<Snapshot>(admin.token ?? "", venue, marketRef);
+      if (value.normalized.conditionId.toLowerCase() !== selected?.eventConditionId.toLowerCase())
+        throw new Error(`${EVENT_SOURCE_NAMES[venue]} snapshot does not match the selected market`);
+      const final = value.normalized.source === "kalshi" ? kalshiPayout(value.normalized) : null;
+      if (final) setOutcome(final.yes === "1" ? "yes" : "no");
       setSnapshot(value);
       setOfficialUrl(value.normalized.canonicalUrl);
       setSourceReference(value.normalized.canonicalUrl);
@@ -85,25 +97,26 @@ export function ResolutionForm() {
   };
   const prepare = async () => {
     if (!snapshot || !marketId || busy) return;
-    const payout =
-      outcome === "yes"
-        ? { denominator: "1", no: "0", yes: "1" }
-        : outcome === "no"
-          ? { denominator: "1", no: "1", yes: "0" }
-          : { denominator: "2", no: "1", yes: "1" };
+    const payout = PAYOUTS[outcome];
+    const kalshi = snapshot.normalized.source === "kalshi";
     setBusy(true);
     try {
       if (!snapshot.normalized.resolutionStatus?.trim())
         throw new Error(
           "The source has no resolution status. Fetch verifiable final evidence before preparing a payout.",
         );
-      if (!isPolygonAddress(polygonCtf) || polygonCtf.toLowerCase() === zeroAddress)
+      if (
+        kalshi &&
+        (!kalshiFinal || kalshiFinal.yes !== payout.yes || kalshiFinal.no !== payout.no)
+      )
+        throw new Error("A Kalshi market resolves only to the result Kalshi has finalized");
+      if (!kalshi && (!isPolygonAddress(polygonCtf) || polygonCtf.toLowerCase() === zeroAddress))
         throw new Error(
           "Enter the Polygon source Conditional Tokens address, not the local deployment",
         );
       if (
         snapshot.normalized.conditionId.toLowerCase() !==
-        markets.find((m) => m.id === marketId)?.polymarketConditionId.toLowerCase()
+        markets.find((m) => m.id === marketId)?.eventConditionId.toLowerCase()
       )
         throw new Error("The selected market no longer matches this source snapshot");
       const value = await adminRequest<EvidenceView>(
@@ -117,13 +130,15 @@ export function ResolutionForm() {
             officialStatus: snapshot.normalized.resolutionStatus,
             officialUrl,
             payout,
-            polygon: {
-              blockHash: polygonBlockHash || null,
-              blockNumber: polygonBlock || null,
-              chainId: "137",
-              conditionalTokensAddress: polygonCtf,
-              transactionHash: polygonTx || null,
-            },
+            polygon: kalshi
+              ? null
+              : {
+                  blockHash: polygonBlockHash || null,
+                  blockNumber: polygonBlock || null,
+                  chainId: "137",
+                  conditionalTokensAddress: polygonCtf,
+                  transactionHash: polygonTx || null,
+                },
             sourceObservations: [
               {
                 observedAt: new Date().toISOString(),
@@ -175,6 +190,7 @@ export function ResolutionForm() {
             value={marketId}
             onValueChange={(value) => {
               setMarketId(value ?? "");
+              setMarketRef("");
               setSnapshot(null);
             }}
           >
@@ -184,7 +200,8 @@ export function ResolutionForm() {
             <SelectContent>
               {markets.map((market) => (
                 <SelectItem value={market.id} key={market.id}>
-                  {short(market.id, 8)} · {market.state === 3 ? "frozen" : "awaiting resolution"}
+                  {short(market.id, 8)} · {EVENT_SOURCE_NAMES[market.eventSource]} ·{" "}
+                  {market.state === 3 ? "frozen" : "awaiting resolution"}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -197,36 +214,25 @@ export function ResolutionForm() {
       <Card className="ring-0">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>2. Capture final Polymarket evidence</CardTitle>
+            <CardTitle>2. Capture final {EVENT_SOURCE_NAMES[venue]} evidence</CardTitle>
             <Badge variant="warning">Informational source</Badge>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-3">
-            <Input
-              aria-label="Polymarket market slug"
-              aria-describedby="resolution-slug-help"
-              autoCapitalize="none"
-              spellCheck={false}
-              maxLength={512}
-              value={marketSlug}
-              onChange={(event) => {
-                setMarketSlug(event.target.value);
-                setSnapshot(null);
-              }}
-              placeholder="clarity-act-signed-into-law-in-2026"
-            />
-            <Button
-              onClick={fetchMetadata}
-              disabled={busy || !marketSlug.trim() || !marketId || marketsQuery.isError}
-            >
-              {busy ? <LoaderCircle className="animate-spin" /> : <FileSearch />}Fetch snapshot
-            </Button>
-          </div>
-          <p id="resolution-slug-help" className="mt-2 text-xs text-muted-foreground">
-            Use the individual Polymarket market slug. The fetched condition must still match the
-            selected market before resolution evidence can be prepared.
-          </p>
+          <EventMarketField
+            id="resolution-market-source"
+            source={venue}
+            value={marketRef}
+            onChange={(value) => {
+              setMarketRef(value);
+              setSnapshot(null);
+            }}
+            onFetch={fetchMetadata}
+            disabled={busy || !marketId || marketsQuery.isError}
+            busy={busy}
+            action="Fetch snapshot"
+            help="The fetched market must still match the selected market before resolution evidence can be prepared."
+          />
           {snapshot && (
             <div className="mt-4 rounded-xl bg-muted/45 p-4">
               <p className="font-semibold">{snapshot.normalized.question}</p>
@@ -253,13 +259,15 @@ export function ResolutionForm() {
                 <TabsList className="mt-2 grid w-full grid-cols-3">
                   <TabsTrigger value="yes">YES · 1/0</TabsTrigger>
                   <TabsTrigger value="no">NO · 0/1</TabsTrigger>
-                  <TabsTrigger value="invalid">Invalid · ½/½</TabsTrigger>
+                  <TabsTrigger value="invalid" disabled={venue === "kalshi"}>
+                    Invalid · ½/½
+                  </TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
             <Field
               id="official-url"
-              label="Official Polymarket URL"
+              label={`Official ${EVENT_SOURCE_NAMES[venue]} URL`}
               value={officialUrl}
               setValue={setOfficialUrl}
             />
@@ -269,35 +277,37 @@ export function ResolutionForm() {
               value={sourceReference}
               setValue={setSourceReference}
             />
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Field
-                id="polygon-ctf"
-                label="Polygon Conditional Tokens address"
-                value={polygonCtf}
-                setValue={setPolygonCtf}
-              />
-              <Field
-                id="polygon-tx"
-                label="Polygon resolution tx"
-                value={polygonTx}
-                setValue={setPolygonTx}
-                optional
-              />
-              <Field
-                id="polygon-block"
-                label="Polygon block number"
-                value={polygonBlock}
-                setValue={setPolygonBlock}
-                optional
-              />
-              <Field
-                id="polygon-hash"
-                label="Polygon block hash"
-                value={polygonBlockHash}
-                setValue={setPolygonBlockHash}
-                optional
-              />
-            </div>
+            {venue === "polymarket" && (
+              <div className="grid gap-4 sm:grid-cols-3">
+                <Field
+                  id="polygon-ctf"
+                  label="Polygon Conditional Tokens address"
+                  value={polygonCtf}
+                  setValue={setPolygonCtf}
+                />
+                <Field
+                  id="polygon-tx"
+                  label="Polygon resolution tx"
+                  value={polygonTx}
+                  setValue={setPolygonTx}
+                  optional
+                />
+                <Field
+                  id="polygon-block"
+                  label="Polygon block number"
+                  value={polygonBlock}
+                  setValue={setPolygonBlock}
+                  optional
+                />
+                <Field
+                  id="polygon-hash"
+                  label="Polygon block hash"
+                  value={polygonBlockHash}
+                  setValue={setPolygonBlockHash}
+                  optional
+                />
+              </div>
+            )}
             <Alert variant="warning">
               <Gavel />
               <AlertTitle>This does not resolve the market</AlertTitle>
@@ -316,7 +326,7 @@ export function ResolutionForm() {
                 !marketId ||
                 !officialUrl ||
                 !sourceReference ||
-                !isPolygonAddress(polygonCtf) ||
+                (venue === "kalshi" ? !kalshiFinal : !isPolygonAddress(polygonCtf)) ||
                 !snapshot.normalized.resolutionStatus ||
                 marketsQuery.isError
               }

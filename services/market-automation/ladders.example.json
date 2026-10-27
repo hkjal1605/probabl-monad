@@ -1,0 +1,60 @@
+{
+  "daily": [
+    {
+      "series": "KXBTCD",
+      "fixing": "17:00",
+      "tokens": [
+        { "symbol": "MSTR", "base": "0x8b23487dc53F69f4d405859dfF7b6f77fb6dC639", "rungs": 3 },
+        { "symbol": "COIN", "base": "0x7E9969fDA400d034A7a68598E8b895108812Ba9e", "rungs": 3 },
+        { "symbol": "WETH", "base": "0x5a57588e4ccd7752D0845ffa337240995B7441f0", "rungs": 3 }
+      ]
+    },
+    {
+      "series": "KXETHD",
+      "fixing": "17:00",
+      "tokens": [
+        { "symbol": "COIN", "base": "0x7E9969fDA400d034A7a68598E8b895108812Ba9e", "rungs": 1 }
+      ]
+    },
+    {
+      "series": "KXGOLDD",
+      "fixing": "17:00",
+      "tokens": [
+        { "symbol": "SLV", "base": "0x260EBB0D61F73Eb4B12FcaAD5EF6771b54d62c0f", "rungs": 2 }
+      ]
+    },
+    {
+      "series": "KXNASDAQ100U",
+      "fixing": "16:00",
+      "tokens": [
+        { "symbol": "NVDA", "base": "0x5b85fD3b8C7476eF67efa32AC3539325D51aC222", "rungs": 2 }
+      ]
+    },
+    {
+      "series": "KXWTI",
+      "fixing": "14:30",
+      "tokens": [
+        { "symbol": "XOM", "base": "0xbA663601922B5332617395c7C52016e3E843b205", "rungs": 1 },
+        { "symbol": "CCL", "base": "0x3950d048C2B292C99B146562d2E76c81e3CB2Df6", "rungs": 1 }
+      ]
+    }
+  ],
+  "weekly": [
+    {
+      "series": "KXBTCD",
+      "fixing": "17:00",
+      "tokens": [
+        { "symbol": "MSTR", "base": "0x8b23487dc53F69f4d405859dfF7b6f77fb6dC639", "rungs": 2 },
+        { "symbol": "COIN", "base": "0x7E9969fDA400d034A7a68598E8b895108812Ba9e", "rungs": 2 },
+        { "symbol": "WETH", "base": "0x5a57588e4ccd7752D0845ffa337240995B7441f0", "rungs": 2 }
+      ]
+    },
+    {
+      "series": "KXGOLDW",
+      "fixing": "17:00",
+      "tokens": [
+        { "symbol": "SLV", "base": "0x260EBB0D61F73Eb4B12FcaAD5EF6771b54d62c0f", "rungs": 2 }
+      ]
+    }
+  ]
+}

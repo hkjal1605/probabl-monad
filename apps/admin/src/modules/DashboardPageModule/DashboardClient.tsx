@@ -104,7 +104,7 @@ export function DashboardClient() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">
                         {item.envelope.packet.kind === "market-creation"
-                          ? (item.envelope.packet.polymarket?.question ?? "Market creation")
+                          ? (item.envelope.packet.event?.question ?? "Market creation")
                           : `Resolve ${item.envelope.packet.localMarket?.marketId ?? "market"}`}
                       </p>
                       <p className="mt-0.5 text-xs text-muted-foreground">

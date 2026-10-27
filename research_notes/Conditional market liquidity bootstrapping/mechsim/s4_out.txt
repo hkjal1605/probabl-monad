@@ -1,0 +1,39 @@
+S4 Monte Carlo, 300 paths per scenario; LP alpha per event in today's $ (mean +- s.e.)
+Equal depth: $10k single-leg buy costs 1% all-in at t=0 in every mechanism.
+scenario                                                           A: CPMM pair              B: s-anchored             C: delta-curve
+base: delta 5%, sig_delta 5%, halt when closed           4,434+-36   (p5   3,340)     6,617+-17   (p5   6,102)     6,414+-18   (p5   5,911)
+   split: noise edge / arbitrage edge                       8,021 /    -3,587          8,030 /    -1,413          7,528 /    -1,114  
+   max |claims inventory| B, C (shares)                                                                798                        486
+no noise flow (pure arbitrage losses)                   -2,297+-30   (p5  -3,201)      -121+-7    (p5    -334)       -45+-4    (p5    -152)
+   split: noise edge / arbitrage edge                           0 /    -2,297              0 /      -121              0 /       -45  
+   max |claims inventory| B, C (shares)                                                                794                        524
+high-delta event: delta 20%, start error 5%              4,413+-37   (p5   3,203)     4,869+-97   (p5   2,066)     6,317+-23   (p5   5,670)
+   split: noise edge / arbitrage edge                       8,087 /    -3,675          8,118 /    -3,249          7,596 /    -1,280  
+   max |claims inventory| B, C (shares)                                                              1,501                        675
+jumpy delta: sig_delta 50%, 3 jumps sd 5%                2,570+-67   (p5     657)     4,760+-118  (p5     159)     5,105+-49   (p5   3,721)
+   split: noise edge / arbitrage edge                       8,017 /    -5,447          8,042 /    -3,282          7,552 /    -2,447  
+   max |claims inventory| B, C (shares)                                                              3,274                      2,083
+s-oracle lag 5 min (B, C)                                4,515+-38   (p5   3,318)     2,360+-71   (p5    -225)     1,068+-114  (p5  -2,516)
+   split: noise edge / arbitrage edge                       8,034 /    -3,519          8,057 /    -5,697          7,524 /    -6,457  
+   max |claims inventory| B, C (shares)                                                                891                        751
+p-oracle lag 5 min (C)                                   4,527+-30   (p5   3,639)     6,651+-17   (p5   6,191)     6,307+-24   (p5   5,679)
+   split: noise edge / arbitrage edge                       8,036 /    -3,510          8,054 /    -1,403          7,551 /    -1,243  
+   max |claims inventory| B, C (shares)                                                                770                        517
+p-oracle bias +3 pts (C)                                 4,506+-34   (p5   3,475)     6,660+-17   (p5   6,165)     6,424+-18   (p5   5,896)
+   split: noise edge / arbitrage edge                       8,036 /    -3,531          8,056 /    -1,396          7,523 /    -1,099  
+   max |claims inventory| B, C (shares)                                                                785                        521
+closed hours: live p, frozen s (C), frozen s (B)         4,420+-36   (p5   3,234)     4,172+-70   (p5   1,850)     2,831+-120  (p5  -1,300)
+   split: noise edge / arbitrage edge                       7,986 /    -3,566          8,015 /    -3,843          7,505 /    -4,674  
+   max |claims inventory| B, C (shares)                                                              1,072                        567
+closed hours: frozen s and aligned p                     4,476+-35   (p5   3,421)     4,256+-64   (p5   2,372)     3,355+-109  (p5    -197)
+   split: noise edge / arbitrage edge                       8,014 /    -3,539          8,032 /    -3,776          7,536 /    -4,181  
+   max |claims inventory| B, C (shares)                                                                705                        391
+C with deep full-set side (mu = 0.1k)                    4,449+-37   (p5   3,227)     6,632+-16   (p5   6,180)     6,188+-24   (p5   5,459)
+   split: noise edge / arbitrage edge                       8,002 /    -3,553          8,019 /    -1,387          7,057 /      -869  
+   max |claims inventory| B, C (shares)                                                                908                        455
+p0 = 0.2                                                 4,537+-35   (p5   3,514)     6,684+-17   (p5   6,248)     6,132+-17   (p5   5,677)
+   split: noise edge / arbitrage edge                       8,041 /    -3,504          8,062 /    -1,378          6,874 /      -742  
+   max |claims inventory| B, C (shares)                                                                763                        656
+high-delta + live closed hours                           4,321+-45   (p5   2,906)     2,443+-115  (p5  -1,349)    -1,475+-278  (p5 -11,132)
+   split: noise edge / arbitrage edge                       8,068 /    -3,747          8,078 /    -5,635          7,554 /    -9,029  
+   max |claims inventory| B, C (shares)                                                              1,368                        714

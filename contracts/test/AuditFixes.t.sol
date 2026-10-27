@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import { ConditionalStocksAdmin } from "../src/ConditionalStocksAdmin.sol";
 import { ConditionalStocksBase } from "../src/ConditionalStocksBase.sol";
 import { Base } from "./Base.t.sol";
 
@@ -155,7 +156,7 @@ contract AuditFixesTest is Base {
     function testACrossingOrderPlacedSinceThePlanStillFailsIt() public {
         uint256 planned = seqOf(market, YES);
         vm.prank(bob);
-        cs.split(market, 1, NVDA);
+        ConditionalStocksAdmin(address(cs)).split(market, 1, NVDA);
         rest(bob, YES, true, true, 19_000, NVDA);
         _bid(alice, 19_500, planned, ConditionalStocksBase.StalePlan.selector);
     }
@@ -164,7 +165,7 @@ contract AuditFixesTest is Base {
     ///      rests, possibly crossed, instead of failing. The newest placements are always seen.
     function testAVeryStalePlanIsCheckedAgainstTheNewestPlacements() public {
         vm.prank(bob);
-        cs.split(market, 1, 40 * NVDA);
+        ConditionalStocksAdmin(address(cs)).split(market, 1, 40 * NVDA);
         uint256 planned = seqOf(market, YES);
         rest(bob, YES, true, true, 19_000, NVDA); // crosses, but 17 placements back
         for (uint256 i; i < 16; ++i) {
