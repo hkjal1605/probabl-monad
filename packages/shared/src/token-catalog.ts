@@ -36,7 +36,7 @@ const privateCompany = (symbol: string, name: string): CatalogAsset => ({
   underlying: `PRIVATE:${symbol}`,
 });
 
-export const ASSET_CATALOG: readonly CatalogAsset[] = Object.freeze([
+const LISTED: readonly CatalogAsset[] = [
   stock("NVDA", "NVIDIA"),
   stock("TSLA", "Tesla"),
   stock("AAPL", "Apple"),
@@ -143,11 +143,21 @@ export const ASSET_CATALOG: readonly CatalogAsset[] = Object.freeze([
     logo: "/tokens/doge.png",
     underlying: "CRYPTO:DOGE",
   },
+];
+
+/** Backed's xStocks of the listed stocks and ETFs, as the Monad testnet copies them: the same
+ * asset, name and logo under the xStock symbol, the ticker with an "x" (e.g. "TSLAx"). */
+const xStock = (asset: CatalogAsset): CatalogAsset => ({ ...asset, symbol: `${asset.symbol}x` });
+
+export const ASSET_CATALOG: readonly CatalogAsset[] = Object.freeze([
+  ...LISTED,
+  ...LISTED.filter((asset) => asset.underlying?.startsWith("US:")).map(xStock),
 ]);
 
 const bySymbol = new Map(ASSET_CATALOG.map((asset) => [asset.symbol.toUpperCase(), asset]));
 
-/** Catalog identity of a token symbol; a trailing issuer tag (e.g. "NVDAx") is not stripped. */
+/** Catalog identity of a token symbol; an issuer tag (e.g. "NVDAx") is matched only where the
+ * catalog lists that issuer's token. */
 export const catalogAsset = (symbol: string | null | undefined): CatalogAsset | undefined =>
   symbol ? bySymbol.get(symbol.toUpperCase()) : undefined;
 

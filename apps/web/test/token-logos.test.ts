@@ -11,9 +11,12 @@ test("every catalog asset has its own bundled logo", () => {
     expect(asset.logo).toStartWith("/tokens/");
     expect(readFileSync(join(PUBLIC, asset.logo)).byteLength).toBeGreaterThan(0);
   }
-  // Each stock and ETF shows its own company or fund issuer, not Robinhood's shared token logo.
+  // Each stock and ETF shows its own company or fund issuer, not Robinhood's shared token logo;
+  // every issuer's token of one asset (NVDA, NVDAx) shows that asset's.
   const stocks = ASSET_CATALOG.filter((a) => a.kind === "stock" || a.kind === "etf");
-  expect(new Set(stocks.map((a) => a.logo)).size).toBe(stocks.length);
+  const logos = new Map(stocks.map((a) => [a.underlying, a.logo]));
+  for (const asset of stocks) expect(asset.logo).toBe(logos.get(asset.underlying)!);
+  expect(new Set(logos.values()).size).toBe(logos.size);
 });
 
 test("bundled SVG logos are plain artwork: served from the app's origin, they must not run", () => {

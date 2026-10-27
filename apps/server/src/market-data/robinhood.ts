@@ -37,6 +37,10 @@ interface Quote {
 }
 
 export const ROBINHOOD_PRICES_URL = "https://api.robinhood.com/rhj";
+/** The share Robinhood quotes for a catalogued US stock or ETF, whichever issuer's token it is
+ * (NVDA for NVDA and NVDAx). */
+const robinhoodSymbol = (asset: { symbol: string; underlying?: string }) =>
+  asset.underlying?.startsWith("US:") ? asset.underlying.slice("US:".length) : asset.symbol;
 export const JUPITER_PRICES_URL = "https://lite-api.jup.ag/price/v3";
 /** Private companies Robinhood does not quote, priced by Jupiter's public price API from their
  * Solana mainnet pre-IPO tokens, as on the Solana testnet: the token and the issuer's UI
@@ -127,7 +131,7 @@ export class RobinhoodSpotPrices implements SpotPriceSource {
           asset &&
           (asset.kind === "stock" || asset.kind === "etf") &&
           !JUPITER_REFERENCES[asset.symbol]
-            ? [asset.symbol]
+            ? [robinhoodSymbol(asset)]
             : [],
         ),
       ),
@@ -206,8 +210,8 @@ export class RobinhoodSpotPrices implements SpotPriceSource {
           now,
         );
       }
-      const source = `robinhood:${asset.symbol}`;
-      const quote = quotes.get(asset.symbol);
+      const source = `robinhood:${robinhoodSymbol(asset)}`;
+      const quote = quotes.get(robinhoodSymbol(asset));
       if (!quote || quote.halted) return none("unavailable", source);
       return expireSpotPrice(
         {

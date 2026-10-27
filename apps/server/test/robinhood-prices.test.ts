@@ -153,3 +153,19 @@ test("prices pre-IPO assets from one Jupiter read, per share", async () => {
   // One Jupiter read, and Robinhood is never asked for assets it does not quote.
   expect(requested).toHaveLength(1);
 });
+
+test("an xStock is priced as the share it holds, sharing the read with that share's token", async () => {
+  const requested: string[] = [];
+  const prices = new RobinhoodSpotPrices(10143, "https://rh.example/rhj", async (url) => {
+    requested.push(url);
+    return quote("TSLA", "430.00", "430.20");
+  });
+  const response = await prices.getPrices([
+    { token: token(1), symbol: "TSLAx" },
+    { token: token(2), symbol: "TSLA" },
+  ]);
+  const [tslax, tsla] = response.prices;
+  expect(tslax).toMatchObject({ status: "available", priceUsd: 430.1, source: "robinhood:TSLA" });
+  expect(tsla).toMatchObject({ status: "available", priceUsd: 430.1 });
+  expect(requested).toEqual(["https://rh.example/rhj/prices/TSLA"]);
+});
