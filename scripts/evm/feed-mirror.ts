@@ -2,14 +2,16 @@
  * (Robinhood Chain, or BNB Chain for assets it has no feed of) into their mock feeds
  * (deployments/<chainId>-mock-feeds.json, from deploy-mock-feeds.ts), so testnet Δ-vaults see
  * mainnet's prices. Mocks of tokens Chainlink has no feed of follow Robinhood's reference price
- * of the stock instead, read as the API reads it, while Robinhood quotes it. Every mock takes a new round as Robinhood
- * Chain's stock feeds do, on a 0.5% move or after 24 hours: faster feeds (BNB Chain's crypto)
- * would otherwise cost a transaction a minute. Keep it running while testnet vaults quote;
+ * of the stock instead, read as the API reads it, while Robinhood quotes it. Every mock takes a new
+ * round as Robinhood Chain's stock feeds do, on a 0.5% move (FEED_DEVIATION_BPS, wider where gas
+ * is dear, as on Monad testnet) or after 24 hours: faster feeds (BNB Chain's crypto) would
+ * otherwise cost a transaction a minute. Keep it running while testnet vaults quote;
  * --once mirrors a single time. The key must own the mocks: FEED_MIRROR_PRIVATE_KEY (a
  * dedicated relay wallet the mocks were handed to), else the deployer's.
  *
  *   FEED_MIRROR_PRIVATE_KEY=… (or DEPLOYER_PRIVATE_KEY=…) RPC_URL=… CHAIN_ID=46630
  *   FEED_SOURCE_RPC_URL=<mainnet RPC, one per source chain>,… [POLL_SECONDS=60]
+ *   [FEED_DEVIATION_BPS=50]
  *   bun scripts/evm/feed-mirror.ts [--once] */
 
 import { resolve } from "node:path";
@@ -51,8 +53,10 @@ async function sourceClients(urls: string) {
   return clients;
 }
 /** Robinhood Chain's Chainlink stock feeds: deviation threshold and heartbeat. */
-const DEVIATION_BPS = 50n;
+const DEVIATION_BPS = BigInt(process.env.FEED_DEVIATION_BPS?.trim() || "50");
 const HEARTBEAT_SECONDS = 86_400n;
+if (DEVIATION_BPS < 1n || DEVIATION_BPS > 1_000n)
+  throw new Error("FEED_DEVIATION_BPS must be 1 to 1,000 basis points");
 const feedAbi = parseAbi([
   "function latestRoundData() view returns (uint80, int256, uint256, uint256, uint80)",
   "function owner() view returns (address)",
