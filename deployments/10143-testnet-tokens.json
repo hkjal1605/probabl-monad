@@ -1,0 +1,658 @@
+{
+  "chainId": 10143,
+  "network": "Monad Testnet",
+  "deployer": "0x7c2e81c16dF690F0fEF9d472682f88f0b4Ad5f6D",
+  "tokens": {
+    "USDC": {
+      "address": "0x95C53229Fc9ccfD792c9Cb8827B5f4530441ABE1",
+      "contract": "TestnetToken",
+      "name": "USDC",
+      "decimals": 6,
+      "logo": "/tokens/usdc.svg",
+      "underlying": null,
+      "source": {
+        "chainId": 143,
+        "address": "0x754704Bc059F8C67012fEd69BC8A327a5aafb603"
+      },
+      "deploymentBlock": "74681792",
+      "transactionHash": "0x2d10a127cebc95caa0e71eba6957a7e73c38d427f7475155b8dc7b82045d0ac2",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "10000000"
+      }
+    },
+    "WETH": {
+      "address": "0x5b4868522862856664aaFB588Ea1043ceC5904c9",
+      "contract": "TestnetPermitToken",
+      "name": "Wrapped Ether",
+      "decimals": 18,
+      "logo": "/tokens/weth.png",
+      "underlying": "CRYPTO:ETH",
+      "source": {
+        "chainId": 143,
+        "address": "0xEE8c0E9f1BFFb4Eb878d8f15f368A02a35481242"
+      },
+      "deploymentBlock": "74681802",
+      "transactionHash": "0x73fceca96555f2a95ce7ab832685dbec745508627fea0ae2e176e2eba6e3b5c5",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "50000"
+      }
+    },
+    "cbBTC": {
+      "address": "0xE00FeC9C0B47FA88E2A3ee30a27d2aC48a599883",
+      "contract": "TestnetToken",
+      "name": "Coinbase Wrapped BTC",
+      "decimals": 8,
+      "logo": "/tokens/cbbtc.png",
+      "underlying": "CRYPTO:BTC",
+      "source": {
+        "chainId": 143,
+        "address": "0xd18B7EC58Cdf4876f6AFebd3Ed1730e4Ce10414b"
+      },
+      "deploymentBlock": "74681810",
+      "transactionHash": "0x03cf622d3617bcc76bc005e988f03387a1529f70acccbba53326327b8e06ab01",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "2000"
+      }
+    },
+    "SOL": {
+      "address": "0x2f6d77fb5112A5E9257af99a70F1B35E369427f7",
+      "contract": "TestnetToken",
+      "name": "Wrapped SOL",
+      "decimals": 9,
+      "logo": "/tokens/sol.png",
+      "underlying": "CRYPTO:SOL",
+      "source": {
+        "reference": "Solana native mint"
+      },
+      "deploymentBlock": "74681817",
+      "transactionHash": "0x32e99b36f1a79a9d11cf95df1c0b01f39624b765363bc94dff56874211c3a800",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "XRP": {
+      "address": "0x1DAEaf3d181e1f0D571d417C9bdB542024352De0",
+      "contract": "TestnetToken",
+      "name": "XRP",
+      "decimals": 6,
+      "logo": "/tokens/xrp.png",
+      "underlying": "CRYPTO:XRP",
+      "source": {
+        "reference": "XRP Ledger native coin"
+      },
+      "deploymentBlock": "74681824",
+      "transactionHash": "0x97f8d28474566dbe9f437510b5aba2c8d990570d78806c88b80485e471efe53c",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "100000000"
+      }
+    },
+    "DOGE": {
+      "address": "0x1d0501CB9BD1e0fe55afa9D7dA3EcE1dfDe1C60B",
+      "contract": "TestnetToken",
+      "name": "Dogecoin",
+      "decimals": 8,
+      "logo": "/tokens/doge.png",
+      "underlying": "CRYPTO:DOGE",
+      "source": {
+        "reference": "Dogecoin native coin"
+      },
+      "deploymentBlock": "74681832",
+      "transactionHash": "0x96b5f25fca1ae4600bd8bf81cf92848d5dc98a5b9e639fb3b41e734f7a14831b",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000000"
+      }
+    },
+    "USOx": {
+      "address": "0xD5Cfa496a855c8De9cD68E7586134654Abb1df97",
+      "contract": "TestnetXStockToken",
+      "name": "United States Oil Fund xStock",
+      "decimals": 18,
+      "logo": "/tokens/uso.svg",
+      "underlying": "US:USO",
+      "source": {
+        "chainId": 143,
+        "address": "0xc9E5A5dF9aeb1f36801A90e4179fb785B6566564"
+      },
+      "xstock": {
+        "terms": "https://www.backedassets.fi/legal-documentation",
+        "version": "1.1.0",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "multiplierNonce": "0"
+      },
+      "deploymentBlock": "74681839",
+      "transactionHash": "0x0102df52d5fca6a067a6824e82f05e9a563bb85bfca48c8b3a79e5b42bf7098c",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "XOMx": {
+      "address": "0x81387182c33Dfe8Fb4dA89892E4a25278F984930",
+      "contract": "TestnetXStockToken",
+      "name": "Exxon Mobil xStock",
+      "decimals": 18,
+      "logo": "/tokens/xom.svg",
+      "underlying": "US:XOM",
+      "source": {
+        "chainId": 143,
+        "address": "0xEEdb0273c5Af792745180e9fF568cD01550fFA13"
+      },
+      "xstock": {
+        "terms": "https://www.backedassets.fi/legal-documentation",
+        "version": "1.1.0",
+        "multiplier": "1017648970535191000",
+        "newMultiplier": "1017648970535191000",
+        "multiplierNonce": "5"
+      },
+      "deploymentBlock": "74681846",
+      "transactionHash": "0x7e2f7c4106a93972b08b2a038fd4d5b85b19c71b52ff3222977fd46d14e3cfbd",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "PRx": {
+      "address": "0x29E4f089Fd517B70E875B281E55961DFA0255Aae",
+      "contract": "TestnetXStockToken",
+      "name": "Permian Resources xStock",
+      "decimals": 18,
+      "logo": "/tokens/pr.svg",
+      "underlying": "US:PR",
+      "source": {
+        "chainId": 143,
+        "address": "0x430bD46DeFC33D14EF23aE8ae4501871DB375959"
+      },
+      "xstock": {
+        "terms": "https://www.backedassets.fi/legal-documentation",
+        "version": "1.1.0",
+        "multiplier": "1004573295223000000",
+        "newMultiplier": "1004573295223000000",
+        "multiplierNonce": "1"
+      },
+      "deploymentBlock": "74681855",
+      "transactionHash": "0x1894edbc40dc191f1bc4585f94c0c531c04eab3d9bf244d7141e9d707291f37a",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "CCLx": {
+      "address": "0x26f99aB4160E79F414CDEFa46b9fc4f6ce6792A6",
+      "contract": "TestnetXStockToken",
+      "name": "Carnival xStock",
+      "decimals": 18,
+      "logo": "/tokens/ccl.svg",
+      "underlying": "US:CCL",
+      "source": {
+        "chainId": 143,
+        "address": "0xa416520fa325B5C3f1ea30FC622a040385c2fF15"
+      },
+      "xstock": {
+        "terms": "https://www.backedassets.fi/legal-documentation",
+        "version": "1.1.0",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "multiplierNonce": "0"
+      },
+      "deploymentBlock": "74681862",
+      "transactionHash": "0x9123120e7676b8bfdc2145e99582d6a431b997360809893c845dee187d8d7e79",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "BAx": {
+      "address": "0x10FAc7e8d71A9f4634d6A7424B13A85915417A75",
+      "contract": "TestnetXStockToken",
+      "name": "Boeing xStock",
+      "decimals": 18,
+      "logo": "/tokens/ba.svg",
+      "underlying": "US:BA",
+      "source": {
+        "chainId": 143,
+        "address": "0x5e5e6aA595f5Ba2E12D3120810B9Fe607735aC8C"
+      },
+      "xstock": {
+        "terms": "https://www.backedassets.fi/legal-documentation",
+        "version": "1.1.0",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "multiplierNonce": "0"
+      },
+      "deploymentBlock": "74681871",
+      "transactionHash": "0x39c728e2b05827ac96d3c000e89676910ab3ad65452e026be32aa4eb443cad44",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "SPYx": {
+      "address": "0xf199a17163733fc7dF4653A31cb0c0302458FcE9",
+      "contract": "TestnetXStockToken",
+      "name": "SP500 xStock",
+      "decimals": 18,
+      "logo": "/tokens/spy.svg",
+      "underlying": "US:SPY",
+      "source": {
+        "chainId": 143,
+        "address": "0x90A2a4c76b5D8c0bc892A69EA28Aa775a8f2dD48"
+      },
+      "xstock": {
+        "terms": "https://www.backedassets.fi/legal-documentation",
+        "version": "1.1.0",
+        "multiplier": "1005714560286254000",
+        "newMultiplier": "1005714560286254000",
+        "multiplierNonce": "4"
+      },
+      "deploymentBlock": "74681878",
+      "transactionHash": "0x06d12d9e08b6b77e0b2d483cc599c398213f039c67eaa73391c18aa605a1bf61",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "QQQx": {
+      "address": "0xcF54BF849CBb892088ED33a80Af744DE45FDcd7B",
+      "contract": "TestnetXStockToken",
+      "name": "Nasdaq xStock",
+      "decimals": 18,
+      "logo": "/tokens/qqq.svg",
+      "underlying": "US:QQQ",
+      "source": {
+        "chainId": 143,
+        "address": "0xa753A7395cAe905Cd615Da0B82A53E0560f250af"
+      },
+      "xstock": {
+        "terms": "https://www.backedassets.fi/legal-documentation",
+        "version": "1.1.0",
+        "multiplier": "1003456075896837600",
+        "newMultiplier": "1003456075896837600",
+        "multiplierNonce": "5"
+      },
+      "deploymentBlock": "74681886",
+      "transactionHash": "0xe1d487ed61a86369e5f32c2fe55ca449b208587cfc03ba5962778402782c2eb3",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "MSTRx": {
+      "address": "0x4BF615d5946a8507EbaF8e93ebE5ccAF8bDE44c3",
+      "contract": "TestnetXStockToken",
+      "name": "MicroStrategy xStock",
+      "decimals": 18,
+      "logo": "/tokens/mstr.svg",
+      "underlying": "US:MSTR",
+      "source": {
+        "chainId": 143,
+        "address": "0xAE2f842EF90C0d5213259Ab82639D5BBF649b08E"
+      },
+      "xstock": {
+        "terms": "https://www.backedassets.fi/legal-documentation",
+        "version": "1.1.0",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "multiplierNonce": "0"
+      },
+      "deploymentBlock": "74681893",
+      "transactionHash": "0x1e7bffc0b5347af98d2dccce1a3cf6f6da51e1e7021b0a51f6514239d06cb5ca",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "COINx": {
+      "address": "0xDea3487a65cC5F9611816bF8EBc4e2A15E3131a2",
+      "contract": "TestnetXStockToken",
+      "name": "Coinbase xStock",
+      "decimals": 18,
+      "logo": "/tokens/coin.svg",
+      "underlying": "US:COIN",
+      "source": {
+        "chainId": 143,
+        "address": "0x364f210f430eC2448Fc68A49203040F6124096F0"
+      },
+      "xstock": {
+        "terms": "https://www.backedassets.fi/legal-documentation",
+        "version": "1.1.0",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "multiplierNonce": "0"
+      },
+      "deploymentBlock": "74681901",
+      "transactionHash": "0xee5e1e51d4761228033124a6aad6f796e03e83b369fcf02f11b6478be7beb697",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "CRCLx": {
+      "address": "0xe911004BF4c9E0b86a386Aa977d05feb0AcC3894",
+      "contract": "TestnetXStockToken",
+      "name": "Circle xStock",
+      "decimals": 18,
+      "logo": "/tokens/crcl.svg",
+      "underlying": "US:CRCL",
+      "source": {
+        "chainId": 143,
+        "address": "0xfEbDEd1B0986a8ee107f5AB1a1c5a813491DeCEB"
+      },
+      "xstock": {
+        "terms": "https://www.backedassets.fi/legal-documentation",
+        "version": "1.1.0",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "multiplierNonce": "0"
+      },
+      "deploymentBlock": "74681909",
+      "transactionHash": "0x9f6afc629246c58c5e4e897408dba7860bf09744a182cf737ca790c82ce65134",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "GLXYx": {
+      "address": "0x15aC48f4D0AC2E1f4b3eAe5A2D0574c597AA2C5d",
+      "contract": "TestnetXStockToken",
+      "name": "Galaxy Digital xStock",
+      "decimals": 18,
+      "logo": "/tokens/glxy.svg",
+      "underlying": "US:GLXY",
+      "source": {
+        "chainId": 143,
+        "address": "0xf7F4fAC56f012dE7Dd6adFF54C761986B9E0655a"
+      },
+      "xstock": {
+        "terms": "https://www.backedassets.fi/legal-documentation",
+        "version": "1.1.0",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "multiplierNonce": "0"
+      },
+      "deploymentBlock": "74681916",
+      "transactionHash": "0xb90e400c90a85d0cc365382e9c33444710b4fed47f679aa68f8c4434141b953c",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "CLSKx": {
+      "address": "0xE2d4641BE09103ff557c298bB45Eb3DC502687EB",
+      "contract": "TestnetXStockToken",
+      "name": "CleanSpark xStock",
+      "decimals": 18,
+      "logo": "/tokens/clsk.svg",
+      "underlying": "US:CLSK",
+      "source": {
+        "chainId": 143,
+        "address": "0xD0194F0f077968DA8ca59811e9407f54AE6c9432"
+      },
+      "xstock": {
+        "terms": "https://www.backedassets.fi/legal-documentation",
+        "version": "1.1.0",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "multiplierNonce": "0"
+      },
+      "deploymentBlock": "74681924",
+      "transactionHash": "0x74efa6166c0ceb09d35d1278028b26a1d069de7915977136f293b15d240c79b2",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "IRENx": {
+      "address": "0xB287Cb8Ca4693cA823Dbfe008A50886117Bf5599",
+      "contract": "TestnetXStockToken",
+      "name": "IREN xStock",
+      "decimals": 18,
+      "logo": "/tokens/iren.svg",
+      "underlying": "US:IREN",
+      "source": {
+        "chainId": 143,
+        "address": "0xfBfc1FD14EeC970276c8a3BF5e6131cD751cC0B9"
+      },
+      "xstock": {
+        "terms": "https://www.backedassets.fi/legal-documentation",
+        "version": "1.1.0",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "multiplierNonce": "0"
+      },
+      "deploymentBlock": "74681933",
+      "transactionHash": "0x8448cb9d6d93a28f9a62f9d07cf7a9ab8bf3ec0a30d66b5327d671936d8b489d",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "WULFx": {
+      "address": "0x12dCD3493D248928BC2FeE3204a76564311d6B80",
+      "contract": "TestnetXStockToken",
+      "name": "TeraWulf xStock",
+      "decimals": 18,
+      "logo": "/tokens/wulf.svg",
+      "underlying": "US:WULF",
+      "source": {
+        "chainId": 143,
+        "address": "0xC0c2150cf0870E2d7aBc7cDe17C20A542faFBB9B"
+      },
+      "xstock": {
+        "terms": "https://www.backedassets.fi/legal-documentation",
+        "version": "1.1.0",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "multiplierNonce": "0"
+      },
+      "deploymentBlock": "74681940",
+      "transactionHash": "0xb30f6524d96c164084ee8ba5866f4ee60b60aece658c21775c7740d1c62743e2",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "SLVx": {
+      "address": "0x3F3437F10da3CAE7C404223f4d37ff4d63760491",
+      "contract": "TestnetXStockToken",
+      "name": "iShares Silver Trust xStock",
+      "decimals": 18,
+      "logo": "/tokens/slv.svg",
+      "underlying": "US:SLV",
+      "source": {
+        "chainId": 143,
+        "address": "0x4833e7f4f0460f4B72A3a5879A6C9841bCC5B58B"
+      },
+      "xstock": {
+        "terms": "https://www.backedassets.fi/legal-documentation",
+        "version": "1.1.0",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "multiplierNonce": "0"
+      },
+      "deploymentBlock": "74681948",
+      "transactionHash": "0x5aebd21c348e0e7299d361ef3e8d032ced5f189ba587f9652a0ddf52b7028014",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "GLDx": {
+      "address": "0x0903933A616Cd8f4CB1fF37744477715847f49ab",
+      "contract": "TestnetXStockToken",
+      "name": "Gold xStock",
+      "decimals": 18,
+      "logo": "/tokens/gld.svg",
+      "underlying": "US:GLD",
+      "source": {
+        "chainId": 143,
+        "address": "0x2380F2673C640fB67E2d6B55B44C62F0E0e69DA9"
+      },
+      "xstock": {
+        "terms": "https://www.backedassets.fi/legal-documentation",
+        "version": "1.1.0",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "multiplierNonce": "0"
+      },
+      "deploymentBlock": "74681956",
+      "transactionHash": "0xa1b05bdb615fe92815c2b94e6e0d6c12823b1ad8961cbfa1ff04e8b2276263bf",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "NUx": {
+      "address": "0x169C01D53dC69F62223a5fc93fEc4A6D78Bd33F3",
+      "contract": "TestnetXStockToken",
+      "name": "Nu xStock",
+      "decimals": 18,
+      "logo": "/tokens/nu.svg",
+      "underlying": "US:NU",
+      "source": {
+        "chainId": 143,
+        "address": "0xEF14e2eCBa99E303c18759e5b71ACfaac91212De"
+      },
+      "xstock": {
+        "terms": "https://www.backedassets.fi/legal-documentation",
+        "version": "1.1.0",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "multiplierNonce": "0"
+      },
+      "deploymentBlock": "74681964",
+      "transactionHash": "0xda24f0899229c3b76254d82875281eeb3d30d57d3ba59af18feb04425f9afb3a",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "SOFIx": {
+      "address": "0x468D9aF737F55c900ce48Cc41e59FAA9058D004D",
+      "contract": "TestnetXStockToken",
+      "name": "SoFi Technologies xStock",
+      "decimals": 18,
+      "logo": "/tokens/sofi.svg",
+      "underlying": "US:SOFI",
+      "source": {
+        "chainId": 143,
+        "address": "0xcf8e8E4d348502D5Ab212cEAAa6062a6DE1a53e2"
+      },
+      "xstock": {
+        "terms": "https://www.backedassets.fi/legal-documentation",
+        "version": "1.1.0",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "multiplierNonce": "0"
+      },
+      "deploymentBlock": "74681972",
+      "transactionHash": "0x1e954abf2fc0680c5823590d3fa9075ba29fcf3b222ece2ef9ae6051a0c3342e",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "NVDAx": {
+      "address": "0xED7e27e417e1AD4f2adE6FD5d01225bB7B5E68F6",
+      "contract": "TestnetXStockToken",
+      "name": "NVIDIA xStock",
+      "decimals": 18,
+      "logo": "/tokens/nvda.svg",
+      "underlying": "US:NVDA",
+      "source": {
+        "chainId": 143,
+        "address": "0xc845b2894dBddd03858fd2D643B4eF725fE0849d"
+      },
+      "xstock": {
+        "terms": "https://www.backedassets.fi/legal-documentation",
+        "version": "1.1.0",
+        "multiplier": "1001701196801074000",
+        "newMultiplier": "1001701196801074000",
+        "multiplierNonce": "5"
+      },
+      "deploymentBlock": "74681980",
+      "transactionHash": "0x5c9d463174d1a200f23714907c9bf5053f1fe371d2f7af387b9a7d992d25a9ad",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "CRWVx": {
+      "address": "0x7e2D82b9C947dF73b47ea1f472b65e3886425196",
+      "contract": "TestnetXStockToken",
+      "name": "CoreWeave xStock",
+      "decimals": 18,
+      "logo": "/tokens/crwv.svg",
+      "underlying": "US:CRWV",
+      "source": {
+        "chainId": 143,
+        "address": "0x16314D1032E6476c9451d1F02ba365A249fF36c7"
+      },
+      "xstock": {
+        "terms": "https://www.backedassets.fi/legal-documentation",
+        "version": "1.1.0",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "multiplierNonce": "0"
+      },
+      "deploymentBlock": "74681987",
+      "transactionHash": "0x3850a06fafd7c0f74120b5e7c75e9bd00b9f3fa53f7d6a794b182f695196fcaa",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "AAPLx": {
+      "address": "0x51c642306e19E0ad18e4c6F860f1A21f9eB199B2",
+      "contract": "TestnetXStockToken",
+      "name": "Apple xStock",
+      "decimals": 18,
+      "logo": "/tokens/aapl.svg",
+      "underlying": "US:AAPL",
+      "source": {
+        "chainId": 143,
+        "address": "0x9d275685dC284C8eB1C79f6ABA7a63Dc75ec890a"
+      },
+      "xstock": {
+        "terms": "https://www.backedassets.fi/legal-documentation",
+        "version": "1.1.0",
+        "multiplier": "1003269012539818700",
+        "newMultiplier": "1003269012539818700",
+        "multiplierNonce": "5"
+      },
+      "deploymentBlock": "74681996",
+      "transactionHash": "0x49c9ad99d7fdc129d8f3c14115b323af5d0d722ea1922048e4e089e1401730a3",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "SMHx": {
+      "address": "0xcD20139c0c278afB882b1060Fc25A7f62FAecBb9",
+      "contract": "TestnetXStockToken",
+      "name": "VanEck Semiconductor ETF xStock",
+      "decimals": 18,
+      "logo": "/tokens/smh.svg",
+      "underlying": "US:SMH",
+      "source": {
+        "chainId": 143,
+        "address": "0x8D512a03600981B8e86556fd5C0FbDd726Fe1821"
+      },
+      "xstock": {
+        "terms": "https://www.backedassets.fi/legal-documentation",
+        "version": "1.1.0",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "multiplierNonce": "0"
+      },
+      "deploymentBlock": "74682004",
+      "transactionHash": "0x04ffbbdc43ac8a269528766288bb87412b7ef367e06b3bc2bfffeec6cfc8a9f3",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    },
+    "EWTx": {
+      "address": "0xfc60e03a49Ba9B34fD0A7aF6B896A1d04e317217",
+      "contract": "TestnetXStockToken",
+      "name": "iShares MSCI Taiwan ETF xStock",
+      "decimals": 18,
+      "logo": "/tokens/ewt.svg",
+      "underlying": "US:EWT",
+      "source": {
+        "chainId": 143,
+        "address": "0x81886fe9544987376ef9eD6F85381d879aE927B0"
+      },
+      "xstock": {
+        "terms": "https://www.backedassets.fi/legal-documentation",
+        "version": "1.1.0",
+        "multiplier": "1000000000000000000",
+        "newMultiplier": "1000000000000000000",
+        "multiplierNonce": "0"
+      },
+      "deploymentBlock": "74682012",
+      "transactionHash": "0xbc830c7828ec5df9751ef4ea117c7f186b6f59726aea893340e8aa58b37cac0f",
+      "minted": {
+        "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0": "1000000"
+      }
+    }
+  }
+}

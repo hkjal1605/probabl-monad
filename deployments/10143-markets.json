@@ -1,0 +1,326 @@
+{
+  "chainId": 10143,
+  "api": "https://api-monad.probabl.trade",
+  "tokens": {
+    "AAPLx": "0x51c642306e19E0ad18e4c6F860f1A21f9eB199B2",
+    "BAx": "0x10FAc7e8d71A9f4634d6A7424B13A85915417A75",
+    "CCLx": "0x26f99aB4160E79F414CDEFa46b9fc4f6ce6792A6",
+    "CLSKx": "0xE2d4641BE09103ff557c298bB45Eb3DC502687EB",
+    "COINx": "0xDea3487a65cC5F9611816bF8EBc4e2A15E3131a2",
+    "CRCLx": "0xe911004BF4c9E0b86a386Aa977d05feb0AcC3894",
+    "GLDx": "0x0903933A616Cd8f4CB1fF37744477715847f49ab",
+    "GLXYx": "0x15aC48f4D0AC2E1f4b3eAe5A2D0574c597AA2C5d",
+    "MSTRx": "0x4BF615d5946a8507EbaF8e93ebE5ccAF8bDE44c3",
+    "NUx": "0x169C01D53dC69F62223a5fc93fEc4A6D78Bd33F3",
+    "NVDAx": "0xED7e27e417e1AD4f2adE6FD5d01225bB7B5E68F6",
+    "PRx": "0x29E4f089Fd517B70E875B281E55961DFA0255Aae",
+    "QQQx": "0xcF54BF849CBb892088ED33a80Af744DE45FDcd7B",
+    "SLVx": "0x3F3437F10da3CAE7C404223f4d37ff4d63760491",
+    "SMHx": "0xcD20139c0c278afB882b1060Fc25A7f62FAecBb9",
+    "SOFIx": "0x468D9aF737F55c900ce48Cc41e59FAA9058D004D",
+    "SPYx": "0xf199a17163733fc7dF4653A31cb0c0302458FcE9",
+    "USOx": "0xD5Cfa496a855c8De9cD68E7586134654Abb1df97",
+    "WETH": "0x5b4868522862856664aaFB588Ea1043ceC5904c9",
+    "XOMx": "0x81387182c33Dfe8Fb4dA89892E4a25278F984930"
+  },
+  "events": [
+    {
+      "gammaMarketId": "665374",
+      "slug": "will-the-us-invade-iran-before-2027",
+      "question": "Will the U.S. invade Iran before 2027?",
+      "rationale": "An invasion lifts oil (USO, XOM, PR) and sinks fuel-hungry CCL and BA and the indexes: USO's daily return tracks its odds with r 0.43 (t 7.4, 238 days).",
+      "markets": {
+        "USOx": {
+          "anchorBps": 1200
+        },
+        "XOMx": {
+          "anchorBps": 1200
+        },
+        "PRx": {
+          "anchorBps": 1200
+        },
+        "CCLx": {
+          "anchorBps": -1200
+        },
+        "BAx": {
+          "anchorBps": -1200
+        },
+        "QQQx": {
+          "anchorBps": -1200
+        },
+        "SPYx": {
+          "anchorBps": -910
+        }
+      }
+    },
+    {
+      "gammaMarketId": "3128886",
+      "slug": "us-announces-end-of-iranian-blockade-byptptpt-20260713152715080",
+      "question": "US announces end of Iranian blockade by December 31, 2026?",
+      "rationale": "An end to the blockade reopens oil supply: oil names fall (USO r -0.59), CCL, BA and SPY rise.",
+      "markets": {
+        "USOx": {
+          "anchorBps": -1200
+        },
+        "XOMx": {
+          "anchorBps": -1200
+        },
+        "PRx": {
+          "anchorBps": -1200
+        },
+        "CCLx": {
+          "anchorBps": 1200
+        },
+        "BAx": {
+          "anchorBps": 1200
+        },
+        "SPYx": {
+          "anchorBps": 550
+        }
+      }
+    },
+    {
+      "gammaMarketId": "4713483",
+      "slug": "us-iran-ceasefire-continues-throughptptpt",
+      "question": "US x Iran ceasefire continues through November 30?",
+      "rationale": "A ceasefire that holds keeps oil down and the indexes up (USO r -0.50, SPY r 0.54, 22 days).",
+      "markets": {
+        "USOx": {
+          "anchorBps": -1200
+        },
+        "QQQx": {
+          "anchorBps": 1120
+        },
+        "SPYx": {
+          "anchorBps": 650
+        }
+      }
+    },
+    {
+      "kalshiTicker": "KXWTIMAX-26DEC31-T120",
+      "cutoff": "2026-12-31T19:00:00Z",
+      "slug": "KXWTIMAX-26DEC31",
+      "question": "Will the maximum WTI front month settle price reach $120.01 in 2026?",
+      "rationale": "WTI above $120 is an oil shock: USO tracks it with r 0.73 (t 13.1); oil producers rise, CCL, BA and the indexes fall.",
+      "markets": {
+        "USOx": {
+          "anchorBps": 1200
+        },
+        "XOMx": {
+          "anchorBps": 1200
+        },
+        "PRx": {
+          "anchorBps": 1200
+        },
+        "CCLx": {
+          "anchorBps": -1200
+        },
+        "BAx": {
+          "anchorBps": -1200
+        },
+        "QQQx": {
+          "anchorBps": -960
+        },
+        "SPYx": {
+          "anchorBps": -720
+        }
+      }
+    },
+    {
+      "kalshiTicker": "KXHORMUZNORM-26MAR17-B270701",
+      "slug": "KXHORMUZNORM-26MAR17",
+      "question": "Will Strait of Hormuz traffic return to normal before Jul 1, 2027?",
+      "rationale": "Normal Hormuz traffic ends the oil shock: USO r -0.53 (t -7.5, measured on the Jan 2027 date); CCL, BA and the indexes rise.",
+      "markets": {
+        "USOx": {
+          "anchorBps": -1200
+        },
+        "XOMx": {
+          "anchorBps": -1200
+        },
+        "PRx": {
+          "anchorBps": -1200
+        },
+        "CCLx": {
+          "anchorBps": 1200
+        },
+        "BAx": {
+          "anchorBps": 1200
+        },
+        "QQQx": {
+          "anchorBps": 1190
+        },
+        "SPYx": {
+          "anchorBps": 770
+        }
+      }
+    },
+    {
+      "gammaMarketId": "1345531",
+      "slug": "what-price-will-bitcoin-hit-before-2027",
+      "question": "Will Bitcoin reach $90,000 by December 31, 2026?",
+      "rationale": "Bitcoin-linked stocks and Ether move with Bitcoin's 2026 ladder (r 0.40-0.55, t 6.6-11.8).",
+      "markets": {
+        "MSTRx": {
+          "anchorBps": 1200
+        },
+        "COINx": {
+          "anchorBps": 1200
+        },
+        "CRCLx": {
+          "anchorBps": 1200
+        },
+        "GLXYx": {
+          "anchorBps": 1200
+        },
+        "CLSKx": {
+          "anchorBps": 1200
+        },
+        "WETH": {
+          "anchorBps": 1200
+        }
+      }
+    },
+    {
+      "gammaMarketId": "3865960",
+      "slug": "what-price-will-bitcoin-hit-before-2027",
+      "question": "Will Bitcoin dip to $70,000 by December 31, 2026?",
+      "rationale": "A dip to $70k drags Bitcoin-linked stocks and Ether down (r -0.45 to -0.65 on the $55k low).",
+      "markets": {
+        "MSTRx": {
+          "anchorBps": -1200
+        },
+        "COINx": {
+          "anchorBps": -1200
+        },
+        "CRCLx": {
+          "anchorBps": -1200
+        },
+        "GLXYx": {
+          "anchorBps": -1200
+        },
+        "CLSKx": {
+          "anchorBps": -1200
+        },
+        "WETH": {
+          "anchorBps": -1200
+        }
+      }
+    },
+    {
+      "gammaMarketId": "2467356",
+      "slug": "what-price-will-ethereum-hit-before-2027",
+      "question": "Will Ethereum reach $3,000 by December 31, 2026?",
+      "rationale": "Coinbase, Circle, Strategy and Galaxy move with Ether's 2026 ladder (r 0.48-0.61).",
+      "markets": {
+        "COINx": {
+          "anchorBps": 1200
+        },
+        "CRCLx": {
+          "anchorBps": 1200
+        },
+        "MSTRx": {
+          "anchorBps": 1200
+        },
+        "GLXYx": {
+          "anchorBps": 1200
+        }
+      }
+    },
+    {
+      "gammaMarketId": "3866000",
+      "slug": "what-price-will-ethereum-hit-before-2027",
+      "question": "Will Ethereum dip to $2,250 by December 31, 2026?",
+      "rationale": "A dip in Ether drags Coinbase, Circle, Strategy and Galaxy down (r -0.48 to -0.61 on the $1,500 low).",
+      "markets": {
+        "COINx": {
+          "anchorBps": -1200
+        },
+        "CRCLx": {
+          "anchorBps": -1200
+        },
+        "MSTRx": {
+          "anchorBps": -1200
+        },
+        "GLXYx": {
+          "anchorBps": -1200
+        }
+      }
+    },
+    {
+      "gammaMarketId": "3215008",
+      "cutoff": "2026-12-09T18:30:00Z",
+      "slug": "fed-decision-in-december-20260729232808632",
+      "question": "Will the Fed increase interest rates by 25 bps after the December 2026 meeting?",
+      "rationale": "A December hike weighs on metals, bonds and rate-sensitive fintechs (SLV r -0.46, GLD r -0.44, 56 days).",
+      "markets": {
+        "SLVx": {
+          "anchorBps": -1200
+        },
+        "NUx": {
+          "anchorBps": -1200
+        },
+        "SOFIx": {
+          "anchorBps": -1200
+        },
+        "GLDx": {
+          "anchorBps": -1200
+        }
+      }
+    },
+    {
+      "kalshiTicker": "KXGOLDDIRY-26DEC31H1700-T4400",
+      "cutoff": "2026-12-31T21:30:00Z",
+      "slug": "KXGOLDDIRY-26DEC31H1700",
+      "question": "Will the price of Gold be above 4400 on December 31, 2026 at 5 pm EST?",
+      "rationale": "Silver moves 1.89 times gold, so SLV follows gold's year-end close.",
+      "markets": {
+        "SLVx": {
+          "anchorBps": 1200
+        }
+      }
+    },
+    {
+      "kalshiTicker": "KXCPI-26OCT-T0.2",
+      "cutoff": "2026-11-10T13:00:00Z",
+      "slug": "KXCPI-26OCT",
+      "question": "Will CPI rise more than 0.2% in October 2026?",
+      "rationale": "Hot inflation is hawkish: gold and silver fall on an upside CPI surprise.",
+      "markets": {
+        "GLDx": {
+          "anchorBps": -200
+        },
+        "SLVx": {
+          "anchorBps": -400
+        }
+      }
+    },
+    {
+      "gammaMarketId": "676739",
+      "cutoff": "2026-12-31T20:30:00Z",
+      "slug": "largest-company-end-of-december-2026",
+      "question": "Will NVIDIA be the largest company in the world by market cap on December 31, 2026?",
+      "rationale": "NVIDIA and the chip ETF move with NVIDIA's odds of ending the year largest (NVDA r 0.43, t 7.1).",
+      "markets": {
+        "NVDAx": {
+          "anchorBps": 1200
+        },
+        "SMHx": {
+          "anchorBps": 1200
+        }
+      }
+    },
+    {
+      "gammaMarketId": "676741",
+      "cutoff": "2026-12-31T20:30:00Z",
+      "slug": "largest-company-end-of-december-2026",
+      "question": "Will Apple be the largest company in the world by market cap on December 31, 2026?",
+      "rationale": "Apple moves with its odds of ending the year largest (r 0.26, t 4.2).",
+      "markets": {
+        "AAPLx": {
+          "anchorBps": 1200
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "chainId": 10143,
+  "network": "Monad Testnet",
+  "exchange": "0x7E9969fDA400d034A7a68598E8b895108812Ba9e",
+  "deploymentBlock": "74682087",
+  "transactionHash": "0xea8ffec5755a7f4c52fee240ec7a6966ee4ba9c1afc2d1a6d394c669a1a7ab29",
+  "quote": "0x95C53229Fc9ccfD792c9Cb8827B5f4530441ABE1",
+  "admin": "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f",
+  "marketAdmin": "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0",
+  "guardian": "0x3c75eE21AF23832057760433Bf95DA9f9c0c7c41",
+  "resolutionAdmin": "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0",
+  "deployedAt": "2026-10-27T13:57:36.508Z"
+}
