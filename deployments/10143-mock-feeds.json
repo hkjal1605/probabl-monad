@@ -1,0 +1,110 @@
+[
+  {
+    "symbol": "XOMx",
+    "token": "0x81387182c33Dfe8Fb4dA89892E4a25278F984930",
+    "feed": "0x31A1E6F7ca5347D23C9a65d98fe686cf698F679f",
+    "decimals": 8,
+    "description": "Robinhood XOMx reference / USD (testnet mock)",
+    "source": {
+      "reference": "robinhood"
+    },
+    "owner": "0x2ed4b3b723680c3E65A0C588721a8F4918021525",
+    "deploymentBlock": "74689982",
+    "transactionHash": "0x01d1f683ee1be13d4c15b68b6d3a70e16d8c41043f63ec95b8d63ceb31add26f",
+    "deployedAt": "2026-10-27T14:37:24.406Z"
+  },
+  {
+    "symbol": "CCLx",
+    "token": "0x26f99aB4160E79F414CDEFa46b9fc4f6ce6792A6",
+    "feed": "0x9Ab9F6FCA39138Ac32c25599C59Bb35AD57B4620",
+    "decimals": 8,
+    "description": "Robinhood CCLx reference / USD (testnet mock)",
+    "source": {
+      "reference": "robinhood"
+    },
+    "owner": "0x2ed4b3b723680c3E65A0C588721a8F4918021525",
+    "deploymentBlock": "74689993",
+    "transactionHash": "0x874be22c8781e55235f7b9a3adf6cda16d0df1742c568f87502c03680225a229",
+    "deployedAt": "2026-10-27T14:37:27.526Z"
+  },
+  {
+    "symbol": "MSTRx",
+    "token": "0x4BF615d5946a8507EbaF8e93ebE5ccAF8bDE44c3",
+    "feed": "0x2De7AC56ddF785994c0917B6090C1ad6177FC3BC",
+    "decimals": 8,
+    "description": "Robinhood MSTR / USD (testnet mock)",
+    "source": {
+      "chainId": 4663,
+      "feed": "0x396118bdFB181e6240E74D243F266B061c0edc3D",
+      "description": "Robinhood MSTR / USD"
+    },
+    "owner": "0x2ed4b3b723680c3E65A0C588721a8F4918021525",
+    "deploymentBlock": "74690003",
+    "transactionHash": "0x09d08fc78feb85706c0adae88cf421d5d1bf6f8c2ba76c713988709e033586b5",
+    "deployedAt": "2026-10-27T14:37:30.854Z"
+  },
+  {
+    "symbol": "COINx",
+    "token": "0xDea3487a65cC5F9611816bF8EBc4e2A15E3131a2",
+    "feed": "0xF431a5F447AB2DD93a7710215dB9165d10dd03C1",
+    "decimals": 8,
+    "description": "Robinhood COIN / USD (testnet mock)",
+    "source": {
+      "chainId": 4663,
+      "feed": "0xA3a468A452940B7D6b69991207B508c609a98Ef2",
+      "description": "Robinhood COIN / USD"
+    },
+    "owner": "0x2ed4b3b723680c3E65A0C588721a8F4918021525",
+    "deploymentBlock": "74690013",
+    "transactionHash": "0x04f61640f64b8e685f678ac89fce788bf50ba10e78cff73a060964d663aa3838",
+    "deployedAt": "2026-10-27T14:37:33.563Z"
+  },
+  {
+    "symbol": "SLVx",
+    "token": "0x3F3437F10da3CAE7C404223f4d37ff4d63760491",
+    "feed": "0x81f86Ae547C5f03743E979A47133463003271d40",
+    "decimals": 8,
+    "description": "Robinhood SLV / USD (testnet mock)",
+    "source": {
+      "chainId": 4663,
+      "feed": "0x209b73908e92Ae021826eD79609845451Ecba2ce",
+      "description": "Robinhood SLV / USD"
+    },
+    "owner": "0x2ed4b3b723680c3E65A0C588721a8F4918021525",
+    "deploymentBlock": "74690022",
+    "transactionHash": "0x81380c9d4bc5adcd51d0cb291d7dbe26a6f28aaf496efab672e1a07f288dd2ee",
+    "deployedAt": "2026-10-27T14:37:36.284Z"
+  },
+  {
+    "symbol": "NVDAx",
+    "token": "0xED7e27e417e1AD4f2adE6FD5d01225bB7B5E68F6",
+    "feed": "0xb2585509c8693394769B20463b0757902Edd8De7",
+    "decimals": 8,
+    "description": "RHNVDA / USD (testnet mock)",
+    "source": {
+      "chainId": 4663,
+      "feed": "0x379EC4f7C378F34a1B47E4F3cbeBCbAC3E8E9F15",
+      "description": "RHNVDA / USD"
+    },
+    "owner": "0x2ed4b3b723680c3E65A0C588721a8F4918021525",
+    "deploymentBlock": "74690032",
+    "transactionHash": "0xa9e4dea6a7b1f1f5d913b12a67c24ce42576b39e55cfb152b3344368f8566ffe",
+    "deployedAt": "2026-10-27T14:37:39.074Z"
+  },
+  {
+    "symbol": "WETH",
+    "token": "0x5b4868522862856664aaFB588Ea1043ceC5904c9",
+    "feed": "0x59500A9A239D6914955ad3CF4cB3BF1B14f67D29",
+    "decimals": 8,
+    "description": "ETH / USD (testnet mock)",
+    "source": {
+      "chainId": 4663,
+      "feed": "0x78F3556b67E17Df817D51Ef5a990cDaF09E8d3A9",
+      "description": "ETH / USD"
+    },
+    "owner": "0x2ed4b3b723680c3E65A0C588721a8F4918021525",
+    "deploymentBlock": "74690041",
+    "transactionHash": "0xbe19f73e2c7f3c0f8bdfab359171fdc81be945e5d8ed98941d976325678eea49",
+    "deployedAt": "2026-10-27T14:37:41.846Z"
+  }
+]

@@ -1,0 +1,148 @@
+{
+  "chainId": 10143,
+  "exchange": "0x7E9969fDA400d034A7a68598E8b895108812Ba9e",
+  "quote": "0x95C53229Fc9ccfD792c9Cb8827B5f4530441ABE1",
+  "admin": "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0",
+  "guardian": "0x3c75eE21AF23832057760433Bf95DA9f9c0c7c41",
+  "adminDelay": 86400,
+  "limits": {
+    "maxTtl": 3600,
+    "maxOracleAge": 259200,
+    "maxFeeBps": 100
+  },
+  "vaults": [
+    {
+      "symbol": "XOMx",
+      "token": "0x81387182c33Dfe8Fb4dA89892E4a25278F984930",
+      "priceFeed": "0x31A1E6F7ca5347D23C9a65d98fe686cf698F679f",
+      "keeper": "0x55870Aecfea57bB572847006031D6Ba5190E30b9",
+      "caps": {
+        "quote": "1000000",
+        "base": "5641"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "564.031698"
+      },
+      "markets": [],
+      "vault": "0x124d017CF041Ba2299fC7a76917194233811cE59",
+      "deploymentBlock": "74690161",
+      "transactionHash": "0x4cdf0d40fdb7cfd92c011446d8e75ede72a39c294e651176a75b61d93752459d",
+      "seeded": true
+    },
+    {
+      "symbol": "CCLx",
+      "token": "0x26f99aB4160E79F414CDEFa46b9fc4f6ce6792A6",
+      "priceFeed": "0x9Ab9F6FCA39138Ac32c25599C59Bb35AD57B4620",
+      "keeper": "0x88A2E3e3b67A8657552837d1b7BfB96dCc33fDAE",
+      "caps": {
+        "quote": "1000000",
+        "base": "36894"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "3689.356207"
+      },
+      "markets": [],
+      "vault": "0xD4CC5Bd28936469fE902Bf943c0C8780CF20E546",
+      "deploymentBlock": "74690203",
+      "transactionHash": "0xf61ae0553ed7ef68bcb66add0c446b1483175f5aa76d2a093acd282dd44a0340",
+      "seeded": true
+    },
+    {
+      "symbol": "MSTRx",
+      "token": "0x4BF615d5946a8507EbaF8e93ebE5ccAF8bDE44c3",
+      "priceFeed": "0x2De7AC56ddF785994c0917B6090C1ad6177FC3BC",
+      "keeper": "0x48F50C5ff33e18bD1800afd5f2A56FBF4489E443",
+      "caps": {
+        "quote": "1000000",
+        "base": "6985"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "698.421567"
+      },
+      "markets": [],
+      "vault": "0x37645DaB0282335580004579a9750bC800833783",
+      "deploymentBlock": "74690245",
+      "transactionHash": "0x50ba8bb9f16ecf0b3561dd29a573c1379035390132d091b0cbf1d96857159971",
+      "seeded": true
+    },
+    {
+      "symbol": "COINx",
+      "token": "0xDea3487a65cC5F9611816bF8EBc4e2A15E3131a2",
+      "priceFeed": "0xF431a5F447AB2DD93a7710215dB9165d10dd03C1",
+      "keeper": "0x9a076A5D16Ebff85e5e915393aD4812f6D813Ccb",
+      "caps": {
+        "quote": "1000000",
+        "base": "5869"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "586.833796"
+      },
+      "markets": [],
+      "vault": "0xccA69a27D240862cB09E3fAfA0956C0485193ECD",
+      "deploymentBlock": "74690289",
+      "transactionHash": "0xbeff8ad350f3718445c1719c1eaac6e5303e6409ad171146e77bcf696e9e4a47",
+      "seeded": true
+    },
+    {
+      "symbol": "SLVx",
+      "token": "0x3F3437F10da3CAE7C404223f4d37ff4d63760491",
+      "priceFeed": "0x81f86Ae547C5f03743E979A47133463003271d40",
+      "keeper": "0xe7594D71745F9303c946fa240F8853313ddF48fa",
+      "caps": {
+        "quote": "1000000",
+        "base": "19172"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "1917.157698"
+      },
+      "markets": [],
+      "vault": "0x60b6B05F4e0c2DB22Fe37765cbcb83c0d83c9e5b",
+      "deploymentBlock": "74690329",
+      "transactionHash": "0x1acffee23768bd67e47b4513bd9a7696d4063a4732aefd1e7b62d7625af2b834",
+      "seeded": true
+    },
+    {
+      "symbol": "NVDAx",
+      "token": "0xED7e27e417e1AD4f2adE6FD5d01225bB7B5E68F6",
+      "priceFeed": "0xb2585509c8693394769B20463b0757902Edd8De7",
+      "keeper": "0xAd3740af716A0FBbD67891029E0de14dc826056e",
+      "caps": {
+        "quote": "1000000",
+        "base": "4609"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "460.828793"
+      },
+      "markets": [],
+      "vault": "0x1E62BC941A357969478552c6c67be6Cb9D9C10a1",
+      "deploymentBlock": "74690373",
+      "transactionHash": "0x7ad13736505cab8b12b401efd9bcd1bca2417fcfdc006112434cbaf35d314f4e",
+      "seeded": true
+    },
+    {
+      "symbol": "WETH",
+      "token": "0x5b4868522862856664aaFB588Ea1043ceC5904c9",
+      "priceFeed": "0x59500A9A239D6914955ad3CF4cB3BF1B14f67D29",
+      "keeper": "0xacC93f199D05ABfD55451c229a8be8D6EeFa8A28",
+      "caps": {
+        "quote": "1000000",
+        "base": "411"
+      },
+      "seed": {
+        "quote": "100000",
+        "base": "41.046434"
+      },
+      "markets": [],
+      "vault": "0xCA02F83808Ea9745D31048275D17310bbF89452d",
+      "deploymentBlock": "74690416",
+      "transactionHash": "0x5eaabab94a06ab05b37adfebbe3c37ddf0d4b6a9baed34c5de106cedd337c3c5",
+      "seeded": true
+    }
+  ]
+}

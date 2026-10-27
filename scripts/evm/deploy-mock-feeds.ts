@@ -15,6 +15,7 @@
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { MONAD_TESTNET, nativeCurrency } from "@conditional-stocks/shared/chains";
+import { catalogUnderlying } from "@conditional-stocks/shared/token-catalog";
 import {
   createPublicClient,
   createWalletClient,
@@ -160,10 +161,12 @@ for (const pair of pairs) {
       source.readContract({ address: pair.source, abi: feedAbi, functionName: "latestRoundData" }),
     ]);
     // Robinhood's feeds read "RHTSLA / USD" or "Robinhood AMZN / USD"; crypto feeds name the
-    // asset a wrapped token stands for (WETH: "ETH / USD").
+    // asset a wrapped token stands for (WETH: "ETH / USD"), and stock feeds the share another
+    // issuer's token holds (TSLAx: TSLA).
     const asset = description.replace(/^Robinhood\s+|^RH/, "").split(/\s*[/-]\s*USD$/)[0];
     const wrapped: Record<string, string> = { WETH: "ETH", cbBTC: "BTC" };
-    if (asset?.trim() !== (wrapped[symbol] ?? symbol))
+    const share = catalogUnderlying(symbol)?.match(/^US:(.+)$/)?.[1];
+    if (asset?.trim() !== (wrapped[symbol] ?? share ?? symbol))
       throw new Error(`"${description}" is not the Chainlink feed of ${symbol}`);
     [roundId, answer, , updatedAt] = round;
   } else {
