@@ -6,6 +6,7 @@ import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { TestnetBanner } from "@/components/onboarding/TestnetBanner";
 import { AppProviders } from "@/components/providers/AppProviders";
+import { LINK_PREVIEW, SITE_TITLE, SITE_URL } from "@/lib/link-preview";
 import { API_URL } from "@/services/constants";
 
 const aeonik = localFont({
@@ -19,17 +20,12 @@ const aeonik = localFont({
 });
 
 export const metadata: Metadata = {
-  title: { default: "probabl — Event-driven stock markets", template: "%s · probabl" },
+  title: { default: SITE_TITLE, template: "%s · probabl" },
   applicationName: "probabl",
   description:
     "Trade conditional stock values across clear YES and NO event outcomes with onchain settlement.",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://probabl.trade"),
-  openGraph: {
-    siteName: "probabl",
-    images: [
-      { url: "/og.png", width: 1200, height: 630, alt: "probabl — Event-driven stock markets" },
-    ],
-  },
+  metadataBase: new URL(SITE_URL),
+  openGraph: LINK_PREVIEW,
   icons: { icon: "/brand/favicon.svg", apple: "/brand/apple-touch-icon.png" },
 };
 export const viewport: Viewport = { colorScheme: "light dark" };
