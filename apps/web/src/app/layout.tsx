@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   title: { default: SITE_TITLE, template: "%s · probabl" },
   applicationName: "probabl",
   description:
-    "Trade conditional stock values across clear YES and NO event outcomes with onchain settlement.",
+    "Prediction markets price if events happen. probabl prices their impact on stocks. Trade conditional outcomes with tokenized stocks, settled onchain.",
   metadataBase: new URL(SITE_URL),
   openGraph: LINK_PREVIEW,
   icons: { icon: "/brand/favicon.svg", apple: "/brand/apple-touch-icon.png" },
