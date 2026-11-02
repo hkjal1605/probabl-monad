@@ -48,9 +48,10 @@ export function signer(secret: string, expected: string, keyName: string, addres
 const cost = (receipt: TransactionReceipt) =>
   receipt.gasUsed * receipt.effectiveGasPrice +
   ((receipt as { l1Fee?: bigint | null }).l1Fee ?? 0n);
-/** Node errors after which a broadcast transaction can certainly never be included. */
+/** Node errors after which a broadcast transaction can certainly never be included (Monad words
+ * an underfunded sender "Signer had insufficient balance"). */
 const REJECTED =
-  /nonce too (low|high)|nonce has already been used|NONCE_EXPIRED|(max fee per gas|fee cap) less than block base fee|insufficient funds|intrinsic gas too low/i;
+  /nonce too (low|high)|nonce has already been used|NONCE_EXPIRED|(max fee per gas|fee cap) less than block base fee|insufficient (funds|balance)|intrinsic gas too low/i;
 
 export class Executor {
   /** The wallet's next nonce once one of this executor's transactions settled: the wallet is

@@ -2,9 +2,11 @@ import { afterEach, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { getAddress } from "viem";
+import { getAddress, type PublicClient } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 import {
   decimal,
+  Executor,
   initialJournal,
   type Journal,
   reference,
@@ -123,6 +125,45 @@ test("journals refuse malformed gas or pending records", () => {
     },
   ];
   for (const journal of bad) expect(() => validateJournal(journal)).toThrow();
+});
+
+test("a send the node rejects for funds is dropped, not left journaled", async () => {
+  const wallet = privateKeyToAccount(`0x${"11".repeat(32)}`);
+  for (const reason of [
+    "insufficient funds for gas * price + value",
+    "Signer had insufficient balance",
+  ]) {
+    const client = {
+      chain: undefined,
+      prepareTransactionRequest: async () => ({
+        type: "eip1559",
+        chainId: 31337,
+        nonce: 5,
+        to: BASE,
+        data: "0x",
+        gas: 100_000n,
+        maxFeePerGas: 1n,
+        maxPriorityFeePerGas: 1n,
+      }),
+      getBalance: async () => 10n ** 18n,
+      sendRawTransaction: async () => {
+        throw new Error(`RPC Request failed.\n\nDetails: ${reason}`);
+      },
+    } as unknown as PublicClient;
+    const journal = initialJournal();
+    const executor = new Executor(
+      client,
+      wallet,
+      { minGasWei: "0", dailyGasBudgetWei: "1000000" },
+      journal,
+      () => {},
+    );
+    await expect(executor.send({ to: BASE, data: "0x" })).rejects.toThrow(
+      "dropped and will be re-planned",
+    );
+    expect(journal.pending).toBeUndefined();
+    expect(journal.spent).toBe("0");
+  }
 });
 
 test("state files are private, locked to one process and reloaded as saved", () => {
