@@ -238,6 +238,7 @@
       "name": "@conditional-stocks/vault-keeper",
       "version": "0.1.0",
       "dependencies": {
+        "@conditional-stocks/db": "workspace:*",
         "@conditional-stocks/evm-client": "workspace:*",
         "@conditional-stocks/indexer": "workspace:*",
         "@conditional-stocks/operator": "workspace:*",

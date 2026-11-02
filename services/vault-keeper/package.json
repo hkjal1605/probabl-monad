@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@conditional-stocks/db": "workspace:*",
     "@conditional-stocks/evm-client": "workspace:*",
     "@conditional-stocks/indexer": "workspace:*",
     "@conditional-stocks/operator": "workspace:*",
