@@ -169,7 +169,7 @@ export class ChainFollower {
   private pending: PendingBlock[] = [];
   private head: Tip;
   private range: bigint;
-  /** Span limit a provider stated in an error. */
+  /** Span limit a provider stated in an error, or just below a span it refused. */
   private maxRange = MAX_LOG_RANGE;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private stopped = false;
@@ -629,7 +629,7 @@ export class ChainFollower {
   }
 
   /** One ranged request, split when the provider rejects its span. Sparse results widen later
-   * requests, up to any limit the provider stated. */
+   * requests, up to any limit the provider stated and below any span it refused. */
   private async logs(from: bigint, to: bigint): Promise<Log[]> {
     const span = to - from + 1n;
     try {
@@ -639,7 +639,11 @@ export class ChainFollower {
         toBlock: to,
       });
       if (span >= this.range && logs.length < 1_000) {
-        const wider = this.range + this.range / 2n;
+        // Below a known limit, halfway to it, so the range settles there in a few requests.
+        const wider =
+          this.maxRange < MAX_LOG_RANGE
+            ? this.range + (this.maxRange - this.range + 1n) / 2n
+            : this.range + this.range / 2n;
         this.range = wider < this.maxRange ? wider : this.maxRange;
       }
       return logs;
@@ -647,11 +651,18 @@ export class ChainFollower {
       const limit = logRangeLimit(error, span);
       if (limit === undefined || span <= 1n) throw error;
       const size = limit.blocks > 0n && limit.blocks < span ? limit.blocks : span / 2n;
-      if (limit.stated && size < this.maxRange) this.maxRange = size;
+      // A stated limit caps every later request; an unstated one rules out this span.
+      const cap = limit.stated ? size : span - 1n;
+      if (cap < this.maxRange) this.maxRange = cap;
       if (size < this.range) this.range = size;
+      // The parts follow the range as other requests refine it, never exceeding `size`.
       const parts: Log[] = [];
-      for (let start = from; start <= to; start += size)
-        parts.push(...(await this.logs(start, start + size - 1n < to ? start + size - 1n : to)));
+      for (let start = from; start <= to; ) {
+        const step = this.range < size ? this.range : size;
+        const end = start + step - 1n < to ? start + step - 1n : to;
+        parts.push(...(await this.logs(start, end)));
+        start = end + 1n;
+      }
       return parts;
     }
   }
