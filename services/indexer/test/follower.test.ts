@@ -63,6 +63,39 @@ test("sizes eth_getLogs to the provider's stated limit, fills small gaps by head
   expect(follower.confirmed.block).toBe(10_010n);
 });
 
+test("never widens back to a span the provider refused without stating its limit", async () => {
+  let refused = 0,
+    read = 0;
+  const client = {
+    getBlock: async (args?: { blockNumber?: bigint; blockTag?: string }) =>
+      header(args?.blockTag === "finalized" ? 20_000n : (args?.blockNumber ?? 20_000n)),
+    // Monad testnet's ankr nodes: at most 100 blocks, with no limit in the message.
+    getLogs: async ({ fromBlock, toBlock }: { fromBlock: bigint; toBlock: bigint }) => {
+      if (toBlock - fromBlock + 1n > 100n) {
+        refused++;
+        throw new Error("Block range is too large");
+      }
+      read++;
+      return [];
+    },
+  } as unknown as PublicClient;
+  const follower = new ChainFollower({
+    client,
+    exchange,
+    quote,
+    deploymentBlock: 1n,
+    domain: "stub",
+    pollMs: 60_000,
+  });
+  await follower.start();
+  follower.stop();
+  expect(follower.base.block).toBe(20_000n);
+  // The range settles near the limit in a few dozen refusals (re-widening after every success
+  // was refused 187 times, and halving left 401 reads).
+  expect(refused).toBeLessThan(50);
+  expect(read).toBeLessThan(300);
+});
+
 test("reads provider range limits from error messages", () => {
   expect(logRangeLimit(new Error("this block range should work: [0x10, 0x73]"), 5_000n)).toEqual({
     blocks: 100n,
