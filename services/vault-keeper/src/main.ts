@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { createDatabase } from "@conditional-stocks/db";
 import {
   DELTA_VAULT_ROLES,
   DEPLOYLESS_BATCH_SIZE,
@@ -141,6 +142,9 @@ async function main() {
     throw new Error("Every vault must trade on the same exchange");
 
   // One replica of the exchange for every vault, read from the chain the keepers sign against.
+  // Beside the API (VK_DATABASE_URL), it starts from the API's checkpoint of the same exchange
+  // (read only) instead of replaying from deployment, which nodes that prune history cannot serve.
+  const databaseUrl = env.VK_DATABASE_URL?.trim();
   const follower = new ChainFollower({
     client,
     exchange,
@@ -149,6 +153,13 @@ async function main() {
     domain: `${chainId}:${exchange}`,
     pollMs: 1000,
     onError: () => log("chain-read-failed"),
+    ...(databaseUrl && {
+      db: createDatabase({
+        connectionString: databaseUrl,
+        max: 1,
+        applicationName: "probabl-vault-keeper",
+      }),
+    }),
   });
   await follower.start();
   const tokens = new TokenReader(client);
