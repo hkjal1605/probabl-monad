@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { WorldBookRecord } from "@conditional-stocks/db";
 import {
   bookDefHash,
+  eventKey,
   outcomeMask,
   standardProducts,
   worldBooksCalls,
@@ -21,7 +22,15 @@ import {
 import { ChainFollower } from "@conditional-stocks/indexer";
 import { worldLedger } from "@conditional-stocks/indexer/worlds";
 import { initialJournal } from "@conditional-stocks/operator";
-import { createPublicClient, custom, type Hex, http, type PublicClient } from "viem";
+import {
+  createPublicClient,
+  custom,
+  type Hex,
+  http,
+  keccak256,
+  type PublicClient,
+  stringToBytes,
+} from "viem";
 import { type Anvil, accounts, send, startAnvil } from "../../../packages/evm-client/test/anvil.ts";
 import {
   CONDITIONS,
@@ -32,7 +41,7 @@ import {
   type Worlds,
 } from "../../../packages/evm-client/test/worlds-anvil.ts";
 import { settings } from "../src/config.ts";
-import { WorldKeeper, type WorldOrderRequest } from "../src/engine.ts";
+import { type PreviewBook, WorldKeeper, type WorldOrderRequest } from "../src/engine.ts";
 import { emptyData } from "../src/inputs.ts";
 import { WorldMarker } from "../src/marker.ts";
 import { LegReferences, SpotReferences } from "../src/references.ts";
@@ -209,6 +218,88 @@ afterAll(() => {
   node?.stop();
 });
 
+describe("previews of worlds not created yet", () => {
+  const fresh = keccak256(stringToBytes("condition opened by a user"));
+  const leg = (condition: Hex, i: number, reference: PreviewBook["legs"][number]["reference"]) => ({
+    eventKey: eventKey(condition, 1, 2),
+    wantYes: true,
+    source: "kalshi" as const,
+    marketId: `M${i}`,
+    conditionId: condition,
+    yesIndex: 1,
+    noIndex: 2,
+    question: `Leg ${i}`,
+    url: "https://kalshi.com/markets/x",
+    endTime: new Date(Date.now() + 15 * 86_400_000).toISOString(),
+    themes: ["ai"],
+    reference,
+  });
+  const book = (legs: PreviewBook["legs"]): PreviewBook => {
+    const now = Math.floor(Date.now() / 1000);
+    return {
+      legs,
+      feed: worlds.feed,
+      underlying: "US:NVDA",
+      feedDecimals: 8,
+      fixingTime: now + 20 * 86_400,
+      cutoff: now + 20 * 86_400 - 3_600,
+      maxStaleness: 3_600,
+      strikes: [24_000_000_000n],
+      feeBps: 100,
+      spot: null,
+    };
+  };
+  const stakes = { allIn: 20_000_000n, moneyBack: 100_000_000n };
+
+  test("a user's world prices from memory through the real quote path", () => {
+    observeAll();
+    const before = rpcCalls;
+    const reference = { yes: 0.4, halfSpread: 0.01, observedAtMs: Date.now() };
+    const result = keeper.preview(
+      book([leg(CONDITIONS[0]!, 0, null), leg(fresh, 9, reference)]),
+      stakes,
+      3,
+    );
+    if ("decline" in result) throw new Error(result.decline);
+    expect(rpcCalls - before).toBe(0);
+    // Five products, each bought for its stake: All-in for $20, Money-back for $100.
+    expect(result.products.map((p) => p.key).sort()).toEqual(
+      ["bet:above:1", "bet:below:1", "bet:world", "cond:above:1", "cond:below:1"].sort(),
+    );
+    for (const p of result.products) {
+      expect(p.decline).toBeNull();
+      expect(BigInt(p.units!)).toBeGreaterThan(0n);
+    }
+    const allIn = result.products.find((p) => p.key === "bet:above:1")!;
+    expect(allIn.stake).toBe("20000000");
+    // The marks are a distribution; the chain shrinks to P(W), above the unrelated chain.
+    expect(result.marks.reduce((a, b) => a + b, 0)).toBe(1_000_000);
+    const { chain, naive, world, legs } = result.analytics;
+    expect(chain.length).toBe(2);
+    expect(chain[1]).toBeLessThan(chain[0]!);
+    expect(chain[1]).toBe(world);
+    expect(Math.abs(world - (1_000_000 - result.marks[0]!))).toBeLessThan(5);
+    expect(naive[1]).toBeLessThanOrEqual(chain[1]! + 2_000);
+    // The followed leg from its live tick, the new one from its reference.
+    expect(legs[0]!.chance).toBe(350_000);
+    expect(legs[1]!.chance).toBe(400_000);
+    expect(result.analytics.forward).toBeGreaterThan(0);
+  });
+
+  test("a leg nobody follows and no reference: declined; nothing is held", () => {
+    const result = keeper.preview(book([leg(fresh, 9, null)]), stakes, 3);
+    expect(result).toEqual({ decline: "A leg has no live probability" });
+    expect(keeper.risk.outstanding.size).toBe(0);
+  });
+
+  test("an old reference is not used", () => {
+    const stale = { yes: 0.4, halfSpread: 0.01, observedAtMs: Date.now() - 30 * 60_000 };
+    expect(keeper.preview(book([leg(fresh, 9, stale)]), stakes, 3)).toEqual({
+      decline: "A leg has no live probability",
+    });
+  });
+});
+
 describe("quoting the world vault", () => {
   test("a quote reads only memory: no RPC, no fetch", async () => {
     observeAll();
@@ -339,6 +430,15 @@ describe("quoting the world vault", () => {
     });
     expect(blind.refresh(true)).toBe(0);
     expect(blind.price(order({}), 3)).toEqual({ decline: "The book is not quoted" });
+  });
+
+  test("indications carry each book's chance chain", () => {
+    observeAll();
+    keeper.refresh(true);
+    const [priced] = keeper.indications(3).filter((b) => b.book === 1);
+    expect(priced!.analytics.chain.length).toBe(3);
+    expect(priced!.analytics.legs.map((l) => l.chance)).toEqual([350_000, 150_000, 300_000]);
+    expect(priced!.analytics.move).toBeGreaterThan(0);
   });
 
   test("indications bracket each product and marks sum to a million", () => {

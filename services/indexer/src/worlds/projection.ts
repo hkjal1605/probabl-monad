@@ -38,6 +38,18 @@ export interface ProductPrice {
 export interface BookQuotes {
   products: Map<string, ProductPrice>;
   marks: number[] | null;
+  /** The newest maker's explanation of its price: each open leg's chance, the chance chain
+   * (and the same were the legs unrelated), P(W), the spot, the world's forward and the move to
+   * the fixing. */
+  analytics?: {
+    legs: { eventKey: Hex; chance: number }[];
+    chain: number[];
+    naive: number[];
+    world: number;
+    spot: number | null;
+    forward: number | null;
+    move: number | null;
+  } | null;
   at: number;
 }
 export type BookPrices = (book: number) => BookQuotes | undefined;
@@ -128,6 +140,9 @@ export function bookView(
     defHash: b.defHash,
     title: meta?.title ?? null,
     kind: meta?.kind ?? null,
+    /** A user's world: what it says and who opened it. */
+    opinion: meta?.metadata.opinion ?? null,
+    creator: meta?.creator ?? null,
     state: BOOK_STATE_NAMES[state] ?? "unknown",
     stateCode: state,
     /** The pause stops every book's fills. */
@@ -175,6 +190,7 @@ export function bookView(
     createdTx: b.createdTx,
     products: productsOf(b, prices),
     marks: prices?.(b.id)?.marks ?? null,
+    analytics: prices?.(b.id)?.analytics ?? null,
   };
 }
 export type BookView = ReturnType<typeof bookView>;

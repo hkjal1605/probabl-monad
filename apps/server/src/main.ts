@@ -46,8 +46,10 @@ import { mountTrading } from "./trading/routes.ts";
 import { mountWorldAdmin } from "./worlds/admin.ts";
 import { WorldDesk } from "./worlds/desk.ts";
 import { WorldRecorder } from "./worlds/history.ts";
+import { mountOpinions } from "./worlds/opinions.ts";
 import { mountWorlds } from "./worlds/routes.ts";
 import { WorldTrading } from "./worlds/trading.ts";
+import { loadWorldUnderlyings, WorldSpots } from "./worlds/underlyings.ts";
 
 const required = (name: string) => {
   const value = process.env[name]?.trim();
@@ -474,7 +476,7 @@ if (worlds) {
         : null,
     signer,
   });
-  mountWorldAdmin(app, {
+  const { prepareUserBook } = mountWorldAdmin(app, {
     db,
     indexer: worlds,
     client,
@@ -482,8 +484,67 @@ if (worlds) {
     events,
     metadataBase: process.env.WORLD_METADATA_BASE_URL?.trim() || origins[0]!,
   });
+  // Users' worlds: opinions read into worlds, priced before they exist, opened by members.
+  const quoteDecimals = Number(
+    await client.readContract({
+      address: worlds.deployment.quote,
+      abi: [
+        {
+          type: "function",
+          name: "decimals",
+          stateMutability: "view",
+          inputs: [],
+          outputs: [{ type: "uint8" }],
+        },
+      ],
+      functionName: "decimals",
+    }),
+  );
+  const underlyings = loadWorldUnderlyings(
+    chainId,
+    process.env.WORLD_FEEDS_PATH?.trim() || undefined,
+  );
+  const decimalsOf = (name: string, fallback: number) => {
+    const value = Number(process.env[name]?.trim() || fallback);
+    if (!Number.isFinite(value) || value < 0) throw new Error(`${name} must be a number`);
+    return value;
+  };
+  mountOpinions(app, {
+    indexer: worlds,
+    db,
+    auth,
+    client,
+    hub: rfq,
+    events,
+    underlyings,
+    spots: new WorldSpots({
+      client,
+      reference: async (tokens) => {
+        const r = await prices.getPrices(tokens);
+        const out = new Map<`0x${string}`, number>();
+        for (const p of r.prices)
+          if (p.status === "available" && typeof p.priceUsd === "number" && p.priceUsd > 0)
+            out.set(getAddress(p.token), p.priceUsd);
+        return out;
+      },
+    }),
+    assistant: {
+      apiKey: process.env.ANTHROPIC_API_KEY?.trim() || null,
+      model: process.env.WORLD_ASSISTANT_MODEL?.trim() || "claude-sonnet-5-5",
+      inputPrice: decimalsOf("WORLD_ASSISTANT_INPUT_USD_PER_MTOK", 3),
+      outputPrice: decimalsOf("WORLD_ASSISTANT_OUTPUT_USD_PER_MTOK", 15),
+      timeoutMs: 12_000,
+      dailyBudgetUsd: decimalsOf("WORLD_ASSISTANT_DAILY_USD", 25),
+    },
+    feeBps: whole("WORLD_USER_FEE_BPS", 100, 1_000),
+    quoteUnit: 10n ** BigInt(quoteDecimals),
+    trustedHops,
+    prepareUserBook,
+    log: (event, detail) => logger.info(event, detail),
+  });
   worldRecorder?.start();
   logger.info("worlds.enabled", {
+    assistant: Boolean(process.env.ANTHROPIC_API_KEY?.trim()),
     books: worlds.deployment.books,
     oracle: worlds.deployment.oracle,
     vaults: worlds.deployment.vaults,

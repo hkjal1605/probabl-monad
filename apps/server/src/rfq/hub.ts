@@ -15,7 +15,12 @@ import {
   parseMakerMessage,
   RFQ_PROTOCOL_VERSION,
 } from "./protocol.ts";
-import type { WorldIndication, WorldMakerQuote } from "./world-protocol.ts";
+import type {
+  WorldAnalytics,
+  WorldIndication,
+  WorldMakerQuote,
+  WorldPreviewAnswer,
+} from "./world-protocol.ts";
 
 /** One maker connection. `send` returns false when the socket could not take the frame. */
 export interface RfqSession {
@@ -59,6 +64,8 @@ interface Pending {
 export interface WorldBookPrices {
   products: Map<string, { bid: number | null; ask: number | null; at: number }>;
   marks: number[] | null;
+  /** The newest maker's analytics (the chance chain, the stock in the world). */
+  analytics: WorldAnalytics | null;
   at: number;
 }
 
@@ -90,6 +97,15 @@ export class RfqHub {
     Map<number, WorldIndication & { at: number }>
   >();
   private arrivals = 0;
+  /** Previews in flight: the first priced answer wins; every maker declining ends it too. */
+  private readonly previews = new Map<
+    string,
+    {
+      recipients: Set<string>;
+      declines: Map<string, WorldPreviewAnswer>;
+      finish(answer: WorldPreviewAnswer | null): void;
+    }
+  >();
 
   constructor(
     readonly options: {
@@ -208,7 +224,7 @@ export class RfqHub {
     for (const [, books] of this.worldIndications)
       for (const [book, ind] of books) {
         if (now - ind.at > INDICATION_TTL_MS) continue;
-        const b = best.get(book) ?? { products: new Map(), marks: null, at: 0 };
+        const b = best.get(book) ?? { products: new Map(), marks: null, analytics: null, at: 0 };
         for (const p of ind.products) {
           const q = b.products.get(p.key) ?? { bid: null, ask: null, at: ind.at };
           if (p.bid !== null && (q.bid === null || p.bid > q.bid)) q.bid = p.bid;
@@ -217,6 +233,7 @@ export class RfqHub {
           b.products.set(p.key, q);
         }
         if (ind.marks && ind.at >= b.at) b.marks = ind.marks;
+        if (ind.analytics && ind.at >= b.at) b.analytics = ind.analytics;
         b.at = Math.max(b.at, ind.at);
         best.set(book, b);
       }
@@ -282,6 +299,39 @@ export class RfqHub {
     });
   }
 
+  /** Asks the makers approved for worlds to price a world not created yet (`world.preview`).
+   * Resolves with the first priced answer, or when every maker declined with the first
+   * decline, or null when none answered within `timeoutMs`. Nothing is signed. */
+  preview(id: string, request: object, timeoutMs: number): Promise<WorldPreviewAnswer | null> {
+    const recipients = [...this.sessions.entries()].filter(
+      ([, live]) => live.values().next().value?.maker.worlds === true,
+    );
+    if (!recipients.length) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      const entry = {
+        recipients: new Set(recipients.map(([makerId]) => makerId)),
+        declines: new Map<string, WorldPreviewAnswer>(),
+        finish: (answer: WorldPreviewAnswer | null) => {
+          if (!this.previews.has(id)) return;
+          this.previews.delete(id);
+          clearTimeout(timer);
+          resolve(answer);
+        },
+      };
+      const timer = setTimeout(
+        () => entry.finish(entry.declines.values().next().value ?? null),
+        timeoutMs,
+      );
+      this.previews.set(id, entry);
+      for (const [makerId, live] of recipients) {
+        let delivered = false;
+        for (const session of live) delivered = session.send(request) || delivered;
+        if (!delivered) entry.recipients.delete(makerId);
+      }
+      if (!entry.recipients.size) entry.finish(null);
+    });
+  }
+
   /** Handles one frame from a maker connection. */
   receive(session: RfqSession, text: string) {
     let message: MakerMessage;
@@ -297,6 +347,16 @@ export class RfqHub {
     }
     if (message.type === "indications") {
       this.indications.set(session.maker.id, { at: this.now(), prices: message.prices });
+      return;
+    }
+    if (message.type === "world.previewed") {
+      const entry = this.previews.get(message.id);
+      if (!entry?.recipients.has(session.maker.id)) return;
+      const { type: _, id: __, ...answer } = message;
+      if (answer.decline === null) return entry.finish(answer);
+      entry.declines.set(session.maker.id, answer);
+      if (entry.declines.size >= entry.recipients.size)
+        entry.finish(entry.declines.values().next().value ?? null);
       return;
     }
     if (message.type === "world.indications") {

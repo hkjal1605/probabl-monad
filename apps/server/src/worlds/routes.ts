@@ -320,6 +320,7 @@ export function mountWorlds(
       books: [...(hub?.worldPrices() ?? new Map()).entries()].map(([book, p]) => ({
         book,
         marks: p.marks,
+        analytics: p.analytics,
         at: p.at,
         products: [...p.products].map(([key, q]) => ({ key, bid: q.bid, ask: q.ask, at: q.at })),
       })),

@@ -234,6 +234,14 @@ export class WorldIndexer {
   meta(defHash: Hex) {
     return this.metadata.get(defHash.toLowerCase() as Hex);
   }
+  /** Every registered book's metadata, as last read (created books and pending ones). */
+  metadataRecords(): WorldBookRecord[] {
+    return [...this.metadata.values()];
+  }
+  /** Confirmed fills the database has not stored yet, newest first. */
+  unpersistedFills() {
+    return [...this.tail].reverse().map((f) => fillView(f, "confirmed"));
+  }
   /** Reads every book's metadata again (after a registration). */
   refreshMetadata() {
     return this.loadMetadata();
@@ -494,16 +502,21 @@ export class WorldIndexer {
     });
     app.get("/v2/deployment", (c) => {
       const s = this.trading();
-      return c.json({
-        chainId: s.deployment.chainId,
-        books: s.deployment.books,
-        oracle: s.deployment.oracle,
-        quote: s.deployment.quote,
-        vaults: s.deployment.vaults,
-        paused: s.config.paused,
-        roles: { books: s.config, oracle: s.oracle },
-        block: s.block.toString(),
-      });
+      // The role configs carry bigints (admin transfer times): serialized as decimal strings.
+      return c.body(
+        json({
+          chainId: s.deployment.chainId,
+          books: s.deployment.books,
+          oracle: s.deployment.oracle,
+          quote: s.deployment.quote,
+          vaults: s.deployment.vaults,
+          paused: s.config.paused,
+          roles: { books: s.config, oracle: s.oracle },
+          block: s.block.toString(),
+        }),
+        200,
+        { "content-type": "application/json" },
+      );
     });
     app.get("/v2/books", (c) => {
       const filter = {

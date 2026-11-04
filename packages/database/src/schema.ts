@@ -196,6 +196,22 @@ const DDL = [
     PRIMARY KEY (deployment, def_hash))`,
   `CREATE UNIQUE INDEX IF NOT EXISTS world_books_book ON probabl.world_books (deployment, book)
     WHERE book IS NOT NULL`,
+  // A user's world: the member who opened it and the hash of its canonical opinion (legs,
+  // stock, date, strike), so one opinion opens one book however it is worded.
+  "ALTER TABLE probabl.world_books ADD COLUMN IF NOT EXISTS creator bytea",
+  "ALTER TABLE probabl.world_books ADD COLUMN IF NOT EXISTS spec_hash bytea",
+  `CREATE UNIQUE INDEX IF NOT EXISTS world_books_spec ON probabl.world_books
+    (deployment, spec_hash) WHERE spec_hash IS NOT NULL`,
+  `CREATE INDEX IF NOT EXISTS world_books_creator ON probabl.world_books
+    (deployment, creator, created_at) WHERE creator IS NOT NULL`,
+  // The world assistant's audit (docs/version-2-plan.md §9): each opinion it read, the draft it
+  // answered with, the model and its cost. Owner is null before sign-in.
+  `CREATE TABLE IF NOT EXISTS probabl.world_drafts (
+    id uuid PRIMARY KEY, deployment smallint NOT NULL, owner bytea, input text NOT NULL,
+    draft jsonb NOT NULL, model text, cost_micros integer NOT NULL DEFAULT 0,
+    created_at timestamptz NOT NULL DEFAULT now())`,
+  `CREATE INDEX IF NOT EXISTS world_drafts_time ON probabl.world_drafts
+    (deployment, created_at)`,
   // Delegated world fills the API signs: the exact signed bytes are journaled before broadcast.
   `CREATE TABLE IF NOT EXISTS probabl.world_submissions (
     domain text NOT NULL, owner text NOT NULL, client_id text NOT NULL, terms_hash text NOT NULL,

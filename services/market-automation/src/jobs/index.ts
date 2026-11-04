@@ -4,11 +4,11 @@ import type { Admin } from "../admin.ts";
 import type { LadderConfig } from "../ladders.ts";
 import type { CuratedVault } from "../vaults.ts";
 import type { KalshiApi } from "../venues/kalshi-api.ts";
-import type { CuratedWorld, WorldAdmin } from "../worlds.ts";
+import type { WorldAdmin } from "../worlds.ts";
 import { curateVaults } from "./curate-vaults.ts";
-import { curateWorlds } from "./curate-worlds.ts";
 import { fixBooks } from "./fix-books.ts";
 import { dailyLadders, weeklyLadders } from "./ladders.ts";
+import { openUserBooks } from "./open-user-books.ts";
 import { resolveEvents } from "./resolve-events.ts";
 import { resolveMarkets } from "./resolve-markets.ts";
 
@@ -24,9 +24,9 @@ export interface JobContext {
   kalshi: KalshiApi;
   /** The chain the exchange and the world books are on. */
   client?: PublicClient;
-  /** The world books (absent without WORLD_BOOKS_ADDRESS) and the curated worlds to create. */
+  /** The world books (absent without WORLD_BOOKS_ADDRESS). Their worlds are users' own: the
+   * protocol lists none. */
   worlds?: WorldAdmin;
-  curated?: CuratedWorld[];
   /** False in a dry run: jobs log what they would do and change nothing. */
   execute: boolean;
   logger: Logger;
@@ -47,5 +47,5 @@ export const JOBS: Job[] = [
   curateVaults,
   resolveEvents,
   fixBooks,
-  curateWorlds,
+  openUserBooks,
 ];

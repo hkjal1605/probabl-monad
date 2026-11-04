@@ -1,4 +1,4 @@
-/** World books' automation: curated books' next fixing and strikes, and on anvil every
+/** World books' automation: users' worlds created from their approved packets, and on anvil every
  * transaction an approved world packet authorizes, rebuilt locally from the packet and accepted
  * on chain (book creation, an event's freeze, commitment and resolution, a feed fixing proposed
  * from the provably last round and finalized, and the two-key fallback of a held fixing). */
@@ -34,77 +34,10 @@ import {
   warp,
 } from "../../../packages/evm-client/test/worlds-anvil.ts";
 import type { Admin } from "../src/admin.ts";
-import { curateWorlds } from "../src/jobs/curate-worlds.ts";
 import { fixBooks } from "../src/jobs/fix-books.ts";
+import { openUserBooks } from "../src/jobs/open-user-books.ts";
 import { resolveEvents } from "../src/jobs/resolve-events.ts";
-import {
-  curatedBook,
-  nextWeekly,
-  WorldAdmin,
-  type WorldBookView,
-  type WorldEvidence,
-} from "../src/worlds.ts";
-
-const day = (iso: string) => Math.floor(Date.parse(iso) / 1000);
-
-describe("curated worlds", () => {
-  test("the next weekly fixing is in the world's time zone, after now", () => {
-    // Friday 16:00 New York: EDT (UTC-4) in October, EST (UTC-5) in December.
-    expect(nextWeekly(day("2026-10-26T12:00:00Z"), 5, "16:00", "America/New_York")).toBe(
-      day("2026-10-30T20:00:00Z"),
-    );
-    expect(nextWeekly(day("2026-12-01T12:00:00Z"), 5, "16:00", "America/New_York")).toBe(
-      day("2026-12-04T21:00:00Z"),
-    );
-    // At or past this week's fixing, the next week's.
-    expect(nextWeekly(day("2026-10-30T20:00:00Z"), 5, "16:00", "America/New_York")).toBe(
-      day("2026-11-06T21:00:00Z"),
-    );
-    // A half-hour zone: 15:30 Kolkata is 10:00 UTC.
-    expect(nextWeekly(day("2026-11-02T00:00:00Z"), 1, "15:30", "Asia/Kolkata")).toBe(
-      day("2026-11-02T10:00:00Z"),
-    );
-  });
-
-  test("a priced world's strikes round around spot; an event-only world needs a cutoff", async () => {
-    const client = {
-      readContract: async () => [7n, 20_937_000_000n, 0n, 0n, 7n],
-    } as unknown as PublicClient;
-    const world = {
-      title: "NVDA if AI",
-      legs: [{ source: "polymarket" as const, marketId: "1", themes: ["ai"] }],
-      underlying: "US:NVDA",
-      feed: "0x00000000000000000000000000000000000000fe" as Address,
-      fixing: { weekday: 5, time: "16:00", timeZone: "America/New_York" },
-      strikes: { percents: [-10, -5, 0, 5, 10], tick: "500000000" },
-      feeBps: 100,
-    };
-    const now = day("2026-10-26T12:00:00Z");
-    const request = await curatedBook(world, client, now);
-    expect(request.book).toMatchObject({
-      underlying: "US:NVDA",
-      fixingTime: String(day("2026-10-30T20:00:00Z")),
-      cutoff: String(day("2026-10-30T19:00:00Z")),
-      strikes: ["19000000000", "20000000000", "21000000000", "22000000000", "23000000000"],
-      feeBps: "100",
-    });
-    expect(request.legs).toEqual([
-      { source: "polymarket", marketId: "1", wantYes: true, themes: ["ai"] },
-    ]);
-    // Past this week's cutoff the next book is next week's: this one no longer trades.
-    const late = await curatedBook(world, client, day("2026-10-30T19:30:00Z"));
-    expect(late.book.fixingTime).toBe(String(day("2026-11-06T21:00:00Z")));
-    await expect(
-      curatedBook({ title: world.title, legs: world.legs, feeBps: 100 }, client, now),
-    ).rejects.toThrow("needs cutoffAt");
-    const eventOnly = await curatedBook(
-      { title: world.title, legs: world.legs, feeBps: 100, cutoffAt: "2026-12-01T00:00:00Z" },
-      client,
-      now,
-    );
-    expect(eventOnly.book).toEqual({ feeBps: "100", cutoff: String(day("2026-12-01T00:00:00Z")) });
-  });
-});
+import { WorldAdmin, type WorldBookView, type WorldEvidence } from "../src/worlds.ts";
 
 let node: Anvil;
 let worlds: Worlds;
@@ -548,66 +481,37 @@ describe("world jobs", () => {
     expect(decided.names()).toEqual(["books"]);
   });
 
-  test("curate-worlds creates a world's next book once, carrying a pending packet through", async () => {
-    const client = {
-      readContract: async () => [7n, 20_937_000_000n, 0n, 0n, 7n],
-    } as unknown as PublicClient;
-    const world = {
-      title: "NVDA if AI",
-      legs: [{ source: "polymarket" as const, marketId: "1" }],
-      underlying: "US:NVDA",
-      feed: "0x00000000000000000000000000000000000000fe" as Address,
-      fixing: { weekday: 5, time: "16:00", timeZone: "America/New_York" },
-      strikes: { percents: [0], tick: "100000000" },
-      feeBps: 100,
-    };
-    const request = await curatedBook(world, client, Math.floor(Date.now() / 1000));
-    const fixingTime = (request.book as { fixingTime: string }).fixingTime;
-    const fresh = fakeWorlds({
-      prepareBook: { envelope: {}, status: "prepared", observations: [] },
-    });
-    await curateWorlds.run(context(fresh.worlds, { client, curated: [world] }));
-    expect(fresh.names()).toEqual(["books", "evidence", "prepareBook", "approve", "execute"]);
-    // A live book with the same legs and fixing: nothing to do.
-    const live = fakeWorlds({
-      books: [
-        view({
-          fixingTime,
-          legs: [
-            {
-              eventKey: `0x${"aa".repeat(32)}`,
-              wantYes: true,
-              state: "open",
-              venue: {
-                source: "polymarket",
-                marketId: "1",
-                conditionId: `0x${"cd".repeat(32)}`,
-                yesIndex: 1,
-                noIndex: 2,
-                endTime: "",
-              },
-            },
-          ],
-        }),
-      ],
-    });
-    await curateWorlds.run(context(live.worlds, { client, curated: [world] }));
-    expect(live.names()).toEqual(["books", "evidence"]);
-    // An approved packet not yet executed is executed, not prepared again.
-    const pending = {
+  test("open-user-books creates each approved user world once, and keeps going past a failure", async () => {
+    const packet = (hash: string) => ({
       status: "approved",
       observations: [],
-      envelope: {
-        packetHash: "0xb",
-        packet: {
-          kind: "book-creation",
-          legs: [{ source: "polymarket", marketId: "1", wantYes: true }],
-          book: { fixingTime, cutoff: "0" },
-        },
+      envelope: { packetHash: hash, packet: { kind: "book-creation", title: "A world" } },
+    });
+    let first = true;
+    const fake = fakeWorlds({
+      userBooks: [packet("0xa"), packet("0xb")],
+      execute: () => {
+        if (first) {
+          first = false;
+          throw new Error("reverted");
+        }
+        return { action: "create-book", transactionHash: "0x2" };
       },
-    };
-    const carried = fakeWorlds({ evidence: [pending] });
-    await curateWorlds.run(context(carried.worlds, { client, curated: [world] }));
-    expect(carried.names()).toEqual(["books", "evidence", "execute"]);
+    });
+    await openUserBooks.run(context(fake.worlds));
+    expect(fake.names()).toEqual(["userBooks", "execute", "execute"]);
+    expect(
+      fake.calls
+        .filter(([n]) => n === "execute")
+        .map(([, p]) => (p as { envelope: { packetHash: string } }).envelope.packetHash),
+    ).toEqual(["0xa", "0xb"]);
+    // Nothing pending: one read, no transaction.
+    const idle = fakeWorlds({ userBooks: [] });
+    await openUserBooks.run(context(idle.worlds));
+    expect(idle.names()).toEqual(["userBooks"]);
+    // A dry run lists what is due and signs nothing.
+    const dry = fakeWorlds({ userBooks: [packet("0xc")] });
+    await openUserBooks.run({ ...(context(dry.worlds) as object), execute: false } as never);
+    expect(dry.names()).toEqual(["userBooks"]);
   });
 });

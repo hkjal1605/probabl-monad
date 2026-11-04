@@ -54,6 +54,14 @@ export interface WorldBookMetadata {
   metadataUri: string;
   /** The definition itself, as JSON (bigints as decimal strings). */
   def: Record<string, unknown>;
+  /** A user's world: what it says, as the app phrases it (the stock condition and the date). */
+  opinion?: {
+    sentence: string;
+    direction: "above" | "below" | null;
+    strike: string | null;
+    symbol: string | null;
+    fixingDate: string | null;
+  };
 }
 export interface WorldBookRecord {
   defHash: string;
@@ -63,6 +71,9 @@ export interface WorldBookRecord {
   metadata: WorldBookMetadata;
   packetHash: string | null;
   createdAt: Date;
+  /** A user's world: the member who opened it, and its opinion's canonical hash. */
+  creator?: string | null;
+  specHash?: string | null;
 }
 /** The latent correlation of two events' YES outcomes (`a` < `b` as hex), its standard error
  * in Fisher z and the effective sample behind it. */
@@ -178,7 +189,7 @@ const fillRow = (r: any): WorldFillRow => ({
   nonce: BigInt(r.nonce),
 });
 const BOOK = `encode(def_hash, 'hex') AS def_hash, book, title, kind, metadata, packet_hash,
-  created_at`;
+  created_at, encode(creator, 'hex') AS creator, encode(spec_hash, 'hex') AS spec_hash`;
 // biome-ignore lint/suspicious/noExplicitAny: pg rows are untyped.
 const bookRecord = (r: any): WorldBookRecord => ({
   defHash: `0x${r.def_hash}`,
@@ -188,6 +199,8 @@ const bookRecord = (r: any): WorldBookRecord => ({
   metadata: r.metadata,
   packetHash: r.packet_hash,
   createdAt: r.created_at,
+  creator: r.creator ? `0x${r.creator}` : null,
+  specHash: r.spec_hash ? `0x${r.spec_hash}` : null,
 });
 // biome-ignore lint/suspicious/noExplicitAny: pg rows are untyped.
 const relationRecord = (r: any): LegRelationRecord => ({
@@ -214,6 +227,20 @@ export function worldQueries(db: Connection) {
         `SELECT ${BOOK} FROM probabl.world_books
         WHERE deployment = ${DEPLOYMENT} AND def_hash = decode($2, 'hex')`,
         [domain, hex(defHash)],
+      )
+    ).rows[0];
+    return row ? bookRecord(row) : undefined;
+  };
+  /** The user world registered for a canonical opinion, if any. */
+  const userWorldBook = async (
+    domain: string,
+    specHash: string,
+  ): Promise<WorldBookRecord | undefined> => {
+    const row = (
+      await db.query(
+        `SELECT ${BOOK} FROM probabl.world_books
+        WHERE deployment = ${DEPLOYMENT} AND spec_hash = decode($2, 'hex')`,
+        [domain, hex(specHash)],
       )
     ).rows[0];
     return row ? bookRecord(row) : undefined;
@@ -291,12 +318,17 @@ export function worldQueries(db: Connection) {
         kind: "curated" | "user";
         metadata: WorldBookMetadata;
         packetHash?: string | null;
+        creator?: string | null;
+        specHash?: string | null;
       },
     ): Promise<WorldBookRecord> {
+      // A user's opinion opened twice (two members at once) keeps the first registration.
       await db.query(
-        `INSERT INTO probabl.world_books (deployment, def_hash, title, kind, metadata, packet_hash)
-        VALUES (${DEPLOYMENT}, decode($2, 'hex'), $3, $4, $5, $6)
-        ON CONFLICT (deployment, def_hash) DO NOTHING`,
+        `INSERT INTO probabl.world_books
+          (deployment, def_hash, title, kind, metadata, packet_hash, creator, spec_hash)
+        VALUES (${DEPLOYMENT}, decode($2, 'hex'), $3, $4, $5, $6, decode($7, 'hex'),
+          decode($8, 'hex'))
+        ON CONFLICT DO NOTHING`,
         [
           domain,
           hex(book.defHash),
@@ -304,11 +336,89 @@ export function worldQueries(db: Connection) {
           book.kind,
           JSON.stringify(book.metadata),
           book.packetHash ?? null,
+          book.creator ? hex(book.creator) : null,
+          book.specHash ? hex(book.specHash) : null,
         ],
       );
-      const record = await worldBook(domain, book.defHash);
+      const record =
+        (book.specHash ? await userWorldBook(domain, book.specHash) : undefined) ??
+        (await worldBook(domain, book.defHash));
       if (!record) throw new Error("The world book was not registered");
       return record;
+    },
+    userWorldBook,
+    /** How many worlds a member opened since `since`. */
+    async userWorldBooksSince(domain: string, creator: string, since: Date) {
+      const row = (
+        await db.query<{ n: string }>(
+          `SELECT count(*)::text AS n FROM probabl.world_books
+          WHERE deployment = ${DEPLOYMENT} AND creator = decode($2, 'hex') AND created_at >= $3`,
+          [domain, hex(creator), since],
+        )
+      ).rows[0];
+      return Number(row?.n ?? 0);
+    },
+    /** Per book: distinct takers, their premium paid on buys, fills, and the last fill's time
+     * (finalized fills). */
+    async worldBookActivity(domain: string) {
+      return (
+        await db.query<{
+          book: number;
+          traders: string;
+          staked: string;
+          fills: string;
+          last: string;
+        }>(
+          `SELECT book, count(DISTINCT taker)::text AS traders,
+            coalesce(sum(price) FILTER (WHERE NOT sell), 0)::text AS staked,
+            count(*)::text AS fills, max(block_time)::text AS last
+          FROM probabl.world_fills WHERE deployment = ${DEPLOYMENT} GROUP BY book`,
+          [domain],
+        )
+      ).rows.map((r) => ({
+        book: r.book,
+        traders: Number(r.traders),
+        staked: BigInt(r.staked),
+        fills: Number(r.fills),
+        last: BigInt(r.last),
+      }));
+    },
+    /** The assistant's audit row of one opinion read. */
+    async recordWorldDraft(
+      domain: string,
+      d: {
+        id: string;
+        owner: string | null;
+        input: string;
+        draft: unknown;
+        model: string | null;
+        costMicros: number;
+      },
+    ) {
+      await db.query(
+        `INSERT INTO probabl.world_drafts (id, deployment, owner, input, draft, model, cost_micros)
+        VALUES ($2, ${DEPLOYMENT}, decode($3, 'hex'), $4, $5, $6, $7)`,
+        [
+          domain,
+          d.id,
+          d.owner ? hex(d.owner) : null,
+          d.input.slice(0, 2_000),
+          JSON.stringify(d.draft),
+          d.model,
+          Math.max(0, Math.round(d.costMicros)),
+        ],
+      );
+    },
+    /** The assistant's spend since `since` (micro-dollars), for its daily budget. */
+    async worldDraftCost(domain: string, since: Date) {
+      const row = (
+        await db.query<{ cost: string }>(
+          `SELECT coalesce(sum(cost_micros), 0)::text AS cost FROM probabl.world_drafts
+          WHERE deployment = ${DEPLOYMENT} AND created_at >= $2`,
+          [domain, since],
+        )
+      ).rows[0];
+      return Number(row?.cost ?? 0);
     },
     /** Records the on-chain id of a registered definition. */
     async setWorldBookId(domain: string, defHash: string, book: number) {

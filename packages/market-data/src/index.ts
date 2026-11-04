@@ -1,4 +1,5 @@
 export * from "./canonical.ts";
+export * from "./catalog.ts";
 export * from "./event-market.ts";
 export * from "./evidence.ts";
 export * from "./kalshi/metadata.ts";

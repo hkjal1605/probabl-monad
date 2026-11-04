@@ -397,6 +397,10 @@ describe("the world API", () => {
     expect(vaults[0]!.address).toBe(worlds.vault);
     expect(vaults[0]!.refNav).toBe("1000000000000");
     expect((await call("/v2/worlds/status")).body.makers).toBe(1);
+    // The deployment, roles included (their bigints as strings), for the app to check against.
+    const deployment = await call("/v2/deployment");
+    expect(deployment.status).toBe(200);
+    expect(deployment.body.books).toBe(worlds.books);
   });
 
   test("a firm quote the wallet fills itself; its maker hears it filled", async () => {

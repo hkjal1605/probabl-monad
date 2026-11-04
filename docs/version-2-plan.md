@@ -40,6 +40,7 @@ quoting and capital). The numbers in it use that research's example world; §18 
 16. Rollout phases
 17. Open decisions
 18. Appendix: the worked example
+19. Users' worlds, as built (2026-11-04)
 
 ---
 
@@ -156,7 +157,7 @@ These are the research conclusions the plan is built on. Each is enforced somewh
    ┌───────────────────────▼──┐   ┌────────▼─────────┐   ┌─▼──────────────────────┐
    │ services/polymarket-     │   │ world-keeper:    │   │ market-automation:     │
    │ ingestor (Polymarket +   │──▶│ world pricer,    │   │ resolve-events, fix-   │
-   │ Kalshi probs, history)   │   │ risk engine,     │   │ books, curate-worlds   │
+   │ Kalshi probs, history)   │   │ risk engine,     │   │ books, open-user-books │
    └──────────────────────────┘   │ quote signer,    │   └─────────┬──────────────┘
                                   │ marker           │             │
                                   └────────┬─────────┘             │
@@ -1004,9 +1005,11 @@ fits its factors per book from them (§7). `rfq_makers` gains a `worlds` flag. A
     (§10.4);
   - SSE `/v2/stream?owner=` with the `/stream` frame shape (`IndexUpdate` naming books and owners).
 
-**Deferred to Phase 2** (the builder, skipped in v2.0): catalog search
-(`/v2/legs/search`), the world assistant (`POST /v2/worlds/parse`, §9) and books for user-built
-worlds (`POST /v2/books/resolve`, created in their first fill). Only curated books exist (§10.4).
+**Users' worlds** (§19, built 2026-11-04, replacing curated books): the event catalog search
+(`/v2/worlds/events/search`), the world assistant (`POST /v2/worlds/parse`, §9), previews of a world
+not created yet (`POST /v2/worlds/preview`), opening one (`POST /v2/worlds/open`, its book created
+by automation), the public feed (`/v2/worlds/feed`) and holders (`/v2/books/:book/holders`). The
+protocol lists no worlds of its own.
 
 **World RFQ.** It extends `apps/server/src/rfq/` with protocol version 2 on the same
 `/v1/rfq/stream`.
@@ -1088,7 +1091,7 @@ stablecoin, so there's no conversion.
 |---|---|---|
 | `resolve-events` | 60 s | For each event used by a live book, the `settleMarket` flow per event: freeze when the venue closes or the result is in; commit an `event-resolution` packet as the market admin after a fresh snapshot agrees; resolve as the resolution admin. It reuses `venues/polymarket.ts` (Polygon payout at `finalized`) and `venues/kalshi.ts`, and maps YES, NO and ½/½ (→ INVALID) as today. |
 | `fix-books` | 60 s | For books awaiting their fixing: find the provably last round at or before the fixing (bisection over `getRoundData`), `proposeFix`, then `finalizeFix` after `FIX_WINDOW`. A held fixing, or none provable by the deadline, is reported for the two-key fallback (`/v2/admin/books/:book/fixing/prepare`). |
-| `curate-worlds` | 15 min | Create curated books from `AUTOMATION_WORLDS_PATH` (`worlds.example.json`) through the evidence flow. Each entry: legs (Gamma ids or Kalshi tickers with outcomes), underlying and feed, fixing rule (e.g. Friday 16:00 New York), strike rule (percentages around spot, rounded to a tick). The next book is the first fixing whose cutoff is still ahead; a live book or an unexecuted packet with the same legs and fixing is carried through instead. |
+| `open-user-books` | 2 s | Create the book of every world a member opened (§19): the API approves a member's world by its rules and lists it at `/v2/admin/user-books` from memory; each is executed once, oldest first, through the evidence flow's execute step (rebuilt locally, signed only when it matches the API's preview). The curated-world job and its config were removed: worlds are users' own. |
 
 The vault's decided books are redeemed by the keeper's housekeeping (§10.5), not a separate job.
 
@@ -1151,9 +1154,10 @@ off this host in production.
 
 | Route | Module | Render |
 |---|---|---|
-| `/worlds` | `WorldsPageModule`: the curated worlds hub | prerendered shell |
-| `/worlds/[book]` | `WorldDetailPageModule`: world page and ticket | on demand, as market detail |
-| `/worlds/new` | `WorldBuilderPageModule` (Phase 2) | prerendered shell |
+| `/worlds` | `WorldsPageModule`: say what you think (the composer), and every world people trade | prerendered shell |
+| `/worlds/new?q=` | `WorldBuilderPageModule`: the opinion read into an editable sentence, priced live, and the ticket | prerendered shell |
+| `/worlds/[book]` | `WorldDetailPageModule`: the public world page (legs, chance chain, outcomes, who's in, activity) and its ticket | on demand, as market detail |
+| `/worlds/me` | `MyWorldsPageModule`: world balance, one-tap trading, positions as leg trackers, cash-out, collect | prerendered shell |
 | `/portfolio` | adds a **Worlds** tab beside Trading Account / Positions / Orders / Claims / Trade History | existing |
 | `/resolution?book=` | leg and fixing evidence | existing module, extended |
 | `/vaults/world` | the LP page (deposit and withdraw requests, nav, utilization, exposures) | prerendered shell |
@@ -1476,14 +1480,15 @@ book, quote, fill, cash out, a leg fails (refund path), all legs pass and the pr
 - **Exit:** the factor model beats independence and the theme default out of sample, and the
   appendix numbers reproduce.
 
-**Phase 1: curated worlds on testnet (about 5 weeks).**
+**Phase 1: worlds on testnet (about 5 weeks).** *As built, Phase 1 and the builder of Phase 2
+shipped together, with users' worlds only (§19).*
 - `EventOracle`, `WorldBooks` and `WorldVault` with full tests and deploy scripts
   (`scripts/evm/deploy-worlds.ts`, recorded in `deployments/<chainId>-worlds-deployment.json`).
-- Automation: `resolve-events`, `fix-books`, `curate-worlds`, fixing rounds in the feed relay.
+- Automation: `resolve-events`, `fix-books`, `open-user-books`, fixing rounds in the feed relay.
 - `world-keeper` (`quote`, `mark`, `fit`); API world indexer, RFQ v2, submit, cash-out, prices.
 - UI: `/worlds`, the world page, `WorldTicket`, the portfolio tab, redeem.
 - Admin: Worlds, World risk, Relations, Fixings, Marks. Low-balance alerts.
-- 5–10 curated books a week (weekly and monthly), with protocol capital only.
+- Users' worlds only, with protocol capital as the only maker.
 - **Exit:**
   - 100+ fills across both products;
   - at least one refund path, one fixed payout and one cash-out verified on chain;
@@ -1604,3 +1609,97 @@ form). The fixing spread is σ√τ = 0.13: 28 days at about 47% a year, flat fo
 - [ForecastBench](https://forecastingresearch.substack.com/introducing-the-brier-index)
 - [JevGym](https://github.com/ruyianry/JevGym/wiki)
 - [Kalshi interest on positions](https://help.kalshi.com/navigating-the-exchange/your-portfolio/apy-on-kalshi)
+
+---
+
+## 19. Users' worlds, as built (2026-11-04)
+
+The protocol lists no worlds. Every world starts as someone's opinion in their own words; once a
+member holds a position in it, it is public, and anyone can back it, take the other side, or say
+their own. Fills are RFQ only (no order book). The design follows
+`reports/Worlds power-user research and UI options.md`.
+
+### The flow
+
+1. **Say it** (`/worlds`). A composer that never starts blank (real opinions cycle as placeholders;
+   "a stock" and "an event" start one).
+2. **Read it** (`POST /v2/worlds/parse`). Rules first: the stock (ticker or name), above or below,
+   a price ($240, 10%, 120k) and a date ("Dec 19", "Friday", "end of month"); the rest split into
+   clauses, each searched in the event catalog. With `ANTHROPIC_API_KEY`, Claude
+   (`WORLD_ASSISTANT_MODEL`, default `claude-sonnet-5-5`) picks legs and sides from the candidates
+   it was shown (one more search allowed); ids it was not shown are dropped. Without a key, or on
+   failure or over the daily budget (`WORLD_ASSISTANT_DAILY_USD`, default $25), each clause's best
+   match is the draft. Negations ("no shutdown") pick NO. Every read is audited in `world_drafts`.
+3. **See it** (`/worlds/new`). The world as one sentence with editable chips (an event's side or
+   another event, the stock, above or below, the price with a slider around spot, the date); each
+   leg with its venue, odds, deadline and rules; the chance chain on a base of 1,000 with the
+   unrelated chain beside it; every ending with its chance, payout and date; a 1,000-dot grid.
+4. **The offer** (`POST /v2/worlds/preview`). The API builds the world's one canonical book and asks
+   the makers to price it before it exists (`world.preview`); the keeper prices it through the very
+   quote path of a real book against the replica with the book added (every guard, cap and the
+   vault's hook), from memory, in a few milliseconds. All-in and Money-back at their stakes, the four
+   numbers at equal weight, the cost in dollars (spread over fair, plus the fee), a confirm line
+   under 10 in 1,000. In the end-to-end run the preview's units matched the firm fill within 0.003%.
+5. **Trade it.** The ticket walks the account steps (connect, network, sign in, invite, one-tap
+   trading, funds on the world books), then opens the world if it is new (`POST /v2/worlds/open`:
+   the member's packet, approved by the API's rules; automation creates the book within seconds),
+   waits for its first price (the keeper announces a newly modelled book at once) and fills by RFQ
+   through the trading delegate with a 3% tolerance on units. A receipt links the public page.
+6. **Public** (`/worlds/[book]`, `/v2/worlds/feed`). The feed lists every world with a position:
+   its sentence, chance, the $20 All-in payout, traders (current holders, from the replica) and the
+   last trades. The world page shows who's in and every trade (positions are public, as fills are on
+   chain), "Same view / Other side" (the same events, the stock on the other side of the price), and
+   "Say your own".
+7. **Ride and exit** (`/worlds/me`). Each position as a leg tracker (each event happened, open with
+   today's odds, or not), the stock against its price, worth now, payout if right, the chance now,
+   what happens next; cash-out at the vault's firm bid shown beside the middle price; collect when
+   settled (a failed world's Money-back stake comes back whole).
+
+### One opinion, one world
+
+A world's canonical book: legs ordered by venue deadline, one strike at the user's price (feed
+units), the fixing at 16:00 New York on the user's date, the cutoff an hour before (an event-only
+world: an hour before its last leg's deadline), `WORLD_USER_FEE_BPS` (default 100). Its spec hash
+covers the deployment, legs and sides, feed, strike, direction, fixing, cutoff and fee, never the
+words; `world_books.spec_hash` is unique, so the same view opened twice trades in one market.
+A world's public wording comes only from venue text ("Will CPI be above 3%?" reads "CPI is above
+3%"), never a user's words.
+
+Checks before pricing (`worldProblems`): the vault's legs, tenor and event-only limits, legs
+already almost decided (under 3% or over 97%) or without a two-sided price, two YES outcomes of
+one exclusive event, a date too soon. Opening needs a member session; at most 20 opens an hour and
+40 a day per member.
+
+### Pieces
+
+| Where | What |
+|---|---|
+| `services/polymarket-ingestor/src/catalog.ts` | The event catalog: Kalshi open events with their markets and Gamma's active events by volume, crawled every `CATALOG_CRAWL_MS` (15 min), sports, entertainment and weather left out, within 60 days; an inverted index with synonyms; `fresh(ids)` prices a few entries (a tracked leg's live book, else one venue read per 20 s). Internal routes `/internal/catalog/{search,entries,status}`; off with `CATALOG_ENABLED=false`. |
+| `apps/server/src/worlds/assistant.ts` | Reading an opinion (rules, then the model). |
+| `apps/server/src/worlds/opinion.ts` | The canonical world, its problems, the preview book, the offer. |
+| `apps/server/src/worlds/opinions.ts` | The routes: stocks, event search, parse, preview, open, open status, feed, holders. |
+| `apps/server/src/worlds/admin.ts` | `prepareUserBook` (fresh venue snapshots checked against the catalog entry seen) and `/v2/admin/user-books`. |
+| `apps/server/src/worlds/underlyings.ts` | The stocks a world can fix on: the feeds of `WORLD_FEEDS_PATH` (default `deployments/<chainId>-mock-feeds.json`) the vault allows, with spot (reference prices, else the feed). |
+| `apps/server/src/rfq` | `world.preview` / `world.previewed` (first priced answer wins; every maker declining ends it), and analytics on `world.indications` (each open leg's chance, the chance chain and the unrelated one, P(W), spot, the world's forward, the move to the fixing). Maker frames up to 32 KB; the keeper sends 12 books a frame. |
+| `services/world-keeper` | `preview()`, analytics in indications, new books announced at once, `WK_FEEDS_PATH` giving every listed stock settings and its token's spot. |
+| `services/market-automation` | `open-user-books` (2 s) replaces `curate-worlds`. |
+| `packages/database` | `world_books.creator`, `world_books.spec_hash` (unique), `world_drafts`; schema 6 extended in place. |
+| `apps/web` | The four pages, `components/worlds/*` (sentence, chips, chance chain, outcomes, dot grid, ticket, world card, leg rows, people), `hooks/useWorlds`, `hooks/useWorldAccount`, `lib/worlds/*`; `NEXT_PUBLIC_WORLD_BOOKS_ADDRESS` pins the books every wallet transaction is checked against. |
+
+### Verified end to end (local anvil, 2026-11-04)
+
+A scratch stack (anvil, the world contracts and vault, a fake Kalshi, the ingestor and catalog, the
+API, the keeper, automation and the production UI) driven in Chromium with an injected wallet:
+opinions read into the right legs (a "no shutdown" read as NO), previews priced, a new world opened
+and filled 15 s after "Place" (3 s to create its book, about 9 s to its first price), joining an
+existing world filled in 4 s, cash-out at the vault's bid, and a world failed by automation's event
+resolution (freeze, commit, resolve) refunding a Money-back stake through "Collect".
+
+### Follow-ups
+
+- The header's portfolio value covers the exchange only, not world balances and positions.
+- Fixings and fixed payouts were not run end to end (they need chain time at the fixing).
+- Polymarket's catalog crawl is tested against its documented shape only (Gamma is unreachable
+  from the development machine).
+- Money-back is declined when its price inside the world would sit over 30% above fair (the
+  keeper's guard); worlds on priors alone hit it more often until fits exist for their legs.

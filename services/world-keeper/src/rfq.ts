@@ -3,9 +3,10 @@
  * once with a quote signed by the keeper (its nonce names the vault, so `WorldBooks` asks the
  * vault's hook to accept the fill), or declined straight away so it never holds a window open.
  * Market orders of the exchange (version 1) are declined. While connected, the vault posts its
- * indications every `indicationMs`, at most 24 books a frame. */
-import { getAddress } from "viem";
-import type { WorldKeeper, WorldOrderRequest } from "./engine.ts";
+ * indications every `indicationMs`, at most 12 books a frame. It also prices worlds not
+ * created yet (`world.preview`), from memory, without signing. */
+import { type Address, getAddress, type Hex, isAddress } from "viem";
+import type { PreviewBook, WorldKeeper, WorldOrderRequest } from "./engine.ts";
 
 export interface RfqSocket {
   onopen: ((event: unknown) => void) | null;
@@ -16,7 +17,8 @@ export interface RfqSocket {
 }
 type Message = Record<string, unknown>;
 const MAX_BACKOFF_MS = 30_000;
-const BOOKS_PER_FRAME = 24;
+/** Books per `world.indications` frame: each carries its products and analytics. */
+const BOOKS_PER_FRAME = 12;
 
 export class WorldRfqMaker {
   private socket: RfqSocket | undefined;
@@ -124,6 +126,7 @@ export class WorldRfqMaker {
       return;
     }
     if (m.type === "world.rfq") return this.respond(m);
+    if (m.type === "world.preview") return this.previewed(m);
     if (m.type === "world.result" && typeof m.rfqId === "string") {
       k.outcome(m.rfqId, String(m.outcome));
       if (m.outcome !== "lost")
@@ -140,6 +143,39 @@ export class WorldRfqMaker {
     const books = this.options.keeper.indications(this.minQuoteSeconds);
     for (let i = 0; i < books.length; i += BOOKS_PER_FRAME)
       this.send({ type: "world.indications", books: books.slice(i, i + BOOKS_PER_FRAME) });
+  }
+
+  /** Answers a preview of a world not created yet (`world.preview`) from memory. */
+  previewed(m: Message) {
+    const id = typeof m.id === "string" ? m.id : "";
+    if (!id) return;
+    const answer = (body: Record<string, unknown>) =>
+      this.send({ type: "world.previewed", id, ...body });
+    if (!this.ready) return answer({ decline: "Not ready" });
+    let book: PreviewBook, stakes: { allIn: bigint; moneyBack: bigint };
+    try {
+      book = previewBook(m.book);
+      const raw = (m.stakes ?? {}) as Record<string, unknown>;
+      stakes = { allIn: BigInt(String(raw.allIn)), moneyBack: BigInt(String(raw.moneyBack)) };
+      if (stakes.allIn <= 0n || stakes.moneyBack <= 0n) throw new Error();
+    } catch {
+      return answer({ decline: "Malformed preview" });
+    }
+    const started = performance.now();
+    const result = this.options.keeper.preview(book, stakes, this.minQuoteSeconds);
+    answer(result as Record<string, unknown>);
+    this.options.log("previewed", {
+      legs: book.legs.length,
+      priced: book.feed !== ZERO,
+      decline: "decline" in result ? result.decline : null,
+      declined:
+        "products" in result
+          ? Object.fromEntries(
+              result.products.filter((p) => p.decline).map((p) => [p.key, p.decline]),
+            )
+          : undefined,
+      ms: Math.round((performance.now() - started) * 100) / 100,
+    });
   }
 
   private async respond(m: Message) {
@@ -227,4 +263,68 @@ export class WorldRfqMaker {
       ms: Math.round((performance.now() - started) * 100) / 100,
     });
   }
+}
+
+const ZERO = "0x0000000000000000000000000000000000000000" as Address;
+const HEX32 = /^0x[0-9a-fA-F]{64}$/;
+/** A `world.preview` book, checked field by field (the API built it, but a frame is data). */
+export function previewBook(value: unknown): PreviewBook {
+  const b = (value ?? {}) as Record<string, unknown>;
+  const fail = (what: string): never => {
+    throw new Error(`Invalid preview ${what}`);
+  };
+  if (!Array.isArray(b.legs) || b.legs.length < 1 || b.legs.length > 6) fail("legs");
+  const legs = (b.legs as Record<string, unknown>[]).map((l) => {
+    if (typeof l.eventKey !== "string" || !HEX32.test(l.eventKey)) fail("eventKey");
+    if (typeof l.conditionId !== "string" || !HEX32.test(l.conditionId)) fail("conditionId");
+    if (l.source !== "polymarket" && l.source !== "kalshi") fail("source");
+    const r = l.reference as Record<string, unknown> | null | undefined;
+    const reference =
+      r && typeof r.yes === "number" && typeof r.halfSpread === "number"
+        ? {
+            yes: r.yes,
+            halfSpread: r.halfSpread,
+            observedAtMs: Number(r.observedAtMs) || 0,
+          }
+        : null;
+    return {
+      eventKey: (l.eventKey as string).toLowerCase(),
+      wantYes: l.wantYes !== false,
+      source: l.source as "polymarket" | "kalshi",
+      marketId: String(l.marketId ?? ""),
+      conditionId: (l.conditionId as string).toLowerCase(),
+      yesIndex: Number(l.yesIndex),
+      noIndex: Number(l.noIndex),
+      question: String(l.question ?? ""),
+      url: String(l.url ?? ""),
+      endTime: String(l.endTime ?? ""),
+      themes: Array.isArray(l.themes) ? (l.themes as unknown[]).map(String).slice(0, 8) : [],
+      reference,
+    };
+  });
+  if (typeof b.feed !== "string" || !isAddress(b.feed)) fail("feed");
+  const feed = getAddress(b.feed as string);
+  const strikes = Array.isArray(b.strikes)
+    ? (b.strikes as unknown[]).map((k) => BigInt(String(k)))
+    : [];
+  const int = (v: unknown, name: string) => {
+    const n = Number(v);
+    if (!Number.isSafeInteger(n) || n < 0) fail(name);
+    return n;
+  };
+  return {
+    legs,
+    feed,
+    underlying: typeof b.underlying === "string" ? b.underlying : null,
+    feedDecimals:
+      b.feedDecimals === null || b.feedDecimals === undefined
+        ? null
+        : int(b.feedDecimals, "feedDecimals"),
+    fixingTime: int(b.fixingTime ?? 0, "fixingTime"),
+    cutoff: int(b.cutoff, "cutoff"),
+    maxStaleness: int(b.maxStaleness ?? 0, "maxStaleness"),
+    strikes,
+    feeBps: int(b.feeBps, "feeBps"),
+    spot: typeof b.spot === "number" && b.spot > 0 ? b.spot : null,
+  } as PreviewBook & { legs: { eventKey: Hex }[] };
 }

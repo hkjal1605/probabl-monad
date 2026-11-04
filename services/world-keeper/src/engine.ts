@@ -12,12 +12,17 @@
  * Housekeeping redeems decided books, merges full sets, and latches a halt on a drawdown. */
 import type { WorldBookRecord } from "@conditional-stocks/db";
 import {
+  atomCount,
   BOOK_STATE,
+  BOOK_STATUS,
+  type BookDef,
+  bookDefHash,
   bundlePays,
   contractQuoteNonce,
   packMakerData,
   payRange,
   standardProducts,
+  underlyingId,
   WORLD_QUOTE_TYPES,
   type WorldQuote,
   worldQuoteDomain,
@@ -27,6 +32,7 @@ import {
 import type { WorldTouched } from "@conditional-stocks/evm-client/world-ledger";
 import {
   atomsOf,
+  type BookState,
   bookStateAt,
   fillRecord,
   type VaultState,
@@ -38,7 +44,7 @@ import {
 import { vaultHookProblem } from "@conditional-stocks/evm-client/world-risk";
 import type { ChainFollower } from "@conditional-stocks/indexer";
 import type { Executor } from "@conditional-stocks/operator";
-import type { Address, Hex } from "viem";
+import { type Address, type Hex, zeroHash } from "viem";
 import type { LocalAccount } from "viem/accounts";
 import type { Settings } from "./config.ts";
 import { buildInputs, type OpenLeg, type PricingData } from "./inputs.ts";
@@ -87,7 +93,60 @@ interface Cached {
   risk: BookRisk;
   key: string;
   builtAt: number;
+  /** The spot the model was built at (feed units), for a priced book. */
+  spot: number | null;
 }
+
+/** What a world page explains a book's price with, from its cached model (chances x 1e6):
+ * each open leg's own chance, the chance chain in book order (scaled so its end is the
+ * marks' P(W)) and the same chain were the legs unrelated, the stock's spot and its forward
+ * inside the world, and the one-standard-deviation move to the fixing. */
+export interface BookAnalytics {
+  legs: { eventKey: Hex; chance: number }[];
+  chain: number[];
+  naive: number[];
+  world: number;
+  spot: number | null;
+  forward: number | null;
+  move: number | null;
+}
+const x6 = (p: number) => Math.min(1_000_000, Math.max(0, Math.round(p * 1e6)));
+export function analyticsOf(c: Pick<Cached, "model" | "legs" | "spot">): BookAnalytics {
+  const m = c.model;
+  const n = m.chain.length;
+  const ratio = m.world > 0 ? m.worldCenter / m.world : 1;
+  return {
+    legs: c.legs.map((l, i) => ({ eventKey: l.key, chance: x6(m.legInfo[i]!.q) })),
+    chain: m.chain.map((p, k) => x6(p * ratio ** ((k + 1) / n))),
+    naive: m.naive.map(x6),
+    world: x6(m.worldCenter),
+    spot: c.spot,
+    forward: m.forward,
+    move: m.variance === null ? null : Math.round(Math.sqrt(m.variance) * 1e6),
+  };
+}
+
+/** A world not created yet, as the API describes one to price (`world.preview`): its legs as
+ * the venue lists them with a reference probability each (used when the keeper does not follow
+ * the leg), and for a priced world its feed, strikes and fixing, with a spot in feed units. */
+export interface PreviewBook {
+  legs: (WorldBookRecord["metadata"]["legs"][number] & {
+    reference: { yes: number; halfSpread: number; observedAtMs: number } | null;
+  })[];
+  feed: Address;
+  underlying: string | null;
+  feedDecimals: number | null;
+  fixingTime: number;
+  cutoff: number;
+  maxStaleness: number;
+  strikes: bigint[];
+  feeBps: number;
+  spot: number | null;
+}
+/** The book id a preview prices under: never a real book's (ids are sequential from 1). */
+export const PREVIEW_BOOK = 2 ** 48;
+/** How old a preview's reference probability may be. */
+const PREVIEW_REFERENCE_MS = 15 * 60_000;
 
 const MODEL_MAX_AGE_MS = 60_000;
 const MODEL_MIN_INTERVAL_MS = 1_000;
@@ -216,6 +275,7 @@ export class WorldKeeper {
           risk: { ...built.risk, model },
           key,
           builtAt: nowMs,
+          spot: built.inputs.stock?.spot ?? null,
         });
         this.centers.set(b.id, model.center);
         this.risk.forget(b.id);
@@ -229,6 +289,19 @@ export class WorldKeeper {
   }
   model(book: number) {
     return this.models.get(book)?.model;
+  }
+  /** Books modelled since this was last asked: a new world's first indications go out at
+   * once, not on the next round (a member waits on them to trade a world they just opened). */
+  private readonly announced = new Set<number>();
+  unannounced() {
+    let fresh = false;
+    for (const id of this.models.keys())
+      if (!this.announced.has(id)) {
+        this.announced.add(id);
+        fresh = true;
+      }
+    for (const id of this.announced) if (!this.models.has(id)) this.announced.delete(id);
+    return fresh;
   }
 
   /** P(both books' worlds happen), from their open legs' union. */
@@ -298,8 +371,13 @@ export class WorldKeeper {
     });
   }
 
-  /** Prices `order` for the vault from memory, or declines it. */
-  price(order: WorldOrderRequest, minQuoteSeconds: number): Priced {
+  /** Prices `order` for the vault from memory, or declines it. A preview passes a book that
+   * is not on chain yet (`preview`: the replica with it added, and its model). */
+  price(
+    order: WorldOrderRequest,
+    minQuoteSeconds: number,
+    preview?: { s: WorldState; c: Cached },
+  ): Priced {
     const set = this.options.settings;
     const decline = (reason: string) => ({ decline: reason }) as const;
     if (this.stopped) return decline("Stopping");
@@ -307,7 +385,8 @@ export class WorldKeeper {
     if (!this.options.follower.health().healthy) return decline("Chain view unavailable");
     const st = this.state();
     if (!st) return decline("The vault is not followed");
-    const { s, v } = st;
+    const v = st.v;
+    const s = preview?.s ?? st.s;
     if (s.config.paused) return decline("The books are paused");
     if (v.paused) return decline("The vault is paused");
     if (!v.limits || !v.risk) return decline("The vault has no limits");
@@ -317,7 +396,7 @@ export class WorldKeeper {
     const nowMs = this.now(),
       now = seconds(nowMs);
     if (bookStateAt(s, b, now) !== BOOK_STATE.trading) return decline("The book is not trading");
-    const c = this.models.get(b.id);
+    const c = preview?.c ?? this.models.get(b.id);
     if (!c) return decline("The book is not quoted");
     // No quote close to a leg's scheduled resolution; shorter lives near it.
     const soonest = Math.min(
@@ -767,6 +846,7 @@ export class WorldKeeper {
       book: number;
       marks: number[];
       products: { key: string; bid: number | null; ask: number | null }[];
+      analytics: BookAnalytics;
     }[] = [];
     const zero = "0x0000000000000000000000000000000000000001" as Address;
     for (const [id, c] of this.models) {
@@ -832,9 +912,189 @@ export class WorldKeeper {
       const raw = [...c.model.center].map((x) => Math.round(x * 1e6));
       const drift = 1_000_000 - raw.reduce((a, x) => a + x, 0);
       raw[raw.indexOf(Math.max(...raw))]! += drift;
-      out.push({ book: id, marks: raw, products });
+      out.push({ book: id, marks: raw, products, analytics: analyticsOf(c) });
     }
     return out;
+  }
+
+  // ---------------------------------------------------------------- previews
+
+  /** Prices a world that is not on chain yet, as its book would quote once created: the
+   * model built from the legs' live probabilities (or the references given, for legs not
+   * followed yet), and each standard product bought for `stakes` through the quote path of a
+   * real book (every guard, cap and the vault's hook), against the replica with the book added.
+   * Nothing is signed or held. Answers from memory, like a quote. */
+  preview(
+    p: PreviewBook,
+    stakes: { allIn: bigint; moneyBack: bigint },
+    minQuoteSeconds: number,
+  ):
+    | { decline: string }
+    | {
+        marks: number[];
+        analytics: BookAnalytics;
+        priorOnly: boolean;
+        products: {
+          key: string;
+          stake: string;
+          units: string | null;
+          ask: number | null;
+          decline: string | null;
+        }[];
+      } {
+    const st = this.state();
+    if (!st) return { decline: "The vault is not followed" };
+    const nowMs = this.now();
+    const s = st.s;
+    const def: BookDef = {
+      legs: p.legs.map((l) => ({ eventKey: l.eventKey.toLowerCase() as Hex, wantYes: l.wantYes })),
+      feed: p.feed,
+      underlying: p.underlying ? underlyingId(p.underlying) : zeroHash,
+      fixingTime: p.fixingTime,
+      maxStaleness: p.maxStaleness,
+      strikes: p.strikes,
+      cutoff: p.cutoff,
+      feeBps: p.feeBps,
+      metadataHash: zeroHash,
+    };
+    const book: BookState = {
+      id: PREVIEW_BOOK,
+      defHash: bookDefHash(def),
+      def,
+      metadataUri: "",
+      atoms: atomCount(def),
+      status: BOOK_STATUS.undecided,
+      winner: 0,
+      frozen: false,
+      held: false,
+      backing: 0n,
+      fix: null,
+      fixCommitment: null,
+      fixEvidence: null,
+      fixUri: null,
+      fixedPrice: null,
+      fills: 0,
+      volume: 0n,
+      fees: 0n,
+      createdBlock: s.block,
+      createdAt: s.timestamp,
+      createdTx: zeroHash,
+      decidedAt: null,
+    };
+    const meta: WorldBookRecord = {
+      defHash: book.defHash,
+      book: PREVIEW_BOOK,
+      title: "",
+      kind: "user",
+      metadata: {
+        legs: p.legs.map(({ reference: _, ...leg }) => leg),
+        underlying: p.underlying,
+        feedDecimals: p.feedDecimals,
+        fixing: null,
+        metadataUri: "",
+        def: {},
+      },
+      packetHash: null,
+      createdAt: new Date(nowMs),
+    };
+    // A followed leg prices from its live tick; another from the reference given, if recent.
+    const references = new Map(p.legs.map((l) => [l.conditionId.toLowerCase(), l.reference]));
+    const live = this.options.legs;
+    const legsRef = {
+      latest: (condition: Hex) => {
+        const tick = live.latest(condition);
+        if (tick && nowMs - tick.observedAtMs <= this.options.settings.references.maxReferenceAgeMs)
+          return tick;
+        const r = references.get(condition.toLowerCase());
+        if (!r || nowMs - r.observedAtMs > PREVIEW_REFERENCE_MS) return tick;
+        return { yes: r.yes, halfSpread: r.halfSpread, observedAtMs: nowMs };
+      },
+    } as unknown as LegReferences;
+    const spotRef = {
+      spot: (...args: Parameters<SpotReferences["spot"]>) => {
+        const fresh = this.options.spot.spot(...args);
+        if (!("problem" in fresh) || p.spot === null) return fresh;
+        return { price: p.spot, observedAtMs: nowMs, source: "feed" as const };
+      },
+    } as unknown as SpotReferences;
+    const built = buildInputs({
+      s,
+      book,
+      meta,
+      legsRef,
+      spotRef,
+      data: this.options.data(),
+      settings: this.options.settings,
+      nowMs,
+    });
+    if ("problem" in built) return { decline: built.problem };
+    let model: BookModel;
+    try {
+      model = buildBookModel(built.inputs);
+    } catch (error) {
+      return { decline: (error as Error).message };
+    }
+    const c: Cached = {
+      model,
+      legs: built.legs,
+      priorOnly: built.priorOnly,
+      risk: { ...built.risk, model },
+      key: "",
+      builtAt: nowMs,
+      spot: built.inputs.stock?.spot ?? null,
+    };
+    const overlay: WorldState = { ...s, books: new Map(s.books).set(PREVIEW_BOOK, book) };
+    const zero = "0x0000000000000000000000000000000000000001" as Address;
+    try {
+      const products = standardProducts(def).map((product) => {
+        const conditional = product.kind === "conditional";
+        const stake = conditional ? stakes.moneyBack : stakes.allIn;
+        const priced = this.price(
+          {
+            taker: zero,
+            book: PREVIEW_BOOK,
+            mask: product.mask,
+            side: "buy",
+            units: null,
+            refund: 0n,
+            stake,
+            conditional,
+            limit: 0n,
+          },
+          minQuoteSeconds,
+          { s: overlay, c },
+        );
+        if ("decline" in priced)
+          return {
+            key: product.key,
+            stake: stake.toString(),
+            units: null,
+            ask: null,
+            decline: priced.decline,
+          };
+        const q = priced.quote;
+        // Per unit as the indications quote it (a conditional payout's inside the world).
+        const ask = conditional
+          ? ((Number(q.price) - Number(q.refund) * model.center[0]!) /
+              (Number(q.units) * Math.max(1e-12, 1 - model.center[0]!))) *
+            1e6
+          : (Number(q.price) / Number(q.units)) * 1e6;
+        return {
+          key: product.key,
+          stake: stake.toString(),
+          units: q.units.toString(),
+          ask: Math.min(1_000_000, Math.max(1, Math.round(ask))),
+          decline: null,
+        };
+      });
+      const raw = [...model.center].map((x) => Math.round(x * 1e6));
+      const drift = 1_000_000 - raw.reduce((a, x) => a + x, 0);
+      raw[raw.indexOf(Math.max(...raw))]! += drift;
+      return { marks: raw, analytics: analyticsOf(c), priorOnly: c.priorOnly, products };
+    } finally {
+      // The pair probabilities the risk engine cached for the preview's id.
+      this.risk.forget(PREVIEW_BOOK);
+    }
   }
 
   // ---------------------------------------------------------------- housekeeping

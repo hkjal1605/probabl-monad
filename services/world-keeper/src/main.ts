@@ -11,8 +11,10 @@
  *   configured vault), WK_DATABASE_URL (the API's database: its checkpoint, book metadata and
  *   fits, read only but for the fit and marks), WK_API_ORIGIN, WK_RFQ_URL, WK_RFQ_API_KEY,
  *   WK_PRIVATE_KEY + WK_WALLET_ADDRESS (keeper), WK_MARKER_PRIVATE_KEY + WK_MARKER_ADDRESS,
- *   WK_STATE_DIR (private). */
-import { readFileSync } from "node:fs";
+ *   WK_STATE_DIR (private), WK_FEEDS_PATH (the deployment's feeds, default
+ *   deployments/<chainId>-mock-feeds.json: every stock a user's world may fix on gets settings
+ *   and its token's spot unless the config names it). */
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createDatabase, type Database, type WorldBookRecord } from "@conditional-stocks/db";
 import { BOOK_STATUS, DEPLOYLESS_BATCH_SIZE, worldBooksAbi } from "@conditional-stocks/evm-client";
@@ -25,6 +27,7 @@ import {
 import { ChainFollower } from "@conditional-stocks/indexer";
 import { worldLedger } from "@conditional-stocks/indexer/worlds";
 import { apiOrigin, Executor, signer } from "@conditional-stocks/operator";
+import { catalogAsset } from "@conditional-stocks/shared/token-catalog";
 import { type Address, createPublicClient, defineChain, getAddress, http, zeroAddress } from "viem";
 import { backfillProbabilities, type HistoryLeg, VenueHistory } from "./backfill.ts";
 import { settings as parseSettings } from "./config.ts";
@@ -97,11 +100,31 @@ async function main() {
     transport: http(rpc, { batch: { wait: 5 }, retryCount: 2 }),
   });
   if ((await client.getChainId()) !== chainId) throw new Error("RPC serves a different chain");
-  const settings = parseSettings(
-    JSON.parse(
-      readFileSync(env.WK_CONFIG_PATH ?? "services/world-keeper/config.example.json", "utf8"),
-    ),
-  );
+  const raw = JSON.parse(
+    readFileSync(env.WK_CONFIG_PATH ?? "services/world-keeper/config.example.json", "utf8"),
+  ) as { underlyings?: Record<string, Record<string, unknown>> };
+  // Users choose the stock of their world: every listed feed's underlying is quotable, its
+  // token's reference price the spot, unless the config sets it.
+  const feedsPath = env.WK_FEEDS_PATH ?? `deployments/${chainId}-mock-feeds.json`;
+  if (existsSync(feedsPath)) {
+    const underlyings = { ...(raw.underlyings ?? {}) };
+    for (const f of JSON.parse(readFileSync(feedsPath, "utf8")) as {
+      symbol?: string;
+      token?: string;
+    }[]) {
+      const asset = catalogAsset(f.symbol);
+      if (!asset?.underlying || asset.kind === "stablecoin") continue;
+      const configured = underlyings[asset.underlying];
+      const kind = asset.kind === "etf" ? "etf" : asset.kind === "crypto" ? "crypto" : "stock";
+      underlyings[asset.underlying] = {
+        kind,
+        ...(f.token ? { token: f.token } : {}),
+        ...configured,
+      };
+    }
+    raw.underlyings = underlyings;
+  }
+  const settings = parseSettings(raw);
   const books = getAddress(required("WK_BOOKS_ADDRESS"));
   const [oracle, quote] = await Promise.all([
     client.readContract({ address: books, abi: worldBooksAbi, functionName: "oracle" }),
@@ -347,7 +370,10 @@ async function main() {
   process.on("SIGTERM", stop);
   log("starting", { command, live, vault: settings.vault, books: follower.confirmed.books.size });
   const timers = [
-    setInterval(() => keeper.refresh(), 1_000),
+    setInterval(() => {
+      keeper.refresh();
+      if (keeper.unannounced()) maker?.indicate();
+    }, 1_000),
     setInterval(
       () =>
         void loadMetadata()

@@ -33,6 +33,14 @@ export const deltaVaults: readonly `0x${string}`[] = (process.env.NEXT_PUBLIC_DE
   .filter(Boolean)
   .map((value) => getAddress(value));
 
+/** The world books of the wallet's deployment (v2 worlds), pinned at build time like the
+ * exchange: a wallet transaction the API prepares for worlds is checked against it. Worlds are
+ * off when it is unset. */
+export const worldBooks = getAddress(
+  process.env.NEXT_PUBLIC_WORLD_BOOKS_ADDRESS ?? "0x0000000000000000000000000000000000000000",
+);
+export const worldsEnabled = worldBooks !== "0x0000000000000000000000000000000000000000";
+
 /** The deployment a venue's transactions go to. */
 export function venueDeployment(venue: { chainId: number; exchange: string }): Deployment {
   const deployment = deployments.find(

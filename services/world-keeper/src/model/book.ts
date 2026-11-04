@@ -102,6 +102,11 @@ export interface BookModel {
   variance: number | null;
   /** Spot volatility (annual) for the stale-quote charge. */
   spotVol: number;
+  /** The chance chain at the point estimate, legs in book order: P(legs 0..k all go the
+   * world's way) for each k (the last is P(W)), and the same chain if the legs were unrelated
+   * (the product of their chances). What a world page explains its chance with. */
+  chain: number[];
+  naive: number[];
 }
 
 const logit = (p: number) => Math.log(p / (1 - p));
@@ -411,6 +416,14 @@ export function buildBookModel(inputs: BookInputs): BookModel {
   const fx = stock
     ? fixingBuckets(fixingOf(stock, q, legs), stock.strikes, stock.spot, base.dist)
     : null;
+  const chain: number[] = [],
+    naive: number[] = [];
+  let product = 1;
+  for (let k = 0; k < n; k++) {
+    product *= q[k]!;
+    naive.push(product);
+    chain.push(k === n - 1 ? base.world : passProbability(base.dist, (1 << (k + 1)) - 1));
+  }
   return {
     atoms: count,
     legs: n,
@@ -436,6 +449,8 @@ export function buildBookModel(inputs: BookInputs): BookModel {
     forward: fx?.forward ?? null,
     variance: fx?.variance ?? null,
     spotVol: stock?.vol ?? 0,
+    chain,
+    naive,
   };
 }
 

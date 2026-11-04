@@ -49,6 +49,7 @@ import type { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { type Address, getAddress, type Hex, type PublicClient, parseAbi, zeroAddress } from "viem";
 import type { EventMarketsClient } from "../integrations/event-markets.ts";
+import { type CanonicalWorld, defJson, OpinionError } from "./opinion.ts";
 
 const CHECKS = {
   "book-creation": [
@@ -628,6 +629,163 @@ export function mountWorldAdmin(
     return c.json(observation);
   });
 
+  // ---------------------------------------------------------------- user worlds
+
+  /** A member's own world (docs/version-2-plan.md §9): the same `book-creation` packet as a
+   * curated book's, with every leg fetched fresh from its venue and checked against the
+   * catalog entry the member saw, prepared by the member and approved by these rules instead
+   * of a person (the API checked the world first: `worldProblems`). One opinion registers once
+   * (its spec hash); the market admin's automation creates it (`/v2/admin/user-books`). */
+  const prepareUserBook = async (w: CanonicalWorld, creator: Address) => {
+    const existing = await db.userWorldBook(domain, w.specHash);
+    if (existing) return existing;
+    const s = indexer.trading();
+    const legs = await Promise.all(
+      w.legs.map(async (leg) => {
+        const snapshot = await events().fetchMetadata(leg.entry.source, leg.entry.marketId);
+        const m = snapshot.normalized;
+        const key = eventKey(
+          m.conditionId,
+          Number(yesOutcome(m).indexSet),
+          Number(noOutcome(m).indexSet),
+        ).toLowerCase() as Hex;
+        if (key !== leg.eventKey)
+          throw new OpinionError(`"${leg.label}" changed on its venue: pick it again`, 409);
+        if (!m.active || m.closed)
+          throw new OpinionError(`"${leg.label}" no longer trades on its venue`, 409);
+        if (eventOf(s, key).state !== EVENT_STATE.unknown)
+          throw new OpinionError(`"${leg.label}" is already being decided`, 409);
+        return legEvidence({
+          metadata: m,
+          metadataSnapshotId: snapshot.snapshotId,
+          metadataRawHash: snapshot.rawHash,
+          eventKey: key,
+          wantYes: leg.wantYes,
+          themes: leg.entry.themes.slice(0, 8),
+        });
+      }),
+    );
+    const feed = w.underlying?.feed ?? zeroAddress;
+    const feedDecimals =
+      feed === zeroAddress
+        ? null
+        : Number(
+            await client.readContract({ address: feed, abi: feedAbi, functionName: "decimals" }),
+          );
+    if (w.underlying && feedDecimals !== w.underlying.decimals)
+      throw new OpinionError("The stock's feed changed: try again shortly", 409);
+    const envelope = buildBookCreationEvidence({
+      deployment: worldDeployment(),
+      title: w.title,
+      legs,
+      book: {
+        feed,
+        feedDecimals,
+        underlying: w.underlying?.underlying ?? null,
+        fixingTime: String(w.fixingTime),
+        maxStaleness: String(w.maxStaleness),
+        strikes: w.strikeRaw === null ? [] : [w.strikeRaw.toString()],
+        cutoff: String(w.cutoff),
+        feeBps: String(w.feeBps),
+        fixingRule: w.underlying
+          ? `${w.underlying.symbol} at the 4 pm New York close on ${w.fixingDate}`
+          : null,
+      },
+      attachments: [],
+      preparedAt: new Date().toISOString(),
+      preparer: creator,
+    });
+    const p = envelope.packet;
+    const uri = worldMetadataUri(metadataBase, envelope.packetHash);
+    const def = bookDefOf(p, uri);
+    const problem = bookDefProblem(def, Math.floor(Date.now() / 1000), uri);
+    if (problem) throw new OpinionError(problem);
+    const decision = feed === zeroAddress ? def.cutoff : def.fixingTime;
+    for (const leg of p.legs)
+      if (Date.parse(leg.endTime) / 1000 > decision + MAX_LEG_LAG_S)
+        throw new OpinionError(`"${leg.question}" resolves long after the world settles`);
+    const defHash = bookDefHash(def);
+    await store(envelope, creator, defHash);
+    await db.locked(`evidence:${domain}`, async (tx) => {
+      const view = await read(envelope.packetHash, tx);
+      if (view.status !== "prepared") return;
+      const checks = CHECKS["book-creation"];
+      await tx.audit(domain, envelope.packetHash, "REVIEW", creator, {
+        decision: "approve",
+        reviewer: "user-world-rules",
+        reviewedAt: new Date().toISOString(),
+        checklist: Object.fromEntries(checks.map((k) => [k, true])),
+        notes: "A member's own world: legs, sides, dates, feed and fee checked by the API's rules",
+      });
+    });
+    const metadata: WorldBookMetadata = {
+      legs: p.legs.map((l) => ({
+        eventKey: l.eventKey,
+        wantYes: l.wantYes,
+        source: l.source,
+        marketId: l.marketId,
+        conditionId: l.conditionId,
+        yesIndex: Number(l.yesIndex),
+        noIndex: Number(l.noIndex),
+        question: l.question,
+        url: l.canonicalUrl,
+        endTime: l.endTime,
+        themes: l.themes,
+        metadataSnapshotId: l.metadataSnapshotId,
+      })),
+      underlying: p.book.underlying,
+      feedDecimals,
+      fixing: p.book.fixingRule,
+      metadataUri: uri,
+      def: defJson(def),
+      opinion: {
+        sentence: w.sentence,
+        direction: w.direction,
+        strike: w.strike,
+        symbol: w.underlying?.symbol ?? null,
+        fixingDate: w.fixingDate,
+      },
+    };
+    const record = await db.registerWorldBook(domain, {
+      defHash,
+      title: p.title,
+      kind: "user",
+      metadata,
+      packetHash: envelope.packetHash,
+      creator,
+      specHash: w.specHash,
+    });
+    await indexer.refreshMetadata();
+    return record;
+  };
+
+  /** Approved user worlds not created yet, oldest first: what the market admin's automation
+   * creates (each once; a packet already executed or a day old is left out). */
+  app.get("/v2/admin/user-books", async (c) => {
+    await operator(c.req.header("authorization"));
+    const s = indexer.trading();
+    const since = Date.now() - 86_400_000;
+    // From the index's metadata in memory: polling this reads the database only for packets
+    // awaiting creation.
+    const records = indexer
+      .metadataRecords()
+      .filter(
+        (r) =>
+          r.kind === "user" &&
+          r.packetHash &&
+          r.book === null &&
+          !s.bookOf.has(r.defHash.toLowerCase() as Hex) &&
+          new Date(r.createdAt).getTime() >= since,
+      );
+    records.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    const packets = [];
+    for (const r of records) {
+      const view = await read(r.packetHash!);
+      if (view.status === "approved" && !view.observations.length) packets.push(view);
+    }
+    return c.json({ packets });
+  });
+
   // ---------------------------------------------------------------- public
 
   /** A book's metadata URI: its creation packet, served once approved and never changed. */
@@ -646,4 +804,5 @@ export function mountWorldAdmin(
     if (!e.evidence) throw invalid("Final evidence is not available", 404);
     return c.json(await read(e.evidence));
   });
+  return { prepareUserBook };
 }

@@ -6,6 +6,7 @@ import {
   LogOut,
   Moon,
   Network,
+  Orbit,
   Settings2,
   Sun,
   Vault,
@@ -143,6 +144,12 @@ export function WalletButton({ compact = false }: { compact?: boolean }) {
                 className="gap-3 px-3 py-2.5 font-medium"
               >
                 <BriefcaseBusiness /> Portfolio
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                render={<Link href="/worlds/me" />}
+                className="gap-3 px-3 py-2.5 font-medium"
+              >
+                <Orbit /> My worlds
               </DropdownMenuItem>
               <DropdownMenuItem
                 render={<Link href="/vaults" />}

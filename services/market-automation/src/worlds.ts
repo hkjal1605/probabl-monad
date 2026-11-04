@@ -2,8 +2,7 @@
  * evidence flow: every transaction the API previews is rebuilt locally from the approved packet
  * and the live chain, and signed only when both agree, as the exchange's are.
  *
- * - Curated books from `AUTOMATION_WORLDS_PATH`: each entry's next fixing and strikes around
- *   spot, created once.
+ * - Users' worlds: each book a member opened, created once (`open-user-books`).
  * - Event results: freeze when the venue settles (or its market closes), commit the venue's
  *   result as the market admin, resolve as the resolution admin.
  * - Fixings: propose the provably last feed round at or before each due fixing, finalize it
@@ -102,6 +101,12 @@ export class WorldAdmin {
   }
   evidence() {
     return this.request<{ packets: WorldEvidence[] }>("/v2/admin/evidence").then((r) => r.packets);
+  }
+  /** Approved user worlds awaiting their book, oldest first. */
+  userBooks() {
+    return this.request<{ packets: WorldEvidence[] }>("/v2/admin/user-books").then(
+      (r) => r.packets,
+    );
   }
   prepareBook(body: Record<string, unknown>) {
     return this.request<
@@ -252,116 +257,6 @@ export class WorldAdmin {
       return null;
     return candidate;
   }
-}
-
-/** A curated world: its legs, and the rule that sets each new book's fixing and strikes. */
-export interface CuratedWorld {
-  title: string;
-  legs: {
-    source: "polymarket" | "kalshi";
-    marketId: string;
-    wantYes?: boolean;
-    themes?: string[];
-  }[];
-  /** e.g. "US:NVDA" with its feed; omitted for an event-only world. */
-  underlying?: string;
-  feed?: Address;
-  /** The next fixing: a weekday's time in a time zone (e.g. Friday 16:00 New York), or an
-   * absolute time. */
-  fixing?: { weekday?: number; time?: string; timeZone?: string; at?: string };
-  /** Strikes at these percentages around spot, rounded to `tick` (feed units). */
-  strikes?: { percents: number[]; tick: string };
-  /** The cutoff this long before the fixing (default one hour), or an event-only book's. */
-  cutoffBefore?: number;
-  cutoffAt?: string;
-  maxStaleness?: number;
-  feeBps: number;
-}
-
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-/** The next time `weekday` (0 Sunday) at `time` (HH:MM) in `timeZone` after `now` (seconds).
- * Every zone's offset is a whole number of quarter hours, so the candidates are the UTC times
- * with `time`'s minute modulo 15, checked against the zone's clock. */
-export function nextWeekly(now: number, weekday: number, time: string, timeZone: string) {
-  const [hh, mm] = time.split(":").map(Number) as [number, number];
-  const clock = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    hourCycle: "h23",
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const end = now + 15 * 86_400;
-  for (let t = Math.floor(now / 900) * 900 + (mm % 15) * 60; t < end; t += 900) {
-    if (t <= now) continue;
-    const p = Object.fromEntries(
-      clock.formatToParts(new Date(t * 1000)).map((x) => [x.type, x.value]),
-    );
-    if (
-      WEEKDAYS.indexOf(p.weekday!) === weekday &&
-      Number(p.hour) === hh &&
-      Number(p.minute) === mm
-    )
-      return t;
-  }
-  throw new Error("No such weekly time in the next two weeks");
-}
-
-/** The prepare request of a curated world's next book, from the feed's current price. */
-export async function curatedBook(world: CuratedWorld, client: PublicClient, nowS: number) {
-  const book: Record<string, unknown> = { feeBps: String(world.feeBps) };
-  if (world.feed) {
-    if (!world.underlying || !world.strikes || !world.fixing)
-      throw new Error(`${world.title}: a priced world needs underlying, strikes and fixing`);
-    // The first weekly fixing whose cutoff is still ahead: past a book's cutoff, the next one.
-    const fixing = world.fixing.at
-      ? Math.floor(Date.parse(world.fixing.at) / 1000)
-      : nextWeekly(
-          nowS + (world.cutoffBefore ?? 3_600),
-          world.fixing.weekday ?? 5,
-          world.fixing.time ?? "16:00",
-          world.fixing.timeZone ?? "America/New_York",
-        );
-    const latest = (await client.readContract({
-      address: world.feed,
-      abi: feedAbi,
-      functionName: "latestRoundData",
-    })) as readonly bigint[];
-    const spot = latest[1]!,
-      tick = BigInt(world.strikes.tick);
-    const strikes = [
-      ...new Set(
-        world.strikes.percents.map((p) => {
-          const raw = (spot * BigInt(Math.round((100 + p) * 100))) / 10_000n;
-          return ((raw + tick / 2n) / tick) * tick;
-        }),
-      ),
-    ]
-      .filter((k) => k > 0n)
-      .sort((a, b) => (a < b ? -1 : 1));
-    Object.assign(book, {
-      underlying: world.underlying,
-      fixingTime: String(fixing),
-      maxStaleness: String(world.maxStaleness ?? 3_600),
-      strikes: strikes.map(String),
-      cutoff: String(fixing - (world.cutoffBefore ?? 3_600)),
-      fixingRule: `${world.underlying} at ${new Date(fixing * 1000).toISOString()}`,
-    });
-  } else {
-    if (!world.cutoffAt) throw new Error(`${world.title}: an event-only world needs cutoffAt`);
-    book.cutoff = String(Math.floor(Date.parse(world.cutoffAt) / 1000));
-  }
-  return {
-    title: world.title,
-    feed: world.feed ?? "0x0000000000000000000000000000000000000000",
-    legs: world.legs.map((l) => ({
-      source: l.source,
-      marketId: l.marketId,
-      wantYes: l.wantYes !== false,
-      themes: l.themes ?? [],
-    })),
-    book,
-  };
 }
 
 export { FIX_WINDOW, worldMetadataUri };
