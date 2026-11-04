@@ -75,7 +75,8 @@ async function main() {
   const command = process.argv[2];
   if (command !== "quote" && command !== "mark" && command !== "fit")
     throw new Error("Run quote, mark or fit");
-  const live = env.WK_MODE === "live";
+  // The fit signs nothing: it runs with the keeper's environment, live or not.
+  const live = env.WK_MODE === "live" && command !== "fit";
   if (live && !process.argv.includes("--execute"))
     throw new Error("Live signing requires --execute as well as WK_MODE=live");
   const rpc = required("WK_RPC_URL");
