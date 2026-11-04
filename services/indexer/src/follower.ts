@@ -21,7 +21,10 @@
  * Finality: finalized ranges are read again with ranged eth_getLogs, in parallel chunks sized to
  * what the provider accepts, so persisted history never depends on what the tip saw. When the
  * two differ, the tip is rebuilt. The finalized head is read every `finalityMs` while it advances
- * and backs off while it stands still. */
+ * and backs off while it stands still.
+ *
+ * What it replays is a `Ledger`: the exchange's by default (`exchangeLedger`), or another set of
+ * contracts' (the world books, `@conditional-stocks/indexer/worlds`) with its own replica. */
 import type { Database } from "@conditional-stocks/db";
 import {
   applyTransaction,
@@ -38,37 +41,130 @@ import {
   type TradeDetails,
   touched,
   tradeDetails,
-  transactions,
 } from "@conditional-stocks/evm-client/ledger";
 import { type Address, getAddress, type Hex, type Log, type PublicClient } from "viem";
 import { logRangeLimit, mapLimit, mayContain } from "./rpc.ts";
 
-export interface CommitNotice {
+/** A replica's position on the chain. */
+export interface LedgerState {
   block: bigint;
-  state: ChainState;
-  changes: Touched;
-  events: DecodedEvent[];
-  trades: Map<string, TradeDetails>;
+  hash: Hex;
+  timestamp: bigint;
+}
+/** A decoded log, in chain order. */
+export interface LedgerEvent {
+  name: string;
+  args: Record<string, unknown>;
+  block: bigint;
+  logIndex: number;
+  transactionHash: Hex;
+}
+/** What the follower replays: the contracts it reads and how their logs build a replica.
+ * `D` is a per-event detail resolved right after its transaction applies (the exchange's
+ * trades); `X` are records that leave both replicas once final (its closed orders). */
+export interface Ledger<S extends LedgerState, C, E extends LedgerEvent, D = never, X = never> {
+  addresses: readonly Address[];
+  /** The replica before the deployment block. */
+  empty(): S;
+  clone(s: S): S;
+  /** A replica from its checkpoint text. */
+  restore(text: string): S;
+  /** Whether a restore failed only because the checkpoint predates the replica's format (the
+   * follower then replays from the deployment block). */
+  stale(error: unknown): boolean;
+  /** Throws when a restored replica belongs to another deployment. */
+  verify(restored: S): void;
+  decode(log: Log, timestamp: bigint): E;
+  touched(): C;
+  merge(into: C, from: C): void;
+  /** Applies the events of one transaction. */
+  apply(s: S, events: E[], changes: C): void;
+  details?(s: S, e: E): D | undefined;
+  /** Evicts what finalization made final (`changes` is what it touched up to `block`). */
+  evict?(base: S, confirmed: S, changes: C, block: bigint): X[];
+}
+
+/** The exchange's ledger (`@conditional-stocks/evm-client/ledger`). */
+export function exchangeLedger(
+  exchange: Address,
+  quote: Address,
+): Ledger<ChainState, Touched, DecodedEvent, TradeDetails, OrderState> {
+  return {
+    addresses: [getAddress(exchange)],
+    empty: () => emptyState(quote),
+    clone: cloneState,
+    restore: restoreState,
+    stale: (error) => error instanceof StaleCheckpointError,
+    verify(restored) {
+      if (getAddress(restored.quote) !== getAddress(quote))
+        throw new Error("Checkpoint belongs to another deployment");
+    },
+    decode: decodeLog,
+    touched,
+    merge(into, from) {
+      for (const key of ["markets", "owners", "orders"] as const)
+        for (const value of from[key]) (into[key] as Set<unknown>).add(value);
+    },
+    apply: (s, events, changes) => void applyTransaction(s, events, changes),
+    details: (s, e) => (isFill(e.name) ? tradeDetails(s, e) : undefined),
+    evict(base, confirmed, changes, block) {
+      // Closed orders are final: they move to persisted history and leave both replicas. Only
+      // an order these events touched can have closed.
+      const closed: OrderState[] = [];
+      for (const key of changes.orders) {
+        const order = base.orders.get(key);
+        if (order && order.status !== "open" && order.updatedBlock <= block) {
+          closed.push(order);
+          base.orders.delete(key);
+          confirmed.orders.delete(key);
+        }
+      }
+      return closed;
+    },
+  };
+}
+
+export interface CommitNotice<S = ChainState, C = Touched, E = DecodedEvent, D = TradeDetails> {
+  block: bigint;
+  state: S;
+  changes: C;
+  events: E[];
+  trades: Map<string, D>;
   /** The tip was rebuilt from the base: events after the base block were replaced. */
   rebuilt: boolean;
 }
-export interface FinalizedNotice {
+export interface FinalizedNotice<
+  S = ChainState,
+  E = DecodedEvent,
+  D = TradeDetails,
+  X = OrderState,
+> {
   block: bigint;
   hash: Hex;
-  base: ChainState;
-  events: DecodedEvent[];
+  base: S;
+  events: E[];
   /** Execution details of each Trade (resolved while replaying), by `${block}:${logIndex}`. */
-  trades: Map<string, TradeDetails>;
+  trades: Map<string, D>;
   /** Orders closed at or before `block`: final, already evicted from both replicas. */
-  closed: OrderState[];
+  closed: X[];
 }
-export interface FollowerOptions {
+export interface FollowerOptions<
+  S extends LedgerState = ChainState,
+  C = Touched,
+  E extends LedgerEvent = DecodedEvent,
+  D = TradeDetails,
+  X = OrderState,
+> {
   client: PublicClient;
   /** One client per RPC endpoint, each failing over to the others. The follower reads through
    * one of them and moves on when a poll fails or its head stalls behind another endpoint. */
   endpoints?: PublicClient[];
+  /** The contract followed and its quote token: the exchange's, unless `ledger` replays
+   * another deployment (whose main contract and quote token they then name). */
   exchange: Address;
   quote: Address;
+  /** What to replay instead of the exchange. */
+  ledger?: Ledger<S, C, E, D, X>;
   deploymentBlock: bigint;
   domain: string;
   db?: Pick<Database, "checkpoint">;
@@ -80,9 +176,9 @@ export interface FollowerOptions {
   logRange?: bigint;
   /** Blocks behind the head treated as final, for an RPC without the `finalized` tag. */
   finalityDepth?: bigint;
-  onCommit?(notice: CommitNotice): void;
+  onCommit?(notice: CommitNotice<S, C, E, D>): void;
   /** Called in order and synchronously: persistence must not hold up the follower. */
-  onFinalized?(notice: FinalizedNotice): void;
+  onFinalized?(notice: FinalizedNotice<S, E, D, X>): void;
   onError?(error: unknown): void;
 }
 
@@ -96,13 +192,13 @@ interface Header extends Tip {
   logsBloom: Hex | null;
   transactions: readonly unknown[];
 }
-interface PendingBlock extends Tip {
-  events: DecodedEvent[];
-  changes: Touched;
+interface PendingBlock<C, E> extends Tip {
+  events: E[];
+  changes: C;
 }
-interface BlockEvents {
+interface BlockEvents<E> {
   block: Tip;
-  events: DecodedEvent[];
+  events: E[];
 }
 
 /** Largest gap filled header by header; beyond it the tip catches up with ranged eth_getLogs. */
@@ -119,15 +215,26 @@ const MAX_POLL_MS = 12_000;
 const FINALITY_BACKOFF = 8;
 const ZSTD = [0x28, 0xb5, 0x2f, 0xfd];
 
-const tradeKey = (e: DecodedEvent) => `${e.block}:${e.logIndex}`;
+const tradeKey = (e: LedgerEvent) => `${e.block}:${e.logIndex}`;
 const json = (value: unknown) =>
   JSON.stringify(value, (_k, v) => (typeof v === "bigint" ? v.toString() : v));
-const fingerprint = (events: DecodedEvent[]) =>
+const fingerprint = (events: LedgerEvent[]) =>
   events.map((e) => `${tradeKey(e)}:${e.transactionHash}:${e.name}:${json(e.args)}`).join("|");
-const merge = (into: Touched, from: Touched) => {
-  for (const key of ["markets", "owners", "orders"] as const)
-    for (const value of from[key]) (into[key] as Set<unknown>).add(value);
-};
+/** Groups decoded logs by transaction (logs arrive in block and log order). */
+function* byTransaction<E extends LedgerEvent>(events: E[]) {
+  let batch: E[] = [];
+  for (const e of events) {
+    if (
+      batch.length &&
+      (batch[0]!.transactionHash !== e.transactionHash || batch[0]!.block !== e.block)
+    ) {
+      yield batch;
+      batch = [];
+    }
+    batch.push(e);
+  }
+  if (batch.length) yield batch;
+}
 const zeroBloom = (bloom: Hex | null) => !bloom || /^0x0*$/.test(bloom);
 const header = (block: {
   number: bigint | null;
@@ -148,17 +255,25 @@ const header = (block: {
   };
 };
 
-/** A stored checkpoint: zstd-compressed compact JSON, or a legacy uncompressed one. */
-export function readCheckpoint(bytes: Uint8Array): ChainState {
+/** A stored checkpoint's text: zstd-compressed compact JSON, or a legacy uncompressed one. */
+export function checkpointText(bytes: Uint8Array): string {
   const compressed = ZSTD.every((byte, i) => bytes[i] === byte);
-  return restoreState(
-    (compressed ? Bun.zstdDecompressSync(bytes) : Buffer.from(bytes)).toString("utf8"),
-  );
+  return (compressed ? Bun.zstdDecompressSync(bytes) : Buffer.from(bytes)).toString("utf8");
 }
+/** A stored checkpoint of the exchange. */
+export const readCheckpoint = (bytes: Uint8Array): ChainState =>
+  restoreState(checkpointText(bytes));
 
-export class ChainFollower {
-  base: ChainState;
-  confirmed: ChainState;
+export class ChainFollower<
+  S extends LedgerState = ChainState,
+  C = Touched,
+  E extends LedgerEvent = DecodedEvent,
+  D = TradeDetails,
+  X = OrderState,
+> {
+  readonly ledger: Ledger<S, C, E, D, X>;
+  base: S;
+  confirmed: S;
   ready = false;
   /** The block of the checkpoint this run resumed from: its history was persisted by an earlier
    * run, and every later block is finalized again by this one. Undefined without a checkpoint. */
@@ -166,7 +281,7 @@ export class ChainFollower {
   /** Increments whenever the confirmed replica changes, so reads can be memoized per revision. */
   revision = 0;
   /** Unfinalized blocks with protocol events, applied to the confirmed replica. */
-  private pending: PendingBlock[] = [];
+  private pending: PendingBlock<C, E>[] = [];
   private head: Tip;
   private range: bigint;
   /** Span limit a provider stated in an error, or just below a span it refused. */
@@ -193,8 +308,11 @@ export class ChainFollower {
    * (chains may zero them); a finalized re-read that differs from the tip revokes the trust. */
   private emptyBloom: "unknown" | "trusted" | "revoked" = "unknown";
 
-  constructor(readonly options: FollowerOptions) {
-    this.base = emptyState(options.quote);
+  constructor(readonly options: FollowerOptions<S, C, E, D, X>) {
+    this.ledger =
+      options.ledger ??
+      (exchangeLedger(options.exchange, options.quote) as unknown as Ledger<S, C, E, D, X>);
+    this.base = this.ledger.empty();
     this.base.block = options.deploymentBlock - 1n;
     this.confirmed = this.base;
     this.head = this.baseTip();
@@ -226,21 +344,22 @@ export class ChainFollower {
     const checkpoint = await db?.checkpoint(domain);
     // A checkpoint from an older replica lacks state it now keeps: the replica is rebuilt from
     // the deployment block (persisting history again is idempotent).
-    let restored: ChainState | undefined;
+    let restored: S | undefined;
     try {
-      restored = checkpoint ? readCheckpoint(checkpoint.state) : undefined;
+      restored = checkpoint ? this.ledger.restore(checkpointText(checkpoint.state)) : undefined;
     } catch (error) {
-      if (!(error instanceof StaleCheckpointError)) throw error;
-      this.options.onError?.(new Error(`Replaying from the deployment block: ${error.message}`));
+      if (!this.ledger.stale(error)) throw error;
+      this.options.onError?.(
+        new Error(`Replaying from the deployment block: ${(error as Error).message}`),
+      );
     }
     if (restored) {
-      if (getAddress(restored.quote) !== getAddress(this.options.quote))
-        throw new Error("Checkpoint belongs to another deployment");
+      this.ledger.verify(restored);
       this.base = restored;
       this.restored = restored.block;
     }
     // Blocks after the checkpoint are read from the chain by the first finality pass.
-    this.confirmed = cloneState(this.base);
+    this.confirmed = this.ledger.clone(this.base);
     this.head = this.baseTip();
     this.advancedAt = Date.now();
     // The first pass catches up from the checkpoint (or the deployment block). A failed read
@@ -418,12 +537,18 @@ export class ChainFollower {
     }
   }
 
-  /** Whether a block can hold exchange logs, judged from its header alone. */
+  /** Whether a block can hold the ledger's logs, judged from its header alone. */
   private mayHaveLogs(h: Header) {
     if (!h.transactions.length) return false;
     if (zeroBloom(h.logsBloom)) return this.emptyBloom !== "trusted";
     if (this.emptyBloom === "unknown") this.emptyBloom = "trusted";
-    return mayContain(h.logsBloom, this.options.exchange);
+    return this.ledger.addresses.some((address) => mayContain(h.logsBloom, address));
+  }
+
+  /** The `address` filter of eth_getLogs. */
+  private get filter() {
+    const { addresses } = this.ledger;
+    return addresses.length === 1 ? addresses[0]! : [...addresses];
   }
 
   private async advanceTip(latest: Header): Promise<void> {
@@ -476,29 +601,26 @@ export class ChainFollower {
 
   /** Protocol events of one block, read by its hash. */
   private async blockEvents(block: Header) {
-    const logs = await this.client.getLogs({
-      address: this.options.exchange,
-      blockHash: block.hash,
-    });
+    const logs = await this.client.getLogs({ address: this.filter, blockHash: block.hash });
     if (logs.some((log) => log.blockHash !== block.hash || log.blockNumber !== block.number))
       throw new Error("Logs do not belong to the requested block");
     return (await this.blocksOf(logs, new Map([[block.hash, block.timestamp]])))[0]?.events ?? [];
   }
 
   /** Applies blocks of events to the confirmed replica and moves the tip to `head`. */
-  private commit(blocks: BlockEvents[], head: Tip, reset?: Touched) {
-    const changes = reset ?? touched();
-    const events: DecodedEvent[] = [];
-    const trades = new Map<string, TradeDetails>();
+  private commit(blocks: BlockEvents<E>[], head: Tip, reset?: C) {
+    const ledger = this.ledger;
+    const changes = reset ?? ledger.touched();
+    const events: E[] = [];
+    const trades = new Map<string, D>();
     for (const { block, events: list } of blocks) {
       if (!list.length || block.number <= this.base.block) continue;
-      const own = touched();
-      for (const batch of transactions(list)) {
-        applyTransaction(this.confirmed, batch, own);
-        for (const e of batch)
-          if (isFill(e.name)) trades.set(tradeKey(e), tradeDetails(this.confirmed, e));
+      const own = ledger.touched();
+      for (const batch of byTransaction(list)) {
+        ledger.apply(this.confirmed, batch, own);
+        this.detail(this.confirmed, batch, trades);
       }
-      merge(changes, own);
+      ledger.merge(changes, own);
       this.pending.push({ ...block, events: list, changes: own });
       events.push(...list);
     }
@@ -522,10 +644,20 @@ export class ChainFollower {
     });
   }
 
+  /** Details the ledger resolves right after `batch` applied to `s`. */
+  private detail(s: S, batch: E[], into: Map<string, D>) {
+    const details = this.ledger.details;
+    if (!details) return;
+    for (const e of batch) {
+      const d = details(s, e);
+      if (d !== undefined) into.set(tradeKey(e), d);
+    }
+  }
+
   /** Rebuilds the tip from the base, re-applying the still-valid unfinalized blocks. */
-  private rebuildTip(keep: PendingBlock[], head: Tip, changes = touched()) {
-    for (const p of this.pending) merge(changes, p.changes);
-    this.confirmed = cloneState(this.base);
+  private rebuildTip(keep: PendingBlock<C, E>[], head: Tip, changes = this.ledger.touched()) {
+    for (const p of this.pending) this.ledger.merge(changes, p.changes);
+    this.confirmed = this.ledger.clone(this.base);
     this.pending = [];
     this.commit(
       keep.map((p) => ({ block: p, events: p.events })),
@@ -548,8 +680,8 @@ export class ChainFollower {
     if (finalized.number <= this.base.block) return false;
     // Past the finalized block, the tip has already applied the range: compare what it saw.
     const covered = this.head.number > finalized.number;
-    const seen: DecodedEvent[] = [];
-    const changes = touched();
+    const seen: E[] = [];
+    const changes = this.ledger.touched();
     const stamps = new Map(this.pending.map((p) => [p.hash, p.timestamp]));
     for await (const chunk of this.chunks(this.base.block, finalized.number)) {
       const events = (await this.blocksOf(chunk.logs, stamps)).flatMap((b) => b.events);
@@ -576,30 +708,20 @@ export class ChainFollower {
     return true;
   }
 
-  private finalize(events: DecodedEvent[], tip: Tip, changes: Touched) {
-    const trades = new Map<string, TradeDetails>();
-    const own = touched();
-    for (const batch of transactions(events)) {
-      applyTransaction(this.base, batch, own);
+  private finalize(events: E[], tip: Tip, changes: C) {
+    const ledger = this.ledger;
+    const trades = new Map<string, D>();
+    const own = ledger.touched();
+    for (const batch of byTransaction(events)) {
+      ledger.apply(this.base, batch, own);
       // Orders stay in the replica until evicted below, so both parties resolve.
-      for (const e of batch)
-        if (isFill(e.name)) trades.set(tradeKey(e), tradeDetails(this.base, e));
+      this.detail(this.base, batch, trades);
     }
-    merge(changes, own);
+    ledger.merge(changes, own);
     this.base.block = tip.number;
     this.base.hash = tip.hash;
     this.base.timestamp = tip.timestamp;
-    // Closed orders are final: they move to persisted history and leave both replicas. Only an
-    // order these events touched can have closed.
-    const closed: OrderState[] = [];
-    for (const key of own.orders) {
-      const order = this.base.orders.get(key);
-      if (order && order.status !== "open" && order.updatedBlock <= tip.number) {
-        closed.push(order);
-        this.base.orders.delete(key);
-        this.confirmed.orders.delete(key);
-      }
-    }
+    const closed = ledger.evict?.(this.base, this.confirmed, own, tip.number) ?? [];
     if (closed.length) this.revision++;
     this.options.onFinalized?.({
       block: tip.number,
@@ -634,7 +756,7 @@ export class ChainFollower {
     const span = to - from + 1n;
     try {
       const logs = await this.client.getLogs({
-        address: this.options.exchange,
+        address: this.filter,
         fromBlock: from,
         toBlock: to,
       });
@@ -669,7 +791,7 @@ export class ChainFollower {
 
   /** Decoded protocol events grouped by block, in chain order. Timestamps come from the logs
    * when the node includes them, then from known headers, then from one header per block. */
-  private async blocksOf(logs: Log[], stamps: Map<Hex, bigint>): Promise<BlockEvents[]> {
+  private async blocksOf(logs: Log[], stamps: Map<Hex, bigint>): Promise<BlockEvents<E>[]> {
     const live = logs.filter((log) => !log.removed);
     // Some nodes (Robinhood Chain's) send `blockTimestamp: "0x0"` in logs: zero means unknown.
     const stamped = (log: Log) => {
@@ -694,7 +816,7 @@ export class ChainFollower {
           ? -1
           : 1,
     );
-    const blocks: BlockEvents[] = [];
+    const blocks: BlockEvents<E>[] = [];
     for (const log of live) {
       let last = blocks.at(-1);
       if (
@@ -709,7 +831,7 @@ export class ChainFollower {
         last = { block: { number: log.blockNumber!, hash: log.blockHash!, timestamp }, events: [] };
         blocks.push(last);
       }
-      last.events.push(decodeLog(log, timestamp));
+      last.events.push(this.ledger.decode(log, timestamp));
     }
     return blocks;
   }

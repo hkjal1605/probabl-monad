@@ -30,9 +30,18 @@ function service(name, entry, memory, extra = []) {
     max_memory_restart: memory,
     args: [
       `--env-file=${resolve(root, ".env")}`,
-      ...(["market-maker", "vault-keeper", "feed-mirror", "market-automation"].includes(name)
+      ...([
+        "market-maker",
+        "vault-keeper",
+        "feed-mirror",
+        "market-automation",
+        "world-keeper",
+        "world-marker",
+      ].includes(name)
         ? [`--env-file=${resolve(root, `.env.${name}`)}`]
-        : []),
+        : name === "world-fit"
+          ? [`--env-file=${resolve(root, ".env.world-keeper")}`]
+          : []),
       resolve(root, entry),
       ...extra,
     ],
@@ -40,8 +49,10 @@ function service(name, entry, memory, extra = []) {
 }
 
 // One API process runs the chain index (live replica, finalized persistence, reconciliation)
-// and the /v1 API. The market maker, the Δ-vault keeper, the market automation and the testnet
-// mock-feed mirror each use their own wallet and run only when their .env.<name> file exists.
+// and the /v1 API (and with WORLD_BOOKS_ADDRESS the world index and /v2). The market maker, the
+// Δ-vault keeper, the market automation, the testnet mock-feed mirror, and the world vault's
+// keeper and marker each use their own wallet and run only when their .env.<name> file exists;
+// the world fit runs nightly with the keeper's environment.
 module.exports = {
   apps: [
     service("polymarket", "services/polymarket-ingestor/src/main.ts", "384M"),
@@ -61,6 +72,27 @@ module.exports = {
       : []),
     ...(existsSync(resolve(root, ".env.feed-mirror"))
       ? [service("feed-mirror", "scripts/evm/feed-mirror.ts", "256M")]
+      : []),
+    ...(existsSync(resolve(root, ".env.world-keeper"))
+      ? [
+          service("world-keeper", "services/world-keeper/src/main.ts", "512M", [
+            "quote",
+            "--execute",
+          ]),
+          {
+            ...service("world-fit", "services/world-keeper/src/main.ts", "512M", ["fit"]),
+            autorestart: false,
+            cron_restart: "30 3 * * *",
+          },
+        ]
+      : []),
+    ...(existsSync(resolve(root, ".env.world-marker"))
+      ? [
+          service("world-marker", "services/world-keeper/src/main.ts", "384M", [
+            "mark",
+            "--execute",
+          ]),
+        ]
       : []),
   ],
 };

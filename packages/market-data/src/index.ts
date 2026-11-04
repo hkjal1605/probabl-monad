@@ -7,3 +7,4 @@ export * from "./polymarket/metadata.ts";
 export * from "./polymarket/order-book.ts";
 export * from "./probability.ts";
 export * from "./request-pacer.ts";
+export * from "./world-evidence.ts";

@@ -237,8 +237,9 @@ export class Admin {
     };
   }
 
-  /** Sends a lifecycle or rebate transaction in turn with the account's other sends. */
-  private send(transaction: AdminTransaction) {
+  /** Sends an administrative transaction in turn with the account's other sends (the world
+   * jobs' too), signed by the configured key its `from` names. */
+  send(transaction: AdminTransaction) {
     return inTurn(transaction.from, () => this.transmit(transaction));
   }
 
@@ -276,8 +277,9 @@ export class Admin {
     }
   }
 
-  private async request<T>(path: string, body?: unknown): Promise<T> {
-    const authenticated = path.startsWith("/v1/admin/");
+  /** A call to the API, authenticated as the market admin for admin paths. */
+  async request<T>(path: string, body?: unknown): Promise<T> {
+    const authenticated = path.startsWith("/v1/admin/") || path.startsWith("/v2/admin/");
     for (let attempt = 1; ; attempt++) {
       const response = await fetch(`${this.options.api}${path}`, {
         method: body === undefined ? "GET" : "POST",

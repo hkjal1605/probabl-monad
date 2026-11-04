@@ -9,6 +9,7 @@ import {
   writeFinalized,
 } from "./queries.ts";
 import { initializeStorage, SCHEMA_VERSION } from "./schema.ts";
+import { type WorldFinalizedBatch, writeWorldFinalized } from "./worlds.ts";
 
 export type {
   Checkpoint,
@@ -27,6 +28,22 @@ export type {
 } from "./queries.ts";
 export { InviteError, SignInCapacityError } from "./queries.ts";
 export { SCHEMA_VERSION } from "./schema.ts";
+export type {
+  EventProbabilityRow,
+  EventVolatilityRecord,
+  LegRelationKind,
+  LegRelationRecord,
+  VaultMarkRecord,
+  WorldBookMetadata,
+  WorldBookRecord,
+  WorldCorrelationRecord,
+  WorldFillRow,
+  WorldFinalizedBatch,
+  WorldGapRecord,
+  WorldLegMetadata,
+  WorldPriceRow,
+  WorldVolRecord,
+} from "./worlds.ts";
 
 export function createDatabase(options: {
   connectionString: string;
@@ -95,6 +112,10 @@ export function database(pool: Pool) {
     },
     persistFinalized(domain: string, batch: FinalizedBatch) {
       return transaction(null, (tx) => writeFinalized(tx, domain, batch));
+    },
+    /** A finalized batch of the world books: its fills and, when due, the checkpoint. */
+    persistWorldFinalized(domain: string, batch: WorldFinalizedBatch) {
+      return transaction(null, (tx) => writeWorldFinalized(tx, domain, batch));
     },
     /** Joins `wallet` with `code`: one use of the code, and its owner as referrer for good. */
     redeemInvite(wallet: string, code: string, codeQuota: number): Promise<MemberRecord> {
@@ -215,6 +236,71 @@ export function database(pool: Pool) {
             [domain, result.block, result.log_index],
           );
         return { trades: Number(result.trades), accruals: Number(result.accruals) };
+      });
+    },
+    /** Accrues referral rewards for the next finalized world fills: each fill's taker who joined
+     * through a referrer (within `months` of joining) gives that referrer `rateBps` of its fee,
+     * rounded down. Fees are paid in the stablecoin up front, so the accrual is the reward itself
+     * (book as `market`, branch and collateral 0, role 1). A maker pays no fee. One serialized
+     * transaction per batch under the world deployment's cursor. */
+    accrueWorldReferrals(
+      domain: string,
+      options: { rateBps: number; months: number; limit?: number },
+    ) {
+      return transaction(`referral-accrual:${domain}`, async (tx) => {
+        const cursor = (
+          await tx.query<{ block: string; log_index: number }>(
+            `SELECT block::text, log_index FROM probabl.referral_cursor
+            WHERE deployment = (SELECT id FROM probabl.deployments WHERE domain = $1)`,
+            [domain],
+          )
+        ).rows[0];
+        const result = (
+          await tx.query<{
+            fills: string;
+            accruals: string;
+            block: string | null;
+            log_index: number | null;
+          }>(
+            `WITH d AS (SELECT id FROM probabl.deployments WHERE domain = $1),
+            batch AS (
+              SELECT block, log_index, block_time, book, fee, maker, taker FROM probabl.world_fills
+              WHERE deployment = (SELECT id FROM d) AND (block, log_index) > ($2::bigint, $3::int)
+              ORDER BY block, log_index LIMIT $4::int),
+            accrued AS (
+              INSERT INTO probabl.referral_accruals (deployment, block, block_time, log_index, market,
+                role, branch, collateral, rate_bps, fee, amount, referrer, referee)
+              SELECT (SELECT id FROM d), f.block, f.block_time, f.log_index, f.book, 1, 0, 0, $5::int,
+                f.fee, div(f.fee * $5::int, 10000), m.referrer, f.taker
+              FROM batch f
+              JOIN probabl.members m ON m.wallet = f.taker AND m.referrer IS NOT NULL
+              JOIN probabl.members r ON r.wallet = m.referrer AND r.suspended_at IS NULL
+              WHERE f.maker <> f.taker AND div(f.fee * $5::int, 10000) > 0
+                AND f.block_time >= floor(extract(epoch FROM m.joined_at))
+                AND f.block_time < floor(extract(epoch FROM m.joined_at + make_interval(months => $6::int)))
+              ON CONFLICT DO NOTHING RETURNING 1),
+            last AS (SELECT block, log_index FROM batch ORDER BY block DESC, log_index DESC LIMIT 1)
+            SELECT (SELECT count(*) FROM batch)::text AS fills,
+              (SELECT count(*) FROM accrued)::text AS accruals,
+              (SELECT block::text FROM last) AS block, (SELECT log_index FROM last) AS log_index`,
+            [
+              domain,
+              cursor?.block ?? "-1",
+              cursor?.log_index ?? -1,
+              options.limit ?? 5_000,
+              options.rateBps,
+              options.months,
+            ],
+          )
+        ).rows[0]!;
+        if (result.block !== null)
+          await tx.query(
+            `INSERT INTO probabl.referral_cursor
+            VALUES ((SELECT id FROM probabl.deployments WHERE domain = $1), $2, $3)
+            ON CONFLICT (deployment) DO UPDATE SET block = excluded.block, log_index = excluded.log_index`,
+            [domain, result.block, result.log_index],
+          );
+        return { fills: Number(result.fills), accruals: Number(result.accruals) };
       });
     },
     close: () => pool.end(),

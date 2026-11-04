@@ -4,8 +4,12 @@ import type { Admin } from "../admin.ts";
 import type { LadderConfig } from "../ladders.ts";
 import type { CuratedVault } from "../vaults.ts";
 import type { KalshiApi } from "../venues/kalshi-api.ts";
+import type { CuratedWorld, WorldAdmin } from "../worlds.ts";
 import { curateVaults } from "./curate-vaults.ts";
+import { curateWorlds } from "./curate-worlds.ts";
+import { fixBooks } from "./fix-books.ts";
 import { dailyLadders, weeklyLadders } from "./ladders.ts";
+import { resolveEvents } from "./resolve-events.ts";
 import { resolveMarkets } from "./resolve-markets.ts";
 
 export interface JobContext {
@@ -18,6 +22,11 @@ export interface JobContext {
   ladders: LadderConfig;
   /** Kalshi's public API, which lists the ladders' strikes. */
   kalshi: KalshiApi;
+  /** The chain the exchange and the world books are on. */
+  client?: PublicClient;
+  /** The world books (absent without WORLD_BOOKS_ADDRESS) and the curated worlds to create. */
+  worlds?: WorldAdmin;
+  curated?: CuratedWorld[];
   /** False in a dry run: jobs log what they would do and change nothing. */
   execute: boolean;
   logger: Logger;
@@ -31,4 +40,12 @@ export interface Job {
 }
 
 /** The jobs main.ts runs. Market creation jobs build `MarketSpec`s and call `createMarkets`. */
-export const JOBS: Job[] = [resolveMarkets, dailyLadders, weeklyLadders, curateVaults];
+export const JOBS: Job[] = [
+  resolveMarkets,
+  dailyLadders,
+  weeklyLadders,
+  curateVaults,
+  resolveEvents,
+  fixBooks,
+  curateWorlds,
+];

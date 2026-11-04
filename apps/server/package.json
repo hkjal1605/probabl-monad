@@ -17,5 +17,9 @@
     "@conditional-stocks/shared": "workspace:*",
     "hono": "4.13.5",
     "viem": "2.56.3"
+  },
+  "devDependencies": {
+    "@conditional-stocks/operator": "workspace:*",
+    "@conditional-stocks/world-keeper": "workspace:*"
   }
 }

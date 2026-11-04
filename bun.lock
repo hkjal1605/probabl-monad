@@ -83,6 +83,10 @@
         "hono": "4.13.5",
         "viem": "2.56.3",
       },
+      "devDependencies": {
+        "@conditional-stocks/operator": "workspace:*",
+        "@conditional-stocks/world-keeper": "workspace:*",
+      },
     },
     "apps/web": {
       "name": "@conditional-stocks/web",
@@ -241,6 +245,18 @@
         "@conditional-stocks/db": "workspace:*",
         "@conditional-stocks/evm-client": "workspace:*",
         "@conditional-stocks/indexer": "workspace:*",
+        "@conditional-stocks/operator": "workspace:*",
+        "viem": "2.56.3",
+      },
+    },
+    "services/world-keeper": {
+      "name": "@conditional-stocks/world-keeper",
+      "version": "0.1.0",
+      "dependencies": {
+        "@conditional-stocks/db": "workspace:*",
+        "@conditional-stocks/evm-client": "workspace:*",
+        "@conditional-stocks/indexer": "workspace:*",
+        "@conditional-stocks/market-data": "workspace:*",
         "@conditional-stocks/operator": "workspace:*",
         "viem": "2.56.3",
       },
@@ -492,6 +508,8 @@
     "@conditional-stocks/vault-keeper": ["@conditional-stocks/vault-keeper@workspace:services/vault-keeper"],
 
     "@conditional-stocks/web": ["@conditional-stocks/web@workspace:apps/web"],
+
+    "@conditional-stocks/world-keeper": ["@conditional-stocks/world-keeper@workspace:services/world-keeper"],
 
     "@cspotcode/source-map-support": ["@cspotcode/source-map-support@0.8.1", "", { "dependencies": { "@jridgewell/trace-mapping": "0.3.9" } }, "sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw=="],
 

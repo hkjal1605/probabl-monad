@@ -8,7 +8,7 @@ import {
   type PublicClient,
   zeroHash,
 } from "viem";
-import { ChainFollower } from "../src/follower.ts";
+import { ChainFollower, type FollowerOptions } from "../src/follower.ts";
 import { logRangeLimit, mapLimit } from "../src/rpc.ts";
 
 const hash = (n: bigint) => `0x${n.toString(16).padStart(64, "0")}` as Hex;
@@ -157,10 +157,7 @@ function endpoint(options: { seconds?: bigint; finalized?: bigint; bloom?: (n: b
   } as unknown as PublicClient;
   return { client, calls, state };
 }
-const follow = (
-  client: PublicClient,
-  extra: Partial<ConstructorParameters<typeof ChainFollower>[0]> = {},
-) =>
+const follow = (client: PublicClient, extra: Partial<FollowerOptions> = {}) =>
   new ChainFollower({ client, exchange, quote, deploymentBlock: 100n, domain: "stub", ...extra });
 const pacing = (f: ChainFollower) => f as unknown as { delay(advanced: boolean): number };
 

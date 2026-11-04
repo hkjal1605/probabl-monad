@@ -100,6 +100,17 @@ class Mutex {
     return next;
   }
 }
+const nonceLocks = new Map<Address, Mutex>();
+/** One lock per signing key in the process: exchange orders and world fills sign with the same
+ * trading delegate, and two sends in flight would take the same nonce. */
+export function nonceLock(signer: Address) {
+  let lock = nonceLocks.get(signer);
+  if (!lock) {
+    lock = new Mutex();
+    nonceLocks.set(signer, lock);
+  }
+  return lock;
+}
 
 /** What a submission's RFQ came to, for the app: the quotes the transaction carried. */
 const auctionSummary = (auction: Auction) => ({
@@ -112,7 +123,7 @@ const auctionSummary = (auction: Auction) => ({
 });
 
 export class DelegatedTrading {
-  private readonly nonce = new Mutex();
+  private readonly nonce: Mutex;
   /** Asks approved makers to quote market orders (absent without an RFQ hub). */
   readonly desk: RfqDesk | null;
 
@@ -132,6 +143,7 @@ export class DelegatedTrading {
       } | null;
     },
   ) {
+    this.nonce = nonceLock(options.signer.address);
     const { rfq } = options;
     this.desk = rfq
       ? new RfqDesk({

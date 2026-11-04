@@ -8,9 +8,16 @@
  * --once mirrors a single time. The key must own the mocks: FEED_MIRROR_PRIVATE_KEY (a
  * dedicated relay wallet the mocks were handed to), else the deployer's.
  *
+ * World books fix on these feeds too (docs/version-2-plan.md §10.4). With FIXINGS_API_URL, a
+ * reference-priced mock also takes a round at each world book's fixing time (from the API's
+ * `/v2/fixings`), so the fixing can be proposed from a round no older than the book allows: the
+ * deviation and heartbeat rules would otherwise leave rounds up to a day old. A mirrored mock
+ * keeps mainnet's own rounds (its ids follow mainnet's); a fixing with no round in time falls to
+ * the two-key fallback.
+ *
  *   FEED_MIRROR_PRIVATE_KEY=… (or DEPLOYER_PRIVATE_KEY=…) RPC_URL=… CHAIN_ID=46630
  *   FEED_SOURCE_RPC_URL=<mainnet RPC, one per source chain>,… [POLL_SECONDS=60]
- *   bun scripts/evm/feed-mirror.ts [--once] */
+ *   [FIXINGS_API_URL=http://127.0.0.1:3000] bun scripts/evm/feed-mirror.ts [--once] */
 import { resolve } from "node:path";
 import { SPOT_BATCH_SIZE } from "@conditional-stocks/shared/spot-prices";
 import {
@@ -165,8 +172,36 @@ async function referencePrices() {
   return prices;
 }
 
+const fixingsApi = process.env.FIXINGS_API_URL?.trim();
+/** Fixings of world books on reference-priced mocks that are due now: the fixing time has
+ * passed, by at most the poll interval and within the book's staleness, and the mock has no
+ * round since before it. */
+async function dueFixings(head: bigint, mocks: (readonly bigint[] | undefined)[]) {
+  if (!fixingsApi) return [];
+  const response = await fetch(`${fixingsApi}/v2/fixings?from=${head - 7_200n}&to=${head}`, {
+    signal: AbortSignal.timeout(8_000),
+  });
+  if (!response.ok) return [];
+  const body = (await response.json()) as {
+    fixings?: { feed: string; fixingTime: string; maxStaleness: number; proposal: string | null }[];
+  };
+  const due: { index: number; at: bigint }[] = [];
+  for (const f of body.fixings ?? []) {
+    const index = references.findIndex((r) => r.feed.toLowerCase() === f.feed.toLowerCase());
+    const mock = mocks[index];
+    if (index < 0 || !mock || f.proposal) continue;
+    const at = BigInt(f.fixingTime);
+    const late = head - at;
+    if (late < 0n || late > BigInt(Math.min(f.maxStaleness, pollSeconds * 2))) continue;
+    // A round at or after the fixing exists, or one too recent to write before it.
+    if (mock[3]! >= at - 60n) continue;
+    if (!due.some((d) => d.index === index)) due.push({ index, at });
+  }
+  return due;
+}
+
 /** Writes every mainnet round the mocks lack, and a reference round where the price moved or
- * the heartbeat passed; returns how many feeds failed. */
+ * the heartbeat passed (or a world book fixes now); returns how many feeds failed. */
 async function mirror() {
   const [states, head, mocks, prices] = await Promise.all([
     Promise.all(
@@ -197,10 +232,18 @@ async function mirror() {
     const at = updatedAt < head.timestamp ? updatedAt : head.timestamp;
     if (await write(f.symbol, f.feed, roundId, answer, at)) failed++;
   }
+  const fixing = await dueFixings(head.timestamp, mocks).catch(() => []);
   for (const [i, f] of references.entries()) {
     const mock = mocks[i];
     const price = prices.get(f.token.toLowerCase());
     if (!mock || !price) continue;
+    const fixesAt = fixing.find((d) => d.index === i)?.at;
+    if (fixesAt !== undefined) {
+      // The round a world book fixes on: the reference price now, stamped at the fixing.
+      const answer = BigInt(Math.round(price.priceUsd * 10 ** f.decimals));
+      if (await write(f.symbol, f.feed, mock[0]! + 1n, answer, fixesAt)) failed++;
+      continue;
+    }
     const [roundId, last, , lastAt] = mock;
     const observed = BigInt(price.priceTimestamp);
     if (observed <= lastAt) continue;

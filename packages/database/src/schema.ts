@@ -1,7 +1,7 @@
 import type { Pool } from "pg";
 
 /** Bump with a migration step below when a table or its meaning changes. */
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 /** The protocol's persistent state. Trading and custody reads are served from the in-memory
  * chain index; PostgreSQL keeps only what must survive a restart or is read historically:
@@ -11,7 +11,13 @@ export const SCHEMA_VERSION = 5;
  * checkpointed replica and on chain, never in a table.
  *
  * The history tables are the high-volume ones: they key deployments by a smallint and store
- * hashes and addresses as bytea, and each index serves one query. */
+ * hashes and addresses as bytea, and each index serves one query.
+ *
+ * World books (v2, docs/version-2-plan.md §10.1) are their own deployment, keyed
+ * `${chainId}:${worldBooks}`, with their own checkpoint and history: finalized fills, the
+ * off-chain metadata of each book (its legs' venue events), delegated fills, the vault's marks,
+ * product prices, and the pricing inputs the world keeper fits (venue probability history,
+ * factor loadings, event gaps, volatilities and leg relations). */
 const DDL = [
   "CREATE SCHEMA IF NOT EXISTS probabl",
   `CREATE TABLE IF NOT EXISTS probabl.schema_version (
@@ -157,6 +163,96 @@ const DDL = [
     key_hash bytea NOT NULL UNIQUE, key_prefix text NOT NULL, created_by bytea NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now(), revoked_at timestamptz)`,
   `CREATE INDEX IF NOT EXISTS rfq_makers_domain ON probabl.rfq_makers (domain, created_at)`,
+  // Makers the market admin let quote world books too (RFQ protocol version 2).
+  "ALTER TABLE probabl.rfq_makers ADD COLUMN IF NOT EXISTS worlds boolean NOT NULL DEFAULT false",
+
+  // ---------------------------------------------------------------- worlds (version 6)
+
+  // Finalized world fills, append-only. Amounts are raw quote units; `mask` names the bundle's
+  // atoms (bits 1 and up), `refund` its units of atom 0, `sell` a taker selling to the maker.
+  `CREATE TABLE IF NOT EXISTS probabl.world_fills (
+    block bigint NOT NULL, block_time bigint NOT NULL, log_index integer NOT NULL,
+    book integer NOT NULL, mask integer NOT NULL, deployment smallint NOT NULL,
+    sell boolean NOT NULL, units numeric(78,0) NOT NULL, refund numeric(78,0) NOT NULL,
+    price numeric(78,0) NOT NULL, fee numeric(78,0) NOT NULL, nonce numeric(78,0) NOT NULL,
+    tx bytea NOT NULL, maker bytea NOT NULL, taker bytea NOT NULL, delegate bytea,
+    PRIMARY KEY (deployment, block, log_index))`,
+  `CREATE INDEX IF NOT EXISTS world_fills_book ON probabl.world_fills
+    (deployment, book, block, log_index)`,
+  `CREATE INDEX IF NOT EXISTS world_fills_maker ON probabl.world_fills
+    (deployment, maker, block, log_index)`,
+  `CREATE INDEX IF NOT EXISTS world_fills_taker ON probabl.world_fills
+    (deployment, taker, block, log_index)`,
+  `CREATE INDEX IF NOT EXISTS world_fills_time ON probabl.world_fills (deployment, block_time)
+    INCLUDE (book, price, fee)`,
+  // What a book's on-chain definition does not carry: each leg's venue event (source, market,
+  // condition and orientation, which hash to the leg's event key), titles and the creation
+  // packet. Registered before the book is created, keyed by its definition hash; `book` is set
+  // once it exists.
+  `CREATE TABLE IF NOT EXISTS probabl.world_books (
+    def_hash bytea NOT NULL, deployment smallint NOT NULL, book integer, title text NOT NULL,
+    kind text NOT NULL CHECK (kind IN ('curated', 'user')), metadata jsonb NOT NULL,
+    packet_hash text, created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (deployment, def_hash))`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS world_books_book ON probabl.world_books (deployment, book)
+    WHERE book IS NOT NULL`,
+  // Delegated world fills the API signs: the exact signed bytes are journaled before broadcast.
+  `CREATE TABLE IF NOT EXISTS probabl.world_submissions (
+    domain text NOT NULL, owner text NOT NULL, client_id text NOT NULL, terms_hash text NOT NULL,
+    delegate text NOT NULL, tx_hash text NOT NULL, raw text NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (domain, owner, client_id))`,
+  `CREATE INDEX IF NOT EXISTS world_submissions_owner_day ON probabl.world_submissions
+    (domain, owner, created_at)`,
+  // Venue probability history, product-wide: one row per condition and minute, the YES
+  // midpoint and spread x 1e6. What the factor fit reads.
+  `CREATE TABLE IF NOT EXISTS probabl.event_probabilities (
+    minute bigint NOT NULL, mid integer NOT NULL, spread integer, condition bytea NOT NULL,
+    PRIMARY KEY (condition, minute), CHECK (mid BETWEEN 0 AND 1000000))`,
+  // Pricing inputs, product-wide. The latent correlation of two events' YES outcomes (`a` < `b`),
+  // fit from co-movement of their probit probabilities, with its standard error in Fisher z
+  // (`method`: lead-lag, combo, admin).
+  `CREATE TABLE IF NOT EXISTS probabl.world_correlations (
+    a bytea NOT NULL, b bytea NOT NULL, rho double precision NOT NULL,
+    error double precision NOT NULL, samples integer NOT NULL, method text NOT NULL,
+    fitted_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (a, b), CHECK (a < b),
+    CHECK (rho > -1 AND rho < 1 AND error > 0))`,
+  // Each event's probability volatility (per square-root day, in probit units), fit from its
+  // history: the stale-quote charge and the jump gate read it.
+  `CREATE TABLE IF NOT EXISTS probabl.event_volatility (
+    condition bytea PRIMARY KEY, vol double precision NOT NULL, samples integer NOT NULL,
+    fitted_at timestamptz NOT NULL DEFAULT now(), CHECK (vol > 0))`,
+  // The log-move of an underlying when an event resolves YES rather than NO, and its standard
+  // error (`method`: event-study, anchor, admin).
+  `CREATE TABLE IF NOT EXISTS probabl.world_gaps (
+    condition bytea NOT NULL, underlying text NOT NULL, gap double precision NOT NULL,
+    error double precision NOT NULL, samples integer NOT NULL, method text NOT NULL,
+    fitted_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (condition, underlying))`,
+  // Annualized volatility of each underlying (`method`: ewma, yang-zhang, implied, admin).
+  `CREATE TABLE IF NOT EXISTS probabl.world_vols (
+    underlying text PRIMARY KEY, vol double precision NOT NULL, error double precision NOT NULL,
+    samples integer NOT NULL, method text NOT NULL, fitted_at timestamptz NOT NULL DEFAULT now(),
+    CHECK (vol > 0 AND error >= 0))`,
+  // Exact or estimated links between two events (`a` before `b`; `implies` means a ⇒ b).
+  `CREATE TABLE IF NOT EXISTS probabl.leg_relations (
+    a bytea NOT NULL, b bytea NOT NULL,
+    kind text NOT NULL CHECK (kind IN
+      ('independent', 'positive', 'negative', 'exclusive', 'implies', 'duplicate')),
+    p_b_given_a double precision, p_b_given_not_a double precision, confidence double precision,
+    source text NOT NULL, model text, reasoning text, reviewer bytea,
+    updated_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (a, b), CHECK (a <> b))`,
+  `CREATE INDEX IF NOT EXISTS leg_relations_b ON probabl.leg_relations (b)`,
+  // The marks the world vault's marker posted, with the inputs that recompute them.
+  `CREATE TABLE IF NOT EXISTS probabl.vault_marks (
+    batch integer NOT NULL, deployment smallint NOT NULL, nav numeric(78,0) NOT NULL,
+    guaranteed numeric(78,0) NOT NULL, best numeric(78,0) NOT NULL, vault bytea NOT NULL,
+    inputs_hash bytea NOT NULL, inputs jsonb NOT NULL, tx bytea,
+    created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (deployment, vault, batch))`,
+  // Each book product's best indicative prices once a minute (raw quote per unit x 1e6), for
+  // charts. `product` names it as the API does ("bet:above:2", "cond:below:1", ...).
+  `CREATE TABLE IF NOT EXISTS probabl.world_prices (
+    minute bigint NOT NULL, book integer NOT NULL, deployment smallint NOT NULL,
+    product text NOT NULL, bid integer, ask integer,
+    PRIMARY KEY (deployment, book, product, minute))`,
 ];
 
 const P96 = "79228162514264337593543950336";
@@ -220,8 +316,8 @@ export async function initializeStorage(pool: Pool) {
     for (const statement of DDL.slice(0, 2)) await tx.query(statement);
     const row = (await tx.query("SELECT version FROM probabl.schema_version WHERE id")).rows[0];
     const version: number | undefined = row?.version;
-    // Versions 4 and 5 only add tables (invites, members, referrals; RFQ makers), which the DDL
-    // creates.
+    // Versions 4, 5 and 6 only add tables and columns (invites, members, referrals; RFQ makers;
+    // worlds), which the DDL creates.
     if (version !== undefined && (version < 1 || version > SCHEMA_VERSION))
       throw new Error("Database schema belongs to another release: provision a fresh schema");
     if (version === 1) for (const statement of FROM_V1_BEFORE) await tx.query(statement);
