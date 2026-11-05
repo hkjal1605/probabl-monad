@@ -87,7 +87,7 @@ export function Composer({
           onClick={() => onSubmit(text.trim())}
         >
           {busy ? <Spinner data-icon="inline-start" /> : null}
-          Build my world
+          See my odds
           {!busy && <ArrowRight data-icon="inline-end" />}
         </Button>
       </div>

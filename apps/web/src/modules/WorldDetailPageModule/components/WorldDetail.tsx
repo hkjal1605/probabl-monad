@@ -217,6 +217,7 @@ export function WorldDetail({ book: raw }: { book: string }) {
                   leg={{
                     question: l.venue?.question ?? "An event",
                     source: l.venue?.source ?? null,
+                    marketId: l.venue?.marketId ?? null,
                     url: l.venue?.url ?? "#",
                     endTime: l.venue?.endTime ?? null,
                     rules: rulesOf(l.eventKey),
@@ -247,6 +248,7 @@ export function WorldDetail({ book: raw }: { book: string }) {
                     label: legLabel(l.venue?.question ?? "An event"),
                     wantYes: l.wantYes,
                     source: l.venue?.source ?? null,
+                    marketId: l.venue?.marketId ?? null,
                     chance: analytics.legs.find((x) => x.eventKey === l.eventKey)?.chance ?? null,
                     passed: l.outcome === "passed",
                   }))}

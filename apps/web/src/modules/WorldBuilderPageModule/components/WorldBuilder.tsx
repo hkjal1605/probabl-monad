@@ -1,8 +1,21 @@
 "use client";
-import { ArrowLeft, ArrowRight, Pencil, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CalendarDays,
+  CalendarSearch,
+  Info,
+  Pencil,
+  Plus,
+  Quote,
+  Search,
+  Sparkles,
+  TriangleAlert,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChanceChain } from "@/components/worlds/ChanceChain";
@@ -10,17 +23,10 @@ import { Composer } from "@/components/worlds/Composer";
 import { EventRow, EventSearchDialog } from "@/components/worlds/EventSearch";
 import { LegRow } from "@/components/worlds/LegRow";
 import { DotGrid, OutcomeTable } from "@/components/worlds/Outcomes";
-import { SectionTitle } from "@/components/worlds/primitives";
 import { WorldTicket } from "@/components/worlds/WorldTicket";
+import { useMaxTenor } from "@/hooks/useWorlds";
 import { cn } from "@/lib/utils";
-import {
-  calendarDay,
-  midSentence,
-  money,
-  stockPrice,
-  strikeText,
-  whenDay,
-} from "@/lib/worlds/format";
+import { calendarDay, money, stockPrice, strikeText, whenDay } from "@/lib/worlds/format";
 import { atStake, type ProductName, previewOffers } from "@/lib/worlds/offer";
 import type { Draft, LegEntry, Preview, Spec } from "@/lib/worlds/types";
 import { worldsApi } from "@/services/worlds-api";
@@ -34,10 +40,10 @@ import {
 const DAY = 86_400_000;
 const nyDate = (ms: number) =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date(ms));
-/** The first weekday on or after a date. */
-function weekdayFrom(date: string) {
+/** The first weekday on or after a date (or, back, the last on or before it). */
+function weekdayFrom(date: string, back = false) {
   const d = new Date(`${date}T12:00:00Z`);
-  while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d.setUTCDate(d.getUTCDate() + 1);
+  while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d.setUTCDate(d.getUTCDate() + (back ? -1 : 1));
   return d.toISOString().slice(0, 10);
 }
 
@@ -163,15 +169,19 @@ export function WorldBuilder() {
   const current = preview?.value ?? null;
   const pricing = key !== null && preview?.key !== key;
 
+  // The stock is read from tomorrow to the vault's tenor less a day (to open and fill the world).
+  const maxTenor = useMaxTenor();
   const dates = useMemo(() => {
     const now = Date.now();
     const lastEnd = legs.length ? Math.max(...legs.map((l) => Date.parse(l.entry.endTime))) : now;
+    const last = weekdayFrom(nyDate(now + ((maxTenor ?? 35 * 86_400) * 1000 - DAY)), true);
+    const after = legs.length ? weekdayFrom(nyDate(Math.max(lastEnd, now + DAY))) : null;
     return {
       earliest: weekdayFrom(nyDate(now + DAY)),
-      last: nyDate(now + 34 * DAY),
-      suggested: legs.length ? weekdayFrom(nyDate(Math.max(lastEnd, now + DAY))) : null,
+      last,
+      suggested: after && after > last ? last : after,
     };
-  }, [legs]);
+  }, [legs, maxTenor]);
 
   const onStakes = useCallback((s: { allIn: number; moneyBack: number }) => setStakes(s), []);
   const onProduct = useCallback((p: ProductName) => setProduct(p), []);
@@ -201,9 +211,8 @@ export function WorldBuilder() {
 
   if (!draft)
     return (
-      <div className="mx-auto flex max-w-3xl flex-col gap-8 pt-6 sm:pt-12">
-        <BackLink />
-        <Quote text={text} />
+      <div className="mx-auto flex max-w-3xl flex-col gap-8 pt-4 sm:pt-8">
+        <TopBar text={text} />
         <div className="flex flex-col gap-3" aria-live="polite">
           {READING.map((r, i) => (
             <span
@@ -224,42 +233,47 @@ export function WorldBuilder() {
           ))}
         </div>
         <div className="flex flex-col gap-3">
-          <Skeleton className="h-10 w-11/12 rounded-lg" />
-          <Skeleton className="h-10 w-3/4 rounded-lg" />
+          <Skeleton className="h-12 w-11/12 rounded-xl" />
+          <Skeleton className="h-12 w-3/4 rounded-xl" />
+          <Skeleton className="mt-4 h-40 rounded-3xl" />
         </div>
       </div>
     );
 
   if (draft.error || !legs.length)
     return (
-      <div className="mx-auto flex max-w-3xl flex-col gap-6 pt-6 sm:pt-12">
-        <BackLink />
-        <Quote text={text} onEdit={() => setEditing(true)} />
-        <div className="flex flex-col gap-2 rounded-2xl bg-card p-5 ring-1 ring-border">
-          <h2 className="text-lg font-medium">
-            {draft.error ? "We couldn't read that just now" : "Which event is this about?"}
-          </h2>
-          <p className="text-sm leading-5 text-muted-foreground">
-            {draft.error ??
-              draft.draft?.notes[0] ??
-              "A world needs at least one real event from Polymarket or Kalshi. Pick one, or say it another way."}
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <Button onClick={() => setAdding(true)}>Find an event</Button>
-            <Button variant="secondary" onClick={() => setEditing(true)}>
+      <div className="mx-auto flex max-w-3xl flex-col gap-6 pt-4 sm:pt-8">
+        <TopBar text={text} onEdit={() => setEditing(true)} />
+        <div className="flex flex-col items-start gap-4 rounded-3xl bg-card p-5 ring-1 ring-border sm:p-6">
+          <span className="flex size-10 items-center justify-center rounded-full bg-secondary">
+            <CalendarSearch className="size-5 text-muted-foreground" />
+          </span>
+          <div className="flex flex-col gap-1">
+            <h2 className="text-lg font-medium">
+              {draft.error ? "We couldn't read that" : "Which event is this about?"}
+            </h2>
+            {draft.error && <p className="text-sm text-muted-foreground">{draft.error}</p>}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button className="rounded-full" onClick={() => setAdding(true)}>
+              <Search data-icon="inline-start" />
+              Find an event
+            </Button>
+            <Button variant="secondary" className="rounded-full" onClick={() => setEditing(true)}>
+              <Pencil data-icon="inline-start" />
               Say it another way
             </Button>
           </div>
         </div>
         {draft.draft?.suggestions.length ? (
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-muted-foreground">
-              Events close to your words
-            </span>
-            {draft.draft.suggestions.map((s) => (
-              <EventRow key={s.id} event={s} onPick={addLeg} />
-            ))}
-          </div>
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-medium">Close to your words</h2>
+            <div className="flex flex-col gap-1 rounded-3xl bg-card p-2 ring-1 ring-border">
+              {draft.draft.suggestions.map((s) => (
+                <EventRow key={s.id} event={s} onPick={addLeg} />
+              ))}
+            </div>
+          </section>
         ) : null}
         <EventSearchDialog open={adding} onOpenChange={setAdding} onPick={addLeg} />
       </div>
@@ -282,19 +296,23 @@ export function WorldBuilder() {
   const canonical = current?.world.legs ?? [];
   const analytics = current?.chance ?? null;
   const stockWords = stock
-    ? `${stock.symbol} closes ${stock.direction} ${strikeText(stock.strike)} on ${calendarDay(stock.date)}`
+    ? `${stock.symbol} ${stock.direction} ${strikeText(stock.strike)}`
     : undefined;
   const firstEnd = legs.length
     ? legs.map((l) => l.entry.endTime).reduce((a, b) => (a < b ? a : b))
     : null;
-  const notes = [...(current?.notes ?? []), ...(draft.draft?.notes ?? [])].slice(0, 3);
+  // The assistant's notes; the preview's (an event decided after the stock's date) show on the
+  // event itself.
+  const notes = (draft.draft?.notes ?? []).slice(0, 2);
+  const lateFlag = (endTime: string) =>
+    stock && nyDate(Date.parse(endTime)) > stock.date
+      ? `Decided after ${calendarDay(stock.date)}`
+      : null;
+  const logo = current?.world.stock?.logo ?? null;
 
   return (
     <div className="flex flex-col gap-8 pt-4 sm:pt-8">
-      <div className="flex flex-col gap-4">
-        <BackLink />
-        <Quote text={text} onEdit={() => setEditing(true)} />
-      </div>
+      <TopBar text={text} onEdit={() => setEditing(true)} />
 
       <section className="flex flex-col gap-4">
         <EditableSentence
@@ -306,34 +324,27 @@ export function WorldBuilder() {
           onAddEvent={() => setAdding(true)}
           onStock={setStock}
         />
-        <p className="text-xs text-muted-foreground">
-          Tap any underlined part to change it.{" "}
-          {draft.draft?.source === "assistant"
-            ? "Read by our assistant from your words: check each event below."
-            : "Matched to your words: check each event below."}
-        </p>
         {current?.problems.length ? (
-          <div className="rounded-xl bg-warning-soft px-4 py-3 text-sm text-warning">
+          <Banner tone="warning" icon={<TriangleAlert />}>
             {current.problems[0]}
-          </div>
+          </Banner>
         ) : null}
         {preview?.error && (
-          <div className="rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger">
+          <Banner tone="danger" icon={<TriangleAlert />}>
             {preview.error}
-          </div>
+          </Banner>
         )}
         {current?.existing?.book && (
-          <Link
-            href={`/worlds/${current.existing.book}`}
-            className="flex items-center justify-between gap-3 rounded-xl bg-brand-soft px-4 py-3 text-sm text-brand-strong"
-          >
-            Someone already opened this exact world. Trading here joins it.
-            <ArrowRight className="size-4 shrink-0" />
+          <Link href={`/worlds/${current.existing.book}`} className="self-start">
+            <Banner tone="brand" icon={<Users />}>
+              Already open · join it
+              <ArrowRight className="size-4" />
+            </Banner>
           </Link>
         )}
       </section>
 
-      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_400px]">
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-10">
         <aside className="lg:sticky lg:top-20 lg:order-last">
           <WorldTicket
             world={{ kind: "draft", spec: spec!, preview: current, pricing }}
@@ -346,26 +357,30 @@ export function WorldBuilder() {
 
         <div className="flex min-w-0 flex-col gap-10">
           <section className="flex flex-col gap-3">
-            <SectionTitle
+            <Heading
+              count={legs.length}
               aside={
                 <Button
-                  variant="ghost"
+                  variant="secondary"
                   size="sm"
+                  className="rounded-full"
                   onClick={() => setAdding(true)}
                   disabled={legs.length >= 4}
                 >
-                  Add an event
+                  <Plus data-icon="inline-start" />
+                  Add
                 </Button>
               }
             >
-              What has to happen
-            </SectionTitle>
+              Events
+            </Heading>
             {legs.map((l, i) => (
               <LegRow
                 key={l.entry.id}
                 leg={l.entry}
                 wantYes={l.wantYes}
                 note={l.note}
+                flag={lateFlag(l.entry.endTime)}
                 alternatives={l.alternatives}
                 onSide={(wantYes) =>
                   setLegs((ls) => ls.map((x, j) => (j === i ? { ...x, wantYes } : x)))
@@ -389,118 +404,94 @@ export function WorldBuilder() {
                 }
               />
             ))}
-            {notes.length > 0 && (
-              <ul className="flex flex-col gap-1 text-xs leading-4 text-muted-foreground">
-                {notes.map((n) => (
-                  <li key={n}>· {n}</li>
-                ))}
-              </ul>
-            )}
+            {notes.map((n) => (
+              <p
+                key={n}
+                className="flex items-start gap-2 px-1 text-xs leading-4 text-muted-foreground"
+              >
+                <Info className="mt-px size-3.5 shrink-0" aria-hidden />
+                {n}
+              </p>
+            ))}
           </section>
 
           {stock && (
             <section className="flex flex-col gap-3">
-              <SectionTitle>And the stock</SectionTitle>
-              <div className="grid grid-cols-2 gap-4 rounded-xl bg-card p-4 ring-1 ring-border sm:grid-cols-3">
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-muted-foreground">{stock.symbol} now</span>
-                  <span className="text-lg font-medium tabular-nums">{stockPrice(stock.spot)}</span>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-muted-foreground">Your price</span>
-                  <span className="text-lg font-medium tabular-nums">
-                    {stock.direction === "above" ? "≥ " : "< "}
-                    {strikeText(stock.strike)}
-                  </span>
-                </div>
-                <div className="col-span-2 flex flex-col gap-1 sm:col-span-1">
-                  <span className="text-xs text-muted-foreground">
-                    In worlds like this, on {calendarDay(stock.date)}
-                  </span>
-                  <span className="text-lg font-medium tabular-nums">
-                    {analytics?.forward && current?.world.stock
-                      ? stockPrice(analytics.forward / 10 ** current.world.stock.decimals)
-                      : "—"}
-                    {analytics?.move ? (
-                      <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                        ±{Math.round((analytics.move / 1e6) * 100)}% typical move
-                      </span>
-                    ) : null}
-                  </span>
-                </div>
-              </div>
-              <p className="text-xs leading-4 text-muted-foreground">
-                “In worlds like this” is where {stock.symbol} averages when these events happen,
-                from how it has moved with them. It describes, it doesn't promise: events don't
-                cause the price.
-              </p>
+              <Heading>Stock</Heading>
+              <StockCard
+                symbol={stock.symbol}
+                name={stock.name}
+                logo={logo}
+                spot={stock.spot}
+                strike={Number(stock.strike)}
+                direction={stock.direction}
+                date={stock.date}
+                move={analytics?.move ? analytics.move / 1e6 : null}
+              />
             </section>
           )}
 
-          <section className="flex flex-col gap-4">
-            <SectionTitle>How likely is this world?</SectionTitle>
+          <section className="flex flex-col gap-3">
+            <Heading>Chance</Heading>
             {analytics && canonical.length ? (
               <ChanceChain
                 legs={canonical.map((l) => ({
                   label: l.label,
                   wantYes: l.wantYes,
                   source: l.source,
+                  marketId: l.marketId,
+                  image: l.image,
                   chance: analytics.legs.find((x) => x.eventKey === l.eventKey)?.chance ?? null,
                 }))}
                 chain={analytics.chain}
                 naive={analytics.naive}
                 stock={
                   stock && offer
-                    ? { words: stockWords!, chance: offer.win, world: analytics.world }
+                    ? {
+                        words: `${stockWords} on ${calendarDay(stock.date)}`,
+                        chance: offer.win,
+                        world: analytics.world,
+                        symbol: stock.symbol,
+                        logo,
+                      }
                     : null
                 }
               />
-            ) : (
-              <ChainSkeleton problem={current?.problems[0] ?? null} />
+            ) : current?.problems[0] ? null : (
+              <Skeleton className="h-52 rounded-3xl" />
             )}
           </section>
 
-          <section className="flex flex-col gap-4">
-            <SectionTitle
+          <section className="flex flex-col gap-3">
+            <Heading
               aside={
                 offer && (
-                  <span className="text-xs text-muted-foreground">
+                  <span className="rounded-full bg-secondary px-2.5 py-1 text-xs text-muted-foreground tabular-nums">
                     {offer.name} · {money(offer.stake)}
                   </span>
                 )
               }
             >
-              How this can end
-            </SectionTitle>
+              Outcomes
+            </Heading>
             {offer ? (
-              <div className="flex flex-col gap-5 rounded-xl bg-card p-4 ring-1 ring-border">
+              <div className="flex flex-col gap-5 rounded-3xl bg-card p-4 ring-1 ring-border sm:p-5">
+                <DotGrid endings={offer.endings} />
                 <OutcomeTable
                   offer={offer}
                   priced={priced}
-                  {...(stockWords ? { stockWords: midSentence(stockWords) } : {})}
+                  {...(stockWords ? { stockWords } : {})}
                   when={{
-                    fixing: stock
-                      ? `On ${calendarDay(stock.date)}`
-                      : "When the last event is decided",
+                    fixing: stock ? calendarDay(stock.date) : "When the last event is decided",
                     refund:
                       offer.name === "Money-back" && firstEnd
-                        ? `The day an event fails, from ${whenDay(firstEnd)}`
+                        ? `From ${whenDay(firstEnd)}`
                         : "When an event fails",
                   }}
                 />
-                <div className="flex flex-col gap-2">
-                  <DotGrid endings={offer.endings} />
-                  <span className="text-xs text-muted-foreground">
-                    1,000 ways this could go: green pays, red loses
-                    {offer.name === "Money-back"
-                      ? ", grey gives your stake back"
-                      : ", grey loses too"}
-                    .
-                  </span>
-                </div>
               </div>
-            ) : (
-              <Skeleton className="h-48 rounded-xl" />
+            ) : current?.problems[0] ? null : (
+              <Skeleton className="h-64 rounded-3xl" />
             )}
           </section>
         </div>
@@ -515,12 +506,41 @@ export function WorldBuilder() {
   );
 }
 
+/** Back to the worlds, and the words this world was read from (tap to change them). */
+function TopBar({ text, onEdit }: { text: string; onEdit?: () => void }) {
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="shrink-0 rounded-full"
+        aria-label="Back to worlds"
+        render={<Link href="/worlds" />}
+        nativeButton={false}
+      >
+        <ArrowLeft />
+      </Button>
+      <button
+        type="button"
+        disabled={!onEdit}
+        onClick={onEdit}
+        title={text}
+        className="group flex h-9 min-w-0 items-center gap-2 rounded-full bg-secondary px-3.5 text-sm text-muted-foreground transition-colors outline-none enabled:hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+      >
+        <Quote className="size-3.5 shrink-0" aria-hidden />
+        <span className="truncate">{text}</span>
+        {onEdit && <Pencil className="size-3.5 shrink-0 opacity-70 group-hover:opacity-100" />}
+      </button>
+    </div>
+  );
+}
+
 function BackLink() {
   return (
     <Button
       variant="ghost"
       size="sm"
-      className="self-start text-muted-foreground"
+      className="self-start rounded-full text-muted-foreground"
       render={<Link href="/worlds" />}
       nativeButton={false}
     >
@@ -530,31 +550,207 @@ function BackLink() {
   );
 }
 
-function Quote({ text, onEdit }: { text: string; onEdit?: () => void }) {
+function Heading({
+  children,
+  count,
+  aside,
+}: {
+  children: ReactNode;
+  count?: number;
+  aside?: ReactNode;
+}) {
   return (
-    <div className="flex items-start gap-3">
-      <span className="mt-0.5 h-auto w-0.5 self-stretch rounded-full bg-brand" />
-      <p className="flex-1 text-sm leading-5 text-muted-foreground">
-        <span className="text-xs font-medium text-muted-foreground/80">You said</span>
-        <br />“{text}”
-      </p>
-      {onEdit && (
-        <Button variant="ghost" size="sm" onClick={onEdit}>
-          <Pencil data-icon="inline-start" />
-          Edit words
-        </Button>
-      )}
+    <div className="flex items-center justify-between gap-3">
+      <h2 className="flex items-center gap-2 text-lg font-medium">
+        {children}
+        {count !== undefined && (
+          <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground tabular-nums">
+            {count}
+          </span>
+        )}
+      </h2>
+      {aside}
     </div>
   );
 }
 
-function ChainSkeleton({ problem }: { problem: string | null }) {
-  if (problem) return <p className="text-sm text-muted-foreground">{problem}</p>;
+function Banner({
+  tone,
+  icon,
+  children,
+}: {
+  tone: "warning" | "danger" | "brand";
+  icon: ReactNode;
+  children: ReactNode;
+}) {
   return (
-    <div className="flex flex-col gap-3">
-      {[100, 70, 40].map((w) => (
-        <Skeleton key={w} className="h-8 rounded-lg" style={{ width: `${w}%` }} />
-      ))}
+    <div
+      className={cn(
+        "flex items-center gap-2.5 rounded-2xl px-4 py-3 text-sm [&_svg]:size-4 [&_svg]:shrink-0",
+        tone === "warning" && "bg-warning-soft text-warning",
+        tone === "danger" && "bg-danger-soft text-danger",
+        tone === "brand" && "bg-brand-soft text-brand-strong",
+      )}
+    >
+      {icon}
+      {children}
     </div>
+  );
+}
+
+/** Where the stock is against the price the world needs, on a scale of its typical move: the
+ * shaded band is where it usually ends up by the date. */
+function StockCard({
+  symbol,
+  name,
+  logo,
+  spot,
+  strike,
+  direction,
+  date,
+  move,
+}: {
+  symbol: string;
+  name: string;
+  logo: string | null;
+  spot: number | null;
+  strike: number;
+  direction: "above" | "below";
+  date: string;
+  /** The typical move by the date, as a fraction (0.13 is ±13%). */
+  move: number | null;
+}) {
+  const away = spot ? strike / spot - 1 : null;
+  const span = Math.max(move ?? 0.1, Math.abs(away ?? 0) * 1.15, 0.02) * 1.6;
+  const at = (x: number) => `${Math.min(97, Math.max(3, 50 + (x / span) * 50))}%`;
+  const needs = away === null ? null : direction === "above" ? away : -away;
+  // Marks closer than a label's width put their labels on their outer sides.
+  const close = away !== null && Math.abs(away) / span < 0.42;
+  return (
+    <div className="flex flex-col gap-5 rounded-3xl bg-card p-4 ring-1 ring-border sm:p-5">
+      <div className="flex items-center gap-3">
+        {logo ? (
+          // biome-ignore lint/performance/noImgElement: small static token logos.
+          <img src={logo} alt="" className="size-10 rounded-full" />
+        ) : (
+          <span className="flex size-10 items-center justify-center rounded-full bg-brand-soft text-xs font-semibold text-brand-strong">
+            {symbol.slice(0, 2)}
+          </span>
+        )}
+        <div className="flex min-w-0 flex-col">
+          <span className="font-medium">{symbol}</span>
+          <span className="truncate text-xs text-muted-foreground">{name}</span>
+        </div>
+        <span className="ml-auto flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 text-xs text-muted-foreground">
+          <CalendarDays className="size-3.5" aria-hidden />
+          {calendarDay(date)}
+        </span>
+      </div>
+      <div className="flex flex-col gap-2">
+        <div className="relative h-10">
+          <div className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-secondary" />
+          {move !== null && (
+            <div
+              className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-foreground/15"
+              style={{ left: at(-move), right: `calc(100% - ${at(move)})` }}
+              title={`Typical move ±${Math.round(move * 100)}%`}
+            />
+          )}
+          {away !== null && (
+            <div
+              className={cn(
+                "absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full",
+                direction === "above" ? "bg-positive/50" : "bg-danger/50",
+              )}
+              style={
+                direction === "above"
+                  ? { left: at(away), right: 0 }
+                  : { left: 0, right: `calc(100% - ${at(away)})` }
+              }
+            />
+          )}
+          <span
+            className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground ring-4 ring-card"
+            style={{ left: at(0) }}
+            aria-hidden
+          />
+          {away !== null && (
+            <span
+              className={cn(
+                "absolute top-1/2 h-6 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full",
+                direction === "above" ? "bg-positive" : "bg-danger",
+              )}
+              style={{ left: at(away) }}
+              aria-hidden
+            />
+          )}
+        </div>
+        <div className="relative h-11 text-sm">
+          <Mark
+            at={at(0)}
+            label="Now"
+            value={stockPrice(spot)}
+            side={close ? ((away ?? 0) > 0 ? "end" : "start") : "center"}
+          />
+          {away !== null && (
+            <Mark
+              at={at(away)}
+              label={direction === "above" ? "Above" : "Below"}
+              value={strikeText(String(strike))}
+              tone={direction === "above" ? "text-positive" : "text-danger"}
+              side={close ? (away > 0 ? "start" : "end") : "center"}
+            />
+          )}
+        </div>
+        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-1.5 w-4 rounded-full bg-foreground/15" aria-hidden />
+            Typical move {move === null ? "—" : `±${Math.round(move * 100)}%`}
+          </span>
+          {needs !== null && (
+            <span className={cn("tabular-nums", needs <= 0 && "text-positive")}>
+              {needs > 0
+                ? `Needs ${direction === "above" ? "+" : "−"}${Math.abs((away ?? 0) * 100).toFixed(1)}%`
+                : "Already there"}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** A value under its mark on the stock's scale: centred on it, or to one side of it when another
+ * mark is close, and kept inside the card at the edges. */
+function Mark({
+  at,
+  label,
+  value,
+  tone,
+  side,
+}: {
+  at: string;
+  label: string;
+  value: string;
+  tone?: string;
+  side: "center" | "start" | "end";
+}) {
+  const edge = Number.parseFloat(at);
+  const align = edge < 15 ? "start" : edge > 85 ? "end" : side;
+  return (
+    <span
+      className={cn(
+        "absolute top-0 flex flex-col whitespace-nowrap",
+        align === "start" && "items-start",
+        align === "end" && "-translate-x-full items-end",
+        align === "center" && "-translate-x-1/2 items-center",
+      )}
+      style={{
+        left: edge < 15 && side !== "end" ? 0 : edge > 85 && side !== "start" ? "100%" : at,
+      }}
+    >
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className={cn("font-medium tabular-nums", tone)}>{value}</span>
+    </span>
   );
 }

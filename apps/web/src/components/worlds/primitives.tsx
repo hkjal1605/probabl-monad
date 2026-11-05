@@ -1,5 +1,8 @@
+import { Check, X } from "lucide-react";
 import type { ReactNode } from "react";
+import { Avatar, AvatarFallback, AvatarLazyImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { eventImage } from "@/lib/worlds/images";
 import type { Venue } from "@/lib/worlds/types";
 
 /** Where an event trades. */
@@ -97,7 +100,7 @@ export function Fact({
 export function SectionTitle({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
   return (
     <div className="flex items-end justify-between gap-3">
-      <h2 className="text-base font-medium">{children}</h2>
+      <h2 className="text-lg font-medium">{children}</h2>
       {aside}
     </div>
   );
@@ -113,5 +116,74 @@ export function WalletDot({ address, className }: { address: string; className?:
       className={cn("inline-block size-5 shrink-0 rounded-full ring-1 ring-border", className)}
       style={{ background: `linear-gradient(135deg, hsl(${hue} 70% 55%), hsl(${hue2} 70% 40%))` }}
     />
+  );
+}
+
+/** An event's picture, the way the markets list shows one: the venue's artwork in a rounded
+ * square, its venue's initial while it loads or when there is none. */
+export function EventThumb({
+  event,
+  className,
+}: {
+  event: { source: Venue | null; marketId?: string | null; image?: string | null };
+  className?: string | undefined;
+}) {
+  const src = eventImage(event);
+  return (
+    <Avatar className={cn("size-12 shrink-0 rounded-xl after:rounded-xl", className)}>
+      {src && (
+        <AvatarLazyImage src={src} alt="" referrerPolicy="no-referrer" className="rounded-xl" />
+      )}
+      <AvatarFallback className="rounded-xl text-xs font-semibold">
+        {event.source === "kalshi" ? "K" : event.source === "polymarket" ? "P" : "?"}
+      </AvatarFallback>
+    </Avatar>
+  );
+}
+
+/** Which way a world needs an event to go, as a switch with both sides in view: the chosen side
+ * slides under its label, green for "Happens", red for "Doesn't happen". */
+export function SideSwitch({
+  wantYes,
+  onChange,
+  className,
+}: {
+  wantYes: boolean;
+  onChange: (wantYes: boolean) => void;
+  className?: string | undefined;
+}) {
+  const side = (yes: boolean) => (
+    <button
+      type="button"
+      aria-pressed={wantYes === yes}
+      onClick={() => onChange(yes)}
+      className={cn(
+        "relative z-10 flex h-9 items-center justify-center gap-1.5 rounded-full px-3.5 text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+        wantYes === yes
+          ? yes
+            ? "text-positive"
+            : "text-danger"
+          : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {yes ? <Check className="size-4" /> : <X className="size-4" />}
+      {yes ? "Happens" : "Doesn't happen"}
+    </button>
+  );
+  return (
+    <fieldset className={cn("relative grid grid-cols-2 rounded-full bg-secondary p-1", className)}>
+      <legend className="sr-only">The way this event has to go</legend>
+      <span
+        aria-hidden
+        className={cn(
+          "absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-full ring-1 transition-[translate,background-color] duration-200 ease-out motion-reduce:transition-none",
+          wantYes
+            ? "translate-x-0 bg-positive-soft ring-positive/25"
+            : "translate-x-full bg-danger-soft ring-danger/25",
+        )}
+      />
+      {side(true)}
+      {side(false)}
+    </fieldset>
   );
 }

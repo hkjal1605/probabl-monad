@@ -1,10 +1,22 @@
 "use client";
-import { Check, ExternalLink, Share2 } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarDays,
+  Check,
+  ExternalLink,
+  Eye,
+  Info,
+  Rocket,
+  RotateCcw,
+  Share2,
+  ShieldCheck,
+} from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "@/components/ui/toast";
@@ -17,7 +29,6 @@ import {
   inThousand,
   money,
   multiple,
-  perThousand,
   shortWallet,
   whenDay,
 } from "@/lib/worlds/format";
@@ -138,11 +149,6 @@ export function WorldTicket({
   const lastEnd = legEnds.length
     ? legEnds.reduce((a, b) => (Date.parse(a) > Date.parse(b) ? a : b))
     : null;
-  const paidOn = sentence.stock
-    ? "after the 4 pm New York close that day"
-    : lastEnd
-      ? `when the last event is decided (by ${whenDay(lastEnd)})`
-      : "—";
 
   const credit = account.credit;
   const needed = credit === null ? null : Math.max(0, total - dollars(credit));
@@ -228,24 +234,32 @@ export function WorldTicket({
       />
     );
 
+  const refund = offer?.endings.find((e) => e.key === "world-fails")?.pays ?? 0;
+  const cost = offer && offer.fair !== null ? Math.max(0, stake - offer.fair) + fee : fee;
+  const when = sentence.stock ? calendarDay(sentence.stock.date) : lastEnd ? whenDay(lastEnd) : "—";
   return (
     <section
       className={cn(
-        "flex flex-col gap-5 rounded-2xl bg-card p-4 ring-1 ring-border sm:p-5",
+        "flex flex-col gap-5 rounded-3xl bg-card p-4 ring-1 ring-border sm:p-5",
         className,
       )}
     >
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-base font-medium">What we can offer</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-lg font-medium">Your bet</h2>
         {world.kind === "draft" && world.pricing && (
           <Spinner className="size-4 text-muted-foreground" />
         )}
       </div>
 
       {offers.length === 0 ? (
-        <div className="flex flex-col gap-2 rounded-xl bg-secondary/60 p-4 text-sm text-muted-foreground">
+        <div className="flex items-start gap-2.5 rounded-2xl bg-secondary/60 p-4 text-sm text-muted-foreground">
+          {world.kind === "draft" && world.pricing && !decline ? (
+            <Spinner className="mt-0.5 size-4 shrink-0" />
+          ) : (
+            <Info className="mt-0.5 size-4 shrink-0" />
+          )}
           {decline ??
-            (world.kind === "draft" && world.pricing ? "Pricing your world…" : "No price yet.")}
+            (world.kind === "draft" && world.pricing ? "Pricing your world…" : "No price yet")}
         </div>
       ) : (
         <div className={cn("grid gap-2", offers.length > 1 && "grid-cols-2")}>
@@ -260,112 +274,119 @@ export function WorldTicket({
         </div>
       )}
 
-      {offer && (
+      {offer && !offer.decline && (
         <>
-          <div className="flex flex-col gap-2">
-            <span className="text-xs font-medium text-muted-foreground">Your stake</span>
-            <div className="flex flex-wrap gap-1.5">
-              {STAKES[selected].map((s) => (
-                <Button
-                  key={s}
-                  size="sm"
-                  variant={stake === s && !custom ? "default" : "secondary"}
-                  onClick={() => {
-                    setCustom("");
-                    setStake(s);
-                  }}
-                >
-                  ${s}
-                </Button>
-              ))}
-              <Input
-                value={custom}
-                inputMode="decimal"
-                placeholder="Other"
-                aria-label="Other stake in dollars"
-                className="h-7 w-20 text-sm"
-                onChange={(e) => {
-                  const text = e.target.value.replace(/[^\d.]/g, "");
-                  setCustom(text);
-                  const v = Number(text);
-                  if (v >= 1 && v <= 1_000) setStake(Math.round(v * 100) / 100);
+          <div className="flex flex-wrap gap-1.5">
+            {STAKES[selected].map((s) => (
+              <Button
+                key={s}
+                size="sm"
+                className="rounded-full px-3.5"
+                variant={stake === s && !custom ? "default" : "secondary"}
+                onClick={() => {
+                  setCustom("");
+                  setStake(s);
                 }}
-              />
-            </div>
+              >
+                ${s}
+              </Button>
+            ))}
+            <Input
+              value={custom}
+              inputMode="decimal"
+              placeholder="$ other"
+              aria-label="Other stake in dollars"
+              className="h-7 w-24 rounded-full px-3.5 text-sm"
+              onChange={(e) => {
+                const text = e.target.value.replace(/[^\d.]/g, "");
+                setCustom(text);
+                const v = Number(text);
+                if (v >= 1 && v <= 1_000) setStake(Math.round(v * 100) / 100);
+              }}
+            />
           </div>
 
-          <dl className="flex flex-col gap-3 border-t pt-4">
-            <Fact
-              label="You pay"
-              value={money(total, { cents: true })}
-              note={`${money(stake, { cents: true })} stake + ${money(fee, { cents: true })} fee. The most you can lose.`}
-            />
-            <Fact
-              label="If you're right"
-              value={
-                <span className="text-positive">
-                  {offer.payout === null
-                    ? "—"
-                    : `${money(offer.payout)} · ${multiple(offer.payout, stake)}`}
+          <div className="flex flex-col gap-4 rounded-2xl bg-secondary/50 p-4">
+            <div className="flex items-end justify-between gap-3">
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted-foreground">You pay</span>
+                <span className="text-xl leading-none font-medium tabular-nums">
+                  {money(total, { cents: true })}
                 </span>
-              }
-            />
-            <Fact
-              label="Chance it pays"
-              value={inThousand(offer.win)}
-              note={
-                selected === "Money-back"
-                  ? `${inThousand(offer.endings.find((e) => e.key === "world-fails")?.chance)} your ${money(stake)} comes back instead`
-                  : undefined
-              }
-            />
-            <Fact
-              label={selected === "Money-back" ? "Paid, or back" : "Paid"}
-              value={
-                sentence.stock ? calendarDay(sentence.stock.date) : lastEnd ? whenDay(lastEnd) : "—"
-              }
-              note={
-                selected === "Money-back" && firstEnd
-                  ? `Paid ${paidOn}. Your stake comes back the day an event fails, from ${whenDay(firstEnd)}.`
-                  : `Paid ${paidOn}.`
-              }
-            />
-            <Fact
-              label="What it costs"
-              value={
+              </div>
+              <ArrowRight className="mb-0.5 size-5 text-muted-foreground" aria-hidden />
+              <div className="flex flex-col items-end gap-1">
+                <span className="text-xs text-muted-foreground">If you're right</span>
+                <span className="text-xl leading-none font-medium text-positive tabular-nums">
+                  {offer.payout === null ? "—" : money(offer.payout)}
+                </span>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+              <span className="flex items-center gap-2">
+                <MiniRing chance={offer.win} />
+                <span className="tabular-nums">{inThousand(offer.win)}</span>
+              </span>
+              <span className="flex items-center gap-1.5 text-muted-foreground">
+                <CalendarDays className="size-4" aria-hidden />
+                {when}
+              </span>
+              {offer.payout !== null && (
+                <span className="ml-auto text-xs text-muted-foreground tabular-nums">
+                  {multiple(offer.payout, stake)}
+                </span>
+              )}
+            </div>
+            {refund > 0 && (
+              <div className="flex items-center gap-2 text-sm text-info">
+                <RotateCcw className="size-4 shrink-0" aria-hidden />
+                <span>
+                  {money(refund)} back if an event fails
+                  {firstEnd && (
+                    <span className="text-muted-foreground"> · from {whenDay(firstEnd)}</span>
+                  )}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="-mt-2 flex items-center justify-between gap-3 px-1 text-xs text-muted-foreground">
+            <InfoTooltip
+              content={
                 offer.fair === null
-                  ? money(fee, { cents: true })
-                  : money(Math.max(0, stake - offer.fair) + fee, { cents: true })
+                  ? `${money(fee, { cents: true })} fee; the price includes the vault's spread`
+                  : `${money(Math.max(0, stake - offer.fair), { cents: true })} spread over the fair price + ${money(fee, { cents: true })} fee`
               }
-              note={
-                offer.fair === null
-                  ? "The fee. The price includes the vault's spread."
-                  : `${money(Math.max(0, stake - offer.fair), { cents: true })} spread over the fair price, plus the ${money(fee, { cents: true })} fee.`
-              }
-            />
-          </dl>
+            >
+              <span className="inline-flex cursor-help items-center gap-1.5">
+                Costs {money(cost, { cents: true })}
+                <Info className="size-3.5" />
+              </span>
+            </InfoTooltip>
+            <span>Paid {sentence.stock ? "after the 4 pm close" : "when decided"}</span>
+          </div>
 
           {lowChance && (
             <label
               htmlFor="world-ticket-ack"
-              className="flex items-start gap-2.5 rounded-xl bg-warning-soft/60 p-3 text-sm leading-5"
+              className="flex items-center gap-2.5 rounded-2xl bg-warning-soft/60 px-3.5 py-3 text-sm"
             >
               <Checkbox
                 id="world-ticket-ack"
                 checked={ack}
                 onCheckedChange={(v) => setAck(v === true)}
-                className="mt-0.5"
               />
-              <span>
-                I understand this pays only if every event happens
-                {sentence.stock
-                  ? ` and ${sentence.stock.symbol} ends ${sentence.stock.direction} $${Number(sentence.stock.strike).toLocaleString("en-US")}`
-                  : ""}
-                : about {perThousand(offer.win)} in 1,000.
-              </span>
+              <span>Pays only {inThousand(offer.win)} times. Got it.</span>
             </label>
           )}
         </>
+      )}
+
+      {offers.length > 0 && decline && (
+        <div className="flex items-start gap-2.5 rounded-2xl bg-secondary/60 p-4 text-sm text-muted-foreground">
+          <Info className="mt-0.5 size-4 shrink-0" />
+          {decline}
+        </div>
       )}
 
       <TradeButton
@@ -383,12 +404,34 @@ export function WorldTicket({
         onPlace={place}
         onFaucet={onboarding.enabled ? onboarding.show : null}
       />
-      <p className="text-xs leading-4 text-muted-foreground">
-        Your position will be public on this world's page
-        {account.owner ? ` as ${shortWallet(account.owner)}` : ""}. Priced by the vault over RFQ: if
-        the price moves more than {Math.round(TOLERANCE * 100)}% before it fills, nothing is bought.
+      <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+        <Eye className="size-3.5" aria-hidden />
+        Public{account.owner ? ` as ${shortWallet(account.owner)}` : ""} · fills within{" "}
+        {Math.round(TOLERANCE * 100)}% or not at all
       </p>
     </section>
+  );
+}
+
+/** A small ring of a chance out of 1,000,000. */
+function MiniRing({ chance }: { chance: number }) {
+  const r = 7,
+    length = 2 * Math.PI * r;
+  const share = Math.min(1, Math.max(0, chance / 1_000_000));
+  return (
+    <svg viewBox="0 0 18 18" className="size-4 -rotate-90" aria-hidden>
+      <circle cx="9" cy="9" r={r} fill="none" strokeWidth="2.5" className="stroke-border" />
+      <circle
+        cx="9"
+        cy="9"
+        r={r}
+        fill="none"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeDasharray={`${Math.max(share * length, 0.6)} ${length}`}
+        className="stroke-positive"
+      />
+    </svg>
   );
 }
 
@@ -402,40 +445,47 @@ function ProductTile({
   onSelect: () => void;
 }) {
   const moneyBack = offer.name === "Money-back";
+  const Icon = moneyBack ? ShieldCheck : Rocket;
   return (
-    <Button
-      variant="outline"
+    <button
+      type="button"
       onClick={onSelect}
       aria-pressed={selected}
+      title={offer.decline ?? undefined}
       className={cn(
-        "h-auto flex-col items-start gap-2 rounded-xl px-3 py-3 text-left whitespace-normal",
-        selected ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-accent/60",
+        "relative flex flex-col items-start gap-2.5 rounded-2xl p-3.5 text-left ring-1 transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+        selected ? "bg-primary/8 ring-2 ring-primary" : "ring-border hover:bg-accent/60",
       )}
     >
-      <span className="flex w-full items-center justify-between gap-2">
-        <span className="text-sm font-medium">{offer.name}</span>
+      <span className="flex w-full items-center gap-2">
         <span
           className={cn(
-            "flex size-4 items-center justify-center rounded-full border",
-            selected ? "border-primary bg-primary text-primary-foreground" : "border-input",
+            "flex size-7 items-center justify-center rounded-full",
+            moneyBack ? "bg-info-soft text-info" : "bg-positive-soft text-positive",
           )}
         >
-          {selected && <Check className="size-3" />}
+          <Icon className="size-4" />
         </span>
+        <span className="text-sm font-medium">{offer.name}</span>
+        {selected && <Check className="ml-auto size-4 text-primary" aria-hidden />}
       </span>
-      <span className="text-xs leading-4 font-normal text-muted-foreground">
-        {moneyBack ? "If it doesn't happen, your stake comes back" : "Bet it all happens"}
-      </span>
-      <span className="text-base font-medium tabular-nums">
-        {money(offer.stake)} →{" "}
-        <span className="text-positive">{offer.payout === null ? "—" : money(offer.payout)}</span>
-      </span>
-      <span className="text-xs font-normal tabular-nums text-muted-foreground">
-        {offer.payout === null ? "—" : multiple(offer.payout, offer.stake)} ·{" "}
-        {inThousand(offer.win)}
-      </span>
-      {offer.decline && <span className="text-xs font-normal text-warning">{offer.decline}</span>}
-    </Button>
+      {offer.decline ? (
+        <span className="text-xs text-muted-foreground">Not offered</span>
+      ) : (
+        <span className="flex flex-col gap-0.5">
+          <span className="text-base font-medium tabular-nums">
+            <span className="text-muted-foreground">{money(offer.stake)}</span>
+            {" → "}
+            <span className="text-positive">
+              {offer.payout === null ? "—" : money(offer.payout)}
+            </span>
+          </span>
+          <span className={cn("text-xs", moneyBack ? "text-info" : "text-muted-foreground")}>
+            {moneyBack ? `or ${money(offer.stake)} back` : "all or nothing"}
+          </span>
+        </span>
+      )}
+    </button>
   );
 }
 
@@ -470,10 +520,11 @@ function TradeButton(props: {
         {label}
       </Button>
     );
+  // The reason is shown above the button; the button only says there is nothing to trade.
   if (props.decline || !offer)
     return (
       <Button size="lg" disabled className="w-full">
-        {props.decline ?? "Pricing…"}
+        {props.decline ? "No quote available" : "Pricing…"}
       </Button>
     );
   const step = account.step;
@@ -503,9 +554,8 @@ function TradeButton(props: {
           {props.busy && <Spinner data-icon="inline-start" />}
           Turn on one-tap trading
         </Button>
-        <p className="text-xs leading-4 text-muted-foreground">
-          One wallet approval lets your trades fill in one tap for 90 days, up to $1,000 a trade.
-          You can turn it off any time.
+        <p className="text-center text-xs text-muted-foreground">
+          One approval · 90 days · up to $1,000 a trade
         </p>
       </div>
     );
@@ -520,13 +570,12 @@ function TradeButton(props: {
           onClick={() => account.deposit(props.neededRaw)}
         >
           {props.busy && <Spinner data-icon="inline-start" />}
-          Add {money(dollars(props.neededRaw))} to your world balance
+          Add {money(dollars(props.neededRaw))}
         </Button>
-        <p className="text-xs leading-4 text-muted-foreground">
-          Your world balance is {money(dollars(account.credit ?? 0n), { cents: true })}
+        <p className="text-center text-xs text-muted-foreground">
+          Balance {money(dollars(account.credit ?? 0n), { cents: true })}
           {props.walletDollars !== null &&
-            `; your wallet has ${money(props.walletDollars, { cents: true })}`}
-          .
+            ` · wallet ${money(props.walletDollars, { cents: true })}`}
           {short && props.onFaucet && (
             <>
               {" "}
@@ -551,9 +600,7 @@ function TradeButton(props: {
       disabled={props.busy || props.blocked}
       onClick={props.onPlace}
     >
-      {props.blocked
-        ? "Confirm the chance above"
-        : `Place ${money(props.total, { cents: true })} on ${props.product}`}
+      {props.blocked ? "Tick the box above" : `Place ${money(props.total, { cents: true })}`}
     </Button>
   );
 }
@@ -587,7 +634,7 @@ function Receipt({
   return (
     <section
       className={cn(
-        "flex flex-col gap-5 rounded-2xl bg-card p-4 ring-1 ring-border sm:p-5",
+        "flex flex-col gap-5 rounded-3xl bg-card p-4 ring-1 ring-border sm:p-5",
         className,
       )}
     >

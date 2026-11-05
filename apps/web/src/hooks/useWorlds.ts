@@ -77,19 +77,34 @@ export function useRead<T>(
   };
 }
 
-let stocksCache: { at: number; value: Promise<Stock[]> } | null = null;
-/** The stocks a world can fix on, with spot (shared, read at most once a minute). */
+let stocksCache: {
+  at: number;
+  value: Promise<{ stocks: Stock[]; maxTenor?: number | null }>;
+} | null = null;
+/** The stocks read (shared, at most once a minute). The shared read belongs to no one caller: a
+ * caller that goes away stops listening, but never aborts it for the others (React's development
+ * double mount did, and the stocks then never loaded). */
+function readStocks() {
+  if (!stocksCache || Date.now() - stocksCache.at > 60_000) {
+    const value = worldsApi.stocks();
+    stocksCache = { at: Date.now(), value };
+    value.catch(() => {
+      stocksCache = null;
+    });
+  }
+  return stocksCache.value;
+}
+/** The stocks a world can fix on, with spot. */
 export function useStocks() {
-  return useRead("stocks", (signal) => {
-    if (!stocksCache || Date.now() - stocksCache.at > 60_000) {
-      const value = worldsApi.stocks(signal);
-      stocksCache = { at: Date.now(), value };
-      value.catch(() => {
-        stocksCache = null;
-      });
-    }
-    return stocksCache.value;
+  return useRead("stocks", () => readStocks().then((r) => r.stocks), { everyMs: 60_000 });
+}
+/** How far ahead a world's stock can be read, in seconds (the vault's tenor), from the same read;
+ * null while unknown. */
+export function useMaxTenor() {
+  const read = useRead("max-tenor", () => readStocks().then((r) => r.maxTenor ?? null), {
+    everyMs: 60_000,
   });
+  return read.data ?? null;
 }
 
 export function useWorldsFeed(sort: string, underlying: string) {

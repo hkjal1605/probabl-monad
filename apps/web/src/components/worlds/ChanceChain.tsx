@@ -1,8 +1,9 @@
+import { Check, Link2, TrendingDown, TrendingUp, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { midSentence, percent, perThousand } from "@/lib/worlds/format";
+import { percent, perThousand } from "@/lib/worlds/format";
 import type { Venue } from "@/lib/worlds/types";
-import { VenueMark } from "./primitives";
+import { EventThumb } from "./primitives";
 
 export interface ChainLeg {
   label: string;
@@ -12,6 +13,8 @@ export interface ChainLeg {
   chance: number | null;
   /** Decided already the world's way. */
   passed?: boolean;
+  marketId?: string | null;
+  image?: string | null;
 }
 
 /** How likely a world is, walked on one base of 1,000: each event in turn, then the stock. In
@@ -28,11 +31,17 @@ export function ChanceChain({
   chain: number[];
   naive: number[];
   /** The stock step: its words, and P(world and the stock's side), x 1e6. */
-  stock: { words: string; chance: number; world: number } | null;
+  stock: {
+    words: string;
+    chance: number;
+    world: number;
+    symbol?: string;
+    logo?: string | null;
+  } | null;
   className?: string | undefined;
 }) {
   const open = legs.filter((l) => !l.passed);
-  const rows: { id: string; count: number; text: ReactNode; note: ReactNode; tone: string }[] = [];
+  const rows: { id: string; count: number; icon: ReactNode; label: ReactNode; of: string }[] = [];
   open.forEach((leg, k) => {
     const value = chain[k] ?? null;
     if (value === null) return;
@@ -40,25 +49,14 @@ export function ChanceChain({
     rows.push({
       id: `leg-${leg.label}`,
       count: value,
-      text: (
-        <>
-          {k === 0 ? "have " : "also have "}
-          {!leg.wantYes && <span className="font-semibold text-danger">no </span>}
-          <span className="text-foreground">{midSentence(leg.label)}</span>
-        </>
+      icon: <EventThumb event={leg} className="size-8 rounded-lg after:rounded-lg" />,
+      label: (
+        <span className="flex min-w-0 items-center gap-1.5">
+          <Side wantYes={leg.wantYes} />
+          <span className="truncate">{leg.label}</span>
+        </span>
       ),
-      note:
-        k === 0 ? (
-          <span className="inline-flex items-center gap-1.5">
-            <VenueMark source={leg.source} /> {percent((leg.chance ?? value) / 1e6)}
-          </span>
-        ) : (
-          <>
-            {percent(value / Math.max(1, previous))} given the above
-            {leg.chance !== null && <> · {percent(leg.chance / 1e6)} alone</>}
-          </>
-        ),
-      tone: "bg-foreground/70",
+      of: percent(value / Math.max(1, previous)),
     });
   });
   if (stock) {
@@ -66,78 +64,123 @@ export function ChanceChain({
     rows.push({
       id: "stock",
       count: stock.chance,
-      text: (
-        <>
-          also see <span className="text-foreground">{stock.words}</span>
-        </>
+      icon: stock.logo ? (
+        // biome-ignore lint/performance/noImgElement: small static token logos.
+        <img src={stock.logo} alt="" className="size-8 rounded-full" />
+      ) : (
+        <span className="flex size-8 items-center justify-center rounded-full bg-brand-soft text-[11px] font-semibold text-brand-strong">
+          {stock.symbol?.slice(0, 2) ?? "$"}
+        </span>
       ),
-      note: <>{percent(stock.chance / Math.max(1, world))} in these worlds</>,
-      tone: "bg-primary",
+      label: <span className="truncate">{stock.words}</span>,
+      of: percent(stock.chance / Math.max(1, world)),
     });
   }
   const passed = legs.filter((l) => l.passed);
   const last = chain.at(-1) ?? 0,
     unrelated = naive.at(-1) ?? 0;
-  const together = open.length > 1 && last > unrelated * 1.12;
-  const apart = open.length > 1 && last < unrelated * 0.88;
+  const linked = open.length > 1 && Math.abs(last - unrelated) > unrelated * 0.12;
   return (
-    <div className={cn("flex flex-col gap-3", className)}>
-      <ol className="flex flex-col gap-2.5">
-        <Row count={1_000_000} text="worlds" note={null} tone="bg-muted-foreground/30" first />
-        {rows.map((r) => (
-          <Row key={r.id} count={r.count} text={r.text} note={r.note} tone={r.tone} />
+    <div
+      className={cn(
+        "flex flex-col gap-4 rounded-3xl bg-card p-4 ring-1 ring-border sm:p-5",
+        className,
+      )}
+    >
+      <ol className="flex flex-col gap-4">
+        <li className="flex items-center gap-3">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-[11px] font-semibold text-muted-foreground">
+            ∑
+          </span>
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-sm text-muted-foreground">All futures</span>
+              <span className="text-base font-medium text-muted-foreground tabular-nums">
+                1,000
+              </span>
+            </div>
+            <Bar share={1} tone="bg-muted-foreground/25" />
+          </div>
+        </li>
+        {rows.map((r, i) => (
+          <li key={r.id} className="flex items-center gap-3">
+            {r.icon}
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="min-w-0 text-sm">{r.label}</span>
+                <span className="flex shrink-0 items-baseline gap-2">
+                  <span className="text-xs text-muted-foreground tabular-nums">{r.of}</span>
+                  <span
+                    className={cn(
+                      "w-12 text-right text-base font-medium tabular-nums",
+                      i === rows.length - 1 && "text-positive",
+                    )}
+                  >
+                    {perThousand(r.count)}
+                  </span>
+                </span>
+              </div>
+              <Bar
+                share={r.count / 1_000_000}
+                tone={i === rows.length - 1 ? "bg-positive" : "bg-foreground/60"}
+              />
+            </div>
+          </li>
         ))}
       </ol>
-      {passed.length > 0 && (
-        <p className="text-xs text-muted-foreground">
-          Already decided the world's way: {passed.map((l) => midSentence(l.label)).join(", ")}.
-        </p>
-      )}
-      {open.length > 1 && (
-        <p className="text-xs leading-5 text-muted-foreground">
-          If the events were unrelated:{" "}
-          <span className="tabular-nums">{naive.map((n) => perThousand(n)).join(" → ")}</span>
-          {together && ". These tend to happen together, so this world is likelier than that."}
-          {apart && ". These tend to exclude each other, so this world is less likely than that."}
-        </p>
+      {(passed.length > 0 || linked) && (
+        <div className="flex flex-wrap gap-2 border-t pt-3">
+          {passed.map((l) => (
+            <span
+              key={l.label}
+              className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-positive-soft px-2.5 py-1 text-xs text-positive"
+            >
+              <Check className="size-3.5 shrink-0" />
+              <span className="truncate">{l.label}</span>
+            </span>
+          ))}
+          {linked && (
+            <span
+              title="These events move together, so the world's chance differs from multiplying them"
+              className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 text-xs text-muted-foreground tabular-nums"
+            >
+              <Link2 className="size-3.5" />
+              {perThousand(last)} linked vs {perThousand(unrelated)} unlinked
+              {last > unrelated ? (
+                <TrendingUp className="size-3.5 text-positive" />
+              ) : (
+                <TrendingDown className="size-3.5 text-danger" />
+              )}
+            </span>
+          )}
+        </div>
       )}
     </div>
   );
 }
 
-function Row({
-  count,
-  text,
-  note,
-  tone,
-  first = false,
-}: {
-  count: number;
-  text: ReactNode;
-  note: ReactNode;
-  tone: string;
-  first?: boolean;
-}) {
-  const width = Math.max(0.6, (count / 1_000_000) * 100);
+function Side({ wantYes }: { wantYes: boolean }) {
   return (
-    <li className="grid grid-cols-[4.25rem_minmax(0,1fr)] items-start gap-3">
-      <span
-        className={cn(
-          "pt-0.5 text-right text-lg font-medium leading-5 tabular-nums",
-          first && "text-muted-foreground",
-        )}
-      >
-        {first ? "1,000" : perThousand(count)}
-      </span>
-      <div className="flex min-w-0 flex-col gap-1.5">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-          <span className="text-sm leading-5 text-muted-foreground">{text}</span>
-          {note && <span className="text-xs text-muted-foreground">{note}</span>}
-        </div>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-          <div className={cn("h-full rounded-full", tone)} style={{ width: `${width}%` }} />
-        </div>
-      </div>
-    </li>
+    <span
+      role="img"
+      aria-label={wantYes ? "Happens" : "Doesn't happen"}
+      className={cn(
+        "flex size-4 shrink-0 items-center justify-center rounded-full",
+        wantYes ? "bg-positive-soft text-positive" : "bg-danger-soft text-danger",
+      )}
+    >
+      {wantYes ? <Check className="size-2.5" /> : <X className="size-2.5" />}
+    </span>
+  );
+}
+
+function Bar({ share, tone }: { share: number; tone: string }) {
+  return (
+    <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+      <div
+        className={cn("h-full rounded-full", tone)}
+        style={{ width: `${Math.max(0.8, share * 100)}%` }}
+      />
+    </div>
   );
 }

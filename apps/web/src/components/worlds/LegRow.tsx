@@ -1,5 +1,14 @@
 "use client";
-import { ArrowLeftRight, ExternalLink, FileText, Trash2 } from "lucide-react";
+import {
+  ArrowLeftRight,
+  Check,
+  ChevronDown,
+  ExternalLink,
+  FileText,
+  Hourglass,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,12 +18,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Segmented } from "@/components/ui/segmented";
 import { cn } from "@/lib/utils";
-import { percent, whenDay } from "@/lib/worlds/format";
+import { whenDay } from "@/lib/worlds/format";
 import type { LegEntry, Venue } from "@/lib/worlds/types";
 import { EventRow } from "./EventSearch";
-import { SideTag, VenueMark } from "./primitives";
+import { EventThumb, SideSwitch, VenueMark } from "./primitives";
 
 /** What exactly counts, the pros' first question: the venue's wording, its deadline, its
  * resolution rules, and what a cancelled event does to the world. */
@@ -31,40 +39,45 @@ export function RulesDialog({
     url: string;
     endTime: string | null;
     rules: string | null;
+    marketId?: string | null;
+    image?: string | null;
   };
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[85dvh] flex-col gap-4 sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="pr-6 leading-6">{leg.question}</DialogTitle>
-          <DialogDescription className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <VenueMark source={leg.source} />
-            {leg.endTime && <span>Closes {whenDay(leg.endTime)}</span>}
-            <a
-              href={leg.url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 hover:text-foreground"
-            >
-              Open on the venue <ExternalLink className="size-3" />
-            </a>
-          </DialogDescription>
+        <DialogHeader className="flex-row items-start gap-3">
+          <EventThumb event={leg} className="size-10" />
+          <div className="flex min-w-0 flex-col gap-1">
+            <DialogTitle className="pr-6 leading-6">{leg.question}</DialogTitle>
+            <DialogDescription className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <VenueMark source={leg.source} />
+              {leg.endTime && <span>Closes {whenDay(leg.endTime)}</span>}
+              <a
+                href={leg.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 hover:text-foreground"
+              >
+                Open <ExternalLink className="size-3" />
+              </a>
+            </DialogDescription>
+          </div>
         </DialogHeader>
-        <div className="overflow-y-auto rounded-lg bg-secondary/60 p-3 text-sm leading-5 whitespace-pre-line text-muted-foreground">
+        <div className="overflow-y-auto rounded-2xl bg-secondary/60 p-4 text-sm leading-6 whitespace-pre-line text-muted-foreground">
           {leg.rules || "The venue's rules are on its page."}
         </div>
         <p className="text-xs leading-4 text-muted-foreground">
-          The world follows the venue's result. If the venue cancels this event or settles it 50/50,
-          the world counts as not happening: Money-back stakes are refunded.
+          Cancelled or settled 50/50 counts as not happening.
         </p>
       </DialogContent>
     </Dialog>
   );
 }
 
-/** One event of a world: its question, side, venue odds and deadline; in a draft also the side
- * toggle, other events the words may mean, and remove. */
+/** One event of a world as a card: its picture, question and venue; the way it has to go (a
+ * switch in a draft) with the chance of that side; its rules, and in a draft the events the
+ * words may have meant instead. */
 export function LegRow({
   leg,
   wantYes,
@@ -76,6 +89,7 @@ export function LegRow({
   onSide,
   onSwap,
   onRemove,
+  flag,
   aside,
 }: {
   leg:
@@ -87,6 +101,8 @@ export function LegRow({
         endTime: string | null;
         rules: string | null;
         yes?: number | null;
+        marketId?: string | null;
+        image?: string | null;
       };
   wantYes: boolean;
   /** A traded world's leg: open, or decided. */
@@ -100,63 +116,68 @@ export function LegRow({
   onSide?: ((wantYes: boolean) => void) | undefined;
   onSwap?: ((e: LegEntry) => void) | undefined;
   onRemove?: (() => void) | undefined;
+  /** A caveat about this event in this world ("Decided after Thu, Dec 3"). */
+  flag?: string | null | undefined;
   aside?: ReactNode;
 }) {
   const [rules, setRules] = useState(false);
   const [swapping, setSwapping] = useState(false);
   const yes = chance ?? ("yes" in leg ? (leg.yes ?? null) : null);
+  const side = yes === null ? null : wantYes ? yes : 1 - yes;
+  const decided = status === "passed" || status === "failed";
   return (
-    <div className="flex flex-col gap-3 rounded-xl bg-card p-3 ring-1 ring-border sm:p-4">
-      <div className="flex items-start gap-3">
-        <span
-          className={cn(
-            "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-            status === "passed" && "bg-positive-soft text-positive",
-            status === "failed" && "bg-danger-soft text-danger",
-            (!status || status === "open" || status === "frozen") &&
-              "bg-secondary text-muted-foreground",
-          )}
-          role="img"
-          aria-label={
-            status === "passed" ? "Happened" : status === "failed" ? "Didn't happen" : "Open"
-          }
-        >
-          {status === "passed" ? "✓" : status === "failed" ? "✗" : "●"}
-        </span>
+    <article className="flex flex-col gap-4 rounded-3xl bg-card p-4 ring-1 ring-border sm:p-5">
+      <div className="flex items-start gap-3.5">
+        <EventThumb event={leg} />
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <span className="text-sm leading-5">{leg.question}</span>
-          <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-            <SideTag wantYes={wantYes} />
+          <h3 className="line-clamp-2 text-[15px] leading-snug font-medium">{leg.question}</h3>
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
             <VenueMark source={leg.source} />
-            {yes !== null && (
-              <span className="tabular-nums">
-                YES {percent(yes)}
-                {!wantYes && ` · NO ${percent(1 - yes)}`}
-              </span>
+            {leg.endTime && (
+              <>
+                <span aria-hidden>·</span>
+                <span>Closes {whenDay(leg.endTime)}</span>
+              </>
             )}
-            {leg.endTime && <span>closes {whenDay(leg.endTime)}</span>}
-            {status === "frozen" && <span className="text-warning">being decided</span>}
-            {result && (
-              <span className={status === "failed" ? "text-danger" : "text-positive"}>
-                {result}
+            {flag && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-warning-soft px-2 py-0.5 text-warning">
+                <Hourglass className="size-3" aria-hidden />
+                {flag}
               </span>
             )}
           </span>
-          {note && <span className="text-xs leading-4 text-muted-foreground italic">{note}</span>}
         </div>
         {aside}
-      </div>
-      <div className="flex flex-wrap items-center gap-1.5">
-        {onSide && (
-          <Segmented
-            label="The side this world needs"
-            value={wantYes ? "Happens" : "Doesn't happen"}
-            options={["Happens", "Doesn't happen"] as const}
-            onChange={(v) => onSide(v === "Happens")}
-            variant="compact"
-          />
+        {!decided && (
+          <div className="flex shrink-0 flex-col items-end">
+            <span className="text-2xl leading-none font-medium tracking-[-0.01em] tabular-nums">
+              {side === null ? "—" : `${Math.round(side * 100)}%`}
+            </span>
+            <span className="mt-1 text-[11px] text-muted-foreground">chance</span>
+          </div>
         )}
-        <Button variant="ghost" size="xs" onClick={() => setRules(true)}>
+      </div>
+
+      {onSide ? (
+        <SideSwitch wantYes={wantYes} onChange={onSide} className="w-full sm:w-fit" />
+      ) : (
+        <Status status={status} wantYes={wantYes} result={result} />
+      )}
+
+      {note && (
+        <p className="flex items-start gap-2 text-xs leading-4 text-muted-foreground">
+          <Sparkles className="mt-px size-3.5 shrink-0 text-brand-strong" aria-hidden />
+          {note}
+        </p>
+      )}
+
+      <div className="-mx-1.5 -mb-1.5 flex flex-wrap items-center gap-1">
+        <Button
+          variant="ghost"
+          size="xs"
+          className="text-muted-foreground"
+          onClick={() => setRules(true)}
+        >
           <FileText data-icon="inline-start" />
           Rules
         </Button>
@@ -164,32 +185,38 @@ export function LegRow({
           <Button
             variant="ghost"
             size="xs"
+            className="text-muted-foreground"
             onClick={() => setSwapping((s) => !s)}
             aria-expanded={swapping}
           >
             <ArrowLeftRight data-icon="inline-start" />
-            Did you mean…
+            {alternatives.length} similar
+            <ChevronDown
+              data-icon="inline-end"
+              className={cn("transition-transform", swapping && "rotate-180")}
+            />
           </Button>
         )}
         {onRemove && (
           <Button
             variant="ghost"
             size="xs"
-            className="ml-auto text-muted-foreground"
+            className="ml-auto text-muted-foreground hover:text-danger"
             onClick={onRemove}
           >
-            <Trash2 data-icon="inline-start" />
+            <X data-icon="inline-start" />
             Remove
           </Button>
         )}
       </div>
+
       {swapping && onSwap && (
-        <div className="-mx-1 flex flex-col border-t pt-2">
+        <div className="-mx-2 -mt-2 flex flex-col gap-1 border-t pt-2">
           {alternatives.map((a) => (
             <EventRow
               key={a.id}
               event={a}
-              action="Use this"
+              action="Use"
               onPick={(e) => {
                 setSwapping(false);
                 onSwap(e);
@@ -207,8 +234,56 @@ export function LegRow({
           url: leg.url,
           endTime: leg.endTime,
           rules: leg.rules,
+          marketId: "marketId" in leg ? leg.marketId : null,
+          image: "image" in leg ? leg.image : null,
         }}
       />
-    </div>
+    </article>
+  );
+}
+
+/** A traded world's leg: the side it needs while open, then how it went. */
+function Status({
+  status,
+  wantYes,
+  result,
+}: {
+  status: "open" | "passed" | "failed" | "frozen" | undefined;
+  wantYes: boolean;
+  result: string | null | undefined;
+}) {
+  const pill =
+    "inline-flex h-9 items-center gap-1.5 self-start rounded-full px-3.5 text-sm font-medium";
+  if (status === "passed")
+    return (
+      <span className={cn(pill, "bg-positive-soft text-positive")}>
+        <Check className="size-4" />
+        Went the world's way{result ? ` · ${result}` : ""}
+      </span>
+    );
+  if (status === "failed")
+    return (
+      <span className={cn(pill, "bg-danger-soft text-danger")}>
+        <X className="size-4" />
+        {result ? `${result.charAt(0).toUpperCase()}${result.slice(1)}` : "Went the other way"}
+      </span>
+    );
+  if (status === "frozen")
+    return (
+      <span className={cn(pill, "bg-warning-soft text-warning")}>
+        <Hourglass className="size-4" />
+        Being decided
+      </span>
+    );
+  return (
+    <span
+      className={cn(
+        pill,
+        wantYes ? "bg-positive-soft text-positive" : "bg-danger-soft text-danger",
+      )}
+    >
+      {wantYes ? <Check className="size-4" /> : <X className="size-4" />}
+      {wantYes ? "Happens" : "Doesn't happen"}
+    </span>
   );
 }

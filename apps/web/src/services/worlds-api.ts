@@ -19,8 +19,9 @@ import { requestJson } from "./api";
 const opt = (signal?: AbortSignal) => (signal ? { signal } : {});
 
 export const worldsApi = {
+  /** The stocks a world can fix on, and how far ahead (the vault's tenor, in seconds). */
   stocks: (signal?: AbortSignal) =>
-    requestJson<{ stocks: Stock[] }>("/v2/worlds/stocks", opt(signal)).then((r) => r.stocks),
+    requestJson<{ stocks: Stock[]; maxTenor?: number | null }>("/v2/worlds/stocks", opt(signal)),
   searchEvents: (q: string, signal?: AbortSignal) =>
     requestJson<{ events: LegEntry[] }>(
       `/v2/worlds/events/search?q=${encodeURIComponent(q)}`,

@@ -1,11 +1,24 @@
+import { Check, RotateCcw, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { inThousand, money } from "@/lib/worlds/format";
+import { inThousand, money, perThousand } from "@/lib/worlds/format";
 import type { Offer } from "@/lib/worlds/offer";
 
-const ENDING_TONE = {
-  win: "bg-primary",
-  "lose-in-world": "bg-danger/70",
-  "world-fails": "bg-info/70",
+type Ending = Offer["endings"][number];
+/** An ending's colour, the same in the grid and the rows: green pays, red loses, blue gives the
+ * stake back, grey loses because an event failed. */
+const tone = (e: Ending) =>
+  e.key === "win" ? "win" : e.key === "lose-in-world" ? "lose" : e.pays > 0 ? "back" : "fail";
+const DOT = {
+  win: "fill-positive",
+  lose: "fill-danger/60",
+  back: "fill-info/70",
+  fail: "fill-muted-foreground/25",
+} as const;
+const BADGE = {
+  win: "bg-positive-soft text-positive",
+  lose: "bg-danger-soft text-danger",
+  back: "bg-info-soft text-info",
+  fail: "bg-secondary text-muted-foreground",
 } as const;
 
 /** 1,000 worlds as dots, coloured by how a product ends in each: icon arrays help readers at
@@ -17,10 +30,10 @@ export function DotGrid({
   endings: Offer["endings"];
   className?: string | undefined;
 }) {
-  const columns = 50,
-    rows = 20,
+  const columns = 100,
+    rows = 10,
     gap = 1.6,
-    r = 0.62;
+    r = 0.6;
   // Whole dots per ending, largest remainders first, so they add to 1,000.
   const exact = endings.map((e) => e.chance / 1_000);
   const counts = exact.map(Math.floor);
@@ -38,19 +51,17 @@ export function DotGrid({
   const order = endings
     .map((e, i) => ({ e, n: counts[i]! }))
     .sort((a, b) => rank(a.e.key) - rank(b.e.key));
-  const dots: { x: number; y: number; tone: string }[] = [];
+  const dots: { x: number; y: number; tone: keyof typeof DOT }[] = [];
   let k = 0;
   for (const { e, n } of order)
     for (let j = 0; j < n && k < columns * rows; j++, k++)
-      dots.push({ x: k % columns, y: Math.floor(k / columns), tone: e.key });
+      dots.push({ x: k % columns, y: Math.floor(k / columns), tone: tone(e) });
   return (
     <svg
       viewBox={`0 0 ${columns * gap} ${rows * gap}`}
-      className={cn("w-full max-w-[520px]", className)}
+      className={cn("w-full", className)}
       role="img"
-      aria-label={endings
-        .map((e) => `${inThousand(e.chance)} ${label(e.key, 0, false)}`)
-        .join(", ")}
+      aria-label={endings.map((e) => `${inThousand(e.chance)} ${label(e, false)}`).join(", ")}
     >
       {dots.map((d, i) => (
         <circle
@@ -59,11 +70,7 @@ export function DotGrid({
           cx={d.x * gap + gap / 2}
           cy={d.y * gap + gap / 2}
           r={r}
-          className={cn(
-            d.tone === "win" && "fill-primary",
-            d.tone === "lose-in-world" && "fill-danger/55",
-            d.tone === "world-fails" && "fill-muted-foreground/25",
-          )}
+          className={DOT[d.tone]}
         />
       ))}
     </svg>
@@ -71,11 +78,11 @@ export function DotGrid({
 }
 const rank = (key: string) => (key === "win" ? 0 : key === "lose-in-world" ? 1 : 2);
 
-function label(key: Offer["endings"][number]["key"], refund: number, priced: boolean) {
-  if (key === "win")
-    return priced ? "Every event happens and the stock ends on your side" : "Every event happens";
-  if (key === "lose-in-world") return "Every event happens, but the stock ends on the other side";
-  return refund > 0 ? "An event doesn't happen: your stake comes back" : "An event doesn't happen";
+function label(e: Ending, priced: boolean, stockWords?: string) {
+  if (e.key === "win")
+    return priced ? `All happen, ${stockWords ?? "the stock on your side"}` : "All happen";
+  if (e.key === "lose-in-world") return "All happen, the stock on the other side";
+  return "An event doesn't happen";
 }
 
 /** Every way a product can end, with its chance, what it pays and when: a row per outcome
@@ -94,47 +101,51 @@ export function OutcomeTable({
   stockWords?: string;
   className?: string | undefined;
 }) {
-  const refund = offer.endings.find((e) => e.key === "world-fails")?.pays ?? 0;
   return (
-    <div className={cn("flex flex-col", className)}>
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-4 border-b pb-2 text-xs font-medium text-muted-foreground">
-        <span>How this can end</span>
-        <span className="text-right">Chance</span>
-        <span className="w-20 text-right">You get</span>
-      </div>
-      {offer.endings.map((e) => (
-        <div
-          key={e.key}
-          className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-start gap-x-4 border-b py-3 last:border-b-0"
-        >
-          <div className="flex min-w-0 items-start gap-2.5">
-            <span className={cn("mt-1.5 size-2 shrink-0 rounded-full", ENDING_TONE[e.key])} />
-            <div className="flex min-w-0 flex-col gap-0.5">
-              <span className="text-sm leading-5">
-                {e.key === "win" && priced && stockWords
-                  ? `Every event happens and ${stockWords}`
-                  : label(e.key, refund, priced)}
-              </span>
+    <ul className={cn("flex flex-col divide-y divide-border/70", className)}>
+      {offer.endings.map((e) => {
+        const t = tone(e);
+        return (
+          <li key={e.key} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+            <span
+              aria-hidden
+              className={cn(
+                "flex size-8 shrink-0 items-center justify-center rounded-full",
+                BADGE[t],
+              )}
+            >
+              {t === "win" ? (
+                <Check className="size-4" />
+              ) : t === "back" ? (
+                <RotateCcw className="size-4" />
+              ) : (
+                <X className="size-4" />
+              )}
+            </span>
+            <div className="flex min-w-0 flex-1 flex-col">
+              <span className="line-clamp-2 text-sm leading-5">{label(e, priced, stockWords)}</span>
               <span className="text-xs text-muted-foreground">
                 {e.key === "world-fails" ? when.refund : when.fixing}
               </span>
             </div>
-          </div>
-          <span className="text-right text-sm tabular-nums">{inThousand(e.chance)}</span>
-          <span
-            className={cn(
-              "w-20 text-right text-sm font-medium tabular-nums",
-              e.key === "win" && e.pays > 0 && "text-positive",
-              e.pays === 0 && "text-muted-foreground",
-            )}
-          >
-            {e.pays > 0 ? money(e.pays) : "$0"}
-            {e.key === "world-fails" && e.pays > 0 && (
-              <span className="block text-[11px] font-normal text-muted-foreground">back</span>
-            )}
-          </span>
-        </div>
-      ))}
-    </div>
+            <span className="shrink-0 text-right text-xs text-muted-foreground tabular-nums">
+              {perThousand(e.chance)}
+              <span className="text-muted-foreground/70"> /1,000</span>
+            </span>
+            <span
+              className={cn(
+                "w-20 shrink-0 text-right text-base font-medium tabular-nums",
+                t === "win" && "text-positive",
+                t === "back" && "text-info",
+                e.pays === 0 && "text-muted-foreground",
+              )}
+            >
+              {e.pays > 0 ? money(e.pays) : "$0"}
+              {t === "back" && <span className="block text-[11px] font-normal">back</span>}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

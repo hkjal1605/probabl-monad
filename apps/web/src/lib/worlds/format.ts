@@ -51,26 +51,28 @@ export const cents = (p: number | null | undefined) =>
 export const percent = (p: number | null | undefined) =>
   p === null || p === undefined ? "—" : `${Math.round(p * 100)}%`;
 
-const day = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
-const dayUtc = new Intl.DateTimeFormat("en-US", {
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-  timeZone: "UTC",
-});
+/** A day's formatter in a time zone, and with the year beside it. */
+const days = (timeZone?: string) => {
+  const base = { weekday: "short", month: "short", day: "numeric", timeZone } as const;
+  return {
+    plain: new Intl.DateTimeFormat("en-US", base),
+    year: new Intl.DateTimeFormat("en-US", { ...base, year: "numeric" }),
+    yearOf: new Intl.DateTimeFormat("en-US", { year: "numeric", timeZone }),
+  };
+};
+const local = days(),
+  utc = days("UTC"),
+  ny = days("America/New_York");
+/** "Fri, Dec 19", with the year when it is not this year's ("Thu, Jul 1, 2027"). */
+const say = (f: ReturnType<typeof days>, d: Date) =>
+  (f.yearOf.format(d) === f.yearOf.format(new Date()) ? f.plain : f.year).format(d);
 /** "Fri, Dec 19" from a YYYY-MM-DD date. */
-export const calendarDay = (date: string) => dayUtc.format(new Date(`${date}T12:00:00Z`));
-const dayNy = new Intl.DateTimeFormat("en-US", {
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-  timeZone: "America/New_York",
-});
+export const calendarDay = (date: string) => say(utc, new Date(`${date}T12:00:00Z`));
 /** "Fri, Dec 19" in New York, where a stock's close is: for fixings. */
-export const nyDay = (seconds: number) => dayNy.format(new Date(seconds * 1000));
+export const nyDay = (seconds: number) => say(ny, new Date(seconds * 1000));
 /** "Fri, Dec 19" from an ISO time or unix seconds. */
 export const whenDay = (value: string | number) =>
-  day.format(typeof value === "number" ? new Date(value * 1000) : new Date(value));
+  say(local, typeof value === "number" ? new Date(value * 1000) : new Date(value));
 /** "3h", "2d", "5m" until a time (unix seconds or ISO), or "now". */
 export function until(value: string | number, now = Date.now()) {
   const t = typeof value === "number" ? value * 1000 : Date.parse(value);

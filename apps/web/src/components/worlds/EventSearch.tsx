@@ -9,9 +9,9 @@ import { cn } from "@/lib/utils";
 import { percent, whenDay } from "@/lib/worlds/format";
 import type { LegEntry } from "@/lib/worlds/types";
 import { worldsApi } from "@/services/worlds-api";
-import { VenueMark } from "./primitives";
+import { EventThumb, VenueMark } from "./primitives";
 
-/** A venue event as a row: question, venue, odds, deadline. */
+/** A venue event as a row: its picture, question, venue, chance and deadline, and one action. */
 export function EventRow({
   event,
   onPick,
@@ -26,28 +26,36 @@ export function EventRow({
   const decided = event.yes !== null && (event.yes < 0.03 || event.yes > 0.97);
   return (
     <div
-      className={cn("flex items-center gap-3 rounded-lg px-2 py-2.5 hover:bg-accent/60", className)}
+      className={cn(
+        "flex items-center gap-3 rounded-2xl px-2 py-2 transition-colors hover:bg-accent/60",
+        className,
+      )}
     >
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="text-sm leading-5">{event.question}</span>
-        <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+      <EventThumb event={event} className="size-10" />
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="line-clamp-2 text-sm leading-5 font-medium">{event.question}</span>
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
           <VenueMark source={event.source} />
-          <span className="tabular-nums">YES {percent(event.yes)}</span>
-          <span>closes {whenDay(event.endTime)}</span>
+          <span aria-hidden>·</span>
+          <span className="tabular-nums">{percent(event.yes)} yes</span>
+          <span aria-hidden>·</span>
+          <span>{whenDay(event.endTime)}</span>
           <a
             href={event.url}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1 hover:text-foreground"
+            aria-label="Open on the venue"
+            className="inline-flex items-center hover:text-foreground"
             onClick={(e) => e.stopPropagation()}
           >
-            venue <ExternalLink className="size-3" />
+            <ExternalLink className="size-3" />
           </a>
         </span>
       </div>
       <Button
         size="sm"
         variant="secondary"
+        className="shrink-0 rounded-full px-3.5"
         disabled={decided || event.yes === null}
         onClick={() => onPick(event)}
       >
@@ -108,20 +116,20 @@ export function EventSearchDialog({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <div className="relative">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             autoFocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Fed cut, trade deal, CPI, shutdown…"
             aria-label="Search events"
-            className="pl-8"
+            className="h-11 rounded-full pl-10 text-base"
           />
         </div>
         <div className="-mx-2 flex min-h-40 flex-col overflow-y-auto">
           {term.length < 2 && (
             <p className="px-2 py-6 text-center text-sm text-muted-foreground">
-              Name the event the way a headline would. Events come from Polymarket and Kalshi.
+              Polymarket and Kalshi events
             </p>
           )}
           {term.length >= 2 &&
@@ -129,16 +137,16 @@ export function EventSearchDialog({
             !state.error &&
             Array.from({ length: 4 }, (_, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: placeholders.
-              <Skeleton key={i} className="mx-2 my-1.5 h-12" />
+              <Skeleton key={i} className="mx-2 my-1.5 h-14 rounded-2xl" />
             ))}
           {state.error && state.q === term && (
             <p className="px-2 py-6 text-center text-sm text-muted-foreground">
-              Search is unavailable right now. Try again in a minute.
+              Search is unavailable. Try again shortly.
             </p>
           )}
           {shown?.length === 0 && !state.error && (
             <p className="px-2 py-6 text-center text-sm text-muted-foreground">
-              No open event matches “{term}” in the next few weeks.
+              Nothing open matches “{term}”
             </p>
           )}
           {shown?.map((e) => (

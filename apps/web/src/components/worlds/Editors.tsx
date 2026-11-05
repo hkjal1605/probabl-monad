@@ -1,4 +1,5 @@
 "use client";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -111,7 +112,20 @@ export function StrikeEditor({
   );
 }
 
-/** Weekday closes from tomorrow to `lastDate`; the first after every event marked. */
+const monthName = new Intl.DateTimeFormat("en-US", {
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
+/** A YYYY-MM month `n` months on. */
+function addMonths(month: string, n: number) {
+  const [y, m] = month.split("-").map(Number) as [number, number];
+  return new Date(Date.UTC(y, m - 1 + n, 1, 12)).toISOString().slice(0, 7);
+}
+const WEEKDAYS = ["M", "T", "W", "T", "F"];
+
+/** Weekday closes from `earliest` to `lastDate`, a month at a time; the first close after every
+ * event outlined, and one tap away. */
 export function DatePicker({
   value,
   earliest,
@@ -125,47 +139,101 @@ export function DatePicker({
   suggested: string | null;
   onChange: (date: string) => void;
 }) {
-  const days = useMemo(() => {
-    const out: string[] = [];
-    const d = new Date(`${earliest}T12:00:00Z`);
-    for (let i = 0; i < 60 && out.length < 30; i++) {
-      const iso = d.toISOString().slice(0, 10);
-      if (iso > lastDate) break;
+  const first = earliest.slice(0, 7),
+    last = lastDate.slice(0, 7);
+  const [month, setMonth] = useState(() => {
+    const m = (value || earliest).slice(0, 7);
+    return m < first ? first : m > last ? last : m;
+  });
+  // Monday to Friday columns, the month's first weekday under its own.
+  const cells = useMemo(() => {
+    const [y, m] = month.split("-").map(Number) as [number, number];
+    const out: (string | null)[] = [];
+    const d = new Date(Date.UTC(y, m - 1, 1, 12));
+    while (d.getUTCMonth() === m - 1) {
       const wd = d.getUTCDay();
-      if (wd !== 0 && wd !== 6) out.push(iso);
+      if (wd >= 1 && wd <= 5) {
+        if (!out.length) for (let i = 1; i < wd; i++) out.push(null);
+        out.push(d.toISOString().slice(0, 10));
+      }
       d.setUTCDate(d.getUTCDate() + 1);
     }
     return out;
-  }, [earliest, lastDate]);
+  }, [month]);
+  const jump = suggested && suggested >= earliest && suggested <= lastDate ? suggested : null;
   return (
-    <div className="flex flex-col gap-2">
-      <span className="text-xs text-muted-foreground">
-        The stock is read at the 4 pm New York close.
-      </span>
-      <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
-        {days.map((d) => (
-          <Button
-            key={d}
-            size="sm"
-            variant={d === value ? "default" : "secondary"}
-            className={cn(
-              "h-auto flex-col gap-0 py-1.5",
-              d === suggested && d !== value && "ring-1 ring-primary/60",
-            )}
-            onClick={() => onChange(d)}
-          >
-            <span className="text-xs font-medium">{calendarDay(d).split(", ")[1]}</span>
-            <span className="text-[10px] font-normal opacity-70">
-              {calendarDay(d).split(", ")[0]}
-            </span>
-          </Button>
-        ))}
-      </div>
-      {suggested && (
-        <span className="text-xs text-muted-foreground">
-          Outlined: the first close after every event is decided.
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <Button
+          size="icon-sm"
+          variant="ghost"
+          aria-label="Previous month"
+          disabled={month <= first}
+          onClick={() => setMonth(addMonths(month, -1))}
+        >
+          <ChevronLeft className="size-4" />
+        </Button>
+        <span className="text-sm font-medium">
+          {monthName.format(new Date(`${month}-01T12:00:00Z`))}
         </span>
-      )}
+        <Button
+          size="icon-sm"
+          variant="ghost"
+          aria-label="Next month"
+          disabled={month >= last}
+          onClick={() => setMonth(addMonths(month, 1))}
+        >
+          <ChevronRight className="size-4" />
+        </Button>
+      </div>
+      <div className="grid grid-cols-5 gap-1">
+        {WEEKDAYS.map((w, i) => (
+          <span
+            // biome-ignore lint/suspicious/noArrayIndexKey: a fixed row of weekday letters.
+            key={i}
+            className="text-center text-[11px] font-medium text-muted-foreground"
+          >
+            {w}
+          </span>
+        ))}
+        {cells.map((d, i) =>
+          d === null ? (
+            // biome-ignore lint/suspicious/noArrayIndexKey: blanks before the month's first day.
+            <span key={`blank-${i}`} />
+          ) : (
+            <Button
+              key={d}
+              size="sm"
+              variant={d === value ? "default" : "ghost"}
+              disabled={d < earliest || d > lastDate}
+              aria-label={calendarDay(d)}
+              aria-pressed={d === value}
+              className={cn(
+                "h-9 rounded-xl tabular-nums",
+                d === jump && d !== value && "ring-1 ring-primary/60",
+              )}
+              onClick={() => onChange(d)}
+            >
+              {Number(d.slice(8))}
+            </Button>
+          ),
+        )}
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <span>At the 4 pm New York close</span>
+        {jump && jump !== value && (
+          <button
+            type="button"
+            className="font-medium text-primary hover:underline"
+            onClick={() => {
+              onChange(jump);
+              setMonth(jump.slice(0, 7));
+            }}
+          >
+            After the events: {calendarDay(jump)}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
