@@ -286,7 +286,11 @@ export function kalshiEntries(
       rules: rules.slice(0, RULES_CHARS),
       endTime: new Date(endMs).toISOString(),
       url: `https://kalshi.com/markets/${encodeURIComponent(series.toLowerCase())}`,
-      image: null,
+      // Kalshi's artwork is per series, at a fixed address (its event metadata's `image_url`), so
+      // it costs no request per event.
+      image: /^[A-Z0-9]+$/.test(series)
+        ? `https://assets.kalshi.com/series-images-webp/${series}.webp`
+        : null,
       category,
       tags: series ? [series.toLowerCase()] : [],
       themes: themesOf(`${title} ${question}`, [category]),

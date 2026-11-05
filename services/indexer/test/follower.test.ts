@@ -238,6 +238,35 @@ test("moves to an endpoint that is ahead when its head stalls", async () => {
   }
 });
 
+test("on a sub-second chain a multi-block gap is one ranged eth_getLogs, not a header per block", async () => {
+  // Several blocks a second: their timestamps share the second.
+  const fast = endpoint({ seconds: 0n });
+  const f = follow(fast.client, { pollMs: 2_000 });
+  await f.start();
+  f.stop();
+  fast.state.head++;
+  await f.tick(); // Learns the block interval.
+  fast.calls.length = 0;
+  fast.state.head += 8n;
+  expect(await f.tick()).toBe(true);
+  expect(f.confirmed.block).toBe(fast.state.head);
+  // The head, the old tip still on the chain, one ranged read: not eight headers.
+  expect(fast.calls.filter((c) => c === "number")).toHaveLength(1);
+  expect(fast.calls.filter((c) => c === "logs")).toHaveLength(1);
+
+  // Blocks seconds apart keep the header walk (linkage checked header by header).
+  const slow = endpoint({ seconds: 2n });
+  const g = follow(slow.client, { pollMs: 2_000 });
+  await g.start();
+  g.stop();
+  slow.state.head++;
+  await g.tick();
+  slow.calls.length = 0;
+  slow.state.head += 8n;
+  expect(await g.tick()).toBe(true);
+  expect(slow.calls.filter((c) => c === "number")).toHaveLength(7);
+});
+
 test("skips blocks with an empty bloom once the endpoint is seen to compute blooms", async () => {
   // Bit 0 only: a non-empty bloom that rules the exchange out.
   const other = `0x${"0".repeat(510)}01` as Hex;

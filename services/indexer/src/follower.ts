@@ -9,7 +9,8 @@
  * Tip: each poll is one header request. A head linked to the tip by parentHash needs no reorg
  * check, its logsBloom decides whether eth_getLogs is needed at all, and logs are read by block
  * hash so they belong to exactly that block. Gaps of up to 50 blocks are filled by header and
- * checked for linkage; larger gaps (downtime) use ranged eth_getLogs. A head behind the tip (a
+ * checked for linkage; larger gaps (downtime), and any gap on a chain with sub-second blocks, use
+ * ranged eth_getLogs (one call per poll instead of one per block). A head behind the tip (a
  * lagging endpoint) is ignored; a broken link rebuilds the tip from the base.
  *
  * Polling follows the chain's own block interval (learned from header timestamps) unless
@@ -203,6 +204,8 @@ interface BlockEvents<E> {
 
 /** Largest gap filled header by header; beyond it the tip catches up with ranged eth_getLogs. */
 const MAX_GAP = 50n;
+/** Below this block interval, any gap of more than one block is read by range, not by header. */
+const FAST_BLOCK_MS = 1_000;
 const LOG_CONCURRENCY = 4;
 /** Header reads in flight: public endpoints rate-limit bursts (a replay from the deployment
  * block reads one header per block with logs when the logs carry no timestamp). */
@@ -563,7 +566,10 @@ export class ChainFollower<
       this.rebuildTip([], this.baseTip());
       return this.advanceTip(latest);
     }
-    if (gap > MAX_GAP) {
+    // Gaps beyond what headers should fill are read as one ranged eth_getLogs: past MAX_GAP on any
+    // chain, and past one block on a chain with blocks under a second (Robinhood Chain, Monad),
+    // where a poll finds several blocks and reading each header would cost an RPC call per block.
+    if (gap > (this.blockMs < FAST_BLOCK_MS ? 1n : MAX_GAP)) {
       if (
         !anchored &&
         header(await client.getBlock({ blockNumber: this.head.number })).hash !== this.head.hash

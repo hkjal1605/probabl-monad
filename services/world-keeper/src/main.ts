@@ -158,7 +158,8 @@ async function main() {
     ledger: worldLedger(deployment),
     deploymentBlock: BigInt(required("WK_DEPLOYMENT_BLOCK")),
     domain,
-    pollMs: 1_000,
+    // The quoter follows the books closely; the marker acts at most every 30 seconds.
+    pollMs: command === "quote" ? 1_000 : 5_000,
     ...(db ? { db } : {}),
     onCommit: (notice) => onEvents?.(notice.state, notice.events),
     onError: () => log("chain-read-failed"),

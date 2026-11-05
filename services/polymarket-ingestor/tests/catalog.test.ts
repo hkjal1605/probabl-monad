@@ -73,6 +73,7 @@ describe("venue listings", () => {
     expect(cut.exclusive).toBe(true);
     expect(cut.group).toBe("kalshi:KXFEDDECISION-26DEC");
     expect(cut.themes).toContain("fed");
+    expect(cut.image).toBe("https://assets.kalshi.com/series-images-webp/KXFEDDECISION.webp");
     // A ladder's subtitle names the strike when the title is not a question.
     expect(list[1]!.question).toBe("Fed decision in December 2026: Hold?");
     expect(kalshiEntries({ ...fedEvent, category: "Sports" }, NOW)).toEqual([]);
