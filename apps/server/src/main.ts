@@ -509,6 +509,7 @@ if (worlds) {
     if (!Number.isFinite(value) || value < 0) throw new Error(`${name} must be a number`);
     return value;
   };
+  const assistantModel = process.env.WORLD_ASSISTANT_MODEL?.trim() || "deepseek/deepseek-v4-pro";
   mountOpinions(app, {
     indexer: worlds,
     db,
@@ -528,12 +529,14 @@ if (worlds) {
         return out;
       },
     }),
+    // The assistant reads opinions through OpenRouter; its prices count only when OpenRouter
+    // reports no cost for a call.
     assistant: {
-      apiKey: process.env.ANTHROPIC_API_KEY?.trim() || null,
-      model: process.env.WORLD_ASSISTANT_MODEL?.trim() || "claude-sonnet-5-5",
-      inputPrice: decimalsOf("WORLD_ASSISTANT_INPUT_USD_PER_MTOK", 3),
-      outputPrice: decimalsOf("WORLD_ASSISTANT_OUTPUT_USD_PER_MTOK", 15),
-      timeoutMs: 12_000,
+      apiKey: process.env.OPENROUTER_API_KEY?.trim() || null,
+      model: assistantModel,
+      inputPrice: decimalsOf("WORLD_ASSISTANT_INPUT_USD_PER_MTOK", 1.6),
+      outputPrice: decimalsOf("WORLD_ASSISTANT_OUTPUT_USD_PER_MTOK", 3.2),
+      timeoutMs: decimalsOf("WORLD_ASSISTANT_TIMEOUT_MS", 12_000),
       dailyBudgetUsd: decimalsOf("WORLD_ASSISTANT_DAILY_USD", 25),
     },
     feeBps: whole("WORLD_USER_FEE_BPS", 100, 1_000),
@@ -544,7 +547,7 @@ if (worlds) {
   });
   worldRecorder?.start();
   logger.info("worlds.enabled", {
-    assistant: Boolean(process.env.ANTHROPIC_API_KEY?.trim()),
+    assistant: process.env.OPENROUTER_API_KEY?.trim() ? assistantModel : null,
     books: worlds.deployment.books,
     oracle: worlds.deployment.oracle,
     vaults: worlds.deployment.vaults,

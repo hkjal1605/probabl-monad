@@ -1,13 +1,14 @@
-/** Users' worlds: an opinion read into legs and a stock (by rules; the model only picks among
- * candidates it was shown), its one canonical world however it is worded, the problems that stop
- * it before pricing, the offer a preview answers with, and the hub's preview round. */
+/** Users' worlds: an opinion read into legs and a stock (the model reads it into events and
+ * their headline searches, then picks among what those found; rules when there is no model),
+ * its one canonical world however it is worded, the problems that stop it before pricing, the
+ * offer a preview answers with, and the hub's preview round. */
 import { expect, test } from "bun:test";
 import { eventKey, outcomeMask } from "@conditional-stocks/evm-client";
 import { type CatalogEntry, kalshiConditionId } from "@conditional-stocks/market-data";
 import { getAddress } from "viem";
 import { RfqHub, type RfqSession } from "../src/rfq/hub.ts";
 import type { MakerIdentity } from "../src/rfq/protocol.ts";
-import { extract, readOpinion, roundStrike } from "../src/worlds/assistant.ts";
+import { extract, OPENROUTER_URL, readOpinion, roundStrike } from "../src/worlds/assistant.ts";
 import {
   canonicalWorld,
   closeOf,
@@ -115,7 +116,7 @@ test("without a model, each clause's best match is the draft, negations pick NO"
       searched.push(q);
       return { hits: [/fed|cut/i.test(q) ? FED : DEAL].map((e) => ({ score: 1, entry: e })) };
     },
-    assistant: { apiKey: null, model: "m", inputPrice: 3, outputPrice: 15, timeoutMs: 1_000 },
+    assistant: { apiKey: null, model: "m", inputPrice: 1.6, outputPrice: 3.2, timeoutMs: 1_000 },
     budget: async () => true,
     nowS: NOW,
   });
@@ -130,56 +131,342 @@ test("without a model, each clause's best match is the draft, negations pick NO"
   expect(draft.stock!.date).toBe(nextClose(NOW + 20 * DAY).date);
 });
 
-test("the model picks only ids it was shown, at most one YES per exclusive event", async () => {
+/** A fake OpenRouter: answers each forced tool by name (in turn when given a list), records
+ * every request, and reports `usage`. */
+function openRouter(
+  answers: Record<string, unknown>,
+  usage: Record<string, number> = { cost: 0.001 },
+) {
+  const requests: {
+    tool: string;
+    body: { messages: { role: string; content: string }[] } & Record<string, unknown>;
+    headers: Record<string, string>;
+  }[] = [];
+  const counts = new Map<string, number>();
+  const fetcher = (async (url: string, init: RequestInit) => {
+    expect(url).toBe(OPENROUTER_URL);
+    const body = JSON.parse(String(init.body));
+    const tool = body.tool_choice.function.name as string;
+    requests.push({ tool, body, headers: init.headers as Record<string, string> });
+    const n = (counts.get(tool) ?? 0) + 1;
+    counts.set(tool, n);
+    const answer = answers[tool];
+    const args = Array.isArray(answer) ? answer[Math.min(n, answer.length) - 1] : answer;
+    return Response.json({
+      choices: [
+        {
+          message: {
+            tool_calls: [
+              {
+                function: {
+                  name: tool,
+                  arguments: typeof args === "string" ? args : JSON.stringify(args),
+                },
+              },
+            ],
+          },
+        },
+      ],
+      usage,
+    });
+  }) as unknown as typeof fetch;
+  return { fetcher, requests };
+}
+const model = (fetcher: typeof fetch) => ({
+  apiKey: "k",
+  model: "deepseek/deepseek-v4-pro",
+  inputPrice: 1.6,
+  outputPrice: 3.2,
+  timeoutMs: 1_000,
+  fetch: fetcher,
+});
+const SENTENCE =
+  "Trump and Xi sign a trade deal by the end of 2026 and there are no fed rate cuts by the end of this year, then NVDA will be up 10%";
+const DJT: WorldUnderlying = {
+  ...NVDA,
+  underlying: "US:DJT",
+  symbol: "DJT",
+  name: "Trump Media & Technology Group",
+};
+const NOCUT = entry("NOCUT", "Will no Fed rate cuts happen in 2026?", {
+  endTime: new Date((NOW + 57 * DAY) * 1000).toISOString(),
+  yes: 0.97,
+  bid: 0.96,
+  ask: 0.98,
+});
+
+test("the model reads the opinion into events, searches their headlines, then picks among what they found", async () => {
+  const CUT = { ...FED, group: "kalshi:FED", exclusive: true };
   const HOLD = entry("FED-H", "Will the Fed hold rates in December?", {
     group: "kalshi:FED",
     exclusive: true,
   });
-  const CUT = { ...FED, group: "kalshi:FED", exclusive: true };
-  let asked = 0;
-  const fetcher = (async () => {
-    asked++;
-    return Response.json({
-      content: [
+  const HIKE = entry("FED-UP", "Will the Fed raise rates in December?", {
+    group: "kalshi:FED",
+    exclusive: true,
+  });
+  const or = openRouter({
+    submit_reading: {
+      events: [
         {
-          type: "tool_use",
-          name: "submit_world",
-          input: {
-            legs: [
-              { id: CUT.id, wantYes: true, note: "Kalshi counts any cut of 25 bps" },
-              { id: HOLD.id, wantYes: true },
-              { id: "kalshi:INVENTED", wantYes: true },
-            ],
-            stock: { symbol: "NVDA", direction: "below", price: 180, date: "2026-12-18" },
-          },
+          says: "Trump and Xi sign a trade deal by the end of 2026",
+          happens: true,
+          queries: ["US China trade deal 2026", "Trump China trade deal"],
         },
+        { says: "No Fed rate cuts this year", happens: false, queries: ["Fed rate cut 2026"] },
       ],
-      usage: { input_tokens: 1_000, output_tokens: 200 },
-    });
-  }) as unknown as typeof fetch;
+      stock: { symbol: "NVDA", direction: "above", price: null, percent: 10, date: null },
+    },
+    submit_world: {
+      legs: [
+        { id: DEAL.id, wantYes: true, fits: true, event: 1 },
+        { id: CUT.id, wantYes: false, fits: true, event: 2, note: "Kalshi counts any cut" },
+        // A second market for item 2, a second YES in one exclusive event, an id it was not
+        // shown, and one it says is not about the words: all left out.
+        { id: NOCUT.id, wantYes: true, fits: true, event: 2 },
+        { id: HOLD.id, wantYes: true, fits: true, event: null },
+        { id: HIKE.id, wantYes: true, fits: true, event: null },
+        { id: "kalshi:INVENTED", wantYes: true, fits: true, event: 1 },
+        { id: NOCUT.id, wantYes: true, fits: false, event: null },
+      ],
+      stock: { symbol: "NVDA", direction: "above", price: null, date: null },
+    },
+  });
+  const searched: string[] = [];
   const { draft, costMicros } = await readOpinion({
     id: "d2",
-    text: "fed cuts, nvda dumps under 180 by dec 18",
-    underlyings: [NVDA],
-    spot: async () => 209,
-    search: async () => ({ hits: [CUT, HOLD].map((e) => ({ score: 1, entry: e })) }),
-    assistant: {
-      apiKey: "k",
-      model: "m",
-      inputPrice: 3,
-      outputPrice: 15,
-      timeoutMs: 1_000,
-      fetch: fetcher,
+    text: SENTENCE,
+    underlyings: [NVDA, DJT],
+    spot: async () => 200,
+    search: async (q) => {
+      searched.push(q);
+      return {
+        hits: (/china|trade/i.test(q) ? [DEAL] : [CUT, HOLD, HIKE, NOCUT]).map((e) => ({
+          score: 10,
+          coverage: 1,
+          entry: e,
+        })),
+      };
     },
+    assistant: model(or.fetcher),
+    budget: async () => true,
+    nowS: NOW,
+    maxTenorS: 35 * DAY,
+  });
+  // Two calls: the reading, then the pick. The searches are the reading's headlines.
+  expect(or.requests.map((r) => r.tool)).toEqual(["submit_reading", "submit_world"]);
+  expect(searched.sort()).toEqual([
+    "Fed rate cut 2026",
+    "Trump China trade deal",
+    "US China trade deal 2026",
+  ]);
+  for (const r of or.requests) {
+    expect(r.headers.authorization).toBe("Bearer k");
+    expect(r.body).toMatchObject({
+      model: "deepseek/deepseek-v4-pro",
+      temperature: 0,
+      reasoning: { enabled: false },
+      provider: { require_parameters: true },
+    });
+  }
+  // The pick knows what each event is, and which way the trader sees it.
+  expect(or.requests[1]!.body.messages[1]!.content).toContain(
+    "2. No Fed rate cuts this year (does NOT happen)",
+  );
+  // Each call paid what OpenRouter reports.
+  expect(costMicros).toBe(2_000);
+  expect(draft.source).toBe("assistant");
+  expect(draft.legs.map((l) => [l.entry.id, l.wantYes])).toEqual([
+    [DEAL.id, true],
+    [CUT.id, false],
+    [HOLD.id, true],
+  ]);
+  expect(draft.legs[1]!.note).toBe("Kalshi counts any cut");
+  // NVDA up 10% from $200; no date said: the first close after the events, within the tenor.
+  expect(draft.stock).toMatchObject({
+    symbol: "NVDA",
+    direction: "above",
+    strike: "220",
+    date: nextClose(NOW + 20 * DAY).date,
+  });
+  expect(draft.notes).toEqual([]);
+});
+
+test("one market for each thing the opinion depends on", async () => {
+  const HOT = entry("CPI-42", "How high will CPI get this year: Above 4.2%?");
+  const HOTTER = entry("CPI-43", "How high will CPI get this year: Above 4.3%?");
+  const or = openRouter({
+    submit_reading: {
+      events: [{ says: "Inflation doesn't run hot", happens: false, queries: ["CPI above"] }],
+      stock: null,
+    },
+    submit_world: {
+      legs: [
+        { id: HOT.id, wantYes: false, fits: true, event: 1 },
+        { id: HOTTER.id, wantYes: false, fits: true, event: 1 },
+      ],
+    },
+  });
+  const { draft } = await readOpinion({
+    id: "d9",
+    text: "If inflation doesn't come in hot, QQQ up",
+    underlyings: [NVDA],
+    spot: async () => 200,
+    search: async () => ({ hits: [HOT, HOTTER].map((e) => ({ score: 9, coverage: 1, entry: e })) }),
+    assistant: model(or.fetcher),
     budget: async () => true,
     nowS: NOW,
   });
-  expect(asked).toBe(1);
-  expect(costMicros).toBe(1_000 * 3 + 200 * 15);
+  expect(draft.legs.map((l) => [l.entry.id, l.wantYes])).toEqual([[HOT.id, false]]);
+});
+
+test("what the model read but found no market for is named in the notes", async () => {
+  const or = openRouter({
+    submit_reading: {
+      events: [
+        { says: "The Fed cuts in December", happens: true, queries: ["Fed cut December"] },
+        { says: "Trump and Xi sign a deal", happens: true, queries: ["US China trade deal"] },
+      ],
+      stock: null,
+    },
+    submit_world: { legs: [{ id: FED.id, wantYes: true, fits: true, event: 1 }] },
+  });
+  const { draft } = await readOpinion({
+    id: "d5",
+    text: "The Fed cuts in December and Trump and Xi sign a deal",
+    underlyings: [NVDA],
+    spot: async () => 200,
+    search: async () => ({ hits: [{ score: 10, coverage: 1, entry: FED }] }),
+    assistant: model(or.fetcher),
+    budget: async () => true,
+    nowS: NOW,
+  });
+  expect(draft.legs.map((l) => l.entry.id)).toEqual([FED.id]);
+  expect(draft.notes).toEqual(["No market found for “Trump and Xi sign a deal”"]);
+});
+
+test("answers without a usable call fall back to the rules, and are still paid for", async () => {
+  const or = openRouter(
+    { submit_reading: "{not json", submit_world: "{not json" },
+    { prompt_tokens: 1_000, completion_tokens: 200 },
+  );
+  const failures: string[] = [];
+  const { draft, costMicros } = await readOpinion({
+    id: "d3",
+    text: "If the Fed cuts in December, NVDA above $240",
+    underlyings: [NVDA],
+    spot: async () => 209,
+    search: async () => ({ hits: [{ score: 1, coverage: 1, entry: FED }] }),
+    assistant: model(or.fetcher),
+    budget: async () => true,
+    nowS: NOW,
+    log: (event, detail) => failures.push(`${event}:${detail.step}`),
+  });
+  // No reported cost: tokens at the configured prices, for both calls.
+  expect(costMicros).toBe(2 * (1_000 * 1.6 + 200 * 3.2));
+  expect(failures).toEqual(["worlds.assistant.failed:read", "worlds.assistant.failed:pick"]);
+  expect(draft.source).toBe("search");
+  expect(draft.legs.map((l) => [l.entry.id, l.wantYes])).toEqual([[FED.id, true]]);
+});
+
+test("when the model finds no fitting event, the draft has none and suggests instead", async () => {
+  const or = openRouter({
+    submit_reading: {
+      events: [{ says: "A US–China trade deal", happens: true, queries: ["US China trade deal"] }],
+      stock: { symbol: "NVDA", direction: "above", price: 240, percent: null, date: null },
+    },
+    submit_world: { legs: [], search: ["US China trade deal"] },
+  });
+  const { draft, costMicros } = await readOpinion({
+    id: "d4",
+    text: "If the US and China sign a trade deal, NVDA above $240",
+    underlyings: [NVDA],
+    spot: async () => 209,
+    // The catalog's best match for the words is an unrelated event.
+    search: async () => ({ hits: [{ score: 1, coverage: 0.25, entry: FED }] }),
+    assistant: model(or.fetcher),
+    budget: async () => true,
+    nowS: NOW,
+  });
+  // The reading, a pick, one more search, a second pick: still nothing fits.
+  expect(or.requests.map((r) => r.tool)).toEqual([
+    "submit_reading",
+    "submit_world",
+    "submit_world",
+  ]);
+  expect(costMicros).toBe(3_000);
   expect(draft.source).toBe("assistant");
-  expect(draft.legs.map((l) => l.entry.id)).toEqual([CUT.id]);
-  expect(draft.legs[0]!.note).toBe("Kalshi counts any cut of 25 bps");
-  expect(draft.stock).toMatchObject({ direction: "below", strike: "180", date: "2026-12-18" });
+  expect(draft.legs).toEqual([]);
+  expect(draft.suggestions.map((e) => e.id)).toEqual([FED.id]);
+  expect(draft.stock).toMatchObject({ symbol: "NVDA", strike: "240" });
+});
+
+test("without a model, a clause's best match counts only when it is about the clause's words", async () => {
+  const { draft } = await readOpinion({
+    id: "d6",
+    text: "If Xi signs a trade deal and the Fed cuts in December, NVDA above $240",
+    underlyings: [NVDA],
+    spot: async () => 209,
+    search: async (q) =>
+      /fed/i.test(q)
+        ? { hits: [{ score: 9, coverage: 1, entry: FED }] }
+        : // "Xi signs a trade deal": the best hit shares one word of four.
+          { hits: [{ score: 9, coverage: 0.25, entry: DEAL }] },
+    assistant: { apiKey: null, model: "m", inputPrice: 1.6, outputPrice: 3.2, timeoutMs: 1_000 },
+    budget: async () => true,
+    nowS: NOW,
+  });
+  expect(draft.legs.map((l) => l.entry.id)).toEqual([FED.id]);
+});
+
+test("rules: a common word is never a stock, and a date belongs to its own clause", async () => {
+  const ex = extract(SENTENCE, [DJT, NVDA], NOW);
+  // "Trump" is not Trump Media: the stock is the one the move follows.
+  expect(ex.stock?.u.symbol).toBe("NVDA");
+  expect([ex.direction, ex.price, ex.date]).toEqual(["above", { percent: 10 }, null]);
+  expect(ex.clauses).toEqual([
+    "Trump Xi sign a trade deal by the end of 2026",
+    "there are no fed rate cuts by the end of this year",
+  ]);
+  expect(extract("Trump Media rallies 20%", [DJT, NVDA], NOW).stock?.u.symbol).toBe("DJT");
+  expect(extract("NVDA above $250 by the end of the year", [NVDA], NOW).date).toBe("2026-12-31");
+  // No date said: the first close after the events, but never past the vault's tenor.
+  const { draft } = await readOpinion({
+    id: "d7",
+    text: SENTENCE,
+    underlyings: [DJT, NVDA],
+    spot: async () => 200,
+    search: async () => ({ hits: [{ score: 9, coverage: 1, entry: NOCUT }] }),
+    assistant: { apiKey: null, model: "m", inputPrice: 1.6, outputPrice: 3.2, timeoutMs: 1_000 },
+    budget: async () => true,
+    nowS: NOW,
+    maxTenorS: 35 * DAY,
+  });
+  expect(draft.stock).toMatchObject({ symbol: "NVDA", strike: "220" });
+  expect(draft.stock!.date).toBe(nextClose(NOW + 34 * DAY).date);
+});
+
+test("a stated price far from spot is not taken as the stock's", async () => {
+  const GLD: WorldUnderlying = { ...NVDA, underlying: "US:GLD", symbol: "GLD", name: "SPDR Gold" };
+  const or = openRouter({
+    submit_reading: {
+      events: [{ says: "The Fed holds", happens: true, queries: ["Fed hold December"] }],
+      stock: { symbol: "GLD", direction: "above", price: 4500, percent: null, date: null },
+    },
+    submit_world: { legs: [{ id: FED.id, wantYes: false, fits: true, event: 1 }] },
+  });
+  const { draft } = await readOpinion({
+    id: "d8",
+    text: "gold above 4500 if the Fed doesn't cut",
+    underlyings: [GLD],
+    spot: async () => 372,
+    search: async () => ({ hits: [{ score: 9, coverage: 1, entry: FED }] }),
+    assistant: model(or.fetcher),
+    budget: async () => true,
+    nowS: NOW,
+  });
+  expect(draft.stock).toMatchObject({ symbol: "GLD", strike: roundStrike(372 * 1.05) });
+  expect(draft.notes).toEqual(["GLD trades near $372: set the price you mean"]);
 });
 
 test("one opinion, one world: leg order and wording never change it", () => {

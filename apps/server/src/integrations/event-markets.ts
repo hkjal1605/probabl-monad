@@ -40,7 +40,11 @@ export class EventMarketsClient {
   searchCatalog(
     query: string,
     options: { limit?: number; before?: Date; after?: Date } = {},
-  ): Promise<{ crawledAt: number; size: number; hits: { score: number; entry: CatalogEntry }[] }> {
+  ): Promise<{
+    crawledAt: number;
+    size: number;
+    hits: { score: number; coverage?: number; entry: CatalogEntry }[];
+  }> {
     const params = new URLSearchParams({ q: query.slice(0, 300) });
     if (options.limit) params.set("limit", String(options.limit));
     if (options.before) params.set("before", options.before.toISOString());

@@ -20,6 +20,9 @@ export type { CatalogEntry, CatalogSource };
 export interface CatalogHit {
   entry: CatalogEntry;
   score: number;
+  /** The share of the query's words (or their synonyms) the entry contains, 0 to 1: how much of
+   * what was asked it is about, which the score's idf weighting does not say. */
+  coverage: number;
 }
 /** A live book of a tracked condition (the ingestor's tick), when there is one. */
 export type LiveBook = (
@@ -28,6 +31,9 @@ export type LiveBook = (
 
 const DAY_MS = 86_400_000;
 const FRESH_MS = 20_000;
+/** How far ahead markets are kept. A world with a stock fixes within the vault's tenor, but its
+ * events may be decided later ("by the end of the year"), so the catalog looks further ahead. */
+export const CATALOG_HORIZON_DAYS = 120;
 const KALSHI_PAGES = 60;
 const GAMMA_PAGES = 40;
 const RULES_CHARS = 2_000;
@@ -248,7 +254,7 @@ const inWindow = (endMs: number, nowMs: number, horizonDays: number) =>
 export function kalshiEntries(
   event: Record<string, unknown>,
   nowMs: number,
-  horizonDays = 60,
+  horizonDays = CATALOG_HORIZON_DAYS,
 ): CatalogEntry[] {
   const category = str(event.category);
   if (KALSHI_SKIP.has(category.toLowerCase())) return [];
@@ -256,6 +262,13 @@ export function kalshiEntries(
   const series = str(event.series_ticker);
   const title = str(event.title);
   const markets = Array.isArray(event.markets) ? (event.markets as Record<string, unknown>[]) : [];
+  // A title several markets share can't tell their outcomes apart: Kalshi templates sometimes
+  // drop the outcome from it ("Will Trump make a new before Jan 1, 2027?" for every country).
+  const titleCount = new Map<string, number>();
+  for (const m of markets) {
+    const t = str(m.title);
+    if (t) titleCount.set(t, (titleCount.get(t) ?? 0) + 1);
+  }
   const out: CatalogEntry[] = [];
   for (const m of markets) {
     const ticker = str(m.ticker);
@@ -263,10 +276,11 @@ export function kalshiEntries(
     if (m.market_type !== "binary" || m.status !== "active") continue;
     const endMs = Date.parse(str(m.close_time));
     if (!inWindow(endMs, nowMs, horizonDays)) continue;
-    const marketTitle = str(m.title) || title;
     const strike = str(m.yes_sub_title);
+    const shared = (titleCount.get(str(m.title)) ?? 0) > 1 && Boolean(strike) && Boolean(title);
+    const marketTitle = shared ? title : str(m.title) || title;
     const question =
-      marketTitle.startsWith("Will ") || !strike
+      (marketTitle.startsWith("Will ") && !shared) || !strike
         ? marketTitle
         : `${marketTitle.replace(/\?$/, "")}: ${strike}?`;
     const rules = [str(m.rules_primary), str(m.rules_secondary)].filter(Boolean).join("\n\n");
@@ -317,7 +331,7 @@ const jsonList = (v: unknown): string[] => {
 export function gammaEntries(
   event: Record<string, unknown>,
   nowMs: number,
-  horizonDays = 60,
+  horizonDays = CATALOG_HORIZON_DAYS,
 ): CatalogEntry[] {
   const tags = (Array.isArray(event.tags) ? (event.tags as Record<string, unknown>[]) : [])
     .map((t) => str(t.slug).toLowerCase())
@@ -447,7 +461,7 @@ export class EventCatalog {
   }
   private async pass() {
     const nowMs = this.now();
-    const horizon = this.options.horizonDays ?? 60;
+    const horizon = this.options.horizonDays ?? CATALOG_HORIZON_DAYS;
     const errors: string[] = [];
     const venue = async (name: CatalogSource, read: () => Promise<CatalogEntry[]>) => {
       try {
@@ -589,7 +603,11 @@ export class EventCatalog {
       const coverage = s.matched.size / terms.length;
       const quoted = entry.yes === null ? 0.6 : 1;
       const popularity = 1 + 0.12 * Math.log10(1 + entry.volume);
-      hits.push({ entry, score: s.score * (0.4 + coverage * coverage) * quoted * popularity });
+      hits.push({
+        entry,
+        score: s.score * (0.4 + coverage * coverage) * quoted * popularity,
+        coverage,
+      });
     }
     hits.sort((a, b) => b.score - a.score);
     return hits.slice(0, Math.min(options.limit ?? 20, 100));

@@ -55,7 +55,7 @@ const fedEvent = {
       market_type: "binary",
       status: "active",
       title: "Later",
-      close_time: at(90),
+      close_time: at(150),
     },
   ],
 };
@@ -77,6 +77,35 @@ describe("venue listings", () => {
     // A ladder's subtitle names the strike when the title is not a question.
     expect(list[1]!.question).toBe("Fed decision in December 2026: Hold?");
     expect(kalshiEntries({ ...fedEvent, category: "Sports" }, NOW)).toEqual([]);
+  });
+
+  test("Kalshi: a title every outcome shares is rebuilt from the event and the outcome", () => {
+    // Kalshi's own titles for this event omit the country: only the subtitle names it.
+    const deals = {
+      event_ticker: "KXFTACOUNTRIES-27",
+      series_ticker: "KXFTACOUNTRIES",
+      title: "Which countries will Trump make formal trade deals with in 2026?",
+      category: "Politics",
+      markets: ["China", "India"].map((country) => ({
+        ticker: `KXFTACOUNTRIES-27-${country.slice(0, 3).toUpperCase()}`,
+        market_type: "binary",
+        status: "active",
+        title: "Will Trump make a new before Jan 1, 2027?",
+        yes_sub_title: country,
+        close_time: at(57),
+        yes_bid_dollars: "0.10",
+        yes_ask_dollars: "0.12",
+      })),
+    };
+    const [china, india] = kalshiEntries(deals, NOW);
+    expect(china!.question).toBe(
+      "Which countries will Trump make formal trade deals with in 2026: China?",
+    );
+    expect(india!.question).toBe(
+      "Which countries will Trump make formal trade deals with in 2026: India?",
+    );
+    // Within the catalog's horizon (events decided by the end of the year are kept).
+    expect(kalshiEntries({ ...deals, markets: [] }, NOW)).toEqual([]);
   });
 
   test("Gamma: YES/NO markets only, oriented to YES, sports left out", () => {
@@ -190,6 +219,10 @@ describe("search", () => {
   test("ranks the market covering the words first, with synonyms", () => {
     const c = catalog();
     expect(c.search("If the Fed cuts in December")[0]!.entry.id).toBe("kalshi:FED-C25");
+    // Coverage: the share of the query's words the hit is about.
+    expect(c.search("Fed cut rates December")[0]!.coverage).toBe(1);
+    const weak = c.search("Fed sign trade deal").find((h) => h.entry.id === "kalshi:FED-C25");
+    expect(weak!.coverage).toBeCloseTo(1 / 4, 9);
     expect(c.search("btc over 120k")[0]!.entry.id).toBe("kalshi:BTC");
     expect(c.search("hot inflation print")[0]!.entry.id).toBe("kalshi:CPI");
     expect(c.search("the and of")).toEqual([]);

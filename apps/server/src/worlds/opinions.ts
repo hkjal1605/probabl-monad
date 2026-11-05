@@ -274,7 +274,8 @@ export function mountOpinions(
       .session(c)
       .then((s) => s.owner)
       .catch(() => null);
-    const list = eligible(indexer.trading());
+    const state = indexer.trading();
+    const list = eligible(state);
     const id = randomUUID();
     const { draft, costMicros } = await readOpinion({
       id,
@@ -285,6 +286,7 @@ export function mountOpinions(
       assistant: options.assistant,
       budget,
       nowS: seconds(),
+      maxTenorS: vaultTerms(state).limits?.maxTenor ?? null,
       log: options.log,
     });
     spent.micros += costMicros;

@@ -865,8 +865,8 @@ LLMs do four jobs, all outside the quote path:
 
 ### Model and tools
 
-- **Model.** Claude through the Anthropic API with tool use. Sonnet-class for the parser (latency
-  and cost) and Opus-class for the nightly relation batch.
+- **Model.** Through OpenRouter with tool use: DeepSeek V4 Pro (`deepseek/deepseek-v4-pro`) for the
+  parser, chosen for cost (§19), and a stronger model for the nightly relation batch.
   - **Jev** (TypeSafe AI, `jev-1.13` on OpenRouter: probabilities only, about 0.5 s, about $0.05 per
     1,000 calls) is an optional second source of relation priors.
   - It must first pass the Phase 0 backtest: its P(B | A) must predict realized co-movement on
@@ -1623,13 +1623,29 @@ their own. Fills are RFQ only (no order book). The design follows
 
 1. **Say it** (`/worlds`). A composer that never starts blank (real opinions cycle as placeholders;
    "a stock" and "an event" start one).
-2. **Read it** (`POST /v2/worlds/parse`). Rules first: the stock (ticker or name), above or below,
-   a price ($240, 10%, 120k) and a date ("Dec 19", "Friday", "end of month"); the rest split into
-   clauses, each searched in the event catalog. With `ANTHROPIC_API_KEY`, Claude
-   (`WORLD_ASSISTANT_MODEL`, default `claude-sonnet-5-5`) picks legs and sides from the candidates
-   it was shown (one more search allowed); ids it was not shown are dropped. Without a key, or on
-   failure or over the daily budget (`WORLD_ASSISTANT_DAILY_USD`, default $25), each clause's best
-   match is the draft. Negations ("no shutdown") pick NO. Every read is audited in `world_drafts`.
+2. **Read it** (`POST /v2/worlds/parse`). With `OPENROUTER_API_KEY`, a model on OpenRouter
+   (`WORLD_ASSISTANT_MODEL`, default `deepseek/deepseek-v4-pro`; forced tool calls, reasoning off,
+   temperature 0, providers that honour the forced call sorted by throughput) works in two turns:
+   - **Reading** (`submit_reading`): the events the opinion depends on, each with the trader's
+     side and 1 to 3 headline-style searches ("US China trade deal 2026", never negated), and the
+     stock move (symbol, direction, a dollar price or a percent, a date only when one is said).
+   - **Search**: each event's searches run on the event catalog, which keeps markets closing
+     within 120 days (a world with a stock fixes within the vault's tenor, but its events may be
+     decided later, "by the end of the year").
+   - **Picking** (`submit_world`): the model picks one market per event from what was found,
+     knowing each event and its side; ids it was not shown, legs it marks `fits: false`, a second
+     market for the same event and a second YES in one exclusive event are dropped. An event with
+     no market is named in the notes ("No market found for …"); with none at all, the draft has
+     no legs and suggests events.
+   Without a key, or when a turn fails, times out (`WORLD_ASSISTANT_TIMEOUT_MS`, 12 s) or is over
+   the daily budget (`WORLD_ASSISTANT_DAILY_USD`, $25, from OpenRouter's reported cost), rules read
+   the words: the stock is a symbol, a curated name or a company's full name (never a common word:
+   "Trump" is not Trump Media), the one a move follows; its date is the one in its own clause;
+   the rest splits into clauses, and each clause's best match counts only when it covers half of
+   the clause's words. A stated price more than 3× from spot is not taken as the stock's. With no
+   date said, the stock fixes at the first close after the events, within the vault's tenor.
+   Measured on the live catalog (2026-11-05): 5–9 s and $0.004–0.009 a read. Every read is
+   audited in `world_drafts`.
 3. **See it** (`/worlds/new`). The world as one sentence with editable chips (an event's side or
    another event, the stock, above or below, the price with a slider around spot, the date); each
    leg with its venue, odds, deadline and rules; the chance chain on a base of 1,000 with the
