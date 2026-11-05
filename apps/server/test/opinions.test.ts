@@ -26,7 +26,9 @@ import {
   offerOf,
   offerProducts,
   parseSpec,
+  spanWords,
   type WorldUnderlying,
+  worldNotes,
   worldProblems,
 } from "../src/worlds/opinion.ts";
 import { friendlyDecline } from "../src/worlds/opinions.ts";
@@ -567,7 +569,7 @@ test("a date said for an event is its market's deadline; a stock date past the t
   expect(draft.stock).toMatchObject({ symbol: "PLTR", direction: "below", strike: "144" });
   expect(draft.stock!.date).toBe(latest);
   expect(draft.notes).toEqual([
-    "PLTR is read on Dec 7, not Jun 30, 2027: worlds fix within 35 days for now",
+    "PLTR is read on Dec 7, not Jun 30, 2027: a stock is read at most 35 days ahead for now",
   ]);
 });
 
@@ -697,7 +699,7 @@ test("one opinion, one world: leg order and wording never change it", () => {
     ],
     stock: { underlying: "US:NVDA", direction: "above", strike: "240", date: "2026-12-18" },
   });
-  const a = canonicalWorld(spec, entries, NVDA, deployment, 100);
+  const a = canonicalWorld(spec, entries, NVDA, deployment, 100, NOW * 1000);
   const b = canonicalWorld(
     { ...spec, legs: [...spec.legs].reverse() },
     entries,
@@ -773,7 +775,32 @@ test("problems stop a world before pricing: limits, decided legs, exclusive outc
     deployment,
     100,
   );
-  expect(worldProblems(far, limits, NOW)[0]).toContain("within 35 days");
+  expect(worldProblems(far, limits, NOW)).toEqual([
+    "The stock is read at most 35 days ahead for now: pick a sooner date",
+  ]);
+  // A world of events alone trades until its last event: the tenor bounds that instead.
+  const eventsOnly = (endDays: number) =>
+    canonicalWorld(
+      { legs: [{ id: FED.id, wantYes: true }], stock: null },
+      new Map([
+        [FED.id, { ...FED, endTime: new Date((NOW + endDays * DAY) * 1000).toISOString() }],
+      ]),
+      null,
+      deployment,
+      100,
+    );
+  expect(worldProblems(eventsOnly(20), limits, NOW)).toEqual([]);
+  expect(worldProblems(eventsOnly(238), limits, NOW)).toEqual([
+    "Worlds without a stock trade for at most 35 days for now: add a stock or pick events decided sooner",
+  ]);
+  expect(worldProblems(eventsOnly(238), { ...limits, maxTenor: 365 * DAY }, NOW)).toEqual([]);
+  expect([35, 90, 182, 365, 730].map((d) => spanWords(d * DAY))).toEqual([
+    "35 days",
+    "3 months",
+    "6 months",
+    "a year",
+    "2 years",
+  ]);
   expect(() =>
     canonicalWorld(
       spec([{ id: FED.id, wantYes: true }], "2026-12-19"),
@@ -785,6 +812,28 @@ test("problems stop a world before pricing: limits, decided legs, exclusive outc
   ).toThrow(OpinionError);
   expect(() => parseSpec({ legs: [] })).toThrow("at least one event");
   expect(() => parseSpec({ legs: [{ id: "nope" }] })).toThrow("Unknown event");
+});
+
+test("a note when events can be decided after the stock is read, in plain dates", () => {
+  const later = { ...FED, endTime: new Date((NOW + 238 * DAY) * 1000).toISOString() };
+  const world = (legs: CatalogEntry[], date: string) =>
+    canonicalWorld(
+      {
+        legs: legs.map((e) => ({ id: e.id, wantYes: true })),
+        stock: { underlying: "US:NVDA", direction: "above", strike: "240", date },
+      },
+      new Map(legs.map((e) => [e.id, e])),
+      NVDA,
+      deployment,
+      100,
+    );
+  expect(worldNotes(world([later], "2026-12-18"))).toEqual([
+    "The event can be decided after Dec 18: the world settles when it is",
+  ]);
+  expect(worldNotes(world([later, DEAL], "2026-12-18"))).toEqual([
+    '"The Fed cut rates in December" can be decided after Dec 18: the world settles when it is',
+  ]);
+  expect(worldNotes(world([DEAL], "2026-12-18"))).toEqual([]);
 });
 
 test("the offer: All-in pays its units if right, Money-back gives the stake back if the world fails", () => {
@@ -825,6 +874,20 @@ test("the offer: All-in pays its units if right, Money-back gives the stake back
 
 test("makers' reasons in plain words", () => {
   expect(friendlyDecline("A leg's venue spread is too wide")).toContain("too thin");
+  // With the world's legs, the thin one is named, with its venue prices.
+  const legs = [
+    { label: "Trump is impeached by June 30, 2027", entry: { bid: 0.41, ask: 0.43 } },
+    { label: "The House impeach Pete Hegseth by June 30, 2027", entry: { bid: 0.4, ask: 0.75 } },
+  ];
+  expect(friendlyDecline("A leg's venue spread is too wide", legs)).toBe(
+    '"The House impeach Pete Hegseth by June 30, 2027" trades too thinly to price (bid 40¢, ask 75¢): pick a busier market for it',
+  );
+  expect(
+    friendlyDecline("A leg has no live probability", [
+      legs[0]!,
+      { label: "Nobody quotes this", entry: { bid: null, ask: null } },
+    ]),
+  ).toBe('"Nobody quotes this" has no live price on its venue: pick another market for it');
   expect(friendlyDecline("World bets under half a cent are not quoted")).toContain("too unlikely");
   expect(friendlyDecline("Over the per-fill limit")).toContain("smaller stake");
 });

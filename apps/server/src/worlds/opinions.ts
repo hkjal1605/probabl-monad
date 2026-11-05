@@ -71,11 +71,25 @@ export const legEntry = (e: CatalogEntry) => ({
   themes: e.themes,
 });
 
-/** A maker's reason for not pricing, as a person would say it. */
-export function friendlyDecline(reason: string) {
+/** A maker's reason for not pricing, as a person would say it; a thin market is named from the
+ * world's legs (their venue prices, just read). */
+export function friendlyDecline(
+  reason: string,
+  legs: readonly { label: string; entry: { bid: number | null; ask: number | null } }[] = [],
+) {
   const r = reason.toLowerCase();
-  if (/spread is too wide|no live probability/.test(r))
+  if (/spread is too wide|no live probability/.test(r)) {
+    const cents = (p: number) => `${Math.round(p * 100)}¢`;
+    const unpriced = legs.find((l) => l.entry.bid === null || l.entry.ask === null);
+    if (unpriced)
+      return `"${unpriced.label}" has no live price on its venue: pick another market for it`;
+    const widest = legs
+      .filter((l) => l.entry.bid !== null && l.entry.ask !== null)
+      .sort((a, b) => b.entry.ask! - b.entry.bid! - (a.entry.ask! - a.entry.bid!))[0];
+    if (widest && /spread/.test(r))
+      return `"${widest.label}" trades too thinly to price (bid ${cents(widest.entry.bid!)}, ask ${cents(widest.entry.ask!)}): pick a busier market for it`;
     return "One event's market is too thin to price right now";
+  }
   if (/outside the quoted range|almost decided/.test(r))
     return "One event is already almost decided";
   if (/half a cent/.test(r))
@@ -213,11 +227,15 @@ export function mountOpinions(
   let stocksMemo: { at: number; body: string } | null = null;
   app.get("/v2/worlds/stocks", async (c) => {
     if (!stocksMemo || Date.now() - stocksMemo.at > 15_000) {
-      const list = eligible(indexer.trading());
+      const state = indexer.trading();
+      const list = eligible(state);
       const spot = await spots.all(list);
       stocksMemo = {
         at: Date.now(),
         body: json({
+          // How far ahead a world's stock can be read (and an events-only world can trade), in
+          // seconds: the vault's tenor, which the date picker follows.
+          maxTenor: vaultTerms(state).limits?.maxTenor ?? null,
           stocks: list.map((u) => ({
             underlying: u.underlying,
             symbol: u.symbol,
@@ -351,13 +369,13 @@ export function mountOpinions(
     if (answer.decline)
       return c.json({
         ...base,
-        problems: [friendlyDecline(answer.decline)],
+        problems: [friendlyDecline(answer.decline, w.legs)],
         offer: null,
         chance: null,
       });
     const offer = offerOf(w, answer).map((p) => ({
       ...p,
-      decline: p.decline ? friendlyDecline(p.decline) : null,
+      decline: p.decline ? friendlyDecline(p.decline, w.legs) : null,
     }));
     return c.json({
       ...base,

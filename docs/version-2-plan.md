@@ -499,7 +499,11 @@ The vault merges any full sets it ends up holding, which returns cash immediatel
 The vault quotes only books where:
 - the feed (and `underlying`) is on its allowlist, or the book has no feed;
 - the book has at most `maxLegs` legs (start at 4);
-- the fixing is within `maxTenor` (start at 35 days);
+- the fixing (an events-only book's cutoff) is within `maxTenor` (started at 35 days; one year on
+  Robinhood testnet since 2026-11-05). Its events may be decided later either way, so the tenor
+  bounds when the stock is read or trading stops, not how long capital stays locked: that lasts
+  until the last event is decided, which the keeper charges for per year of lock and the risk caps
+  size;
 - `feeBps ≤ maxFeeBps`.
 
 No per-book registration is needed, so user-built worlds work without a transaction per book.
@@ -1538,7 +1542,7 @@ shipped together, with users' worlds only (§19).*
    with a different regulatory profile.
 6. **The LLM vendor and budget**, and whether Jev is used after its backtest.
 7. **When public LP deposits open.**
-8. **Limits:** `maxLegs` (4 → 6), `maxTenor` (35 days) and the strike-grid template.
+8. **Limits:** `maxLegs` (4 → 6), `maxTenor` (one year on testnet) and the strike-grid template.
 9. **A shared credit** between the v1 exchange and `WorldBooks`. That's better UX, but couples
    two contracts.
 10. **Venue data terms** (Kalshi's AI/ML clause; the Polymarket data-terms flag from October).
@@ -1653,8 +1657,12 @@ their own. Fills are RFQ only (no order book). The design follows
    the clause's words, at the deadline its own date says. A stated price more than 3× from spot is
    not taken as the stock's. The stock fixes at the close of the date said (a weekday's), else at
    the first close after the events; never past the vault's tenor less a day, at whose last close
-   a later date said is read, with a note ("NVDA is read on Dec 8, not Jun 30, 2027: worlds fix
-   within 35 days for now"). Measured on the live catalog (2026-11-05): about 3 s and
+   a later date said is read, with a note ("NVDA is read on Dec 8, not Jun 30, 2028: a stock is
+   read at most a year ahead for now"). Past the tenor, a world's problem says which bound it
+   meets: the stock's date ("The stock is read at most a year ahead for now: pick a sooner date")
+   or, without a stock, trading ("Worlds without a stock trade for at most a year for now: add a
+   stock or pick events decided sooner"). The builder's date picker, a month at a time, ends at
+   the tenor the API publishes with the stocks (`maxTenor`). Measured on the live catalog (2026-11-05): about 3 s and
    $0.005 a read. Every read is audited in `world_drafts`.
 3. **See it** (`/worlds/new`). The world as one sentence with editable chips (an event's side or
    another event, the stock, above or below, the price with a slider around spot, the date); each

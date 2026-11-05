@@ -77,13 +77,27 @@ const ET = new Intl.DateTimeFormat("en-CA", {
   day: "2-digit",
   weekday: "short",
 });
+/** Each UTC hour's answer: New York is a whole number of hours from UTC, so every second of a
+ * UTC hour is on one ET day. `varianceYears` walks a fixing's hours every model refresh (8,760
+ * for a fixing a year out), and an Intl call per hour cost 12 ms; a lookup costs nothing. */
+const tradingHours = new Map<number, boolean>();
 /** Whether NYSE trades on the ET calendar day containing `seconds`. */
 export function tradingDay(seconds: number) {
-  const parts = Object.fromEntries(
-    ET.formatToParts(new Date(seconds * 1000)).map((p) => [p.type, p.value]),
-  );
-  if (parts.weekday === "Sat" || parts.weekday === "Sun") return false;
-  return !HOLIDAYS.has(`${parts.year}-${parts.month}-${parts.day}`);
+  const hour = Math.floor(seconds / 3_600);
+  let trades = tradingHours.get(hour);
+  if (trades === undefined) {
+    const parts = Object.fromEntries(
+      ET.formatToParts(new Date(hour * 3_600_000)).map((p) => [p.type, p.value]),
+    );
+    trades =
+      parts.weekday !== "Sat" &&
+      parts.weekday !== "Sun" &&
+      !HOLIDAYS.has(`${parts.year}-${parts.month}-${parts.day}`);
+    // Bounded: a few years of hours, cleared whole past that.
+    if (tradingHours.size >= 50_000) tradingHours.clear();
+    tradingHours.set(hour, trades);
+  }
+  return trades;
 }
 
 /** Years of variance from `now` to `fixing` (unix seconds): trading days (and 0.1 day per

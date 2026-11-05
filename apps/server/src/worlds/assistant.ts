@@ -18,7 +18,15 @@
  * (`world_drafts`). */
 import type { CatalogEntry } from "@conditional-stocks/market-data";
 import type { WorldUnderlying } from "./opinion.ts";
-import { closeOf, lastCloseBy, legLabel, newYorkDate, nextClose, shortDate } from "./opinion.ts";
+import {
+  closeOf,
+  lastCloseBy,
+  legLabel,
+  newYorkDate,
+  nextClose,
+  shortDate,
+  spanWords,
+} from "./opinion.ts";
 
 export interface DraftLeg {
   entry: CatalogEntry;
@@ -1018,7 +1026,7 @@ export async function readOpinion(input: {
       date = tenor && close.time > tenor.time ? tenor.date : close.date;
       if (date !== close.date)
         notes.push(
-          `${u.symbol} is read on ${shortDate(date)}, not ${longDate(close.date)}: worlds fix within ${Math.round(input.maxTenorS! / 86_400)} days for now`,
+          `${u.symbol} is read on ${shortDate(date, nowS * 1000)}, not ${longDate(close.date)}: a stock is read at most ${spanWords(input.maxTenorS!)} ahead for now`,
         );
     } else {
       const next = nextClose(Math.max(lastEnd, soonest));

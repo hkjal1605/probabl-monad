@@ -29,7 +29,7 @@
   },
   "references": {
     "maxReferenceAgeMs": 45000,
-    "maxSpread": 0.06,
+    "maxSpread": 0.1,
     "probabilityFloor": 0.02,
     "maxSpotAgeMs": 60000,
     "maxSpotDeviationBps": 150,

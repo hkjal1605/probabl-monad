@@ -118,7 +118,7 @@ export const DEFAULT_QUOTES: QuotePolicy = {
 };
 export const DEFAULT_REFERENCES: ReferencePolicy = {
   maxReferenceAgeMs: 45_000,
-  maxSpread: 0.06,
+  maxSpread: 0.1,
   probabilityFloor: 0.02,
   jumpPoints: 0.05,
   jumpSigma: 3,

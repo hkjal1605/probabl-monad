@@ -130,6 +130,16 @@ export function nextClose(seconds: number): { date: string; time: number } {
   throw new OpinionError("No close found");
 }
 
+/** A length of time as people say it: "35 days", "6 months", "a year", "2 years". */
+export function spanWords(seconds: number) {
+  const days = Math.round(seconds / 86_400);
+  const years = days / 365;
+  if (days >= 360 && Math.abs(years - Math.round(years)) < 0.03)
+    return Math.round(years) === 1 ? "a year" : `${Math.round(years)} years`;
+  if (days >= 60) return `${Math.round(days / 30.44)} months`;
+  return days === 1 ? "a day" : `${days} days`;
+}
+
 /** The last weekday close at or before `seconds` (New York). */
 export function lastCloseBy(seconds: number): { date: string; time: number } {
   let date = newYorkDate(seconds);
@@ -159,10 +169,12 @@ export function legLabel(question: string) {
 }
 const usd = (strike: string) =>
   `$${Number(strike).toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
-export const shortDate = (date: string) =>
+/** "Dec 8", with the year when it is not this year's ("Jul 1, 2027"). */
+export const shortDate = (date: string, nowMs = Date.now()) =>
   new Date(`${date}T12:00:00Z`).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
+    ...(date.slice(0, 4) !== new Date(nowMs).toISOString().slice(0, 4) ? { year: "numeric" } : {}),
     timeZone: "UTC",
   });
 
@@ -196,6 +208,8 @@ export function canonicalWorld(
   underlying: WorldUnderlying | null,
   deployment: { chainId: number; books: Address },
   feeBps: number,
+  /** Now, for the sentence's dates (a year is said only when it is not this one). */
+  nowMs = Date.now(),
 ): CanonicalWorld {
   const legs = spec.legs.map((l) => {
     const entry = entries.get(l.id);
@@ -239,7 +253,7 @@ export function canonicalWorld(
   const events =
     parts.length === 1 ? parts[0]! : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;
   const stockPart = spec.stock
-    ? `${underlying!.symbol} closes ${spec.stock.direction} ${usd(spec.stock.strike)} on ${shortDate(spec.stock.date)}`
+    ? `${underlying!.symbol} closes ${spec.stock.direction} ${usd(spec.stock.strike)} on ${shortDate(spec.stock.date, nowMs)}`
     : null;
   const sentence = stockPart
     ? `If ${events}, ${stockPart}`
@@ -301,11 +315,16 @@ export function worldProblems(
   for (const list of groups.values())
     if (list.filter((l) => l.wantYes).length > 1)
       out.push(`"${list[0]!.label}" and "${list[1]!.label}" can't both happen`);
-  const decision = w.underlying ? w.fixingTime : w.cutoff;
   if (w.underlying && w.fixingTime <= nowS + 2 * 3_600) out.push("Pick a later date");
-  if (limits && decision > nowS + limits.maxTenor)
+  // The vault's tenor bounds when the stock is read, or when an events-only world stops trading;
+  // its events may be decided later either way.
+  if (limits && w.underlying && w.fixingTime > nowS + limits.maxTenor)
     out.push(
-      `Worlds settle within ${Math.round(limits.maxTenor / 86_400)} days for now: pick events and a date sooner`,
+      `The stock is read at most ${spanWords(limits.maxTenor)} ahead for now: pick a sooner date`,
+    );
+  if (limits && !w.underlying && w.cutoff > nowS + limits.maxTenor)
+    out.push(
+      `Worlds without a stock trade for at most ${spanWords(limits.maxTenor)} for now: add a stock or pick events decided sooner`,
     );
   if (w.cutoff <= nowS + 600) out.push("This world stops trading too soon");
   return [...new Set(out)];
@@ -313,14 +332,15 @@ export function worldProblems(
 
 /** Notes that do not block a world but change how it reads. */
 export function worldNotes(w: CanonicalWorld): string[] {
-  const notes: string[] = [];
-  if (!w.underlying) return notes;
-  for (const l of w.legs)
-    if (Date.parse(l.entry.endTime) / 1000 > w.fixingTime)
-      notes.push(
-        `"${l.label}" can be decided after ${w.fixingDate}: the stock is read on your date, and the world settles once every event is decided`,
-      );
-  return notes;
+  if (!w.underlying || !w.fixingDate) return [];
+  const later = w.legs.filter((l) => Date.parse(l.entry.endTime) / 1000 > w.fixingTime);
+  if (!later.length) return [];
+  const day = shortDate(w.fixingDate);
+  return [
+    later.length === 1 && w.legs.length > 1
+      ? `"${later[0]!.label}" can be decided after ${day}: the world settles when it is`
+      : `${w.legs.length === 1 ? "The event" : "The events"} can be decided after ${day}: the world settles when ${w.legs.length === 1 ? "it is" : "the last one is"}`,
+  ];
 }
 
 /** The book definition's fields the keeper prices a preview from (`world.preview`). */
