@@ -8,10 +8,19 @@ import { type CatalogEntry, kalshiConditionId } from "@conditional-stocks/market
 import { getAddress } from "viem";
 import { RfqHub, type RfqSession } from "../src/rfq/hub.ts";
 import type { MakerIdentity } from "../src/rfq/protocol.ts";
-import { extract, OPENROUTER_URL, readOpinion, roundStrike } from "../src/worlds/assistant.ts";
+import {
+  atDeadline,
+  dateIn,
+  extract,
+  OPENROUTER_URL,
+  readOpinion,
+  roundStrike,
+  undated,
+} from "../src/worlds/assistant.ts";
 import {
   canonicalWorld,
   closeOf,
+  lastCloseBy,
   nextClose,
   OpinionError,
   offerOf,
@@ -473,7 +482,188 @@ test("rules: a common word is never a stock, and a date belongs to its own claus
     maxTenorS: 35 * DAY,
   });
   expect(draft.stock).toMatchObject({ symbol: "NVDA", strike: "220" });
-  expect(draft.stock!.date).toBe(nextClose(NOW + 34 * DAY).date);
+  expect(draft.stock!.date).toBe(lastCloseBy(NOW + 34 * DAY).date);
+});
+
+const PLTR: WorldUnderlying = {
+  ...NVDA,
+  underlying: "US:PLTR",
+  symbol: "PLTR",
+  name: "Palantir Technologies Inc.",
+};
+const HEGSETH_TEXT =
+  "If Trump gets impeached by June 2027 and Pete Hegseth is removed as Secretary of Defense then PLTR falls in price by 20% by June 2027";
+const at = (iso: string) => new Date(iso).toISOString();
+const IMP_26 = entry("IMP-26DEC", "Will Trump be impeached by December 31, 2026?", {
+  group: "kalshi:IMP",
+  endTime: at("2027-01-01T04:59:00Z"),
+  volume: 9e6,
+});
+const IMP_27 = entry("IMP-27JUN", "Will Trump be impeached by June 30, 2027?", {
+  group: "kalshi:IMP",
+  endTime: at("2027-07-01T03:59:00Z"),
+});
+const IMP_27D = entry("IMP-27DEC", "Will Trump be impeached by December 31, 2027?", {
+  group: "kalshi:IMP",
+  endTime: at("2028-01-01T04:59:00Z"),
+});
+const HEG_26 = entry("HEG-26", "Pete Hegseth out as Secretary of Defense by December 31?", {
+  endTime: at("2027-01-01T04:59:00Z"),
+});
+const impeachSearch = async (q: string) => ({
+  hits: (/impeach/i.test(q) ? [IMP_26, IMP_27, IMP_27D] : /hegseth/i.test(q) ? [HEG_26] : []).map(
+    (e, i) => ({ score: 10 - i, coverage: 1, entry: e }),
+  ),
+});
+
+test("a date said for an event is its market's deadline; a stock date past the tenor is read at its end", async () => {
+  const or = openRouter({
+    submit_reading: {
+      events: [
+        {
+          says: "Trump is impeached by June 2027",
+          happens: true,
+          queries: ["Trump impeached June 2027"],
+          by: "2027-06-30",
+        },
+        {
+          says: "Pete Hegseth is removed as Secretary of Defense",
+          happens: true,
+          queries: ["Pete Hegseth out Secretary of Defense"],
+          by: "2027-06-30",
+        },
+      ],
+      stock: { symbol: "PLTR", direction: "below", price: null, percent: 20, date: "2027-06-30" },
+    },
+    // The pick takes the sooner, busier impeachment market: the deadline said moves it.
+    submit_world: {
+      legs: [
+        { id: IMP_26.id, wantYes: true, fits: true, event: 1 },
+        { id: HEG_26.id, wantYes: true, fits: true, event: 2 },
+      ],
+    },
+  });
+  const { draft } = await readOpinion({
+    id: "d9",
+    text: HEGSETH_TEXT,
+    underlyings: [PLTR],
+    spot: async () => 180,
+    search: impeachSearch,
+    assistant: model(or.fetcher),
+    budget: async () => true,
+    nowS: NOW,
+    maxTenorS: 35 * DAY,
+  });
+  expect(or.requests[1]!.body.messages[1]!.content).toContain(
+    "1. Trump is impeached by June 2027 (happens, by 2027-06-30)",
+  );
+  expect(draft.legs.map((l) => [l.entry.id, l.note])).toEqual([
+    [IMP_27.id, null],
+    // No Hegseth market reaches June 2027: the one there is, and how it differs.
+    [HEG_26.id, "Decided by Dec 31, 2026; you said Jun 30, 2027"],
+  ]);
+  // Down 20% from $180; June 2027 is past the vault's 35 days: the last close within them.
+  const latest = lastCloseBy(NOW + 34 * DAY).date;
+  expect(draft.stock).toMatchObject({ symbol: "PLTR", direction: "below", strike: "144" });
+  expect(draft.stock!.date).toBe(latest);
+  expect(draft.notes).toEqual([
+    "PLTR is read on Dec 7, not Jun 30, 2027: worlds fix within 35 days for now",
+  ]);
+});
+
+test("rules read the same opinion: each clause's date picks its deadline, the stock's is not an event", async () => {
+  const ex = extract(HEGSETH_TEXT, [PLTR], NOW);
+  expect([ex.stock?.u.symbol, ex.direction, ex.price, ex.date]).toEqual([
+    "PLTR",
+    "below",
+    { percent: 20 },
+    "2027-06-30",
+  ]);
+  expect(ex.clauses).toEqual([
+    "Trump gets impeached by June 2027",
+    "Pete Hegseth is removed as Secretary of Defense",
+  ]);
+  const { draft } = await readOpinion({
+    id: "d10",
+    text: HEGSETH_TEXT,
+    underlyings: [PLTR],
+    spot: async () => 180,
+    search: impeachSearch,
+    assistant: { apiKey: null, model: "m", inputPrice: 1.6, outputPrice: 3.2, timeoutMs: 1_000 },
+    budget: async () => true,
+    nowS: NOW,
+    maxTenorS: 35 * DAY,
+  });
+  // The clause's June 2027 moves the best match to its deadline; no date said for Hegseth.
+  expect(draft.legs.map((l) => [l.entry.id, l.note])).toEqual([
+    [IMP_27.id, null],
+    [HEG_26.id, null],
+  ]);
+  expect(draft.stock!.date).toBe(lastCloseBy(NOW + 34 * DAY).date);
+});
+
+test("the markets due near the date said are shown first; a stock worlds can't use is named", async () => {
+  const TERM = entry("IMP-TERM", "Will Trump be impeached before his term ends?", {
+    endTime: at("2029-01-20T17:00:00Z"),
+    volume: 5e7,
+  });
+  const or = openRouter({
+    submit_reading: {
+      events: [
+        {
+          says: "Trump is impeached",
+          happens: true,
+          queries: ["Trump impeachment"],
+          by: "2027-06-30",
+        },
+      ],
+      stock: { symbol: "PLTR", direction: "below", price: null, percent: 20, date: null },
+    },
+    submit_world: { legs: [{ id: IMP_27.id, wantYes: true, fits: true, event: 1 }] },
+  });
+  const { draft } = await readOpinion({
+    id: "d11",
+    text: HEGSETH_TEXT,
+    underlyings: [NVDA],
+    spot: async () => 180,
+    // The search ranks the busier, later market first.
+    search: async () => ({
+      hits: [TERM, IMP_26, IMP_27].map((e, i) => ({ score: 10 - i, coverage: 1, entry: e })),
+    }),
+    assistant: model(or.fetcher),
+    budget: async () => true,
+    nowS: NOW,
+    maxTenorS: 35 * DAY,
+  });
+  const shown = or.requests[1]!.body.messages[1]!.content.split("\n");
+  const line = (id: string) => shown.findIndex((l) => l.startsWith(id));
+  expect(line(IMP_27.id)).toBeLessThan(line(TERM.id));
+  expect(draft.legs.map((l) => l.entry.id)).toEqual([IMP_27.id]);
+  expect(draft.stock).toBeNull();
+  expect(draft.notes).toEqual(["PLTR can't be used in worlds yet"]);
+});
+
+test("deadlines: one question at several dates, never two meetings", () => {
+  expect(undated("Will Trump be impeached by June 30, 2027?")).toBe(
+    undated("Will Trump be impeached by December 31, 2026?"),
+  );
+  // A name that starts like a month stays.
+  expect(undated("Will the House impeach Marco Rubio by June 30, 2027?")).toContain("marco");
+  const pool = [IMP_26, IMP_27, IMP_27D];
+  expect(atDeadline(IMP_26, "2027-06-30", pool).id).toBe(IMP_27.id);
+  expect(atDeadline(IMP_27D, "2026-12-31", pool).id).toBe(IMP_26.id);
+  // Past every deadline: the last.
+  expect(atDeadline(IMP_26, "2029-01-20", pool).id).toBe(IMP_27D.id);
+  // "In December" and "in January" are two meetings: no move.
+  const JAN = entry("FED-JAN", "Will the Fed cut rates in January?", {
+    endTime: at("2027-01-28T19:00:00Z"),
+  });
+  expect(atDeadline(FED, "2027-01-31", [FED, JAN]).id).toBe(FED.id);
+  // Months with years in the words.
+  expect(dateIn("impeached by june 2027", NOW)).toBe("2027-06-30");
+  expect(dateIn("by june 30, 2028", NOW)).toBe("2028-06-30");
+  expect(dateIn("by the end of june 2027", NOW)).toBe("2027-06-30");
+  expect(dateIn("by dec 19", NOW)).toBe("2026-12-19");
 });
 
 test("a stated price far from spot is not taken as the stock's", async () => {

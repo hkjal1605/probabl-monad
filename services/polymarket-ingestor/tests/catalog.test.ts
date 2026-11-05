@@ -4,6 +4,7 @@
 import { describe, expect, test } from "bun:test";
 import { kalshiConditionId } from "@conditional-stocks/market-data";
 import {
+  CATALOG_HORIZON_DAYS,
   type CatalogEntry,
   EventCatalog,
   gammaEntries,
@@ -11,6 +12,7 @@ import {
   themesOf,
   words,
 } from "../src/catalog.ts";
+import { createCatalogApp } from "../src/catalog-app.ts";
 
 const NOW = Date.parse("2026-11-04T12:00:00Z");
 const DAY = 86_400_000;
@@ -55,7 +57,18 @@ const fedEvent = {
       market_type: "binary",
       status: "active",
       title: "Later",
-      close_time: at(150),
+      close_time: at(1_000),
+      yes_bid_dollars: "0.30",
+      yes_ask_dollars: "0.33",
+    },
+    // Never traded and unquoted: no world can be priced on it.
+    {
+      ticker: "KXFEDDECISION-26DEC-DEAD",
+      market_type: "binary",
+      status: "active",
+      title: "Will nobody trade this?",
+      close_time: at(36),
+      volume_fp: "0",
     },
   ],
 };
@@ -277,5 +290,165 @@ describe("fresh prices", () => {
     now += 10_000;
     await c.fresh(["kalshi:COLD"]);
     expect(urls.length).toBe(1);
+  });
+});
+
+describe("crawl", () => {
+  /** One Gamma event of YES/NO markets at the given days. */
+  const gammaEvent = (id: string, title: string, days: number[], tags = ["politics"]) => ({
+    id,
+    slug: id,
+    title,
+    tags: tags.map((slug) => ({ slug })),
+    markets: days.map((d, i) => ({
+      id: `${id}${i}`,
+      question: `${title} (${d} days)`,
+      conditionId: `0x${(Number(id) * 10 + i).toString(16).padStart(64, "0")}`,
+      slug: `${id}-${i}`,
+      outcomes: '["Yes","No"]',
+      clobTokenIds: '["1","2"]',
+      endDate: at(d),
+      bestBid: 0.4,
+      bestAsk: 0.42,
+      active: true,
+      closed: false,
+      volumeNum: 1_000,
+    })),
+  });
+
+  test("reads every page of both venues, by cursor, and keeps markets years ahead", async () => {
+    const urls: URL[] = [];
+    const fetcher = (async (input: string) => {
+      const url = new URL(input);
+      urls.push(url);
+      if (url.host === "kalshi.test") {
+        const page = url.searchParams.get("cursor") ?? "";
+        return Response.json(
+          page === ""
+            ? { events: [fedEvent], cursor: "k2" }
+            : {
+                events: [
+                  {
+                    ...fedEvent,
+                    event_ticker: "KXIMPEACH-27",
+                    title: "Will Trump be impeached by June 30, 2027?",
+                    category: "Politics",
+                    markets: [
+                      {
+                        ticker: "KXIMPEACH-27JUN",
+                        market_type: "binary",
+                        status: "active",
+                        title: "Will Trump be impeached by June 30, 2027?",
+                        close_time: at(238),
+                        yes_bid_dollars: "0.08",
+                        yes_ask_dollars: "0.10",
+                      },
+                    ],
+                  },
+                ],
+                cursor: "",
+              },
+        );
+      }
+      const after = url.searchParams.get("after_cursor");
+      return Response.json(
+        after === null
+          ? { events: [gammaEvent("901", "Trump impeached", [57, 238, 422])], next_cursor: "g2" }
+          : { events: [gammaEvent("902", "Hegseth out", [26, 800])] },
+      );
+    }) as unknown as typeof fetch;
+    const c = new EventCatalog({
+      kalshiUrl: "https://kalshi.test",
+      gammaUrl: "https://gamma.test",
+      fetch: fetcher,
+      now: () => NOW,
+    });
+    expect(await c.crawl()).toEqual({ kalshi: 3, polymarket: 5 });
+    // Two pages each, nothing more.
+    const kalshi = urls.filter((u) => u.host === "kalshi.test");
+    const gamma = urls.filter((u) => u.host === "gamma.test");
+    expect(kalshi.map((u) => u.searchParams.get("cursor"))).toEqual([null, "k2"]);
+    expect(gamma.map((u) => [u.pathname, u.searchParams.get("after_cursor")])).toEqual([
+      ["/events/keyset", null],
+      ["/events/keyset", "g2"],
+    ]);
+    // Gamma leaves the skipped tags out itself (sports is most of its events), at its page size,
+    // with no bound on the event's own end date (a date ladder's later markets would go).
+    expect(gamma[0]!.searchParams.getAll("exclude_tag_id")).toContain("1");
+    expect(gamma[0]!.searchParams.get("limit")).toBe("100");
+    expect(gamma[0]!.searchParams.has("end_date_max")).toBe(false);
+    expect(kalshi[0]!.searchParams.get("limit")).toBe("200");
+    // Markets years ahead are kept, past the horizon not, nor one nobody trades or quotes.
+    expect(CATALOG_HORIZON_DAYS).toBeGreaterThan(800);
+    expect(c.get("kalshi:KXIMPEACH-27JUN")?.question).toBe(
+      "Will Trump be impeached by June 30, 2027?",
+    );
+    expect(c.get("polymarket:9022")).toBeUndefined();
+    expect(c.get("polymarket:9021")).toBeDefined();
+    expect(c.get("kalshi:KXFEDDECISION-27-Z")).toBeUndefined();
+    expect(c.get("kalshi:KXFEDDECISION-26DEC-DEAD")).toBeUndefined();
+    // The rules come back whole from where they are kept.
+    expect(c.get("kalshi:KXFEDDECISION-26DEC-C25")?.rules).toBe(
+      "Resolves YES if the FOMC lowers the target range by 25 bps.",
+    );
+    const hits = c.search("trump impeached june 2027", { limit: 3 });
+    expect(hits[0]!.entry.id).toBe("kalshi:KXIMPEACH-27JUN");
+    expect(hits[0]!.coverage).toBe(1);
+  });
+
+  test("a venue that fails keeps its previous entries; a listing that repeats a cursor ends", async () => {
+    let fail = false;
+    const logs: string[] = [];
+    const fetcher = (async (input: string) => {
+      const url = new URL(input);
+      if (url.host === "kalshi.test")
+        return fail
+          ? new Response("down", { status: 503 })
+          : Response.json({ events: [fedEvent], cursor: "" });
+      // Gamma answers the same page and cursor again and again.
+      return Response.json({ events: [gammaEvent("903", "Loop", [30])], next_cursor: "again" });
+    }) as unknown as typeof fetch;
+    const c = new EventCatalog({
+      kalshiUrl: "https://kalshi.test",
+      gammaUrl: "https://gamma.test",
+      fetch: fetcher,
+      now: () => NOW,
+      log: (event) => logs.push(event),
+    });
+    await c.crawl();
+    expect(c.get("kalshi:KXFEDDECISION-26DEC-C25")).toBeDefined();
+    expect(logs).toContain("catalog.crawl.truncated");
+    fail = true;
+    const second = await c.crawl();
+    expect(second.kalshi).toBeNull();
+    expect(c.get("kalshi:KXFEDDECISION-26DEC-C25")).toBeDefined();
+    expect(c.lastError).toContain("kalshi");
+  });
+});
+
+describe("catalog app", () => {
+  test("searches and entries behind the internal token, each hit with its coverage", async () => {
+    const c = new EventCatalog({
+      kalshiUrl: "https://kalshi.test",
+      gammaUrl: "https://gamma.test",
+    });
+    c.replace("kalshi", kalshiEntries(fedEvent, Date.now() - 30 * DAY));
+    const app = createCatalogApp(c, "t".repeat(16));
+    const auth = { authorization: `Bearer ${"t".repeat(16)}` };
+    expect((await app.request("/internal/catalog/search?q=fed")).status).toBe(401);
+    const search = (await (
+      await app.request("/internal/catalog/search?q=fed%20cut%20mars&limit=2", { headers: auth })
+    ).json()) as { size: number; hits: { coverage: number; entry: CatalogEntry }[] };
+    expect(search.size).toBe(2);
+    expect(search.hits[0]!.entry.rules).toContain("FOMC");
+    expect(search.hits[0]!.coverage).toBeCloseTo(2 / 3, 3);
+    const entries = (await (
+      await app.request("/internal/catalog/entries", {
+        method: "POST",
+        headers: { ...auth, "content-type": "application/json" },
+        body: JSON.stringify({ ids: ["kalshi:KXFEDDECISION-26DEC-H0", "kalshi:NONE"] }),
+      })
+    ).json()) as { entries: CatalogEntry[] };
+    expect(entries.entries.map((e) => e.id)).toEqual(["kalshi:KXFEDDECISION-26DEC-H0"]);
   });
 });

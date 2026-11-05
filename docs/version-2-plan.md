@@ -1627,25 +1627,35 @@ their own. Fills are RFQ only (no order book). The design follows
    (`WORLD_ASSISTANT_MODEL`, default `deepseek/deepseek-v4-pro`; forced tool calls, reasoning off,
    temperature 0, providers that honour the forced call sorted by throughput) works in two turns:
    - **Reading** (`submit_reading`): the events the opinion depends on, each with the trader's
-     side and 1 to 3 headline-style searches ("US China trade deal 2026", never negated), and the
-     stock move (symbol, direction, a dollar price or a percent, a date only when one is said).
-   - **Search**: each event's searches run on the event catalog, which keeps markets closing
-     within 120 days (a world with a stock fixes within the vault's tenor, but its events may be
-     decided later, "by the end of the year").
+     side, 1 to 3 headline-style searches ("US China trade deal 2026", never negated) and the last
+     day of its period when one is said (`by`: "by June 2027" is 2027-06-30; one period said for
+     the whole opinion is each event's), and the stock move (symbol, direction, a dollar price or
+     a percent, a date only when one is said).
+   - **Search**: each event's searches run on the event catalog, every open market of both venues
+     decided within about two and a half years (a world's stock fixes within the vault's tenor,
+     but its events may be decided long after: "impeached by June 2027"). Markets due near the
+     event's date are shown to the model first.
    - **Picking** (`submit_world`): the model picks one market per event from what was found,
-     knowing each event and its side; ids it was not shown, legs it marks `fits: false`, a second
-     market for the same event and a second YES in one exclusive event are dropped. An event with
-     no market is named in the notes ("No market found for …"); with none at all, the draft has
-     no legs and suggests events.
+     knowing each event, its side and its date; ids it was not shown, legs it marks `fits: false`,
+     a second market for the same event and a second YES in one exclusive event are dropped. A
+     market asked by or before a date is then moved to the same question at the event's deadline
+     (the one due on it, else the first after, else the last before: "by December 31, 2026" for
+     "by June 2027" becomes "by June 30, 2027"; "in December" never becomes "in January"), with a
+     note when none is due within a week of it ("Decided by Dec 31, 2026; you said Jun 30, 2027").
+     An event with no market is named in the notes ("No market found for …"); with none at all,
+     the draft has no legs and suggests events. A stock the words name that worlds can't fix on is
+     named too ("PLTR can't be used in worlds yet").
    Without a key, or when a turn fails, times out (`WORLD_ASSISTANT_TIMEOUT_MS`, 12 s) or is over
    the daily budget (`WORLD_ASSISTANT_DAILY_USD`, $25, from OpenRouter's reported cost), rules read
    the words: the stock is a symbol, a curated name or a company's full name (never a common word:
    "Trump" is not Trump Media), the one a move follows; its date is the one in its own clause;
    the rest splits into clauses, and each clause's best match counts only when it covers half of
-   the clause's words. A stated price more than 3× from spot is not taken as the stock's. With no
-   date said, the stock fixes at the first close after the events, within the vault's tenor.
-   Measured on the live catalog (2026-11-05): 5–9 s and $0.004–0.009 a read. Every read is
-   audited in `world_drafts`.
+   the clause's words, at the deadline its own date says. A stated price more than 3× from spot is
+   not taken as the stock's. The stock fixes at the close of the date said (a weekday's), else at
+   the first close after the events; never past the vault's tenor less a day, at whose last close
+   a later date said is read, with a note ("NVDA is read on Dec 8, not Jun 30, 2027: worlds fix
+   within 35 days for now"). Measured on the live catalog (2026-11-05): about 3 s and
+   $0.005 a read. Every read is audited in `world_drafts`.
 3. **See it** (`/worlds/new`). The world as one sentence with editable chips (an event's side or
    another event, the stock, above or below, the price with a slider around spot, the date); each
    leg with its venue, odds, deadline and rules; the chance chain on a base of 1,000 with the
@@ -1690,7 +1700,8 @@ one exclusive event, a date too soon. Opening needs a member session; at most 20
 
 | Where | What |
 |---|---|
-| `services/polymarket-ingestor/src/catalog.ts` | The event catalog: Kalshi open events with their markets and Gamma's active events by volume, crawled every `CATALOG_CRAWL_MS` (15 min), sports, entertainment and weather left out, within 60 days; an inverted index with synonyms; `fresh(ids)` prices a few entries (a tracked leg's live book, else one venue read per 20 s). Internal routes `/internal/catalog/{search,entries,status}`; off with `CATALOG_ENABLED=false`. |
+| `services/polymarket-ingestor/src/catalog.ts` | The event catalog: every page of Kalshi's open events with their markets and of Gamma's active events (keyset cursor; its offsets stop near 2,000 events), crawled every `CATALOG_CRAWL_MS` (15 min); sports, entertainment, weather and up-or-down left out (by Gamma itself, by tag id), and markets nobody trades or quotes; within 900 days. About 45,000 markets (2026-11-05: 33,000 Kalshi, 12,400 Polymarket) in a typed-array inverted index with synonyms, the rules deflated (about 180 MB of heap); a search takes 1–15 ms. `fresh(ids)` prices a few entries (a tracked leg's live book, else one venue read per 20 s). |
+| `services/polymarket-ingestor/src/catalog-main.ts` | The catalog's own process (PM2 `probabl-catalog`, 1 GB): a crawl's parsing and memory stay away from the ingestor's live books, which it reads for tracked legs from `POLYMARKET_INGESTOR_URL`. Internal routes `/internal/catalog/{search,entries,status}` on `CATALOG_PORT` (42074), behind the ingestor's token; the API reads it at `EVENT_CATALOG_URL`. |
 | `apps/server/src/worlds/assistant.ts` | Reading an opinion (rules, then the model). |
 | `apps/server/src/worlds/opinion.ts` | The canonical world, its problems, the preview book, the offer. |
 | `apps/server/src/worlds/opinions.ts` | The routes: stocks, event search, parse, preview, open, open status, feed, holders. |
@@ -1715,7 +1726,7 @@ resolution (freeze, commit, resolve) refunding a Money-back stake through "Colle
 
 - The header's portfolio value covers the exchange only, not world balances and positions.
 - Fixings and fixed payouts were not run end to end (they need chain time at the fixing).
-- Polymarket's catalog crawl is tested against its documented shape only (Gamma is unreachable
-  from the development machine).
+- Polymarket's catalog crawl is tested against its documented shape locally (Gamma is
+  unreachable from the development machine) and was measured live on the backend host.
 - Money-back is declined when its price inside the world would sit over 30% above fair (the
   keeper's guard); worlds on priors alone hit it more often until fits exist for their legs.

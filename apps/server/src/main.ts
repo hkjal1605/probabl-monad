@@ -325,6 +325,13 @@ const events = () => {
   if (!url || !token) throw new HTTPException(503, { message: "Event ingestor is not configured" });
   return new EventMarketsClient(url, token);
 };
+/** The event catalog (services/polymarket-ingestor/src/catalog-main.ts), its own process. */
+const catalog = () => {
+  const url = process.env.EVENT_CATALOG_URL?.trim(),
+    token = process.env.POLYMARKET_INTERNAL_TOKEN;
+  if (!url || !token) throw new HTTPException(503, { message: "Event catalog is not configured" });
+  return new EventMarketsClient(url, token);
+};
 // Redis shares probability ticks across API processes; without it, reads go to the ingestor.
 let cacheWarning = 0;
 const probabilityCache = new RedisCache(
@@ -516,7 +523,7 @@ if (worlds) {
     auth,
     client,
     hub: rfq,
-    events,
+    catalog,
     underlyings,
     spots: new WorldSpots({
       client,

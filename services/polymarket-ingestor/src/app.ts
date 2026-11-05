@@ -3,7 +3,6 @@ import { MarketDataError } from "@conditional-stocks/market-data";
 import { requestLogging } from "@conditional-stocks/shared/http";
 import { Hono } from "hono";
 import { upgradeWebSocket } from "hono/bun";
-import type { CatalogSource, EventCatalog } from "./catalog.ts";
 import type { PolymarketEnvironment } from "./environment.ts";
 import type { EventMarkets } from "./event-markets.ts";
 import { logger } from "./logger.ts";
@@ -22,7 +21,6 @@ export const createIngestorApp = (
   markets: EventMarkets,
   store: PolymarketQueries,
   environment: PolymarketEnvironment,
-  catalog?: EventCatalog,
 ) => {
   const app = new Hono();
   const streams = new Set<() => void>();
@@ -80,58 +78,6 @@ export const createIngestorApp = (
     return snapshot ? json(snapshot) : json({ error: { code: "NOT_FOUND" } }, 404);
   });
   app.get("/internal/alerts", async () => json({ alerts: await store.alerts() }));
-  // The event catalog: searches read memory only; `entries` refreshes a few entries' prices.
-  app.get("/internal/catalog/search", (context) => {
-    if (!catalog) throw new MarketDataError("NOT_FOUND", "The catalog is not enabled", 404);
-    const q = (context.req.query("q") ?? "").slice(0, 300);
-    const time = (name: string) => {
-      const v = context.req.query(name);
-      const t = v ? Date.parse(v) : Number.NaN;
-      return Number.isFinite(t) ? t : undefined;
-    };
-    const source = context.req.query("source");
-    const limit = Number(context.req.query("limit") ?? 20);
-    const before = time("before"),
-      after = time("after");
-    const hits = catalog.search(q, {
-      limit: Number.isInteger(limit) && limit > 0 ? Math.min(limit, 100) : 20,
-      ...(before !== undefined ? { before } : {}),
-      ...(after !== undefined ? { after } : {}),
-      ...(source === "polymarket" || source === "kalshi"
-        ? { source: source as CatalogSource }
-        : {}),
-    });
-    return json({
-      crawledAt: catalog.crawledAt,
-      size: catalog.size,
-      hits: hits.map((h) => ({ score: Math.round(h.score * 1000) / 1000, entry: h.entry })),
-    });
-  });
-  app.post("/internal/catalog/entries", async (context) => {
-    if (!catalog) throw new MarketDataError("NOT_FOUND", "The catalog is not enabled", 404);
-    const body = (await context.req.json()) as { ids?: unknown; fresh?: unknown };
-    const ids = Array.isArray(body.ids) ? body.ids.map(String).slice(0, 12) : [];
-    const entries =
-      body.fresh === true
-        ? await catalog.fresh(ids)
-        : ids.flatMap((id) => {
-            const e = catalog.get(id);
-            return e ? [e] : [];
-          });
-    return json({ entries });
-  });
-  app.get("/internal/catalog/status", () =>
-    json(
-      catalog
-        ? {
-            enabled: true,
-            size: catalog.size,
-            crawledAt: catalog.crawledAt,
-            error: catalog.lastError,
-          }
-        : { enabled: false },
-    ),
-  );
   const stream = upgradeWebSocket((context) => {
     let unsubscribe: (() => void) | null = null;
     let timer: ReturnType<typeof setInterval> | null = null;

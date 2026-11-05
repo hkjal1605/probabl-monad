@@ -49,13 +49,16 @@ function service(name, entry, memory, extra = []) {
 }
 
 // One API process runs the chain index (live replica, finalized persistence, reconciliation)
-// and the /v1 API (and with WORLD_BOOKS_ADDRESS the world index and /v2). The market maker, the
+// and the /v1 API (and with WORLD_BOOKS_ADDRESS the world index and /v2). The event catalog
+// (every open Polymarket and Kalshi market a world could use) is a process of its own. The market maker, the
 // Δ-vault keeper, the market automation, the testnet mock-feed mirror, and the world vault's
 // keeper and marker each use their own wallet and run only when their .env.<name> file exists;
 // the world fit runs nightly with the keeper's environment.
 module.exports = {
   apps: [
     service("polymarket", "services/polymarket-ingestor/src/main.ts", "384M"),
+    // The event catalog crawls both venues on its own heap, away from the live books.
+    service("catalog", "services/polymarket-ingestor/src/catalog-main.ts", "1024M"),
     service("api", "apps/server/src/main.ts", "1024M"),
     ...(existsSync(resolve(root, ".env.market-maker"))
       ? [service("market-maker", "services/market-maker/src/main.ts", "512M", ["--execute"])]

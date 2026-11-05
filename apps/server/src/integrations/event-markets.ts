@@ -36,7 +36,7 @@ export class EventMarketsClient {
     );
   }
 
-  /** The event catalog's best matches for `query` (memory reads on the ingestor). */
+  /** The event catalog's best matches for `query` (memory reads in the catalog process). */
   searchCatalog(
     query: string,
     options: { limit?: number; before?: Date; after?: Date } = {},

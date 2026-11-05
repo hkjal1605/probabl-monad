@@ -4,7 +4,9 @@
  *
  * - Crawled every `everyMs` from the venues' public listings: Kalshi's open events with their
  *   markets, Gamma's active events by 24-hour volume. Sports, entertainment and weather are left
- *   out, and so is anything closing within the hour or past the horizon.
+ *   out, and so is anything closing within the hour or past the horizon. Every page of both
+ *   listings is read (Kalshi by cursor, Gamma by keyset cursor: its offsets stop at about 2,000
+ *   events), so a market is found whatever its volume.
  * - Kept in memory with an inverted index; a search reads no venue and no database.
  * - `fresh(ids)` refreshes the prices of a few entries (a tracked leg's live book, else one
  *   venue read each, at most once every 20 seconds per entry) for previews. */
@@ -31,12 +33,20 @@ export type LiveBook = (
 
 const DAY_MS = 86_400_000;
 const FRESH_MS = 20_000;
-/** How far ahead markets are kept. A world with a stock fixes within the vault's tenor, but its
- * events may be decided later ("by the end of the year"), so the catalog looks further ahead. */
-export const CATALOG_HORIZON_DAYS = 120;
-const KALSHI_PAGES = 60;
-const GAMMA_PAGES = 40;
-const RULES_CHARS = 2_000;
+/** How far ahead markets are kept: about two and a half years, past the next US presidential
+ * election and inauguration. A world with a stock fixes within the vault's tenor, but its events
+ * may be decided much later ("impeached by June 2027", "before his term ends"), and an opinion
+ * about a later date needs the market of that date, not a sooner one. */
+export const CATALOG_HORIZON_DAYS = 900;
+/** Upper bounds on a crawl's pages (Kalshi lists about 105 pages of 200 open events, Gamma about
+ * 24 of 100 once the skipped tags are left out); a crawl that reaches one logs it. */
+const KALSHI_PAGES = 250;
+const KALSHI_PAGE = 200;
+const GAMMA_PAGES = 100;
+/** Gamma's events endpoints return at most 100 per page, whatever the limit asked. */
+const GAMMA_PAGE = 100;
+/** As much of a market's rules as the API shows with a leg. */
+const RULES_CHARS = 1_200;
 /** Kalshi categories with nothing a stock or a macro view depends on. */
 const KALSHI_SKIP = new Set([
   "sports",
@@ -74,7 +84,15 @@ const GAMMA_SKIP = new Set([
   "tv",
   "weather",
   "mentions",
+  "up-or-down",
 ]);
+/** Gamma's ids of the skipped tags (`/tags/slug/<slug>`), left out by the listing itself so a
+ * crawl downloads only what it keeps (sports alone is most of Polymarket's events); the slugs
+ * above still filter anything that comes through. */
+const GAMMA_SKIP_IDS = [
+  1, 745, 450, 100381, 899, 100350, 10, 864, 100219, 279, 281, 683, 100389, 64, 517, 100639, 596,
+  286, 18, 100, 53, 100338, 84, 102127,
+];
 
 /** Words of each theme the keeper's correlation priors know (`DEFAULT_THEMES`). */
 const THEME_WORDS: Record<string, string[]> = {
@@ -247,6 +265,20 @@ function book(bid: number | null, ask: number | null) {
     return { yes: null, bid: null, ask: null };
   return { yes: (bid + ask) / 2, bid, ask };
 }
+/** A market nobody has traded and nobody quotes (most of Kalshi's far-off local races): no world
+ * can be priced on it, so it is not kept. */
+const dead = (yes: number | null, volume: number) => yes === null && !(volume > 0);
+/** A listing's next cursor, or "" to stop: at the end, or at a cursor it already gave (a venue
+ * answering the same page again would otherwise be read until the page bound). */
+function next(cursors: { seen: Set<string>; looped: boolean }, cursor: string) {
+  if (!cursor) return "";
+  if (cursors.seen.has(cursor)) {
+    cursors.looped = true;
+    return "";
+  }
+  cursors.seen.add(cursor);
+  return cursor;
+}
 const inWindow = (endMs: number, nowMs: number, horizonDays: number) =>
   Number.isFinite(endMs) && endMs > nowMs + 3_600_000 && endMs <= nowMs + horizonDays * DAY_MS;
 
@@ -283,8 +315,10 @@ export function kalshiEntries(
       (marketTitle.startsWith("Will ") && !shared) || !strike
         ? marketTitle
         : `${marketTitle.replace(/\?$/, "")}: ${strike}?`;
-    const rules = [str(m.rules_primary), str(m.rules_secondary)].filter(Boolean).join("\n\n");
     const prices = book(num(m.yes_bid_dollars), num(m.yes_ask_dollars));
+    const volume = num(m.volume_fp) ?? num(m.volume) ?? 0;
+    if (dead(prices.yes, volume)) continue;
+    const rules = [str(m.rules_primary), str(m.rules_secondary)].filter(Boolean).join("\n\n");
     out.push({
       id: `kalshi:${ticker}`,
       source: "kalshi",
@@ -309,7 +343,7 @@ export function kalshiEntries(
       tags: series ? [series.toLowerCase()] : [],
       themes: themesOf(`${title} ${question}`, [category]),
       ...prices,
-      volume: num(m.volume_fp) ?? num(m.volume) ?? 0,
+      volume,
       liquidity: num(m.liquidity_dollars) ?? 0,
       updatedAtMs: nowMs,
     });
@@ -355,6 +389,9 @@ export function gammaEntries(
     let bid = num(m.bestBid),
       ask = num(m.bestAsk);
     if (!yesFirst && bid !== null && ask !== null) [bid, ask] = [1 - ask, 1 - bid];
+    const prices = book(bid, ask);
+    const volume = num(m.volumeNum) ?? num(m.volume) ?? 0;
+    if (dead(prices.yes, volume)) continue;
     const slug = str(m.slug);
     const question = str(m.question);
     if (!question || !str(m.id)) continue;
@@ -378,8 +415,8 @@ export function gammaEntries(
       category: str(event.category) || tags[0] || "",
       tags,
       themes: themesOf(`${title} ${question}`, tags),
-      ...book(bid, ask),
-      volume: num(m.volumeNum) ?? num(m.volume) ?? 0,
+      ...prices,
+      volume,
       liquidity: num(m.liquidityNum) ?? num(m.liquidity) ?? 0,
       updatedAtMs: nowMs,
     });
@@ -387,18 +424,50 @@ export function gammaEntries(
   return out;
 }
 
-interface Indexed {
+/** One kept market: its entry with the rules taken out (they are most of its memory), and the
+ * rules deflated beside it, inflated only for the few entries a request returns. */
+interface Stored {
   entry: CatalogEntry;
-  /** Word → field weight (the best field it appears in). */
-  weights: Map<string, number>;
+  rules: Uint8Array<ArrayBuffer>;
+  /** The rules' hash, so a crawl that finds them unchanged reuses the deflated bytes. */
+  rulesHash: bigint | number;
+}
+/** A word's postings: the slots of the entries that contain it, and the weight (x10) of the best
+ * field it appears in there. Typed arrays: a crawl keeps tens of thousands of markets, and a Map
+ * and a Set per entry cost several times their contents. */
+interface Postings {
+  slots: Uint32Array;
+  weights: Uint8Array;
+}
+/** Entries a rebuild indexes before it lets other work run (an index of 50,000 markets takes a
+ * few hundred milliseconds in all, and the ingestor relays live books meanwhile). */
+const INDEX_CHUNK = 2_000;
+const encoder = new TextEncoder(),
+  decoder = new TextDecoder();
+
+/** Each word of an entry with the weight (x10) of the best field it appears in. */
+function fieldWords(entry: CatalogEntry) {
+  const weights = new Map<string, number>();
+  const field = (text: string, weight: number) => {
+    for (const w of words(text)) weights.set(w, Math.max(weights.get(w) ?? 0, weight));
+  };
+  field(entry.tags.join(" "), 10);
+  field(entry.category, 8);
+  field(entry.event, 20);
+  field(entry.outcome ?? "", 20);
+  field(entry.question, 30);
+  return weights;
 }
 
 export class EventCatalog {
-  private entries = new Map<string, Indexed>();
-  private index = new Map<string, Set<string>>();
+  private slots: Stored[] = [];
+  private slotOf = new Map<string, number>();
+  private index = new Map<string, Postings>();
   private timer: ReturnType<typeof setTimeout> | undefined;
   private stopped = false;
   private crawling: Promise<unknown> | undefined;
+  /** Replacements run one at a time: each builds on the entries the one before swapped in. */
+  private replaced: Promise<void> = Promise.resolve();
   crawledAt = 0;
   lastError: string | null = null;
   private readonly kalshi = new RequestPacer(2);
@@ -421,7 +490,7 @@ export class EventCatalog {
     return this.options.now?.() ?? Date.now();
   }
   get size() {
-    return this.entries.size;
+    return this.slots.length;
   }
 
   start() {
@@ -466,7 +535,12 @@ export class EventCatalog {
     const venue = async (name: CatalogSource, read: () => Promise<CatalogEntry[]>) => {
       try {
         const list = await read();
-        this.replace(name, list);
+        this.replaced = this.replaced
+          .catch(() => {})
+          .then(async () => {
+            for (const _ of this.replacing(name, list)) await new Promise((r) => setImmediate(r));
+          });
+        await this.replaced;
         return list.length;
       } catch (error) {
         errors.push(`${name}: ${(error as Error).message}`);
@@ -480,47 +554,61 @@ export class EventCatalog {
     const [kalshi, polymarket] = await Promise.all([
       venue("kalshi", async () => {
         const out: CatalogEntry[] = [];
+        const cursors = { seen: new Set<string>(), looped: false };
         let cursor = "";
-        for (let page = 0; page < KALSHI_PAGES; page++) {
+        let pages = 0;
+        do {
           const params = new URLSearchParams({
             status: "open",
             with_nested_markets: "true",
-            limit: "200",
+            limit: String(KALSHI_PAGE),
           });
           if (cursor) params.set("cursor", cursor);
           const body = (await this.json(
             this.kalshi,
             `${this.options.kalshiUrl}/events?${params}`,
           )) as Record<string, unknown>;
-          for (const e of (body.events as Record<string, unknown>[] | undefined) ?? [])
-            out.push(...kalshiEntries(e, nowMs, horizon));
-          cursor = typeof body.cursor === "string" ? body.cursor : "";
-          if (!cursor) break;
-        }
+          const list = (body.events as Record<string, unknown>[] | undefined) ?? [];
+          for (const e of list) out.push(...kalshiEntries(e, nowMs, horizon));
+          cursor = next(cursors, typeof body.cursor === "string" && list.length ? body.cursor : "");
+        } while (cursor && ++pages < KALSHI_PAGES);
+        if (cursor || cursors.looped)
+          this.options.log?.("catalog.crawl.truncated", { venue: "kalshi", pages });
         return out;
       }),
       venue("polymarket", async () => {
         const out: CatalogEntry[] = [];
-        for (let page = 0; page < GAMMA_PAGES; page++) {
+        const cursors = { seen: new Set<string>(), looped: false };
+        let cursor = "";
+        let pages = 0;
+        // No end_date_max: an event's end date is one of its markets' (often the first), so a
+        // bound on it would drop the later markets of a date ladder; each market's own end is
+        // checked against the horizon instead.
+        do {
           const params = new URLSearchParams({
             active: "true",
             closed: "false",
             archived: "false",
-            limit: "200",
-            offset: String(page * 200),
+            limit: String(GAMMA_PAGE),
             order: "volume24hr",
             ascending: "false",
             end_date_min: new Date(nowMs).toISOString(),
-            end_date_max: new Date(nowMs + horizon * DAY_MS).toISOString(),
           });
-          const list = (await this.json(
+          for (const id of GAMMA_SKIP_IDS) params.append("exclude_tag_id", String(id));
+          if (cursor) params.set("after_cursor", cursor);
+          const body = (await this.json(
             this.gamma,
-            `${this.options.gammaUrl}/events?${params}`,
-          )) as Record<string, unknown>[];
-          if (!Array.isArray(list) || !list.length) break;
+            `${this.options.gammaUrl}/events/keyset?${params}`,
+          )) as { events?: unknown; next_cursor?: unknown };
+          const list = Array.isArray(body.events) ? (body.events as Record<string, unknown>[]) : [];
           for (const e of list) out.push(...gammaEntries(e, nowMs, horizon));
-          if (list.length < 200) break;
-        }
+          cursor = next(
+            cursors,
+            typeof body.next_cursor === "string" && list.length ? body.next_cursor : "",
+          );
+        } while (cursor && ++pages < GAMMA_PAGES);
+        if (cursor || cursors.looped)
+          this.options.log?.("catalog.crawl.truncated", { venue: "polymarket", pages });
         return out;
       }),
     ]);
@@ -532,36 +620,59 @@ export class EventCatalog {
 
   /** Replaces one venue's entries (exposed for tests). */
   replace(source: CatalogSource, list: CatalogEntry[]) {
-    for (const [id, x] of this.entries) if (x.entry.source === source) this.drop(id);
-    for (const entry of list) this.add(entry);
+    for (const _ of this.replacing(source, list));
   }
-  private drop(id: string) {
-    const x = this.entries.get(id);
-    if (!x) return;
-    for (const w of x.weights.keys()) this.index.get(w)?.delete(id);
-    this.entries.delete(id);
-  }
-  private add(entry: CatalogEntry) {
-    this.drop(entry.id);
-    const weights = new Map<string, number>();
-    const field = (text: string, weight: number) => {
-      for (const w of words(text)) weights.set(w, Math.max(weights.get(w) ?? 0, weight));
-    };
-    field(entry.tags.join(" "), 1);
-    field(entry.category, 0.8);
-    field(entry.event, 2);
-    field(entry.outcome ?? "", 2);
-    field(entry.question, 3);
-    this.entries.set(entry.id, { entry, weights });
-    for (const w of weights.keys()) {
-      const ids = this.index.get(w) ?? new Set<string>();
-      ids.add(entry.id);
-      this.index.set(w, ids);
+  /** Builds the new entries and index aside, pausing every `INDEX_CHUNK` entries, and swaps
+   * them in at once: a search meanwhile reads the previous ones, whole. */
+  private *replacing(source: CatalogSource, list: CatalogEntry[]): Generator<void> {
+    const slots: Stored[] = this.slots.filter((x) => x.entry.source !== source);
+    const seen = new Set(slots.map((x) => x.entry.id));
+    for (const entry of list) {
+      if (seen.has(entry.id)) continue;
+      seen.add(entry.id);
+      const rulesHash = Bun.hash(entry.rules);
+      const old = this.slots[this.slotOf.get(entry.id) ?? -1];
+      slots.push({
+        entry: { ...entry, rules: "" },
+        rules:
+          old && old.rulesHash === rulesHash
+            ? old.rules
+            : Bun.deflateSync(encoder.encode(entry.rules)),
+        rulesHash,
+      });
+      if (slots.length % INDEX_CHUNK === 0) yield;
     }
+    const lists = new Map<string, number[]>();
+    for (let slot = 0; slot < slots.length; slot++) {
+      for (const [w, weight] of fieldWords(slots[slot]!.entry)) {
+        const l = lists.get(w);
+        if (l) l.push(slot, weight);
+        else lists.set(w, [slot, weight]);
+      }
+      if (slot % INDEX_CHUNK === INDEX_CHUNK - 1) yield;
+    }
+    const index = new Map<string, Postings>();
+    for (const [w, l] of lists) {
+      const n = l.length / 2;
+      const p: Postings = { slots: new Uint32Array(n), weights: new Uint8Array(n) };
+      for (let i = 0; i < n; i++) {
+        p.slots[i] = l[2 * i]!;
+        p.weights[i] = l[2 * i + 1]!;
+      }
+      index.set(w, p);
+    }
+    this.slots = slots;
+    this.slotOf = new Map(slots.map((x, slot) => [x.entry.id, slot]));
+    this.index = index;
+  }
+  /** A stored entry with its rules. */
+  private full(x: Stored): CatalogEntry {
+    return { ...x.entry, rules: decoder.decode(Bun.inflateSync(x.rules)) };
   }
 
   get(id: string) {
-    return this.entries.get(id)?.entry;
+    const x = this.slots[this.slotOf.get(id) ?? -1];
+    return x ? this.full(x) : undefined;
   }
 
   /** The entries best matching `query`: each query word (and its synonyms, at less weight) by
@@ -571,46 +682,59 @@ export class EventCatalog {
     query: string,
     options: { limit?: number; before?: number; after?: number; source?: CatalogSource } = {},
   ): CatalogHit[] {
-    const terms = [...new Set(words(query))];
+    // At most 32 words, one bit each for what a hit covers.
+    const terms = [...new Set(words(query))].slice(0, 32);
     if (!terms.length) return [];
-    const total = Math.max(1, this.entries.size);
-    const expanded = new Map<string, { weight: number; term: string }>();
-    for (const t of terms) {
-      expanded.set(t, { weight: 1, term: t });
+    const slots = this.slots,
+      index = this.index;
+    const total = Math.max(1, slots.length);
+    const expanded = new Map<string, { weight: number; bit: number }>();
+    terms.forEach((t, i) => {
+      const bit = 2 ** i;
+      expanded.set(t, { weight: 1, bit });
       for (const s of SYNONYMS[t] ?? [])
-        for (const w of words(s)) if (!expanded.has(w)) expanded.set(w, { weight: 0.7, term: t });
-    }
-    const scores = new Map<string, { score: number; matched: Set<string> }>();
-    for (const [w, { weight, term }] of expanded) {
-      const ids = this.index.get(w);
-      if (!ids?.size) continue;
-      const idf = Math.log(1 + total / ids.size);
-      for (const id of ids) {
-        const x = this.entries.get(id)!;
-        const s = scores.get(id) ?? { score: 0, matched: new Set<string>() };
-        s.score += idf * weight * (x.weights.get(w) ?? 1);
-        s.matched.add(term);
-        scores.set(id, s);
+        for (const w of words(s)) if (!expanded.has(w)) expanded.set(w, { weight: 0.7, bit });
+    });
+    const score = new Float64Array(slots.length);
+    const mask = new Uint32Array(slots.length);
+    const touched: number[] = [];
+    for (const [w, { weight, bit }] of expanded) {
+      const p = index.get(w);
+      if (!p?.slots.length) continue;
+      const idf = Math.log(1 + total / p.slots.length);
+      for (let i = 0; i < p.slots.length; i++) {
+        const slot = p.slots[i]!;
+        if (!mask[slot]) touched.push(slot);
+        score[slot]! += (idf * weight * p.weights[i]!) / 10;
+        mask[slot]! |= bit;
       }
     }
-    const hits: CatalogHit[] = [];
-    for (const [id, s] of scores) {
-      const entry = this.entries.get(id)!.entry;
-      const end = Date.parse(entry.endTime);
-      if (options.before !== undefined && end > options.before) continue;
-      if (options.after !== undefined && end < options.after) continue;
+    const ranked: { slot: number; score: number; coverage: number }[] = [];
+    for (const slot of touched) {
+      const entry = slots[slot]!.entry;
       if (options.source && entry.source !== options.source) continue;
-      const coverage = s.matched.size / terms.length;
+      if (options.before !== undefined || options.after !== undefined) {
+        const end = Date.parse(entry.endTime);
+        if (options.before !== undefined && end > options.before) continue;
+        if (options.after !== undefined && end < options.after) continue;
+      }
+      let covered = 0;
+      for (let m = mask[slot]!; m; m >>>= 1) covered += m & 1;
+      const coverage = covered / terms.length;
       const quoted = entry.yes === null ? 0.6 : 1;
       const popularity = 1 + 0.12 * Math.log10(1 + entry.volume);
-      hits.push({
-        entry,
-        score: s.score * (0.4 + coverage * coverage) * quoted * popularity,
+      ranked.push({
+        slot,
+        score: score[slot]! * (0.4 + coverage * coverage) * quoted * popularity,
         coverage,
       });
     }
-    hits.sort((a, b) => b.score - a.score);
-    return hits.slice(0, Math.min(options.limit ?? 20, 100));
+    ranked.sort((a, b) => b.score - a.score);
+    return ranked.slice(0, Math.min(options.limit ?? 20, 100)).map((r) => ({
+      entry: this.full(slots[r.slot]!),
+      score: r.score,
+      coverage: r.coverage,
+    }));
   }
 
   /** The entries named, each priced within the last 20 seconds: a tracked condition's live
@@ -620,7 +744,7 @@ export class EventCatalog {
     const out: CatalogEntry[] = [];
     await Promise.all(
       [...new Set(ids)].slice(0, 12).map(async (id) => {
-        const x = this.entries.get(id);
+        const x = this.slots[this.slotOf.get(id) ?? -1];
         if (!x) return;
         let entry = x.entry;
         if (nowMs - entry.updatedAtMs > FRESH_MS) {
@@ -655,7 +779,7 @@ export class EventCatalog {
             this.options.log?.("catalog.fresh.failed", { id, error: (error as Error).message });
           }
         }
-        out.push(entry);
+        out.push(this.full({ ...x, entry }));
       }),
     );
     const order = new Map(ids.map((id, i) => [id, i]));

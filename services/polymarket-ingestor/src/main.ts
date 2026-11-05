@@ -5,7 +5,6 @@ import {
   initializePolymarketStorage,
 } from "@conditional-stocks/db/polymarket";
 import { createIngestorApp } from "./app.ts";
-import { EventCatalog } from "./catalog.ts";
 import { loadPolymarketEnvironment } from "./environment.ts";
 import { EventMarkets } from "./event-markets.ts";
 import { loadKalshiEnvironment } from "./kalshi/environment.ts";
@@ -40,32 +39,7 @@ async function main() {
   );
   await kalshi.start();
   const markets = new EventMarkets(service, kalshi);
-  // The event catalog users' worlds are built from (off with CATALOG_ENABLED=false).
-  const catalog =
-    Bun.env.CATALOG_ENABLED === "false"
-      ? undefined
-      : new EventCatalog({
-          kalshiUrl: kalshiEnvironment.apiUrl,
-          gammaUrl: environment.gammaUrl,
-          everyMs: Number(Bun.env.CATALOG_CRAWL_MS ?? 15 * 60_000),
-          live: async (conditionId) => {
-            try {
-              const tick = await markets.probability(conditionId);
-              if (tick.quality !== "valid" || tick.isStale || !tick.bestBidX6 || !tick.bestAskX6)
-                return null;
-              return {
-                bid: Number(tick.bestBidX6) / 1e6,
-                ask: Number(tick.bestAskX6) / 1e6,
-                observedAtMs: Number(tick.observedAtMs),
-              };
-            } catch {
-              return null;
-            }
-          },
-          log: (event, detail) => logger.info(event, detail ?? {}),
-        });
-  catalog?.start();
-  const app = createIngestorApp(markets, store, environment, catalog);
+  const app = createIngestorApp(markets, store, environment);
 
   const server = startPolymarketServer(app, environment);
   logger.info("service.started", {
@@ -81,7 +55,6 @@ async function main() {
     logger.info("service.stopping");
     await server.stop(true);
     await server.drainRequests();
-    catalog?.stop();
     await Promise.all([service.stop(), kalshi.stop()]);
     await database.end();
     logger.info("service.stopped");

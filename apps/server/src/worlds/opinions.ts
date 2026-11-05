@@ -102,7 +102,8 @@ export function mountOpinions(
     auth: Auth;
     client: PublicClient;
     hub: RfqHub | null;
-    events: () => EventMarketsClient;
+    /** The event catalog's client. */
+    catalog: () => EventMarketsClient;
     underlyings: WorldUnderlying[];
     spots: WorldSpots;
     assistant: AssistantOptions & { dailyBudgetUsd: number };
@@ -114,7 +115,7 @@ export function mountOpinions(
     log: (event: string, detail: Record<string, unknown>) => void;
   },
 ) {
-  const { indexer, db, auth, hub, events, spots, feeBps, quoteUnit } = options;
+  const { indexer, db, auth, hub, catalog, spots, feeBps, quoteUnit } = options;
   const domain = indexer.domain;
   const parses = new RateLimiter(30, 3_600_000);
   const previews = new RateLimiter(900, 3_600_000);
@@ -147,7 +148,7 @@ export function mountOpinions(
   /** An opinion's canonical world, from fresh catalog prices. */
   const worldOf = async (spec: OpinionSpec) => {
     const s = indexer.trading();
-    const { entries } = await events().catalogEntries(
+    const { entries } = await catalog().catalogEntries(
       spec.legs.map((l) => l.id),
       true,
     );
@@ -236,10 +237,8 @@ export function mountOpinions(
     searches.enforce(c, `search:${ip(c)}`);
     const q = (c.req.query("q") ?? "").trim().slice(0, 200);
     if (q.length < 2) return c.json({ events: [] });
-    const result = await events().searchCatalog(q, {
-      limit: 12,
-      before: new Date((seconds() + 45 * 86_400) * 1000),
-    });
+    // Any market the catalog keeps: an event may be decided long after a world's stock fixes.
+    const result = await catalog().searchCatalog(q, { limit: 12 });
     return c.json({ events: result.hits.map((h) => legEntry(h.entry)) });
   });
 
@@ -282,7 +281,7 @@ export function mountOpinions(
       text,
       underlyings: list,
       spot: (u) => spots.usd(u),
-      search: (q, o) => events().searchCatalog(q, o ?? {}),
+      search: (q, o) => catalog().searchCatalog(q, o ?? {}),
       assistant: options.assistant,
       budget,
       nowS: seconds(),

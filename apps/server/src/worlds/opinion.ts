@@ -130,6 +130,20 @@ export function nextClose(seconds: number): { date: string; time: number } {
   throw new OpinionError("No close found");
 }
 
+/** The last weekday close at or before `seconds` (New York). */
+export function lastCloseBy(seconds: number): { date: string; time: number } {
+  let date = newYorkDate(seconds);
+  for (let i = 0; i < 10; i++) {
+    const time = closeOf(date);
+    const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
+    if (time <= seconds && weekday !== 0 && weekday !== 6) return { date, time };
+    const previous = new Date(`${date}T12:00:00Z`);
+    previous.setUTCDate(previous.getUTCDate() - 1);
+    date = previous.toISOString().slice(0, 10);
+  }
+  throw new OpinionError("No close found");
+}
+
 /** A venue question as a short neutral label: "Will the Fed cut in December?" → "The Fed cut
  * in December". The world's public wording comes only from venue text, never a user's. */
 export function legLabel(question: string) {
@@ -145,7 +159,7 @@ export function legLabel(question: string) {
 }
 const usd = (strike: string) =>
   `$${Number(strike).toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
-const shortDate = (date: string) =>
+export const shortDate = (date: string) =>
   new Date(`${date}T12:00:00Z`).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
