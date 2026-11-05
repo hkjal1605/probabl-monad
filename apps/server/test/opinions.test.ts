@@ -320,6 +320,36 @@ test("one market for each thing the opinion depends on", async () => {
   expect(draft.legs.map((l) => [l.entry.id, l.wantYes])).toEqual([[HOT.id, false]]);
 });
 
+test("the stock's own move is never one of the events", async () => {
+  const or = openRouter({
+    submit_reading: {
+      events: [
+        { says: "The Fed hikes in December", happens: true, queries: ["Fed hike December"] },
+        { says: "NVDA drops below $150", happens: true, queries: ["Nvidia stock price"] },
+      ],
+      stock: { symbol: "NVDA", direction: "below", price: 150, percent: null, date: null },
+    },
+    submit_world: { legs: [{ id: FED.id, wantYes: true, fits: true, event: 1 }] },
+  });
+  const searched: string[] = [];
+  const { draft } = await readOpinion({
+    id: "d10",
+    text: "fed hikes in december, NVDA dumps below 150",
+    underlyings: [NVDA],
+    spot: async () => 180,
+    search: async (q) => {
+      searched.push(q);
+      return { hits: [{ score: 9, coverage: 1, entry: FED }] };
+    },
+    assistant: model(or.fetcher),
+    budget: async () => true,
+    nowS: NOW,
+  });
+  expect(searched).toEqual(["Fed hike December"]);
+  expect(draft.notes).toEqual([]);
+  expect(draft.stock).toMatchObject({ symbol: "NVDA", direction: "below", strike: "150" });
+});
+
 test("what the model read but found no market for is named in the notes", async () => {
   const or = openRouter({
     submit_reading: {
