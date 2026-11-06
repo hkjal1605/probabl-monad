@@ -31,7 +31,7 @@ import {
   worldNotes,
   worldProblems,
 } from "../src/worlds/opinion.ts";
-import { friendlyDecline } from "../src/worlds/opinions.ts";
+import { friendlyDecline, sampleEvents } from "../src/worlds/opinions.ts";
 
 const NOW = Date.parse("2026-11-04T15:00:00Z") / 1000;
 const DAY = 86_400;
@@ -979,4 +979,42 @@ test("a preview goes to world makers only; the first priced answer wins, all dec
       5_000,
     ),
   ).toBeNull();
+});
+
+test("sample events: per topic, its most relevant traded Polymarket market a maker prices, decided within the tenor", () => {
+  const nowMs = NOW * 1000;
+  const poly = (id: string, over: Partial<CatalogEntry> = {}) =>
+    entry(id, `Will ${id} happen?`, {
+      id: `polymarket:${id}`,
+      source: "polymarket",
+      group: `polymarket:${id}`,
+      volume: 500_000,
+      ...over,
+    });
+  const year = 365 * DAY;
+  const picked = sampleEvents(
+    [
+      [
+        // Kalshi, thin, lopsided, too wide, too soon, past the tenor, a bucket: never a sample.
+        entry("K", "Will K happen?", { volume: 1e9 }),
+        poly("thin", { volume: 20_000 }),
+        poly("decided", { yes: 0.98, bid: 0.975, ask: 0.985 }),
+        poly("wide", { bid: 0.5, ask: 0.6 }),
+        poly("soon", { endTime: new Date(nowMs + DAY * 1000).toISOString() }),
+        poly("late", { endTime: new Date(nowMs + 2 * year * 1000).toISOString() }),
+        poly("bucket", { question: "Will CPI be between 3% and 4%?" }),
+        poly("count", { question: "Will there be exactly 2 shutdowns?" }),
+        // The first that qualifies, in the catalog's order, not the most traded.
+        poly("relevant", { yes: 0.05, bid: 0.045, ask: 0.055 }),
+        poly("bigger", { volume: 9e9 }),
+      ],
+      // A topic with nothing usable gives nothing.
+      [poly("unpriced", { yes: null, bid: null, ask: null })],
+      // One market per venue event.
+      [poly("relevant-again", { group: "polymarket:relevant" }), poly("other")],
+    ],
+    nowMs,
+    year,
+  );
+  expect(picked.map((e) => e.marketId)).toEqual(["relevant", "other"]);
 });

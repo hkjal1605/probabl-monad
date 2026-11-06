@@ -39,7 +39,7 @@ export class EventMarketsClient {
   /** The event catalog's best matches for `query` (memory reads in the catalog process). */
   searchCatalog(
     query: string,
-    options: { limit?: number; before?: Date; after?: Date } = {},
+    options: { limit?: number; before?: Date; after?: Date; source?: "polymarket" | "kalshi" } = {},
   ): Promise<{
     crawledAt: number;
     size: number;
@@ -49,6 +49,7 @@ export class EventMarketsClient {
     if (options.limit) params.set("limit", String(options.limit));
     if (options.before) params.set("before", options.before.toISOString());
     if (options.after) params.set("after", options.after.toISOString());
+    if (options.source) params.set("source", options.source);
     return this.#get(`/internal/catalog/search?${params}`, true);
   }
 

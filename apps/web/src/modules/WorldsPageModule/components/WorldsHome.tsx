@@ -5,12 +5,13 @@ import { type ReactNode, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Composer, EXAMPLES } from "@/components/worlds/Composer";
+import { EXAMPLES } from "@/components/worlds/Composer";
 import { Chip, Sentence } from "@/components/worlds/Sentence";
 import { WorldCard } from "@/components/worlds/WorldCard";
 import { worldsEnabled } from "@/config/protocol";
 import { useStocks, useWorldsFeed } from "@/hooks/useWorlds";
 import { cn } from "@/lib/utils";
+import { WorldStarter } from "./WorldStarter";
 
 const SORTS = ["Live", "Closing soon", "Most backed", "New"] as const;
 const SORT_KEYS: Record<(typeof SORTS)[number], string> = {
@@ -56,7 +57,6 @@ const PRODUCTS = [
 /** The worlds home: where a world starts (someone's words) and every world people trade. */
 export function WorldsHome() {
   const router = useRouter();
-  const [busy, setBusy] = useState(false);
   const [sort, setSort] = useState<(typeof SORTS)[number]>("Live");
   const [stock, setStock] = useState("");
   const feed = useWorldsFeed(SORT_KEYS[sort], stock);
@@ -65,19 +65,17 @@ export function WorldsHome() {
     () => new Map((listed.data ?? []).map((s) => [s.underlying, s.logo] as const)),
     [listed.data],
   );
-  const start = (text: string) => {
-    setBusy(true);
-    router.push(`/worlds/new?q=${encodeURIComponent(text)}`);
-  };
+  const start = (text: string) => router.push(`/worlds/new?q=${encodeURIComponent(text)}`);
   const stocks = useMemo(() => {
     const seen = new Map<string, string>();
     for (const w of feed.data ?? [])
       if (w.underlying && w.opinion?.symbol) seen.set(w.underlying, w.opinion.symbol);
     return [...seen.entries()];
   }, [feed.data]);
-  const focusComposer = () => {
+  /** Back to the starter, with its first open event's search opened. */
+  const focusStarter = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
-    document.querySelector<HTMLTextAreaElement>("#say textarea")?.focus({ preventScroll: true });
+    document.querySelector<HTMLElement>('#say [data-slot="event"]')?.click();
   };
 
   return (
@@ -93,7 +91,7 @@ export function WorldsHome() {
           </p>
         )}
         <div id="say" className="w-full text-left">
-          <Composer busy={busy} onSubmit={start} autoFocus />
+          <WorldStarter />
         </div>
         <div className="flex flex-wrap justify-center gap-2">
           {STARTERS.map((s) => (
@@ -112,18 +110,6 @@ export function WorldsHome() {
             </button>
           ))}
         </div>
-      </section>
-
-      {/* How it goes, in three pictures */}
-      <section
-        aria-label="How it works"
-        className="mx-auto grid w-full max-w-4xl grid-cols-[1fr_auto_1fr_auto_1fr] items-start gap-2 sm:gap-4"
-      >
-        <Step n={1} art="/worlds/say.webp" label="Say it" />
-        <StepArrow />
-        <Step n={2} art="/worlds/pick.webp" label="Pick a payout" />
-        <StepArrow />
-        <Step n={3} art="/worlds/paid.webp" label="Get paid" />
       </section>
 
       {/* The two payouts, on one example */}
@@ -254,7 +240,7 @@ export function WorldsHome() {
             ) : (
               <>
                 <p className="text-lg font-medium">No worlds yet</p>
-                <Button size="lg" onClick={focusComposer}>
+                <Button size="lg" onClick={focusStarter}>
                   Start the first
                   <ArrowRight data-icon="inline-end" />
                 </Button>
@@ -293,29 +279,6 @@ function Art({
         className="size-full object-cover"
       />
     </div>
-  );
-}
-
-function Step({ n, art, label }: { n: number; art: string; label: string }) {
-  return (
-    <div className="flex flex-col items-center gap-3">
-      <Art src={art} width={512} height={512} className="aspect-square w-full max-w-[200px]" />
-      <span className="flex items-center gap-2 text-sm font-medium sm:text-base">
-        <span className="hidden size-6 items-center justify-center rounded-full bg-secondary text-xs font-semibold tabular-nums sm:flex">
-          {n}
-        </span>
-        {label}
-      </span>
-    </div>
-  );
-}
-
-function StepArrow() {
-  return (
-    <ArrowRight
-      aria-hidden
-      className="mt-[calc(min(25vw,200px)/2-12px)] size-4 text-muted-foreground/60 sm:size-6"
-    />
   );
 }
 

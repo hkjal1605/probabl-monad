@@ -4,6 +4,7 @@
  *
  * - `GET  /v2/worlds/stocks`          the stocks a world can fix on, with spot;
  * - `GET  /v2/worlds/events/search`   the event catalog (Polymarket and Kalshi);
+ * - `GET  /v2/worlds/events/samples`  live Polymarket events the worlds page suggests;
  * - `POST /v2/worlds/parse`           an opinion read into a draft (the assistant);
  * - `POST /v2/worlds/preview`         a draft priced by the makers before it exists;
  * - `POST /v2/worlds/open`            a member opens the world (its book is created);
@@ -70,6 +71,61 @@ export const legEntry = (e: CatalogEntry) => ({
   volume: Math.round(e.volume),
   themes: e.themes,
 });
+
+/** What the sample events are about: topics a stock's move is often argued from. Each gives
+ * at most one event; the page alternates them between its two event slots. */
+export const SAMPLE_TOPICS = [
+  "US recession",
+  "AI bubble",
+  "Fed rate cut",
+  "China invade Taiwan",
+  "Ukraine ceasefire",
+  "Bitcoin",
+  "Iran",
+  "OpenAI",
+];
+/** How long one set of sample events serves every visitor. */
+const SAMPLES_TTL_MS = 10 * 60_000;
+/** A sample is a market people follow: at least this much traded (USD). */
+const SAMPLE_MIN_VOLUME = 100_000;
+
+/** Live Polymarket events that show what a world can be made of: per topic, its most relevant
+ * open market (the catalog's own order) that people trade ($100k+), that a maker prices (3–97%,
+ * a two-sided book at most 5¢ wide), that is decided between two days from now and the vault's
+ * tenor, and that reads as one plain event (no "between X and Y" or "exactly N" bucket); one
+ * market per venue event. */
+export function sampleEvents(
+  hitsByTopic: readonly (readonly CatalogEntry[])[],
+  nowMs: number,
+  maxTenorSeconds: number,
+) {
+  const groups = new Set<string>();
+  const out: CatalogEntry[] = [];
+  for (const hits of hitsByTopic) {
+    const pick = hits.find((e) => {
+      const end = Date.parse(e.endTime);
+      return (
+        e.source === "polymarket" &&
+        e.yes !== null &&
+        e.yes >= 0.03 &&
+        e.yes <= 0.97 &&
+        e.bid !== null &&
+        e.ask !== null &&
+        e.ask - e.bid <= 0.05 &&
+        e.volume >= SAMPLE_MIN_VOLUME &&
+        Number.isFinite(end) &&
+        end >= nowMs + 2 * 86_400_000 &&
+        end <= nowMs + maxTenorSeconds * 1000 &&
+        !/\bbetween\b.*\band\b|\bexactly\b/i.test(e.question) &&
+        !groups.has(e.group)
+      );
+    });
+    if (!pick) continue;
+    groups.add(pick.group);
+    out.push(pick);
+  }
+  return out;
+}
 
 /** A maker's reason for not pricing, as a person would say it; a thin market is named from the
  * world's legs (their venue prices, just read). */
@@ -258,6 +314,37 @@ export function mountOpinions(
     // Any market the catalog keeps: an event may be decided long after a world's stock fixes.
     const result = await catalog().searchCatalog(q, { limit: 12 });
     return c.json({ events: result.hits.map((h) => legEntry(h.entry)) });
+  });
+
+  // The worlds page's placeholder events: one read of the catalog serves every visitor for ten
+  // minutes (concurrent misses share it); a failed read keeps the last set.
+  let samples: { at: number; body: string } | null = null;
+  let sampling: Promise<void> | null = null;
+  const readSamples = async () => {
+    const maxTenor = vaultTerms(indexer.trading()).limits?.maxTenor ?? 365 * 86_400;
+    const hits = await Promise.all(
+      SAMPLE_TOPICS.map((t) =>
+        catalog()
+          .searchCatalog(t, { limit: 12, source: "polymarket" })
+          .then((r) => r.hits.map((h) => h.entry)),
+      ),
+    );
+    samples = {
+      at: Date.now(),
+      body: json({ events: sampleEvents(hits, Date.now(), maxTenor).map(legEntry) }),
+    };
+  };
+  app.get("/v2/worlds/events/samples", async (c) => {
+    if (!samples || Date.now() - samples.at > SAMPLES_TTL_MS) {
+      sampling ??= readSamples().finally(() => {
+        sampling = null;
+      });
+      await sampling.catch(() => {});
+    }
+    // A first read that failed leaves none: the page shows its own placeholder.
+    if (!samples) return c.json({ events: [] });
+    c.header("Cache-Control", "public, max-age=60");
+    return c.body(samples.body, 200, { "content-type": "application/json" });
   });
 
   /** The assistant's spend today against its budget. */

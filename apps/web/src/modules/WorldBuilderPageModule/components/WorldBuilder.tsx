@@ -20,45 +20,39 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChanceChain } from "@/components/worlds/ChanceChain";
 import { Composer } from "@/components/worlds/Composer";
+import { defaultStrike, EditableSentence } from "@/components/worlds/EditableSentence";
 import { EventRow, EventSearchDialog } from "@/components/worlds/EventSearch";
 import { LegRow } from "@/components/worlds/LegRow";
 import { DotGrid, OutcomeTable } from "@/components/worlds/Outcomes";
 import { WorldTicket } from "@/components/worlds/WorldTicket";
 import { useMaxTenor } from "@/hooks/useWorlds";
 import { cn } from "@/lib/utils";
+import { nyDate, weekdayFrom, worldDates } from "@/lib/worlds/dates";
 import { calendarDay, money, stockPrice, strikeText, whenDay } from "@/lib/worlds/format";
 import { atStake, type ProductName, previewOffers } from "@/lib/worlds/offer";
-import type { Draft, LegEntry, Preview, Spec } from "@/lib/worlds/types";
+import { parseStart, specOf, startParam, takeStart } from "@/lib/worlds/start";
+import type { Draft, LegEntry, LegState, Preview, Spec, StockState } from "@/lib/worlds/types";
 import { worldsApi } from "@/services/worlds-api";
-import {
-  defaultStrike,
-  EditableSentence,
-  type LegState,
-  type StockState,
-} from "./EditableSentence";
 
 const DAY = 86_400_000;
-const nyDate = (ms: number) =>
-  new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date(ms));
-/** The first weekday on or after a date (or, back, the last on or before it). */
-function weekdayFrom(date: string, back = false) {
-  const d = new Date(`${date}T12:00:00Z`);
-  while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d.setUTCDate(d.getUTCDate() + (back ? -1 : 1));
-  return d.toISOString().slice(0, 10);
-}
 
 const READING = [
   "Reading your words",
   "Finding the events on Polymarket and Kalshi",
   "Pricing your world",
 ];
+/** A world chosen part by part (on the worlds page) has no words to read. */
+const OPENING = ["Finding your events on Polymarket and Kalshi", "Pricing your world"];
 
 /** From someone's words to a world they can trade: read the opinion, show it as an editable
- * sentence with the real events behind it, price it live, and offer it. */
+ * sentence with the real events behind it, price it live, and offer it. A world chosen part by
+ * part on the worlds page arrives as its spec (`?w=`) instead, and is priced straight away. */
 export function WorldBuilder() {
   const router = useRouter();
   const params = useSearchParams();
   const text = params.get("q")?.trim() ?? "";
+  const startRaw = params.get("w");
+  const start = useMemo(() => (text ? null : parseStart(startRaw)), [text, startRaw]);
   const [draft, setDraft] = useState<{
     text: string;
     draft: Draft | null;
@@ -76,8 +70,64 @@ export function WorldBuilder() {
     error: string | null;
   } | null>(null);
   const [step, setStep] = useState(0);
+  /** The key of the last preview answered: one already in hand is not asked again. */
+  const answered = useRef<string | null>(null);
 
-  // 1. Read the words.
+  // 1a. A world chosen part by part: the parts the worlds page showed, else (a shared link or a
+  // reload) the events and stock its first price names.
+  useEffect(() => {
+    if (!start) return;
+    const param = startParam(start);
+    const stashed = takeStart(param);
+    if (stashed) {
+      setLegs(stashed.legs);
+      setStock(stashed.stock);
+      setDraft({ text: "", draft: null, error: null });
+      return;
+    }
+    const controller = new AbortController();
+    setDraft(null);
+    setPreview(null);
+    const first = { allIn: 20, moneyBack: 100 };
+    worldsApi
+      .preview(
+        start,
+        { allIn: String(first.allIn), moneyBack: String(first.moneyBack) },
+        controller.signal,
+      )
+      .then((p) => {
+        const nextLegs = p.world.legs.map((l) => ({
+          entry: l,
+          wantYes: l.wantYes,
+          note: null,
+          alternatives: [],
+        }));
+        const s = p.world.stock;
+        const nextStock = s
+          ? {
+              underlying: s.underlying,
+              symbol: s.symbol,
+              name: s.name,
+              direction: s.direction,
+              strike: s.strike,
+              date: s.date,
+              spot: s.spot,
+            }
+          : null;
+        const key = JSON.stringify([specOf(nextLegs, nextStock), first]);
+        answered.current = key;
+        setLegs(nextLegs);
+        setStock(nextStock);
+        setPreview({ key, value: p, error: null });
+        setDraft({ text: "", draft: null, error: null });
+      })
+      .catch((error: Error) => {
+        if (error.name !== "AbortError") setDraft({ text: "", draft: null, error: error.message });
+      });
+    return () => controller.abort();
+  }, [start]);
+
+  // 1b. Read the words.
   useEffect(() => {
     if (!text) return;
     const controller = new AbortController();
@@ -116,34 +166,22 @@ export function WorldBuilder() {
       });
     return () => controller.abort();
   }, [text]);
+  const steps = text ? READING : OPENING;
   useEffect(() => {
     if (draft) return;
-    const timer = setInterval(() => setStep((s) => Math.min(s + 1, READING.length - 1)), 1_400);
+    const timer = setInterval(() => setStep((s) => Math.min(s + 1, steps.length - 1)), 1_400);
     return () => clearInterval(timer);
-  }, [draft]);
+  }, [draft, steps.length]);
 
   // 2. Price what it says, as it changes.
   const spec: Spec | null = useMemo(
-    () =>
-      legs.length
-        ? {
-            legs: legs.map((l) => ({ id: l.entry.id, wantYes: l.wantYes })),
-            stock: stock
-              ? {
-                  underlying: stock.underlying,
-                  direction: stock.direction,
-                  strike: stock.strike,
-                  date: stock.date,
-                }
-              : null,
-          }
-        : null,
+    () => (legs.length ? specOf(legs, stock) : null),
     [legs, stock],
   );
   const key = spec ? JSON.stringify([spec, stakes]) : null;
   const previewSeq = useRef(0);
   useEffect(() => {
-    if (!spec || !key) return;
+    if (!spec || !key || answered.current === key) return;
     const controller = new AbortController();
     const seq = ++previewSeq.current;
     const timer = setTimeout(() => {
@@ -154,7 +192,9 @@ export function WorldBuilder() {
           controller.signal,
         )
         .then((value) => {
-          if (seq === previewSeq.current) setPreview({ key, value, error: null });
+          if (seq !== previewSeq.current) return;
+          answered.current = key;
+          setPreview({ key, value, error: null });
         })
         .catch((error: Error) => {
           if (error.name !== "AbortError" && seq === previewSeq.current)
@@ -171,17 +211,14 @@ export function WorldBuilder() {
 
   // The stock is read from tomorrow to the vault's tenor less a day (to open and fill the world).
   const maxTenor = useMaxTenor();
-  const dates = useMemo(() => {
-    const now = Date.now();
-    const lastEnd = legs.length ? Math.max(...legs.map((l) => Date.parse(l.entry.endTime))) : now;
-    const last = weekdayFrom(nyDate(now + ((maxTenor ?? 35 * 86_400) * 1000 - DAY)), true);
-    const after = legs.length ? weekdayFrom(nyDate(Math.max(lastEnd, now + DAY))) : null;
-    return {
-      earliest: weekdayFrom(nyDate(now + DAY)),
-      last,
-      suggested: after && after > last ? last : after,
-    };
-  }, [legs, maxTenor]);
+  const dates = useMemo(
+    () =>
+      worldDates(
+        legs.map((l) => l.entry.endTime),
+        maxTenor,
+      ),
+    [legs, maxTenor],
+  );
 
   const onStakes = useCallback((s: { allIn: number; moneyBack: number }) => setStakes(s), []);
   const onProduct = useCallback((p: ProductName) => setProduct(p), []);
@@ -191,7 +228,7 @@ export function WorldBuilder() {
     setLegs((ls) => [...ls, { entry: e, wantYes: true, note: null, alternatives: [] }]);
   };
 
-  if (!text || editing)
+  if ((!text && !start) || editing)
     return (
       <div className="mx-auto flex max-w-3xl flex-col gap-6 pt-6 sm:pt-12">
         <BackLink />
@@ -214,7 +251,7 @@ export function WorldBuilder() {
       <div className="mx-auto flex max-w-3xl flex-col gap-8 pt-4 sm:pt-8">
         <TopBar text={text} />
         <div className="flex flex-col gap-3" aria-live="polite">
-          {READING.map((r, i) => (
+          {steps.map((r, i) => (
             <span
               key={r}
               className={cn(
@@ -506,8 +543,10 @@ export function WorldBuilder() {
   );
 }
 
-/** Back to the worlds, and the words this world was read from (tap to change them). */
+/** Back to the worlds, and the words this world was read from (tap to change them); a world
+ * chosen part by part has no words, only the way back. */
 function TopBar({ text, onEdit }: { text: string; onEdit?: () => void }) {
+  if (!text) return <BackLink />;
   return (
     <div className="flex min-w-0 items-center gap-2">
       <Button

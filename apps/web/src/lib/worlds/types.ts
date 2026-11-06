@@ -49,6 +49,25 @@ export interface Draft {
 }
 
 /** An opinion as the API prices and opens it. */
+/** An event of a world being built: the venue event, the side the world needs, the reader's
+ * note on it and other events it could have meant. */
+export interface LegState {
+  entry: LegEntry;
+  wantYes: boolean;
+  note: string | null;
+  alternatives: LegEntry[];
+}
+/** The stock of a world being built (`strike` in dollars, `date` a New York calendar date). */
+export interface StockState {
+  underlying: string;
+  symbol: string;
+  name: string;
+  direction: "above" | "below";
+  strike: string;
+  date: string;
+  spot: number | null;
+}
+
 export interface Spec {
   legs: { id: string; wantYes: boolean }[];
   stock: { underlying: string; direction: "above" | "below"; strike: string; date: string } | null;
