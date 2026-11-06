@@ -1,6 +1,5 @@
-/** How worlds say numbers (the research's numeric grammar, reports/Worlds power-user research):
- * every chance on one base, "N in 1,000", never "1 in X"; dollars and a multiple beside it;
- * dates as people say them. Display only. */
+/** How worlds say numbers: every chance as a plain percent, never "1 in X"; dollars and a
+ * multiple beside it; dates as people say them. Display only. */
 
 /** Quote tokens have six decimals (USDG). */
 export const QUOTE_DECIMALS = 6;
@@ -23,19 +22,18 @@ export function money(value: number, options: { cents?: boolean } = {}) {
 export const moneyRaw = (raw: string | bigint | null | undefined, options?: { cents?: boolean }) =>
   money(dollars(raw), options);
 
-/** How many in 1,000 a chance (x 1e6) is: a whole number, "under 1" below one. */
-export function perThousand(x6: number | null | undefined) {
-  if (x6 === null || x6 === undefined || !Number.isFinite(x6)) return null;
-  const n = x6 / 1_000;
-  if (n > 0 && n < 1) return "under 1";
-  if (n > 999 && n < 1_000) return "999";
-  return Math.round(n).toLocaleString("en-US");
+/** A chance (x 1e6) as a percent: whole between 10% and 90% ("27%"), a tenth nearer the ends so a
+ * small or near-certain chance never reads as 0% or 100% ("5.7%", "0.4%", "99.2%"), and "<0.1%"
+ * or ">99.9%" past that. */
+export function chancePercent(x6: number | null | undefined) {
+  if (x6 === null || x6 === undefined || !Number.isFinite(x6)) return "—";
+  const p = x6 / 10_000;
+  if (p <= 0) return "0%";
+  if (p >= 100) return "100%";
+  if (p < 0.1) return "<0.1%";
+  if (p > 99.9) return ">99.9%";
+  return `${Number(p.toFixed(p < 10 || p > 90 ? 1 : 0))}%`;
 }
-/** "10 in 1,000". */
-export const inThousand = (x6: number | null | undefined) => {
-  const n = perThousand(x6);
-  return n === null ? "—" : `${n} in 1,000`;
-};
 
 /** "77×", "2.5×". */
 export function multiple(payout: number, stake: number) {

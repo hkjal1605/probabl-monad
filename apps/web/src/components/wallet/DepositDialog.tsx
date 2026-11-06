@@ -149,7 +149,7 @@ export function DepositDialog({
                     align="start"
                     sideOffset={6}
                     alignItemWithTrigger={false}
-                    className="scrollbars-hidden max-h-48 w-(--anchor-width) max-w-(--anchor-width)"
+                    className="max-h-48 w-(--anchor-width) max-w-(--anchor-width)"
                   >
                     <SelectGroup>
                       {orderedAssets.map((item) => (

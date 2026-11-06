@@ -16,8 +16,8 @@ import type { WorldAccount } from "@/hooks/useWorldAccount";
 import { cn } from "@/lib/utils";
 import {
   calendarDay,
+  chancePercent,
   dollars,
-  inThousand,
   legLabel,
   money,
   moneyRaw,
@@ -161,7 +161,7 @@ export function PositionCard({
         <div className="flex flex-col gap-0.5">
           <span className="text-[11px] font-medium text-muted-foreground">Chance now</span>
           <span className="text-base font-medium tabular-nums">
-            {decided ? "—" : inThousand(winChance)}
+            {decided ? "—" : chancePercent(winChance)}
           </span>
         </div>
       </div>

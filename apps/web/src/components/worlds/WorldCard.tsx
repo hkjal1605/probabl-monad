@@ -1,7 +1,7 @@
 import { ArrowDownRight, ArrowUpRight, CalendarCheck } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { calendarDay, money, moneyRaw, perThousand, until } from "@/lib/worlds/format";
+import { calendarDay, chancePercent, money, moneyRaw, until } from "@/lib/worlds/format";
 import { outcomeAtoms } from "@/lib/worlds/offer";
 import type { FeedWorld } from "@/lib/worlds/types";
 import { SideTag, WalletDot } from "./primitives";
@@ -155,7 +155,7 @@ export function WorldCard({
   );
 }
 
-/** A world's chance as a ring: N of 1,000 futures pay. */
+/** A world's chance as a ring, and as a percent. */
 function ChanceRing({ chance }: { chance: number | null }) {
   const r = 16;
   const length = 2 * Math.PI * r;
@@ -176,10 +176,8 @@ function ChanceRing({ chance }: { chance: number | null }) {
         />
       </svg>
       <span className="flex flex-col leading-4">
-        <span className="text-sm font-medium tabular-nums">
-          {chance === null ? "—" : perThousand(chance)}
-        </span>
-        <span className="text-[11px] text-muted-foreground">in 1,000</span>
+        <span className="text-sm font-medium tabular-nums">{chancePercent(chance)}</span>
+        <span className="text-[11px] text-muted-foreground">chance</span>
       </span>
     </div>
   );

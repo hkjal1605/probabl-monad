@@ -1,4 +1,4 @@
-/** Worlds as people read them: chances on one base of 1,000 (never "1 in X"), payouts with
+/** Worlds as people read them: chances as plain percents (never "1 in X"), payouts with
  * their multiple, venue questions as labels, and the offer a preview or a live world makes at a
  * stake: what each ending pays and how likely it is. The sentence renders as one line of text. */
 import { describe, expect, test } from "bun:test";
@@ -6,24 +6,28 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { WorldSentence } from "../src/components/worlds/Sentence";
 import {
-  inThousand,
+  chancePercent,
   legLabel,
   midSentence,
   money,
   multiple,
-  perThousand,
   venueResult,
 } from "../src/lib/worlds/format";
 import { atStake, bookOffers, outcomeAtoms, previewOffers } from "../src/lib/worlds/offer";
 import type { BookView } from "../src/lib/worlds/types";
 
 describe("numbers", () => {
-  test("chances are N in 1,000, whole, and under 1 says so", () => {
-    expect(inThousand(10_234)).toBe("10 in 1,000");
-    expect(inThousand(972_000)).toBe("972 in 1,000");
-    expect(perThousand(400)).toBe("under 1");
-    expect(perThousand(999_700)).toBe("999");
-    expect(inThousand(null)).toBe("—");
+  test("chances are percents: whole in the middle, a tenth near the ends, never a false 0 or 100", () => {
+    expect(chancePercent(270_400)).toBe("27%");
+    expect(chancePercent(30_000)).toBe("3%");
+    expect(chancePercent(57_300)).toBe("5.7%");
+    expect(chancePercent(913_000)).toBe("91.3%");
+    expect(chancePercent(4_000)).toBe("0.4%");
+    expect(chancePercent(400)).toBe("<0.1%");
+    expect(chancePercent(999_700)).toBe(">99.9%");
+    expect(chancePercent(0)).toBe("0%");
+    expect(chancePercent(1_000_000)).toBe("100%");
+    expect(chancePercent(null)).toBe("—");
   });
   test("money and multiples", () => {
     expect(money(1538)).toBe("$1,538");

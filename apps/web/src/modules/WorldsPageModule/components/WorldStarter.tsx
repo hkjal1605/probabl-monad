@@ -1,10 +1,11 @@
 "use client";
 import { ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { defaultStrike, EditableSentence } from "@/components/worlds/EditableSentence";
+import { useSampleCycle } from "@/hooks/useSampleCycle";
 import { useMaxTenor, useRead, useStocks } from "@/hooks/useWorlds";
 import { clampDate, monthAhead, nyDate, weekdayFrom, worldDates } from "@/lib/worlds/dates";
 import { stashStart } from "@/lib/worlds/start";
@@ -15,8 +16,8 @@ import { worldsApi } from "@/services/worlds-api";
 const START_SYMBOL = "NVDA";
 
 /** Where a world starts on the worlds page: the builder's sentence with its parts laid out, so
- * every part a world is made of is in view and changes in place. Two events to choose (each
- * cycling through live Polymarket events), NVDA closing above 5% over its price, a month out. */
+ * every part a world is made of is in view and changes in place. Two events to choose (showing
+ * live Polymarket events, changing together), NVDA closing above 5% over its price, a month out. */
 export function WorldStarter() {
   const router = useRouter();
   const [legs, setLegs] = useState<(LegState | null)[]>([null, null]);
@@ -63,18 +64,54 @@ export function WorldStarter() {
   }, [ownStock, stock, first, maxTenor]);
   const settled = stock !== null || ownStock || Boolean(stocks.error) || first === null;
 
-  // Each slot cycles through its own share of the samples, alternating as the server listed them
-  // (a third or fourth slot starts later in the same share), so two slots never show the same
-  // event; an event already chosen leaves its share without moving the others.
+  // Each slot has its own share of the samples, alternating as the server listed them (a third or
+  // fourth slot starts later in the same share), so two slots never show the same event; an
+  // event already chosen leaves its share without moving the others. The open slots step through
+  // their shares together, so every share is cut to the shortest one's length.
   const placeholders = useMemo(() => {
     const taken = new Set(legs.flatMap((l) => (l ? [l.entry.id] : [])));
     const list = samples.data ?? [];
-    return legs.map((_, i) => {
+    const shares = legs.map((_, i) => {
       const own = list.filter((e, j) => j % 2 === i % 2 && !taken.has(e.id));
       const turn = Math.floor(i / 2) % Math.max(own.length, 1);
       return [...own.slice(turn), ...own.slice(0, turn)];
     });
+    const sets = Math.min(
+      ...shares.flatMap((own, i) => (legs[i] === null && own.length ? [own.length] : [])),
+    );
+    return Number.isFinite(sets) ? shares.map((own) => own.slice(0, sets)) : shares;
   }, [samples.data, legs]);
+  const sets = Math.max(0, ...placeholders.map((own, i) => (legs[i] === null ? own.length : 0)));
+
+  const live = useRef<HTMLDivElement>(null);
+  const ghosts = useRef<(HTMLDivElement | null)[]>([]);
+  const epoch = useMemo(
+    () => JSON.stringify([legs.map((l) => (l ? [l.entry.id, l.wantYes] : null)), stock]),
+    [legs, stock],
+  );
+  const cycle = useSampleCycle({ count: sets, live, ghosts, epoch, ready: settled });
+
+  const sentence = (step: number) => (
+    <EditableSentence
+      legs={legs}
+      stock={stock}
+      dates={dates}
+      placeholders={placeholders}
+      step={step}
+      onLeg={(i, leg) => setLegs((ls) => ls.map((l, j) => (j === i ? leg : l)))}
+      // A chosen event goes back to its placeholder; an empty one goes away.
+      onRemoveLeg={(i) =>
+        setLegs((ls) =>
+          ls[i] ? ls.map((l, j) => (j === i ? null : l)) : ls.filter((_, j) => j !== i),
+        )
+      }
+      onAddEvent={() => setLegs((ls) => (ls.length < 4 ? [...ls, null] : ls))}
+      onStock={(s) => {
+        setOwnStock(true);
+        setStock(s);
+      }}
+    />
+  );
 
   const ready = chosen.length > 0 && settled && !busy;
   const open = () => {
@@ -87,24 +124,28 @@ export function WorldStarter() {
   return (
     <div className="flex flex-col gap-5 rounded-3xl bg-card p-5 text-left ring-1 ring-border sm:p-7">
       {settled ? (
-        <EditableSentence
-          legs={legs}
-          stock={stock}
-          dates={dates}
-          placeholders={placeholders}
-          onLeg={(i, leg) => setLegs((ls) => ls.map((l, j) => (j === i ? leg : l)))}
-          // A chosen event goes back to its placeholder; an empty one goes away.
-          onRemoveLeg={(i) =>
-            setLegs((ls) =>
-              ls[i] ? ls.map((l, j) => (j === i ? null : l)) : ls.filter((_, j) => j !== i),
-            )
-          }
-          onAddEvent={() => setLegs((ls) => (ls.length < 4 ? [...ls, null] : ls))}
-          onStock={(s) => {
-            setOwnStock(true);
-            setStock(s);
-          }}
-        />
+        // The sentence as it is, over the same sentence laid out for every set of samples (unseen):
+        // the cell keeps the tallest one's height while the samples change.
+        <div className="grid *:[grid-area:1/1]">
+          <div ref={live} {...cycle.aim}>
+            {sentence(cycle.step)}
+          </div>
+          {sets > 1 &&
+            Array.from({ length: sets }, (_, set) => (
+              <div
+                // biome-ignore lint/suspicious/noArrayIndexKey: each layout is its set's, by number.
+                key={set}
+                ref={(el) => {
+                  ghosts.current[set] = el;
+                }}
+                className="invisible"
+                aria-hidden
+                inert
+              >
+                {sentence(set)}
+              </div>
+            ))}
+        </div>
       ) : (
         <StarterSkeleton />
       )}

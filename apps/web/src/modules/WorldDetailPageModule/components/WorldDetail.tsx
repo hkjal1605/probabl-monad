@@ -9,7 +9,7 @@ import { Segmented } from "@/components/ui/segmented";
 import { toast } from "@/components/ui/toast";
 import { ChanceChain } from "@/components/worlds/ChanceChain";
 import { LegRow } from "@/components/worlds/LegRow";
-import { DotGrid, OutcomeTable } from "@/components/worlds/Outcomes";
+import { OutcomeTable } from "@/components/worlds/Outcomes";
 import { ActivityList, HolderList } from "@/components/worlds/People";
 import { SectionTitle, WalletDot } from "@/components/worlds/primitives";
 import { WorldSentence } from "@/components/worlds/Sentence";
@@ -275,7 +275,7 @@ export function WorldDetail({ book: raw }: { book: string }) {
               >
                 How this can end
               </SectionTitle>
-              <div className="flex flex-col gap-5 rounded-xl bg-card p-4 ring-1 ring-border">
+              <div className="rounded-xl bg-card p-4 ring-1 ring-border">
                 <OutcomeTable
                   offer={offer}
                   priced={!b.eventOnly}
@@ -290,7 +290,6 @@ export function WorldDetail({ book: raw }: { book: string }) {
                         : "When an event fails",
                   }}
                 />
-                <DotGrid endings={offer.endings} />
               </div>
             </section>
           )}

@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EXAMPLES } from "@/components/worlds/Composer";
+import { ChanceBar } from "@/components/worlds/Outcomes";
 import { Chip, Sentence } from "@/components/worlds/Sentence";
 import { WorldCard } from "@/components/worlds/WorldCard";
 import { worldsEnabled } from "@/config/protocol";
 import { useStocks, useWorldsFeed } from "@/hooks/useWorlds";
 import { cn } from "@/lib/utils";
+import { chancePercent } from "@/lib/worlds/format";
 import { WorldStarter } from "./WorldStarter";
 
 const SORTS = ["Live", "Closing soon", "Most backed", "New"] as const;
@@ -28,8 +30,8 @@ const STARTERS = [
   { event: "Hot CPI", symbol: "SPY", up: false, price: "$650" },
 ].map((s, i) => ({ ...s, text: EXAMPLES.at(i) ?? "" }));
 
-/** The worked example of docs: P(win) 251, P(the world happens, NVDA below) 369, P(no cut) 380
- * in 1,000; All-in $20 pays $74.71, Money-back $100 pays $235 or gives the $100 back. */
+/** The worked example of docs: P(win) 25.1%, P(the world happens, NVDA below) 36.9%, P(no cut)
+ * 38%; All-in $20 pays $74.71, Money-back $100 pays $235 or gives the $100 back. Chances x 1e6. */
 const PRODUCTS = [
   {
     name: "All-in",
@@ -37,8 +39,8 @@ const PRODUCTS = [
     stake: "$20",
     best: "$75",
     rows: [
-      { kind: "win", label: "Fed cuts · NVDA above", pays: "$75", chance: 251 },
-      { kind: "lose", label: "Anything else", pays: "$0", chance: 749 },
+      { kind: "win", label: "Fed cuts · NVDA above", pays: "$75", chance: 251_000 },
+      { kind: "lose", label: "Anything else", pays: "$0", chance: 749_000 },
     ],
   },
   {
@@ -47,9 +49,9 @@ const PRODUCTS = [
     stake: "$100",
     best: "$235",
     rows: [
-      { kind: "win", label: "Fed cuts · NVDA above", pays: "$235", chance: 251 },
-      { kind: "back", label: "Fed doesn't cut", pays: "$100", chance: 380 },
-      { kind: "lose", label: "Fed cuts · NVDA below", pays: "$0", chance: 369 },
+      { kind: "win", label: "Fed cuts · NVDA above", pays: "$235", chance: 251_000 },
+      { kind: "back", label: "Fed doesn't cut", pays: "$100", chance: 380_000 },
+      { kind: "lose", label: "Fed cuts · NVDA below", pays: "$0", chance: 369_000 },
     ],
   },
 ] as const;
@@ -79,7 +81,7 @@ export function WorldsHome() {
   };
 
   return (
-    <div className="flex flex-col gap-20 sm:gap-28">
+    <div className="flex flex-col gap-12 sm:gap-16">
       {/* Say it */}
       <section className="mx-auto flex w-full max-w-3xl flex-col items-center gap-7 pt-4 text-center sm:pt-12">
         <h1 className="text-[40px] leading-[1.02] font-medium tracking-[-0.035em] sm:text-[64px]">
@@ -114,7 +116,7 @@ export function WorldsHome() {
 
       {/* The two payouts, on one example */}
       <section className="flex flex-col gap-6">
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col items-center gap-3 text-center">
           <h2 className="text-[28px] leading-tight font-medium tracking-[-0.02em] sm:text-4xl">
             Two ways to win
           </h2>
@@ -157,9 +159,13 @@ export function WorldsHome() {
                       </span>
                     </div>
                     <div className="flex items-center gap-2.5">
-                      <ChanceBar kind={r.kind} chance={r.chance} />
+                      <ChanceBar
+                        share={r.chance / 1_000_000}
+                        tone={BAR[r.kind]}
+                        className="ml-[34px]"
+                      />
                       <span className="w-9 shrink-0 text-right text-[11px] text-muted-foreground tabular-nums">
-                        {Math.round(r.chance / 10)}%
+                        {chancePercent(r.chance)}
                       </span>
                     </div>
                   </li>
@@ -310,23 +316,8 @@ function Outcome({ kind }: { kind: Kind }) {
   );
 }
 
-/** How likely an ending is, as a length: N of 1,000. */
-function ChanceBar({ kind, chance }: { kind: Kind; chance: number }) {
-  return (
-    <div
-      role="img"
-      aria-label={`${chance} in 1,000`}
-      className="ml-[34px] h-1.5 flex-1 overflow-hidden rounded-full bg-secondary"
-    >
-      <div
-        className={cn(
-          "h-full rounded-full",
-          kind === "win" && "bg-positive",
-          kind === "back" && "bg-info",
-          kind === "lose" && "bg-muted-foreground/40",
-        )}
-        style={{ width: `${chance / 10}%` }}
-      />
-    </div>
-  );
-}
+const BAR: Record<Kind, string> = {
+  win: "bg-positive",
+  back: "bg-info",
+  lose: "bg-muted-foreground/40",
+};

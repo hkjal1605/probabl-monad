@@ -1,13 +1,13 @@
 "use client";
 import { Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Fragment, type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { Segmented } from "@/components/ui/segmented";
 import { DatePicker, StrikeEditor } from "@/components/worlds/Editors";
 import { EventRow, EventSearchPanel } from "@/components/worlds/EventSearch";
 import { VenueMark } from "@/components/worlds/primitives";
-import { Chip, joinParts, Sentence } from "@/components/worlds/Sentence";
+import { Chip, Sentence } from "@/components/worlds/Sentence";
 import { StockList } from "@/components/worlds/StockPicker";
 import { calendarDay, midSentence, percent, strikeText, whenDay } from "@/lib/worlds/format";
 import type { LegEntry, LegState, Stock, StockState } from "@/lib/worlds/types";
@@ -15,8 +15,10 @@ import type { LegEntry, LegState, Stock, StockState } from "@/lib/worlds/types";
 /** The world as the sentence the user said, every defining part a chip they can change in
  * place: an event's side or another event, the stock, above or below, the price, the date.
  *
- * An event not chosen yet (`null`) is a placeholder chip that cycles through `placeholders[i]`
- * (live events to start from) and opens the event search where it stands. */
+ * An event not chosen yet (`null`) is a placeholder chip showing `placeholders[i][step]` (one of
+ * the live events to start from; the caller steps every open event together) that opens the
+ * event search where it stands. The parts that move when a placeholder changes are marked
+ * `data-atom` (see `useSampleCycle`). */
 export function EditableSentence({
   legs,
   stock,
@@ -26,6 +28,7 @@ export function EditableSentence({
   onAddEvent,
   onStock,
   placeholders,
+  step = 0,
 }: {
   legs: (LegState | null)[];
   stock: StockState | null;
@@ -35,33 +38,48 @@ export function EditableSentence({
   onAddEvent: () => void;
   onStock: (stock: StockState | null) => void;
   placeholders?: LegEntry[][];
+  step?: number;
 }) {
   const chosen = legs.flatMap((l) => (l ? [l.entry.id] : []));
-  const events = joinParts(legs, (l, i) =>
-    l ? (
-      <LegChip
-        key={l.entry.id}
-        leg={l}
-        onChange={(next) => onLeg(i, next)}
-        onRemove={legs.length > 1 || placeholders ? () => onRemoveLeg(i) : null}
-      />
-    ) : (
-      <EventSlot
-        key={`slot-${i}`}
-        samples={placeholders?.[i] ?? []}
-        offsetMs={(i % 2) * 2_000}
-        exclude={chosen}
-        onPick={(entry) => onLeg(i, { entry, wantYes: true, note: null, alternatives: [] })}
-        onRemove={legs.length > 1 ? () => onRemoveLeg(i) : null}
-      />
-    ),
-  );
+  // "A", "A and B", "A, B and C".
+  const events = legs.map((l, i) => {
+    const samples = placeholders?.[i] ?? [];
+    return (
+      <Fragment key={l ? l.entry.id : `slot-${i}`}>
+        {i > 0 && (
+          <>
+            {i === legs.length - 1 && " "}
+            <Atom k={`join-${i}`}>{i === legs.length - 1 ? "and" : ","}</Atom>{" "}
+          </>
+        )}
+        {l ? (
+          <LegChip
+            leg={l}
+            onChange={(next) => onLeg(i, next)}
+            onRemove={legs.length > 1 || placeholders ? () => onRemoveLeg(i) : null}
+          />
+        ) : (
+          <EventSlot
+            atom={`slot-${i}`}
+            shown={samples.length ? samples[step % samples.length] : undefined}
+            samples={samples}
+            exclude={chosen}
+            onPick={(entry) => onLeg(i, { entry, wantYes: true, note: null, alternatives: [] })}
+            onRemove={legs.length > 1 ? () => onRemoveLeg(i) : null}
+          />
+        )}
+      </Fragment>
+    );
+  });
   return (
     <Sentence size="display">
       {stock ? (
         <>
-          If {events}, <StockChip stock={stock} onStock={onStock} /> closes{" "}
+          <Atom k="if">If</Atom> {events}
+          <Atom k="comma">,</Atom> <StockChip stock={stock} onStock={onStock} />{" "}
+          <Atom k="closes">closes</Atom>{" "}
           <Chip
+            data-atom="direction"
             tone="value"
             interactive
             className="whitespace-nowrap"
@@ -83,6 +101,7 @@ export function EditableSentence({
           <Popover>
             <PopoverTrigger
               nativeButton={false}
+              data-atom="strike"
               render={<Chip tone="value" interactive className="whitespace-nowrap" />}
             >
               {strikeText(stock.strike)}
@@ -96,10 +115,11 @@ export function EditableSentence({
               />
             </PopoverContent>
           </Popover>{" "}
-          on{" "}
+          <Atom k="on">on</Atom>{" "}
           <Popover>
             <PopoverTrigger
               nativeButton={false}
+              data-atom="date"
               render={<Chip tone="value" interactive className="whitespace-nowrap" />}
             >
               {calendarDay(stock.date)}
@@ -118,11 +138,14 @@ export function EditableSentence({
       ) : (
         <>
           {events}{" "}
-          {legs.length === 1 ? "happens" : legs.length === 2 ? "both happen" : "all happen"}
+          <Atom k="happens">
+            {legs.length === 1 ? "happens" : legs.length === 2 ? "both happen" : "all happen"}
+          </Atom>
           <AddStock onStock={onStock} dates={dates} />
         </>
       )}{" "}
       <Button
+        data-atom="add"
         variant="ghost"
         size="sm"
         className="ml-1 h-auto translate-y-[-0.18em] rounded-full px-2 py-1 align-middle text-sm font-medium text-muted-foreground"
@@ -136,54 +159,40 @@ export function EditableSentence({
   );
 }
 
-/** Steps through `count` items every 4 seconds, starting `offsetMs` later than the others; still
- * while `paused` or when the reader asked for less motion. */
-function useCycle(count: number, offsetMs: number, paused: boolean) {
-  const [index, setIndex] = useState(0);
-  useEffect(() => {
-    if (count < 2 || paused || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)
-      return;
-    let timer: ReturnType<typeof setInterval> | undefined;
-    const first = setTimeout(() => {
-      setIndex((x) => x + 1);
-      timer = setInterval(() => setIndex((x) => x + 1), 4_000);
-    }, 4_000 + offsetMs);
-    return () => {
-      clearTimeout(first);
-      clearInterval(timer);
-    };
-  }, [count, offsetMs, paused]);
-  return count ? index % count : 0;
+/** A part of the sentence that can move when a placeholder changes. */
+function Atom({ k, children }: { k: string; children: ReactNode }) {
+  return <span data-atom={k}>{children}</span>;
 }
 
-/** An event not chosen yet: a chip the size of one, showing live events it could be in turn,
+/** An event not chosen yet: a chip the size of one, showing a live event it could be (`shown`),
  * that opens the event search where it stands. */
 function EventSlot({
+  atom,
+  shown,
   samples,
-  offsetMs,
   exclude,
   onPick,
   onRemove,
 }: {
+  atom: string;
+  shown: LegEntry | undefined;
   samples: LegEntry[];
-  offsetMs: number;
   exclude: string[];
   onPick: (e: LegEntry) => void;
   onRemove: (() => void) | null;
 }) {
   const [open, setOpen] = useState(false);
-  const shown = samples[useCycle(samples.length, offsetMs, open)];
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         nativeButton={false}
         data-slot="event"
+        data-atom={atom}
+        data-sample={shown?.id ?? ""}
         aria-label="Choose an event"
         render={<Chip tone="event" interactive className="text-muted-foreground/75" />}
       >
-        <span key={shown?.id ?? "none"} className="animate-in duration-500 fade-in-0">
-          {shown ? midSentence(shown.label) : "an event"}
-        </span>
+        <Words key={shown?.id ?? ""} text={shown ? midSentence(shown.label) : "an event"} />
       </PopoverTrigger>
       <PopoverContent className="flex max-h-[min(32rem,80dvh)] w-[26rem] flex-col gap-3">
         <EventSearchPanel
@@ -213,6 +222,18 @@ function EventSlot({
   );
 }
 
+/** A placeholder's words, each its own span (with the space after it, so the chip's underline
+ * comes and goes with its words) so they can rise in one after another. */
+function Words({ text }: { text: string }) {
+  const words = text.split(" ");
+  return words.map((word, i) => (
+    // biome-ignore lint/suspicious/noArrayIndexKey: a word's place is its identity (words repeat).
+    <span key={i} data-word>
+      {i < words.length - 1 ? `${word} ` : word}
+    </span>
+  ));
+}
+
 function LegChip({
   leg,
   onChange,
@@ -228,6 +249,7 @@ function LegChip({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         nativeButton={false}
+        data-atom={`leg-${e.id}`}
         render={<Chip tone={leg.wantYes ? "event" : "no"} interactive />}
       >
         {midSentence(e.label)}
@@ -286,17 +308,15 @@ function LegChip({
   );
 }
 
-function StockChip({
-  stock,
-  onStock,
-}: {
-  stock: StockState;
-  onStock: (s: StockState | null) => void;
-}) {
+function StockChip({ stock, onStock }: { stock: StockState; onStock: (s: StockState) => void }) {
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger nativeButton={false} render={<Chip tone="stock" interactive />}>
+      <PopoverTrigger
+        nativeButton={false}
+        data-atom="stock"
+        render={<Chip tone="stock" interactive />}
+      >
         {stock.symbol}
       </PopoverTrigger>
       <PopoverContent className="flex flex-col gap-2">
@@ -316,17 +336,6 @@ function StockChip({
             });
           }}
         />
-        <Button
-          variant="ghost"
-          size="sm"
-          className="self-start text-muted-foreground"
-          onClick={() => {
-            setOpen(false);
-            onStock(null);
-          }}
-        >
-          No stock: just the events
-        </Button>
       </PopoverContent>
     </Popover>
   );
@@ -344,6 +353,7 @@ function AddStock({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         nativeButton={false}
+        data-atom="add-stock"
         render={
           <span className="ml-[0.3em] cursor-pointer rounded-[0.32em] border border-dashed border-border px-[0.28em] text-[0.7em] align-[0.12em] text-muted-foreground hover:text-foreground" />
         }

@@ -1,7 +1,7 @@
 import { Check, Link2, TrendingDown, TrendingUp, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { percent, perThousand } from "@/lib/worlds/format";
+import { chancePercent } from "@/lib/worlds/format";
 import type { Venue } from "@/lib/worlds/types";
 import { EventThumb } from "./primitives";
 
@@ -17,8 +17,10 @@ export interface ChainLeg {
   image?: string | null;
 }
 
-/** How likely a world is, walked on one base of 1,000: each event in turn, then the stock. In
- * Tversky and Kahneman's studies this sequence cut misjudged joint chances from 65% to 11%. */
+/** How likely a world is, walked from all futures: each event in turn, then the stock, each step
+ * the share of all futures still in the world (and, beside it, its own chance given the steps
+ * before it). In Tversky and Kahneman's studies this sequence cut misjudged joint chances from 65%
+ * to 11%. */
 export function ChanceChain({
   legs,
   chain,
@@ -41,7 +43,13 @@ export function ChanceChain({
   className?: string | undefined;
 }) {
   const open = legs.filter((l) => !l.passed);
-  const rows: { id: string; count: number; icon: ReactNode; label: ReactNode; of: string }[] = [];
+  const rows: {
+    id: string;
+    count: number;
+    icon: ReactNode;
+    label: ReactNode;
+    of: string | null;
+  }[] = [];
   open.forEach((leg, k) => {
     const value = chain[k] ?? null;
     if (value === null) return;
@@ -56,7 +64,8 @@ export function ChanceChain({
           <span className="truncate">{leg.label}</span>
         </span>
       ),
-      of: percent(value / Math.max(1, previous)),
+      // The first step's own chance is its share of all futures: said once.
+      of: k === 0 ? null : chancePercent((1_000_000 * value) / Math.max(1, previous)),
     });
   });
   if (stock) {
@@ -73,7 +82,7 @@ export function ChanceChain({
         </span>
       ),
       label: <span className="truncate">{stock.words}</span>,
-      of: percent(stock.chance / Math.max(1, world)),
+      of: chancePercent((1_000_000 * stock.chance) / Math.max(1, world)),
     });
   }
   const passed = legs.filter((l) => l.passed);
@@ -95,9 +104,7 @@ export function ChanceChain({
           <div className="flex min-w-0 flex-1 flex-col gap-1.5">
             <div className="flex items-baseline justify-between gap-3">
               <span className="text-sm text-muted-foreground">All futures</span>
-              <span className="text-base font-medium text-muted-foreground tabular-nums">
-                1,000
-              </span>
+              <span className="text-base font-medium text-muted-foreground tabular-nums">100%</span>
             </div>
             <Bar share={1} tone="bg-muted-foreground/25" />
           </div>
@@ -109,14 +116,18 @@ export function ChanceChain({
               <div className="flex items-baseline justify-between gap-3">
                 <span className="min-w-0 text-sm">{r.label}</span>
                 <span className="flex shrink-0 items-baseline gap-2">
-                  <span className="text-xs text-muted-foreground tabular-nums">{r.of}</span>
+                  {r.of && (
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {r.of} of those
+                    </span>
+                  )}
                   <span
                     className={cn(
-                      "w-12 text-right text-base font-medium tabular-nums",
+                      "w-14 text-right text-base font-medium tabular-nums",
                       i === rows.length - 1 && "text-positive",
                     )}
                   >
-                    {perThousand(r.count)}
+                    {chancePercent(r.count)}
                   </span>
                 </span>
               </div>
@@ -145,7 +156,7 @@ export function ChanceChain({
               className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 text-xs text-muted-foreground tabular-nums"
             >
               <Link2 className="size-3.5" />
-              {perThousand(last)} linked vs {perThousand(unrelated)} unlinked
+              {chancePercent(last)} linked vs {chancePercent(unrelated)} unlinked
               {last > unrelated ? (
                 <TrendingUp className="size-3.5 text-positive" />
               ) : (

@@ -25,8 +25,8 @@ import { useWorldAccount } from "@/hooks/useWorldAccount";
 import { cn } from "@/lib/utils";
 import {
   calendarDay,
+  chancePercent,
   dollars,
-  inThousand,
   money,
   multiple,
   shortWallet,
@@ -325,7 +325,7 @@ export function WorldTicket({
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
               <span className="flex items-center gap-2">
                 <MiniRing chance={offer.win} />
-                <span className="tabular-nums">{inThousand(offer.win)}</span>
+                <span className="tabular-nums">{chancePercent(offer.win)} chance</span>
               </span>
               <span className="flex items-center gap-1.5 text-muted-foreground">
                 <CalendarDays className="size-4" aria-hidden />
@@ -376,7 +376,7 @@ export function WorldTicket({
                 checked={ack}
                 onCheckedChange={(v) => setAck(v === true)}
               />
-              <span>Pays only {inThousand(offer.win)} times. Got it.</span>
+              <span>Pays only {chancePercent(offer.win)} of the time. Got it.</span>
             </label>
           )}
         </>

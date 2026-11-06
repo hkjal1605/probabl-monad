@@ -23,7 +23,7 @@ import { Composer } from "@/components/worlds/Composer";
 import { defaultStrike, EditableSentence } from "@/components/worlds/EditableSentence";
 import { EventRow, EventSearchDialog } from "@/components/worlds/EventSearch";
 import { LegRow } from "@/components/worlds/LegRow";
-import { DotGrid, OutcomeTable } from "@/components/worlds/Outcomes";
+import { OutcomeTable } from "@/components/worlds/Outcomes";
 import { WorldTicket } from "@/components/worlds/WorldTicket";
 import { useMaxTenor } from "@/hooks/useWorlds";
 import { cn } from "@/lib/utils";
@@ -512,8 +512,7 @@ export function WorldBuilder() {
               Outcomes
             </Heading>
             {offer ? (
-              <div className="flex flex-col gap-5 rounded-3xl bg-card p-4 ring-1 ring-border sm:p-5">
-                <DotGrid endings={offer.endings} />
+              <div className="rounded-3xl bg-card p-4 ring-1 ring-border sm:p-5">
                 <OutcomeTable
                   offer={offer}
                   priced={priced}
