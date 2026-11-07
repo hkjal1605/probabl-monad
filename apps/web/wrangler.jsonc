@@ -15,11 +15,11 @@
   "keep_names": false,
   "workers_dev": true,
   "preview_urls": false,
-  // The link preview's video goes through worker.ts, which answers byte ranges (iOS needs them).
+  // The link previews' videos go through worker.ts, which answers byte ranges (iOS needs them).
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS",
-    "run_worker_first": ["/og-video.mp4"]
+    "run_worker_first": ["/og-video.mp4", "/og-worlds.mp4"]
   },
   "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "probabl-ui" }],
   "observability": { "enabled": true },

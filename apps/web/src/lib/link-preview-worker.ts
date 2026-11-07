@@ -1,4 +1,4 @@
-import { PREVIEW_VIDEO } from "./link-preview";
+import { PREVIEW_VIDEO, PREVIEW_VIDEO_PATHS } from "./link-preview";
 
 // The link preview's two jobs in the deployed worker (worker.ts), outside Next.
 
@@ -26,14 +26,17 @@ export function byteRange(
 }
 
 /**
- * Answers `/og-video.mp4` (routed here first by wrangler.jsonc `assets.run_worker_first`): the
- * static asset, with byte ranges, which Cloudflare's asset server doesn't honour. iOS plays video
- * (the iMessage preview included) only from a server that answers ranges with 206.
+ * Answers a preview video (`/og-video.mp4`, `/og-worlds.mp4`: routed here first by wrangler.jsonc
+ * `assets.run_worker_first`): the static asset, with byte ranges, which Cloudflare's asset server
+ * doesn't honour. iOS plays video (the iMessage preview included) only from a server that answers
+ * ranges with 206.
  */
 export async function servePreviewVideo(request: Request, assets: Fetcher): Promise<Response> {
   if (request.method !== "GET" && request.method !== "HEAD")
     return new Response(null, { status: 405, headers: { allow: "GET, HEAD" } });
-  const asset = await assets.fetch(new URL(PREVIEW_VIDEO.path, request.url));
+  const asked = new URL(request.url).pathname;
+  const path = PREVIEW_VIDEO_PATHS.includes(asked) ? asked : PREVIEW_VIDEO.path;
+  const asset = await assets.fetch(new URL(path, request.url));
   if (!asset.ok) return asset;
   const headers = new Headers({
     "accept-ranges": "bytes",
