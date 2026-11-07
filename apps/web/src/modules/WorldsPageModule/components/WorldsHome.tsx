@@ -45,7 +45,7 @@ export function WorldsHome() {
     <div className="flex flex-col gap-12 sm:gap-16">
       {/* Say it */}
       {/* As wide as the cards below it: the sentence gets the room to read in fewer, larger lines. */}
-      <section className="mx-auto flex w-full flex-col items-center gap-7 pt-4 text-center sm:pt-12">
+      <section className="mx-auto flex w-full flex-col items-center gap-5 pt-4 text-center sm:gap-7 sm:pt-12">
         <h1 className="text-[40px] leading-[1.02] font-medium tracking-[-0.035em] sm:text-[64px]">
           Bet on your <span className="text-brand-strong">what&nbsp;if.</span>
         </h1>

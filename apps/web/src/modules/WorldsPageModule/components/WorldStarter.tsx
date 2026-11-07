@@ -179,7 +179,8 @@ export function WorldStarter({
       <EditableSentence
         legs={shownLegs}
         stock={shownStock}
-        className="leading-[1.55] sm:leading-[1.5] lg:text-[42px] lg:leading-[1.5]"
+        // A size smaller on a phone, so the sentence and its button fit the first screen.
+        className="text-[24px] leading-[1.5] sm:text-[36px] sm:leading-[1.5] lg:text-[42px] lg:leading-[1.5]"
         dates={worldDates(ends, maxTenor)}
         placeholders={placeholders}
         step={step}
@@ -275,8 +276,8 @@ export function WorldStarter({
   return (
     // No box around it: the sentence sits on the page under the headline, centred like it, with
     // the one action under it.
-    <div className="flex w-full flex-col items-center gap-7 text-center sm:gap-9">
-      <div className="flex w-full flex-col items-center gap-5">
+    <div className="flex w-full flex-col items-center gap-6 text-center sm:gap-9">
+      <div className="flex w-full flex-col items-center gap-4 sm:gap-5">
         {showing ? (
           // The sentence as it is, over the same sentence laid out for every set shown (unseen):
           // the cell keeps the tallest one's height while they change.
@@ -319,6 +320,8 @@ export function WorldStarter({
   );
 }
 
+const quietMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+
 /** The sentence's shape while the stock list loads. */
 function StarterSkeleton() {
   return (
@@ -332,7 +335,9 @@ function StarterSkeleton() {
 /** The curated worlds by name, under the sentence: the one on screen underlined (the line glides
  * to the next as the sentence turns), a tap fills the sentence with it and ends the turning.
  * Short labels as the indicators of the turning sentence: they say what each world is and give
- * a way to stop it (WCAG 2.2.2); the details are in the sentence itself, and in each tooltip. */
+ * a way to stop it (WCAG 2.2.2); the details are in the sentence itself, and in each tooltip.
+ * One line on every screen: where the names don't fit it scrolls sideways, keeping the one on
+ * screen in view. */
 function StoryTabs({
   worlds,
   active,
@@ -358,6 +363,13 @@ function StoryTabs({
       });
     };
     place();
+    // The row scrolls itself only (never the page) to keep the one on screen in view.
+    const tab = el.querySelectorAll<HTMLElement>("[data-story]")[active];
+    if (tab && el.scrollWidth > el.clientWidth)
+      el.scrollTo({
+        left: tab.offsetLeft - (el.clientWidth - tab.offsetWidth) / 2,
+        behavior: quietMotion() ? "auto" : "smooth",
+      });
     const observer = new ResizeObserver(place);
     observer.observe(el);
     return () => observer.disconnect();
@@ -367,8 +379,8 @@ function StoryTabs({
       ref={row}
       role="toolbar"
       aria-label="Example worlds"
-      // Two by two on a phone (four names don't fit one line there), one line from sm up.
-      className="relative grid grid-cols-2 justify-items-center gap-x-8 gap-y-1.5 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-5"
+      // On a phone the names spread across the sentence's width (their gaps give way first).
+      className="relative flex w-full max-w-full items-center justify-between gap-x-2 overflow-x-auto overscroll-x-contain pb-1 sm:w-auto sm:justify-center-safe sm:gap-x-5"
     >
       {worlds.map((w, i) => (
         <Button
@@ -380,7 +392,7 @@ function StoryTabs({
           title={`${w.short.join(" + ")} → ${w.stock.symbol} ${w.stock.direction} ${strikeText(w.stock.strike)}`}
           onClick={() => onPick(w)}
           className={cn(
-            "h-7 rounded-none px-0 text-sm font-medium transition-colors hover:bg-transparent hover:text-foreground dark:hover:bg-transparent",
+            "h-8 shrink-0 rounded-none px-0 text-[13px] font-medium transition-colors hover:bg-transparent hover:text-foreground max-[374px]:text-xs sm:h-7 sm:text-sm dark:hover:bg-transparent",
             i === active ? "text-foreground" : "text-muted-foreground",
           )}
         >

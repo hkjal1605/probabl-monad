@@ -6,13 +6,13 @@ import { useMemberAccount } from "@/components/providers/WalletProvider";
 import { Button } from "@/components/ui/button";
 import { DataError, EmptyState } from "@/components/ui/page";
 import { Segmented } from "@/components/ui/segmented";
-import { toast } from "@/components/ui/toast";
 import { ChanceChain } from "@/components/worlds/ChanceChain";
 import { LegRow } from "@/components/worlds/LegRow";
 import { OutcomeTable } from "@/components/worlds/Outcomes";
 import { ActivityList, HolderList } from "@/components/worlds/People";
 import { SectionTitle, WalletDot } from "@/components/worlds/primitives";
 import { WorldSentence } from "@/components/worlds/Sentence";
+import { shareLink } from "@/components/worlds/share";
 import { WorldTicket } from "@/components/worlds/WorldTicket";
 import { useBook, useFills, useHolders, useRead } from "@/hooks/useWorlds";
 import {
@@ -99,12 +99,7 @@ export function WorldDetail({ book: raw }: { book: string }) {
       .map((l) => l.venue?.endTime)
       .filter(Boolean)
       .sort()[0] ?? null;
-  const share = () => {
-    void navigator.clipboard?.writeText(window.location.href).then(
-      () => toast.add({ type: "success", title: "Link copied" }),
-      () => {},
-    );
-  };
+  const share = () => void shareLink(window.location.href, b.title ?? undefined);
   const ownWords = sentence ? `${b.opinion?.sentence ?? b.title ?? ""}`.replace(/\.$/, "") : "";
 
   return (

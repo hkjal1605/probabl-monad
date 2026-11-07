@@ -3,12 +3,12 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "@/components/ui/toast";
 import { WorldSentence } from "@/components/worlds/Sentence";
@@ -273,12 +273,19 @@ function CashOutDialog({
       .catch((e: Error) => setError(e.message));
   }, [open]);
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Cash out now</DialogTitle>
-          <DialogDescription>The vault buys your position back at its bid.</DialogDescription>
-        </DialogHeader>
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent
+        className="sm:max-w-sm"
+        sheetClassName="gap-5"
+        header={
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>Cash out now</ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>
+              The vault buys your position back at its bid.
+            </ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
+        }
+      >
         {error ? (
           <p className="text-sm text-danger">{error}</p>
         ) : !quote ? (
@@ -315,7 +322,7 @@ function CashOutDialog({
           {account.busy && <Spinner data-icon="inline-start" />}
           Cash out
         </Button>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

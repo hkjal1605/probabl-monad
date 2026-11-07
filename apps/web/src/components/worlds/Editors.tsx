@@ -2,6 +2,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useInSheet } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
@@ -25,7 +26,8 @@ export function roundStrike(usd: number) {
   return value.toFixed(step < 1 ? 2 : 0);
 }
 
-/** The stock's price for the world: typed, or slid around spot, with the move it means. */
+/** The stock's price for the world: typed, or slid around spot, with the move it means. In a
+ * bottom sheet its steps are one row of thumb-sized buttons. */
 export function StrikeEditor({
   strike,
   spot,
@@ -38,10 +40,11 @@ export function StrikeEditor({
   onChange: (strike: string) => void;
 }) {
   const [text, setText] = useState(strike);
+  const sheet = useInSheet();
   const value = Number(strike);
   const move = spot ? (value / spot - 1) * 100 : null;
   return (
-    <div className="flex flex-col gap-3">
+    <div className={cn("flex flex-col gap-3", sheet && "gap-4")}>
       <div className="flex items-center gap-2">
         <span className="text-sm text-muted-foreground">Closes {direction}</span>
         <div className="relative flex-1">
@@ -51,8 +54,9 @@ export function StrikeEditor({
           <Input
             value={text}
             inputMode="decimal"
+            enterKeyHint="done"
             aria-label="The stock's price"
-            className="pl-6 tabular-nums"
+            className={cn("pl-6 tabular-nums", sheet && "h-11 text-base")}
             onChange={(e) => {
               const t = e.target.value.replace(/[^\d.]/g, "");
               setText(t);
@@ -64,6 +68,9 @@ export function StrikeEditor({
       {spot !== null && (
         <>
           <Slider
+            // Sliding it sideways in a sheet is not a swipe to close the sheet.
+            data-base-ui-swipe-ignore=""
+            className={sheet ? "py-2" : ""}
             min={-30}
             max={30}
             step={0.5}
@@ -90,12 +97,13 @@ export function StrikeEditor({
               {move === null ? "" : `${move > 0 ? "+" : ""}${move.toFixed(1)}% from now`}
             </span>
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className={sheet ? "grid grid-cols-6 gap-1.5" : "flex flex-wrap gap-1.5"}>
             {[-10, -5, 0, 5, 10, 20].map((p) => (
               <Button
                 key={p}
-                size="xs"
+                size={sheet ? "sm" : "xs"}
                 variant="secondary"
+                className={sheet ? "h-10 px-0 text-sm" : ""}
                 onClick={() => {
                   const next = roundStrike(spot * (1 + p / 100));
                   setText(next);
@@ -125,7 +133,7 @@ function addMonths(month: string, n: number) {
 const WEEKDAYS = ["M", "T", "W", "T", "F"];
 
 /** Weekday closes from `earliest` to `lastDate`, a month at a time; the first close after every
- * event outlined, and one tap away. */
+ * event outlined, and one tap away. In a bottom sheet its days are thumb-sized. */
 export function DatePicker({
   value,
   earliest,
@@ -161,11 +169,12 @@ export function DatePicker({
     return out;
   }, [month]);
   const jump = suggested && suggested >= earliest && suggested <= lastDate ? suggested : null;
+  const sheet = useInSheet();
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <Button
-          size="icon-sm"
+          size={sheet ? "icon" : "icon-sm"}
           variant="ghost"
           aria-label="Previous month"
           disabled={month <= first}
@@ -177,7 +186,7 @@ export function DatePicker({
           {monthName.format(new Date(`${month}-01T12:00:00Z`))}
         </span>
         <Button
-          size="icon-sm"
+          size={sheet ? "icon" : "icon-sm"}
           variant="ghost"
           aria-label="Next month"
           disabled={month >= last}
@@ -209,7 +218,8 @@ export function DatePicker({
               aria-label={calendarDay(d)}
               aria-pressed={d === value}
               className={cn(
-                "h-9 rounded-xl tabular-nums",
+                "rounded-xl tabular-nums",
+                sheet ? "h-11 text-base" : "h-9",
                 d === jump && d !== value && "ring-1 ring-primary/60",
               )}
               onClick={() => onChange(d)}
@@ -224,7 +234,10 @@ export function DatePicker({
         {jump && jump !== value && (
           <button
             type="button"
-            className="font-medium text-primary hover:underline"
+            className={cn(
+              "font-medium text-primary hover:underline",
+              sheet && "-my-2 py-2 text-sm",
+            )}
             onClick={() => {
               onChange(jump);
               setMonth(jump.slice(0, 7));

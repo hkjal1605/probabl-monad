@@ -81,7 +81,7 @@ export function ChanceChain({
           {stock.symbol?.slice(0, 2) ?? "$"}
         </span>
       ),
-      label: <span className="truncate">{stock.words}</span>,
+      label: <span className="min-w-0 truncate">{stock.words}</span>,
       of: chancePercent((1_000_000 * stock.chance) / Math.max(1, world)),
     });
   }
@@ -114,10 +114,10 @@ export function ChanceChain({
             {r.icon}
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               <div className="flex items-baseline justify-between gap-3">
-                <span className="min-w-0 text-sm">{r.label}</span>
+                <span className="flex min-w-0 text-sm">{r.label}</span>
                 <span className="flex shrink-0 items-baseline gap-2">
                   {r.of && (
-                    <span className="text-xs text-muted-foreground tabular-nums">
+                    <span className="hidden text-xs text-muted-foreground tabular-nums sm:inline">
                       {r.of} of those
                     </span>
                   )}
@@ -135,6 +135,12 @@ export function ChanceChain({
                 share={r.count / 1_000_000}
                 tone={i === rows.length - 1 ? "bg-positive" : "bg-foreground/60"}
               />
+              {/* A phone's row is too narrow for both numbers beside the words. */}
+              {r.of && (
+                <span className="text-[11px] leading-3 text-muted-foreground tabular-nums sm:hidden">
+                  {r.of} of those
+                </span>
+              )}
             </div>
           </li>
         ))}

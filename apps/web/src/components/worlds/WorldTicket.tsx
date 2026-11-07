@@ -19,7 +19,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { toast } from "@/components/ui/toast";
 import { explorerFor, protocolConfig, worldsEnabled } from "@/config/protocol";
 import { useWorldAccount } from "@/hooks/useWorldAccount";
 import { cn } from "@/lib/utils";
@@ -43,6 +42,7 @@ import type { BookView, Preview, Spec } from "@/lib/worlds/types";
 import { worldsApi } from "@/services/worlds-api";
 import { Fact } from "./primitives";
 import { type SentenceWorld, WorldSentence } from "./Sentence";
+import { shareLink } from "./share";
 
 export type TicketWorld =
   | { kind: "draft"; spec: Spec; preview: Preview | null; pricing: boolean }
@@ -276,12 +276,13 @@ export function WorldTicket({
 
       {offer && !offer.decline && (
         <>
-          <div className="flex flex-wrap gap-1.5">
+          {/* One row: four stakes and a field for another, sharing the ticket's width. */}
+          <div className="grid grid-cols-[repeat(4,minmax(0,1fr))_minmax(0,1.35fr)] gap-1.5 sm:flex sm:flex-wrap">
             {STAKES[selected].map((s) => (
               <Button
                 key={s}
                 size="sm"
-                className="rounded-full px-3.5"
+                className="h-9 rounded-full px-2 sm:h-7 sm:px-3.5"
                 variant={stake === s && !custom ? "default" : "secondary"}
                 onClick={() => {
                   setCustom("");
@@ -296,7 +297,8 @@ export function WorldTicket({
               inputMode="decimal"
               placeholder="$ other"
               aria-label="Other stake in dollars"
-              className="h-7 w-24 rounded-full px-3.5 text-sm"
+              enterKeyHint="done"
+              className="h-9 w-full rounded-full px-3 text-base sm:h-7 sm:w-24 sm:px-3.5 sm:text-sm"
               onChange={(e) => {
                 const text = e.target.value.replace(/[^\d.]/g, "");
                 setCustom(text);
@@ -624,13 +626,7 @@ function Receipt({
   className?: string | undefined;
 }) {
   const explorer = explorerFor(protocolConfig);
-  const share = () => {
-    const url = `${window.location.origin}/worlds/${receipt.book}`;
-    void navigator.clipboard?.writeText(url).then(
-      () => toast.add({ type: "success", title: "Link copied" }),
-      () => toast.add({ type: "error", title: url }),
-    );
-  };
+  const share = () => void shareLink(`${window.location.origin}/worlds/${receipt.book}`);
   return (
     <section
       className={cn(
