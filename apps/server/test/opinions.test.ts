@@ -1040,6 +1040,7 @@ test("curated worlds: shown only while open, liquid, priced and inside the tenor
   const end = "2027-01-01T04:59:00.000Z";
   const world = (story: string, legs: string[], underlying = "US:NVDA") => ({
     story,
+    short: ["A", "B"] as [string, string],
     legs,
     underlying,
     direction: "above" as const,

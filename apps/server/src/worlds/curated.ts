@@ -11,8 +11,10 @@ import { tradingDay } from "@conditional-stocks/world-keeper/src/model/fixing.ts
 import { closeOf, newYorkDate, nextClose, type OpinionSpec } from "./opinion.ts";
 
 export interface CuratedWorld {
-  /** What it is about (for the record; the page shows only the venue's words). */
+  /** What it is about (for the record; the sentence shows only the venue's words). */
   story: string;
+  /** Its events in a word or two each, for the page's one-tap buttons. */
+  short: [string, string];
   /** Catalog ids, each wanted to happen, in the sentence's order. */
   legs: string[];
   underlying: string;
@@ -28,6 +30,7 @@ export interface CuratedWorld {
 export const CURATED_WORLDS: CuratedWorld[] = [
   {
     story: "AI boom",
+    short: ["Anthropic IPO", "NVIDIA #1"],
     // Anthropic IPO by December 31, 2026; NVIDIA the largest company on December 31.
     legs: ["polymarket:2413330", "polymarket:676739"],
     underlying: "US:NVDA",
@@ -36,6 +39,7 @@ export const CURATED_WORLDS: CuratedWorld[] = [
   },
   {
     story: "Crypto comeback",
+    short: ["Bitcoin $90k", "Fed holds"],
     // Bitcoin reach $90,000 by December 31, 2026; no change in Fed rates in January 2027.
     legs: ["polymarket:1345531", "polymarket:3215012"],
     underlying: "US:COIN",
@@ -44,6 +48,7 @@ export const CURATED_WORLDS: CuratedWorld[] = [
   },
   {
     story: "Rate shock",
+    short: ["Another hike", "CPI over 3.8%"],
     // Another Fed rate hike in 2026; CPI above 3.8% for the year to November 2026.
     legs: ["polymarket:4620900", "kalshi:KXCPIYOY-26NOV-T3.8"],
     underlying: "US:QQQ",
@@ -52,6 +57,7 @@ export const CURATED_WORLDS: CuratedWorld[] = [
   },
   {
     story: "Apple's crown",
+    short: ["Apple #1", "Fed holds"],
     // Apple the largest company on December 31; no change in Fed rates in January 2027.
     legs: ["polymarket:676741", "polymarket:3215012"],
     underlying: "US:AAPL",

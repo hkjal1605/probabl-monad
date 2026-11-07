@@ -349,12 +349,15 @@ export function mountOpinions(
     const priced = await Promise.all(
       shown.map(({ spec }) => previewOf(spec, 20n * quoteUnit, 100n * quoteUnit).catch(() => null)),
     );
-    const worlds = priced.filter(
-      (p): p is NonNullable<typeof p> =>
-        p !== null &&
+    // Each priced world with its story and its events' short names (the one-tap buttons).
+    const worlds = shown.flatMap(({ world }, i) => {
+      const p = priced[i];
+      const quoted =
+        p &&
         p.problems.length === 0 &&
-        (p.offer ?? []).some((o) => o.name === "All-in" && !o.decline),
-    );
+        (p.offer ?? []).some((o) => o.name === "All-in" && !o.decline);
+      return quoted ? [{ ...p, curated: { story: world.story, short: world.short } }] : [];
+    });
     return worlds.length >= 2 ? worlds : [];
   };
   const readSamples = async () => {

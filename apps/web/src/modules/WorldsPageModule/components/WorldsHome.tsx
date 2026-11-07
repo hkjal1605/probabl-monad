@@ -1,11 +1,9 @@
 "use client";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, RotateCcw } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { ArrowRight, RotateCcw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EXAMPLES } from "@/components/worlds/Composer";
 import { WorldCard } from "@/components/worlds/WorldCard";
 import { worldsEnabled } from "@/config/protocol";
 import { useStocks, useWorldsFeed } from "@/hooks/useWorlds";
@@ -20,16 +18,8 @@ const SORT_KEYS: Record<(typeof SORTS)[number], string> = {
   New: "new",
 };
 
-/** The opinions of `EXAMPLES`, as a glance reads them: an event, then the stock's move. */
-const STARTERS = [
-  { event: "Fed cuts", symbol: "NVDA", up: true, price: "$200" },
-  { event: "No shutdown", symbol: "BTC", up: true, price: "$120k" },
-  { event: "Hot CPI", symbol: "SPY", up: false, price: "$650" },
-].map((s, i) => ({ ...s, text: EXAMPLES.at(i) ?? "" }));
-
 /** The worlds home: where a world starts (someone's words) and every world people trade. */
 export function WorldsHome() {
-  const router = useRouter();
   const [sort, setSort] = useState<(typeof SORTS)[number]>("Live");
   const [shown, setShown] = useState<ShownWorld | null>(null);
   const [stock, setStock] = useState("");
@@ -39,7 +29,6 @@ export function WorldsHome() {
     () => new Map((listed.data ?? []).map((s) => [s.underlying, s.logo] as const)),
     [listed.data],
   );
-  const start = (text: string) => router.push(`/worlds/new?q=${encodeURIComponent(text)}`);
   const stocks = useMemo(() => {
     const seen = new Map<string, string>();
     for (const w of feed.data ?? [])
@@ -55,7 +44,8 @@ export function WorldsHome() {
   return (
     <div className="flex flex-col gap-12 sm:gap-16">
       {/* Say it */}
-      <section className="mx-auto flex w-full max-w-3xl flex-col items-center gap-7 pt-4 text-center sm:pt-12">
+      {/* As wide as the cards below it: the sentence gets the room to read in fewer, larger lines. */}
+      <section className="mx-auto flex w-full flex-col items-center gap-7 pt-4 text-center sm:pt-12">
         <h1 className="text-[40px] leading-[1.02] font-medium tracking-[-0.035em] sm:text-[64px]">
           Bet on your <span className="text-brand-strong">what&nbsp;if.</span>
         </h1>
@@ -66,24 +56,6 @@ export function WorldsHome() {
         )}
         <div id="say" className="w-full">
           <WorldStarter onShown={setShown} />
-        </div>
-        {/* Ready-made worlds, one tap each. */}
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          {STARTERS.map((s) => (
-            <Button
-              key={s.text}
-              variant="secondary"
-              title={s.text}
-              onClick={() => start(s.text)}
-              className="h-9 gap-2 rounded-full px-3.5"
-            >
-              <span>{s.event}</span>
-              <ArrowRight className="size-3.5 text-muted-foreground" aria-hidden />
-              <span className="font-semibold">{s.symbol}</span>
-              <Move up={s.up} />
-              <span className="tabular-nums">{s.price}</span>
-            </Button>
-          ))}
         </div>
       </section>
 
@@ -172,13 +144,5 @@ export function WorldsHome() {
         )}
       </section>
     </div>
-  );
-}
-
-function Move({ up }: { up: boolean }) {
-  return up ? (
-    <ArrowUpRight className="size-4 text-positive" aria-label="above" />
-  ) : (
-    <ArrowDownRight className="size-4 text-danger" aria-label="below" />
   );
 }

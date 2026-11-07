@@ -29,6 +29,7 @@ export function EditableSentence({
   onStock,
   placeholders,
   step = 0,
+  className,
 }: {
   legs: (LegState | null)[];
   stock: StockState | null;
@@ -39,6 +40,8 @@ export function EditableSentence({
   onStock: (stock: StockState | null) => void;
   placeholders?: LegEntry[][];
   step?: number;
+  /** Type size or leading for a page that gives the sentence more room. */
+  className?: string;
 }) {
   const chosen = legs.flatMap((l) => (l ? [l.entry.id] : []));
   // "A", "A and B", "A, B and C".
@@ -72,7 +75,7 @@ export function EditableSentence({
     );
   });
   return (
-    <Sentence size="display">
+    <Sentence size="display" className={className}>
       {stock ? (
         <>
           <Atom k="if">If</Atom> {events}

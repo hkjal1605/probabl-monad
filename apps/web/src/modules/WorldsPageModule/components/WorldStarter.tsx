@@ -1,12 +1,14 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { defaultStrike, EditableSentence } from "@/components/worlds/EditableSentence";
 import { useSampleCycle } from "@/hooks/useSampleCycle";
 import { useMaxTenor, useRead, useStocks } from "@/hooks/useWorlds";
+import { cn } from "@/lib/utils";
 import { clampDate, monthAhead, nyDate, weekdayFrom, worldDates } from "@/lib/worlds/dates";
+import { strikeText } from "@/lib/worlds/format";
 import { specOf, stashStart } from "@/lib/worlds/start";
 import type { LegEntry, LegState, Preview, Stock, StockState } from "@/lib/worlds/types";
 import { worldsApi } from "@/services/worlds-api";
@@ -20,22 +22,37 @@ interface Curated {
   legs: LegState[];
   stock: StockState;
   preview: Preview;
+  /** What it is about ("AI boom"), its events in a word or two each, and its spec as the cards
+   * key it. */
+  story: string;
+  short: string[];
+  key: string;
 }
 const curatedOf = (p: Preview): Curated | null => {
   const s = p.world.stock;
   if (!s) return null;
+  const legs = p.world.legs.map((l) => ({
+    entry: l,
+    wantYes: l.wantYes,
+    note: null,
+    alternatives: [],
+  }));
+  const stock = {
+    underlying: s.underlying,
+    symbol: s.symbol,
+    name: s.name,
+    direction: s.direction,
+    strike: s.strike,
+    date: s.date,
+    spot: s.spot,
+  };
   return {
-    legs: p.world.legs.map((l) => ({ entry: l, wantYes: l.wantYes, note: null, alternatives: [] })),
-    stock: {
-      underlying: s.underlying,
-      symbol: s.symbol,
-      name: s.name,
-      direction: s.direction,
-      strike: s.strike,
-      date: s.date,
-      spot: s.spot,
-    },
+    legs,
+    stock,
     preview: p,
+    story: p.curated?.story ?? s.symbol,
+    short: p.curated?.short ?? p.world.legs.map((l) => l.label),
+    key: JSON.stringify(specOf(legs, stock)),
   };
 };
 
@@ -162,6 +179,7 @@ export function WorldStarter({
       <EditableSentence
         legs={shownLegs}
         stock={shownStock}
+        className="leading-[1.55] sm:leading-[1.5] lg:text-[42px] lg:leading-[1.5]"
         dates={worldDates(ends, maxTenor)}
         placeholders={placeholders}
         step={step}
@@ -194,6 +212,21 @@ export function WorldStarter({
 
   // The world on screen (and the next one, to price ahead): a curated world with its price, or
   // the chosen events with each open one as the sample it shows.
+  /** A one-tap button's world: its events, stock, target and date fill the sentence. */
+  const pick = (c: Curated) => {
+    setAdopted(true);
+    setOwnStock(true);
+    setStock(c.stock);
+    setLegs(c.legs);
+  };
+  // The curated world the sentence now holds, if it is one (its button shows picked, and the
+  // cards take its known price).
+  const held = useMemo(() => {
+    if (touring || !stock || legs.some((l) => l === null)) return null;
+    const key = JSON.stringify(specOf(legs as LegState[], stock));
+    return tour.find((c) => c.key === key) ?? null;
+  }, [touring, tour, legs, stock]);
+
   const shown = useMemo<ShownWorld | null>(() => {
     if (!showing) return null;
     if (touring) {
@@ -216,8 +249,9 @@ export function WorldStarter({
       return withSamples.length ? specOf(withSamples, stock) : null;
     };
     const spec = specAt(cycle.step);
-    return spec ? { spec, next: sets > 1 ? specAt(cycle.step + 1) : null } : null;
-  }, [showing, touring, tour, cycle.step, legs, placeholders, stock, sets]);
+    if (!spec) return null;
+    return { spec, next: sets > 1 ? specAt(cycle.step + 1) : null, preview: held?.preview };
+  }, [showing, touring, tour, cycle.step, legs, placeholders, stock, sets, held]);
   useEffect(() => {
     onShown?.(shown);
   }, [shown, onShown]);
@@ -242,32 +276,41 @@ export function WorldStarter({
     // No box around it: the sentence sits on the page under the headline, centred like it, with
     // the one action under it.
     <div className="flex w-full flex-col items-center gap-7 text-center sm:gap-9">
-      {showing ? (
-        // The sentence as it is, over the same sentence laid out for every set shown (unseen):
-        // the cell keeps the tallest one's height while they change.
-        <div className="grid *:[grid-area:1/1]">
-          <div ref={live} {...cycle.aim}>
-            {sentence(cycle.step)}
+      <div className="flex w-full flex-col items-center gap-5">
+        {showing ? (
+          // The sentence as it is, over the same sentence laid out for every set shown (unseen):
+          // the cell keeps the tallest one's height while they change.
+          <div className="grid *:[grid-area:1/1]">
+            <div ref={live} {...cycle.aim}>
+              {sentence(cycle.step)}
+            </div>
+            {sets > 1 &&
+              Array.from({ length: sets }, (_, set) => (
+                <div
+                  // biome-ignore lint/suspicious/noArrayIndexKey: each layout is its set's, by number.
+                  key={set}
+                  ref={(el) => {
+                    ghosts.current[set] = el;
+                  }}
+                  className="invisible"
+                  aria-hidden
+                  inert
+                >
+                  {sentence(set)}
+                </div>
+              ))}
           </div>
-          {sets > 1 &&
-            Array.from({ length: sets }, (_, set) => (
-              <div
-                // biome-ignore lint/suspicious/noArrayIndexKey: each layout is its set's, by number.
-                key={set}
-                ref={(el) => {
-                  ghosts.current[set] = el;
-                }}
-                className="invisible"
-                aria-hidden
-                inert
-              >
-                {sentence(set)}
-              </div>
-            ))}
-        </div>
-      ) : (
-        <StarterSkeleton />
-      )}
+        ) : (
+          <StarterSkeleton />
+        )}
+        {tour.length > 0 && showing && (
+          <StoryTabs
+            worlds={tour}
+            active={touring ? cycle.step % tour.length : held ? tour.indexOf(held) : -1}
+            onPick={pick}
+          />
+        )}
+      </div>
       <Button size="lg" disabled={!ready} onClick={open} className="min-w-44 text-base">
         {busy ? <Spinner data-icon="inline-start" /> : null}
         Place bet
@@ -282,6 +325,78 @@ function StarterSkeleton() {
     <div className="flex w-full flex-col items-center gap-3" aria-hidden>
       <span className="h-10 w-11/12 animate-pulse rounded-xl bg-secondary sm:h-12" />
       <span className="h-10 w-3/4 animate-pulse rounded-xl bg-secondary sm:h-12" />
+    </div>
+  );
+}
+
+/** The curated worlds by name, under the sentence: the one on screen underlined (the line glides
+ * to the next as the sentence turns), a tap fills the sentence with it and ends the turning.
+ * Short labels as the indicators of the turning sentence: they say what each world is and give
+ * a way to stop it (WCAG 2.2.2); the details are in the sentence itself, and in each tooltip. */
+function StoryTabs({
+  worlds,
+  active,
+  onPick,
+}: {
+  worlds: Curated[];
+  active: number;
+  onPick: (world: Curated) => void;
+}) {
+  const row = useRef<HTMLDivElement>(null);
+  const [line, setLine] = useState<{ left: number; top: number; width: number } | null>(null);
+  useLayoutEffect(() => {
+    const el = row.current;
+    if (!el) return;
+    const place = () => {
+      const tab = el.querySelectorAll<HTMLElement>("[data-story]")[active];
+      if (!tab) return setLine(null);
+      // Within the row (its positioned box), so the line follows a tab onto either line of it.
+      setLine({
+        left: tab.offsetLeft,
+        top: tab.offsetTop + tab.offsetHeight + 2,
+        width: tab.offsetWidth,
+      });
+    };
+    place();
+    const observer = new ResizeObserver(place);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [active]);
+  return (
+    <div
+      ref={row}
+      role="toolbar"
+      aria-label="Example worlds"
+      // Two by two on a phone (four names don't fit one line there), one line from sm up.
+      className="relative grid grid-cols-2 justify-items-center gap-x-8 gap-y-1.5 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-5"
+    >
+      {worlds.map((w, i) => (
+        <Button
+          key={w.key}
+          data-story
+          variant="ghost"
+          size="sm"
+          aria-pressed={i === active}
+          title={`${w.short.join(" + ")} → ${w.stock.symbol} ${w.stock.direction} ${strikeText(w.stock.strike)}`}
+          onClick={() => onPick(w)}
+          className={cn(
+            "h-7 rounded-none px-0 text-sm font-medium transition-colors hover:bg-transparent hover:text-foreground dark:hover:bg-transparent",
+            i === active ? "text-foreground" : "text-muted-foreground",
+          )}
+        >
+          {w.story}
+        </Button>
+      ))}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-0 h-0.5 rounded-full bg-brand transition-[transform,width,opacity] duration-500 ease-out motion-reduce:transition-none"
+        style={{
+          top: line?.top ?? 0,
+          width: line?.width ?? 0,
+          opacity: line ? 1 : 0,
+          transform: `translate3d(${line?.left ?? 0}px, 0, 0)`,
+        }}
+      />
     </div>
   );
 }

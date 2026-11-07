@@ -139,6 +139,8 @@ export interface Preview {
   offer: OfferProduct[] | null;
   chance: Analytics | null;
   priorOnly?: boolean;
+  /** A curated world's story and its events' short names (the worlds page's one-tap buttons). */
+  curated?: { story: string; short: string[] };
   marks?: number[] | null;
 }
 
