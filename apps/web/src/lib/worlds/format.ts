@@ -107,7 +107,9 @@ export const shortWallet = (address: string) => `${address.slice(0, 6)}…${addr
 /** A label mid-sentence: "The Fed cut…" reads "the Fed cut…"; names and acronyms keep
  * their capitals. */
 export const midSentence = (label: string) =>
-  /^(The|A|An) /.test(label) ? label.charAt(0).toLowerCase() + label.slice(1) : label;
+  /^(The|A|An|There|Another|Any|Both|Each|Either|Every|No|Some|This|That|These|Those) /.test(label)
+    ? label.charAt(0).toLowerCase() + label.slice(1)
+    : label;
 
 /** What a venue decided about an event: it happened, it didn't, or it was cancelled. */
 export const venueResult = (state: string) =>

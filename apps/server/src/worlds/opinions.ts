@@ -4,7 +4,8 @@
  *
  * - `GET  /v2/worlds/stocks`          the stocks a world can fix on, with spot;
  * - `GET  /v2/worlds/events/search`   the event catalog (Polymarket and Kalshi);
- * - `GET  /v2/worlds/events/samples`  live Polymarket events the worlds page suggests;
+ * - `GET  /v2/worlds/events/samples`  live Polymarket events the worlds page suggests, and the
+ *                                       curated worlds it opens on, each priced;
  * - `POST /v2/worlds/parse`           an opinion read into a draft (the assistant);
  * - `POST /v2/worlds/preview`         a draft priced by the makers before it exists;
  * - `POST /v2/worlds/open`            a member opens the world (its book is created);
@@ -30,6 +31,7 @@ import { clientIp, RateLimiter } from "../common/rate-limit.ts";
 import type { EventMarketsClient } from "../integrations/event-markets.ts";
 import type { RfqHub } from "../rfq/hub.ts";
 import { type AssistantOptions, readOpinion, type WorldDraft } from "./assistant.ts";
+import { CURATED_WORLDS, curatedSpecs } from "./curated.ts";
 import {
   type CanonicalWorld,
   canonicalWorld,
@@ -316,22 +318,58 @@ export function mountOpinions(
     return c.json({ events: result.hits.map((h) => legEntry(h.entry)) });
   });
 
-  // The worlds page's placeholder events: one read of the catalog serves every visitor for ten
-  // minutes (concurrent misses share it); a failed read keeps the last set.
+  // The worlds page's placeholder events and the curated worlds it opens on: one read of the
+  // catalog (and one price of each curated world) serves every visitor for ten minutes
+  // (concurrent misses share it); a failed read keeps the last set.
   let samples: { at: number; body: string } | null = null;
   let sampling: Promise<void> | null = null;
-  const readSamples = async () => {
-    const maxTenor = vaultTerms(indexer.trading()).limits?.maxTenor ?? 365 * 86_400;
-    const hits = await Promise.all(
-      SAMPLE_TOPICS.map((t) =>
-        catalog()
-          .searchCatalog(t, { limit: 12, source: "polymarket" })
-          .then((r) => r.hits.map((h) => h.entry)),
-      ),
+  /** The curated worlds that can be shown now, each with what it pays (the preview's body): a
+   * world the makers decline, or price with a problem, is left out, and fewer than two show
+   * none (the page then cycles single events). */
+  const readCurated = async (state: WorldState, maxTenor: number) => {
+    const list = eligible(state).filter((u) =>
+      CURATED_WORLDS.some((w) => w.underlying === u.underlying),
     );
+    const ids = [...new Set(CURATED_WORLDS.flatMap((w) => w.legs))];
+    const [{ entries }, spot] = await Promise.all([
+      catalog().catalogEntries(ids, true),
+      spots.all(list),
+    ]);
+    const tradable = new Set(list.map((u) => u.underlying));
+    const shown = curatedSpecs(
+      CURATED_WORLDS.filter((w) => tradable.has(w.underlying)),
+      new Map(entries.map((e) => [e.id, e])),
+      spot,
+      Date.now(),
+      maxTenor,
+    );
+    const priced = await Promise.all(
+      shown.map(({ spec }) => previewOf(spec, 20n * quoteUnit, 100n * quoteUnit).catch(() => null)),
+    );
+    const worlds = priced.filter(
+      (p): p is NonNullable<typeof p> =>
+        p !== null &&
+        p.problems.length === 0 &&
+        (p.offer ?? []).some((o) => o.name === "All-in" && !o.decline),
+    );
+    return worlds.length >= 2 ? worlds : [];
+  };
+  const readSamples = async () => {
+    const state = indexer.trading();
+    const maxTenor = vaultTerms(state).limits?.maxTenor ?? 365 * 86_400;
+    const [hits, worlds] = await Promise.all([
+      Promise.all(
+        SAMPLE_TOPICS.map((t) =>
+          catalog()
+            .searchCatalog(t, { limit: 12, source: "polymarket" })
+            .then((r) => r.hits.map((h) => h.entry)),
+        ),
+      ),
+      readCurated(state, maxTenor).catch(() => []),
+    ]);
     samples = {
       at: Date.now(),
-      body: json({ events: sampleEvents(hits, Date.now(), maxTenor).map(legEntry) }),
+      body: json({ events: sampleEvents(hits, Date.now(), maxTenor).map(legEntry), worlds }),
     };
   };
   app.get("/v2/worlds/events/samples", async (c) => {
@@ -342,7 +380,7 @@ export function mountOpinions(
       await sampling.catch(() => {});
     }
     // A first read that failed leaves none: the page shows its own placeholder.
-    if (!samples) return c.json({ events: [] });
+    if (!samples) return c.json({ events: [], worlds: [] });
     c.header("Cache-Control", "public, max-age=60");
     return c.body(samples.body, 200, { "content-type": "application/json" });
   });
@@ -407,20 +445,9 @@ export function mountOpinions(
     return c.json(draftView(draft));
   });
 
-  app.post("/v2/worlds/preview", async (c) => {
-    previews.enforce(c, `preview:${ip(c)}`);
-    const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-    const spec = (() => {
-      try {
-        return parseSpec(body.spec);
-      } catch (error) {
-        return fail(error);
-      }
-    })();
-    const stakes = body.stakes as Record<string, unknown> | undefined;
-    const allIn = stakeOf(stakes?.allIn, 20n * quoteUnit),
-      moneyBack = stakeOf(stakes?.moneyBack, 100n * quoteUnit);
-    const { s, w, problems } = await worldOf(spec).catch(fail);
+  /** What a world pays at two stakes, as the makers price it now (the preview's body). */
+  const previewOf = async (spec: OpinionSpec, allIn: bigint, moneyBack: bigint) => {
+    const { s, w, problems } = await worldOf(spec);
     const spot = w.underlying ? await spots.usd(w.underlying) : null;
     const record = await registration(w.specHash);
     const book = record ? (s.bookOf.get(record.defHash.toLowerCase() as Hex) ?? null) : null;
@@ -429,7 +456,7 @@ export function mountOpinions(
       notes: worldNotes(w),
       existing: record ? { defHash: record.defHash, book } : null,
     };
-    if (problems.length) return c.json({ ...base, problems, offer: null, chance: null });
+    if (problems.length) return { ...base, problems, offer: null, chance: null };
     const id = randomUUID();
     const answer = hub
       ? await hub.preview(
@@ -447,31 +474,47 @@ export function mountOpinions(
         )
       : null;
     if (!answer)
-      return c.json({
+      return {
         ...base,
         problems: ["Pricing is offline right now. Try again in a minute"],
         offer: null,
         chance: null,
-      });
+      };
     if (answer.decline)
-      return c.json({
+      return {
         ...base,
         problems: [friendlyDecline(answer.decline, w.legs)],
         offer: null,
         chance: null,
-      });
+      };
     const offer = offerOf(w, answer).map((p) => ({
       ...p,
       decline: p.decline ? friendlyDecline(p.decline, w.legs) : null,
     }));
-    return c.json({
+    return {
       ...base,
       problems: [],
       offer,
       chance: answer.analytics,
       priorOnly: answer.priorOnly,
       marks: answer.marks,
-    });
+    };
+  };
+
+  app.post("/v2/worlds/preview", async (c) => {
+    previews.enforce(c, `preview:${ip(c)}`);
+    const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+    const spec = (() => {
+      try {
+        return parseSpec(body.spec);
+      } catch (error) {
+        return fail(error);
+      }
+    })();
+    const stakes = body.stakes as Record<string, unknown> | undefined;
+    const allIn = stakeOf(stakes?.allIn, 20n * quoteUnit),
+      moneyBack = stakeOf(stakes?.moneyBack, 100n * quoteUnit);
+    return c.json(await previewOf(spec, allIn, moneyBack).catch(fail));
   });
 
   // ---------------------------------------------------------------- opening a world

@@ -27,12 +27,13 @@ export const worldsApi = {
       `/v2/worlds/events/search?q=${encodeURIComponent(q)}`,
       opt(signal),
     ).then((r) => r.events),
-  /** Live Polymarket events the worlds page offers to start from (the same set for everyone,
-   * refreshed every ten minutes). */
-  sampleEvents: (signal?: AbortSignal) =>
-    requestJson<{ events: LegEntry[] }>("/v2/worlds/events/samples", opt(signal)).then(
-      (r) => r.events,
-    ),
+  /** What the worlds page starts from (the same for everyone, refreshed every ten minutes): live
+   * Polymarket events to suggest, and the curated worlds it opens on, each priced (a preview). */
+  samples: (signal?: AbortSignal) =>
+    requestJson<{ events: LegEntry[]; worlds?: Preview[] }>(
+      "/v2/worlds/events/samples",
+      opt(signal),
+    ).then((r) => ({ events: r.events, worlds: r.worlds ?? [] })),
   parse: (text: string, signal?: AbortSignal) =>
     requestJson<Draft>("/v2/worlds/parse", { body: { text }, timeoutMs: 30_000, ...opt(signal) }),
   preview: (spec: Spec, stakes: { allIn: string; moneyBack: string }, signal?: AbortSignal) =>

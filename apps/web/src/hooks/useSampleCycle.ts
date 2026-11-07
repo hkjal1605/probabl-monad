@@ -15,7 +15,7 @@ import { flushSync } from "react-dom";
  * Still while the reader asked for less motion, while the tab is hidden, while the pointer is
  * on an open event (it's being aimed at) and while any of the sentence's popovers is open. */
 
-const HOLD_MS = 6_500;
+const HOLD_MS = 12_000;
 const RETRY_MS = 1_000;
 const OUT_MS = 380;
 const IN_MS = 720;
@@ -166,7 +166,15 @@ async function turn(
     const later = next.get(key);
     const after = later ? boxes(later, there) : [];
     const dx = along(then, after);
-    if (dx === null || (!near(dx, 0) && crosses(then, after, landing))) leaving.push(el);
+    // A part whose words change (the stock, its side, its price, its date) leaves and rises in
+    // anew, as the events do.
+    if (
+      !later ||
+      later.textContent !== el.textContent ||
+      dx === null ||
+      (!near(dx, 0) && crosses(then, after, landing))
+    )
+      leaving.push(el);
   }
   if (changing.length === 0) {
     swap();

@@ -1,18 +1,15 @@
 "use client";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, Check, RotateCcw, X } from "lucide-react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EXAMPLES } from "@/components/worlds/Composer";
-import { ChanceBar } from "@/components/worlds/Outcomes";
-import { Chip, Sentence } from "@/components/worlds/Sentence";
 import { WorldCard } from "@/components/worlds/WorldCard";
 import { worldsEnabled } from "@/config/protocol";
 import { useStocks, useWorldsFeed } from "@/hooks/useWorlds";
-import { cn } from "@/lib/utils";
-import { chancePercent } from "@/lib/worlds/format";
+import { Art, type ShownWorld, WorldPayouts } from "./WorldPayouts";
 import { WorldStarter } from "./WorldStarter";
 
 const SORTS = ["Live", "Closing soon", "Most backed", "New"] as const;
@@ -30,36 +27,11 @@ const STARTERS = [
   { event: "Hot CPI", symbol: "SPY", up: false, price: "$650" },
 ].map((s, i) => ({ ...s, text: EXAMPLES.at(i) ?? "" }));
 
-/** The worked example of docs: P(win) 25.1%, P(the world happens, NVDA below) 36.9%, P(no cut)
- * 38%; All-in $20 pays $74.71, Money-back $100 pays $235 or gives the $100 back. Chances x 1e6. */
-const PRODUCTS = [
-  {
-    name: "All-in",
-    art: "/worlds/allin.webp",
-    stake: "$20",
-    best: "$75",
-    rows: [
-      { kind: "win", label: "Fed cuts · NVDA above", pays: "$75", chance: 251_000 },
-      { kind: "lose", label: "Anything else", pays: "$0", chance: 749_000 },
-    ],
-  },
-  {
-    name: "Money-back",
-    art: "/worlds/moneyback.webp",
-    stake: "$100",
-    best: "$235",
-    rows: [
-      { kind: "win", label: "Fed cuts · NVDA above", pays: "$235", chance: 251_000 },
-      { kind: "back", label: "Fed doesn't cut", pays: "$100", chance: 380_000 },
-      { kind: "lose", label: "Fed cuts · NVDA below", pays: "$0", chance: 369_000 },
-    ],
-  },
-] as const;
-
 /** The worlds home: where a world starts (someone's words) and every world people trade. */
 export function WorldsHome() {
   const router = useRouter();
   const [sort, setSort] = useState<(typeof SORTS)[number]>("Live");
+  const [shown, setShown] = useState<ShownWorld | null>(null);
   const [stock, setStock] = useState("");
   const feed = useWorldsFeed(SORT_KEYS[sort], stock);
   const listed = useStocks();
@@ -92,88 +64,32 @@ export function WorldsHome() {
             Worlds are off on this network.
           </p>
         )}
-        <div id="say" className="w-full text-left">
-          <WorldStarter />
+        <div id="say" className="w-full">
+          <WorldStarter onShown={setShown} />
         </div>
-        <div className="flex flex-wrap justify-center gap-2">
+        {/* Ready-made worlds, one tap each. */}
+        <div className="flex flex-wrap items-center justify-center gap-2">
           {STARTERS.map((s) => (
-            <button
+            <Button
               key={s.text}
-              type="button"
+              variant="secondary"
               title={s.text}
               onClick={() => start(s.text)}
-              className="inline-flex h-9 items-center gap-2 rounded-full bg-secondary px-3.5 text-sm font-medium transition-colors outline-none hover:bg-secondary/70 focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="h-9 gap-2 rounded-full px-3.5"
             >
               <span>{s.event}</span>
               <ArrowRight className="size-3.5 text-muted-foreground" aria-hidden />
               <span className="font-semibold">{s.symbol}</span>
               <Move up={s.up} />
               <span className="tabular-nums">{s.price}</span>
-            </button>
+            </Button>
           ))}
         </div>
       </section>
 
-      {/* The two payouts, on one example */}
-      <section className="flex flex-col gap-6">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <h2 className="text-[28px] leading-tight font-medium tracking-[-0.02em] sm:text-4xl">
-            Two ways to win
-          </h2>
-          <Sentence size="large" className="text-muted-foreground">
-            If <Chip>the Fed cuts in December</Chip>, <Chip tone="stock">NVDA</Chip> closes{" "}
-            <Chip tone="value">above $215</Chip> on <Chip tone="value">Dec 3</Chip>
-          </Sentence>
-        </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {PRODUCTS.map((p) => (
-            <article
-              key={p.name}
-              className="flex flex-col gap-5 rounded-3xl bg-card p-5 ring-1 ring-border sm:p-6"
-            >
-              <div className="flex items-center gap-4">
-                <Art src={p.art} width={512} height={512} className="size-20 shrink-0 sm:size-24" />
-                <div className="flex min-w-0 flex-col gap-1">
-                  <h3 className="text-lg font-medium">{p.name}</h3>
-                  <p className="flex items-center gap-2 text-3xl font-medium tracking-[-0.02em] tabular-nums">
-                    <span className="text-muted-foreground">{p.stake}</span>
-                    <ArrowRight className="size-5 text-muted-foreground" aria-hidden />
-                    <span className="text-positive">{p.best}</span>
-                  </p>
-                </div>
-              </div>
-              <ul className="flex flex-col gap-3">
-                {p.rows.map((r) => (
-                  <li key={r.label} className="flex flex-col gap-1.5">
-                    <div className="flex items-center gap-2.5 text-sm">
-                      <Outcome kind={r.kind} />
-                      <span className="min-w-0 flex-1 truncate">{r.label}</span>
-                      <span
-                        className={cn(
-                          "font-medium tabular-nums",
-                          r.kind === "win" && "text-positive",
-                          r.kind === "lose" && "text-muted-foreground",
-                        )}
-                      >
-                        {r.kind === "back" ? `${r.pays} back` : r.pays}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2.5">
-                      <ChanceBar
-                        share={r.chance / 1_000_000}
-                        tone={BAR[r.kind]}
-                        className="ml-[34px]"
-                      />
-                      <span className="w-9 shrink-0 text-right text-[11px] text-muted-foreground tabular-nums">
-                        {chancePercent(r.chance)}
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </article>
-          ))}
-        </div>
+      {/* What the world above pays, both ways, live. */}
+      <section>
+        <WorldPayouts shown={shown} />
       </section>
 
       {/* Every world people trade */}
@@ -259,35 +175,6 @@ export function WorldsHome() {
   );
 }
 
-/** Generated art (public/worlds), drawn on black: it sits in a black tile, seamless on the dark
- * page and a framed picture on the light one. */
-function Art({
-  src,
-  width,
-  height,
-  className,
-}: {
-  src: string;
-  width: number;
-  height: number;
-  className?: string;
-}) {
-  return (
-    <div className={cn("overflow-hidden rounded-3xl bg-black", className)}>
-      {/* biome-ignore lint/performance/noImgElement: static art served as is. */}
-      <img
-        src={src}
-        alt=""
-        width={width}
-        height={height}
-        decoding="async"
-        loading="lazy"
-        className="size-full object-cover"
-      />
-    </div>
-  );
-}
-
 function Move({ up }: { up: boolean }) {
   return up ? (
     <ArrowUpRight className="size-4 text-positive" aria-label="above" />
@@ -295,29 +182,3 @@ function Move({ up }: { up: boolean }) {
     <ArrowDownRight className="size-4 text-danger" aria-label="below" />
   );
 }
-
-type Kind = "win" | "back" | "lose";
-const OUTCOME: Record<Kind, { icon: ReactNode; className: string }> = {
-  win: { icon: <Check className="size-3.5" />, className: "bg-positive-soft text-positive" },
-  back: { icon: <RotateCcw className="size-3.5" />, className: "bg-info-soft text-info" },
-  lose: { icon: <X className="size-3.5" />, className: "bg-secondary text-muted-foreground" },
-};
-function Outcome({ kind }: { kind: Kind }) {
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        "flex size-6 shrink-0 items-center justify-center rounded-full",
-        OUTCOME[kind].className,
-      )}
-    >
-      {OUTCOME[kind].icon}
-    </span>
-  );
-}
-
-const BAR: Record<Kind, string> = {
-  win: "bg-positive",
-  back: "bg-info",
-  lose: "bg-muted-foreground/40",
-};
