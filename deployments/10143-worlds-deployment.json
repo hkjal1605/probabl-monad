@@ -1,0 +1,32 @@
+{
+  "chainId": 10143,
+  "network": "Monad Testnet",
+  "quote": "0x95C53229Fc9ccfD792c9Cb8827B5f4530441ABE1",
+  "oracle": "0x39E19Dc01F19352F0297B118410074F84340d90E",
+  "books": "0x7BB2D21fEF2B6c8924110001B9FbD2317C07a242",
+  "vaults": [
+    "0x52818458b880975f2739386c8Ae7e3fF051d3f0B"
+  ],
+  "deploymentBlock": "77670646",
+  "transactions": {
+    "oracle": "0x06461e87710efb9a95b75b4772e4ec14d1296584814759beaa35e0b0e1a980bc",
+    "books": "0xa7c3a477f95676e20773f09b85f5e6cdfd78df65afbe33719c054d4bddcc7be3",
+    "vault": "0x2a4d7057cad3c783cca0995b42d1549f36eec88f08023606fa6ee30e6f3f9a7e"
+  },
+  "roles": {
+    "admin": "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f",
+    "bookAdmin": "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0",
+    "marketAdmin": "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0",
+    "guardian": "0x3c75eE21AF23832057760433Bf95DA9f9c0c7c41",
+    "resolutionAdmin": "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0",
+    "vault": {
+      "admin": "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0",
+      "adminDelay": 0,
+      "curator": "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0",
+      "keeper": "0xb97B50Dc844D20891268A9B5024005984CD51646",
+      "marker": "0x087F9199C0dE6b3CaABE6c7B49bbCE5D97222Be0",
+      "guardian": "0x3c75eE21AF23832057760433Bf95DA9f9c0c7c41"
+    }
+  },
+  "deployedAt": "2026-11-07T06:08:16.969Z"
+}

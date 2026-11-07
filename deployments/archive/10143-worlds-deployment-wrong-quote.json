@@ -1,0 +1,33 @@
+{
+  "chainId": 10143,
+  "network": "Monad Testnet",
+  "quote": "0x509E319A1bA0C429596A05294594D884F5610D73",
+  "oracle": "0x85fe72e1B386dc6E88f3053C408998Fa1a418A06",
+  "books": "0x35Dd9AFe23a92e4Dc0A1B8b685846B970255b4f7",
+  "vaults": [
+    "0x557a3A11051b32CE95777170877D5f77A5033880"
+  ],
+  "deploymentBlock": "77670370",
+  "transactions": {
+    "oracle": "0x78c0e9e0d35bb74bfb7d5fd87fbf9b2e622a19585906d3af2f478b21a0151fdf",
+    "books": "0x589aa1ba37fd177564d69e61185eee2c14d271c17cb7ffc0088de37d7ac0c9aa",
+    "vault": "0xfd67f25653ac5ec8597e8fe1c619c4005688490658ccd23d42ba84e9e47408ee"
+  },
+  "roles": {
+    "admin": "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f",
+    "bookAdmin": "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0",
+    "marketAdmin": "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0",
+    "guardian": "0x3c75eE21AF23832057760433Bf95DA9f9c0c7c41",
+    "resolutionAdmin": "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0",
+    "vault": {
+      "admin": "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0",
+      "adminDelay": 0,
+      "curator": "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0",
+      "keeper": "0xb97B50Dc844D20891268A9B5024005984CD51646",
+      "marker": "0x087F9199C0dE6b3CaABE6c7B49bbCE5D97222Be0",
+      "guardian": "0x3c75eE21AF23832057760433Bf95DA9f9c0c7c41"
+    }
+  },
+  "deployedAt": "2026-11-07T06:06:50.806Z",
+  "abandoned": "Bound to 0x509E\u2026 (an older Monad USDC copy) through a stray QUOTE_TOKEN; never used. Redeployed over the exchange's USDC 0x95C5\u2026ABE1 the same day."
+}
