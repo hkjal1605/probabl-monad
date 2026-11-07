@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { WorldCard } from "@/components/worlds/WorldCard";
 import { useStocks, useWorldsFeed } from "@/hooks/useWorlds";
+import { cn } from "@/lib/utils";
 import { Art } from "./WorldPayouts";
 
 const SORTS = ["Live", "Closing soon", "Most backed", "New"] as const;
@@ -51,24 +52,35 @@ export function LiveWorlds({
   const Heading = heading;
   return (
     <section className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <Heading className="flex items-center gap-3 text-[28px] leading-tight font-medium tracking-[-0.02em] sm:text-4xl">
+      {/* The title, its sort and (here) the way to the full list: on a phone the title and
+          "View All" share the first line and the sort takes the next. */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+        <Heading className="order-1 flex items-center gap-3 text-[28px] leading-tight font-medium tracking-[-0.02em] sm:text-4xl">
           <span className="relative flex size-2.5" aria-hidden>
             <span className="absolute inline-flex size-full animate-ping rounded-full bg-positive opacity-60 motion-reduce:animate-none" />
             <span className="relative inline-flex size-2.5 rounded-full bg-positive" />
           </span>
           Live worlds
         </Heading>
-        <Segmented
-          label="Sort worlds"
-          value={sort}
-          options={SORTS}
-          onChange={(s) => {
-            setSort(s);
-            setShown(PAGE);
-          }}
-          variant="compact"
-        />
+        {limit !== undefined && (
+          <ViewAll
+            href="/worlds/live"
+            label="View all live worlds"
+            className="order-2 ml-auto sm:order-3 sm:ml-0"
+          />
+        )}
+        <div className="order-3 basis-full sm:order-2 sm:ml-auto sm:basis-auto">
+          <Segmented
+            label="Sort worlds"
+            value={sort}
+            options={SORTS}
+            onChange={(s) => {
+              setSort(s);
+              setShown(PAGE);
+            }}
+            variant="compact"
+          />
+        </div>
       </div>
       {stocks.length > 1 && (
         <div className="flex flex-wrap gap-2">
@@ -108,12 +120,8 @@ export function LiveWorlds({
               />
             ))}
           </div>
-          {limit !== undefined ? (
-            <ViewAll href="/worlds/live" label="View all live worlds" />
-          ) : (
-            total > shown && (
-              <ShowMore loading={feed.loading} onClick={() => setShown((n) => n + PAGE)} />
-            )
+          {limit === undefined && total > shown && (
+            <ShowMore loading={feed.loading} onClick={() => setShown((n) => n + PAGE)} />
           )}
         </>
       ) : feed.loading && !feed.error ? (
@@ -151,13 +159,20 @@ export function LiveWorlds({
   );
 }
 
-/** The way from a section's first cards to its own page. */
-export function ViewAll({ href, label }: { href: string; label: string }) {
+/** The way from a section's first cards to its own page, at the end of its title's row. */
+export function ViewAll({
+  href,
+  label,
+  className,
+}: {
+  href: string;
+  label: string;
+  className?: string;
+}) {
   return (
     <Button
       variant="secondary"
-      size="lg"
-      className="self-center"
+      className={cn("shrink-0", className)}
       aria-label={label}
       render={<Link href={href} />}
       nativeButton={false}

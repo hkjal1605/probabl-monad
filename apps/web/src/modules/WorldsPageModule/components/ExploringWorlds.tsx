@@ -30,12 +30,17 @@ export function ExploringWorlds({
   const Heading = heading;
   return (
     <section className="flex flex-col gap-5" aria-labelledby="exploring-title">
-      <Heading
-        id="exploring-title"
-        className="text-[28px] leading-tight font-medium tracking-[-0.02em] sm:text-4xl"
-      >
-        What people are exploring
-      </Heading>
+      <div className="flex items-center justify-between gap-4">
+        <Heading
+          id="exploring-title"
+          className="text-[28px] leading-tight font-medium tracking-[-0.02em] sm:text-4xl"
+        >
+          What people are exploring
+        </Heading>
+        {!full && (
+          <ViewAll href="/worlds/exploring" label="View all the worlds people are exploring" />
+        )}
+      </div>
       {worlds.length ? (
         <>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -43,12 +48,8 @@ export function ExploringWorlds({
               <ExploredCard key={w.specHash} world={w} />
             ))}
           </div>
-          {!full ? (
-            <ViewAll href="/worlds/exploring" label="View all the worlds people are exploring" />
-          ) : (
-            total > shown && (
-              <ShowMore loading={exploring.loading} onClick={() => setShown((n) => n + PAGE)} />
-            )
+          {full && total > shown && (
+            <ShowMore loading={exploring.loading} onClick={() => setShown((n) => n + PAGE)} />
           )}
         </>
       ) : exploring.loading ? (
