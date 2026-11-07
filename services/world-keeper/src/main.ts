@@ -95,10 +95,12 @@ async function main() {
     nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
     rpcUrls: { default: { http: [rpc] } },
   });
+  // Every deployless read carries Multicall3's bytecode, so a JSON-RPC batch holds ten: larger
+  // batches exceed ankr's request size on Monad testnet (413), as the Δ-vault keeper's did.
   const client = createPublicClient({
     chain,
     batch: { multicall: { deployless: true, batchSize: DEPLOYLESS_BATCH_SIZE, wait: 5 } },
-    transport: http(rpc, { batch: { wait: 5 }, retryCount: 2 }),
+    transport: http(rpc, { batch: { batchSize: 10, wait: 5 }, retryCount: 2 }),
   });
   if ((await client.getChainId()) !== chainId) throw new Error("RPC serves a different chain");
   const raw = JSON.parse(
