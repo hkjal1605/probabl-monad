@@ -24,6 +24,9 @@ export interface ShownWorld {
   next: Spec | null;
   preview?: Preview | undefined;
   nextPreview?: Preview | undefined;
+  /** The world is the person's own (every event chosen), not an example the page shows: once
+   * quoted it shows among the worlds people explore. */
+  own?: boolean;
 }
 
 interface Priced {
@@ -194,64 +197,77 @@ function rowsOf(offer: Offer, spec: Spec) {
 }
 
 /** The shown world's price, kept while the next one loads; worlds priced in the last few minutes
- * (the samples as they come round) answer from memory, and the next one is priced ahead. */
+ * (the samples as they come round) answer from memory, and the next one is priced ahead. A world
+ * that becomes the person's own is priced once as theirs (`explore`), even when an example of the
+ * same events was priced a moment before. */
 function usePriced(shown: ShownWorld | null): Priced | null {
   const cache = useRef(new Map<string, Priced>());
-  const inflight = useRef(new Map<string, AbortController>());
+  const inflight = useRef(new Map<string, { controller: AbortController; explore: boolean }>());
+  /** The worlds priced as someone's own. */
+  const explored = useRef(new Set<string>());
   const [, setVersion] = useState(0);
   const [kept, setKept] = useState<Priced | null>(null);
 
   const key = shown ? JSON.stringify(shown.spec) : null;
   const nextKey = shown?.next ? JSON.stringify(shown.next) : null;
+  const own = shown?.own === true;
   const fresh = (k: string) => {
     const hit = cache.current.get(k);
     return hit && Date.now() - hit.at < FRESH_MS ? hit : null;
   };
+  const priced = (k: string, explore: boolean) =>
+    Boolean(fresh(k)) && (!explore || explored.current.has(k));
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: the keys stand for the specs.
   useEffect(() => {
     if (!shown || !key) return;
-    const load = (k: string, spec: Spec) => {
-      if (fresh(k) || inflight.current.has(k)) return;
+    const load = (k: string, spec: Spec, explore = false) => {
+      const asked = inflight.current.get(k);
+      if (priced(k, explore) || (asked && (asked.explore || !explore))) return;
+      // An example's price on its way is asked again as the person's own.
+      asked?.controller.abort();
       const controller = new AbortController();
-      inflight.current.set(k, controller);
+      inflight.current.set(k, { controller, explore });
       worldsApi
-        .preview(spec, STAKES, controller.signal)
-        .then((value) => cache.current.set(k, { at: Date.now(), value, error: null }))
+        .preview(spec, STAKES, controller.signal, { explore })
+        .then((value) => {
+          cache.current.set(k, { at: Date.now(), value, error: null });
+          if (explore) explored.current.add(k);
+        })
         .catch((error: Error) => {
           if (error.name !== "AbortError")
             cache.current.set(k, { at: Date.now(), value: null, error: error.message });
         })
         .finally(() => {
-          inflight.current.delete(k);
+          if (inflight.current.get(k)?.controller === controller) inflight.current.delete(k);
           const oldest = cache.current.keys().next().value;
           if (cache.current.size > 40 && oldest !== undefined) cache.current.delete(oldest);
           setVersion((v) => v + 1);
         });
     };
     // A world no longer shown or next is not waited for.
-    for (const [k, c] of inflight.current)
+    for (const [k, asked] of inflight.current)
       if (k !== key && k !== nextKey) {
-        c.abort();
+        asked.controller.abort();
         inflight.current.delete(k);
       }
     const ahead = () => {
       if (nextKey && shown.next && !shown.nextPreview) load(nextKey, shown.next);
     };
     // A curated world comes priced: nothing to ask.
-    if (shown.preview || fresh(key)) {
+    if (shown.preview || priced(key, own)) {
       ahead();
       return;
     }
     const timer = setTimeout(() => {
-      load(key, shown.spec);
+      load(key, shown.spec, own);
       ahead();
     }, SETTLE_MS);
     return () => clearTimeout(timer);
-  }, [key, nextKey]);
+  }, [key, nextKey, own]);
   useEffect(
     () => () => {
-      for (const c of inflight.current.values()) c.abort();
+      for (const asked of inflight.current.values()) asked.controller.abort();
     },
     [],
   );

@@ -251,7 +251,13 @@ export function WorldStarter({
     };
     const spec = specAt(cycle.step);
     if (!spec) return null;
-    return { spec, next: sets > 1 ? specAt(cycle.step + 1) : null, preview: held?.preview };
+    return {
+      spec,
+      next: sets > 1 ? specAt(cycle.step + 1) : null,
+      preview: held?.preview,
+      // Every event chosen (none a sample), and not a curated world as it came.
+      own: !held && legs.every((l) => l !== null),
+    };
   }, [showing, touring, tour, cycle.step, legs, placeholders, stock, sets, held]);
   useEffect(() => {
     onShown?.(shown);

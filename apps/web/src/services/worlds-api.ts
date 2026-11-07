@@ -4,6 +4,7 @@
 import type {
   BookView,
   Draft,
+  ExploringWorld,
   FeedWorld,
   Holder,
   LegEntry,
@@ -36,12 +37,26 @@ export const worldsApi = {
     ).then((r) => ({ events: r.events, worlds: r.worlds ?? [] })),
   parse: (text: string, signal?: AbortSignal) =>
     requestJson<Draft>("/v2/worlds/parse", { body: { text }, timeoutMs: 30_000, ...opt(signal) }),
-  preview: (spec: Spec, stakes: { allIn: string; moneyBack: string }, signal?: AbortSignal) =>
+  /** A world priced by the makers. `explore` says a person asked for it (their own world, or
+   * one they opened), so once quoted it shows among the worlds people explore. */
+  preview: (
+    spec: Spec,
+    stakes: { allIn: string; moneyBack: string },
+    signal?: AbortSignal,
+    options: { explore?: boolean } = {},
+  ) =>
     requestJson<Preview>("/v2/worlds/preview", {
-      body: { spec, stakes },
+      body: { spec, stakes, ...(options.explore ? { explore: true } : {}) },
       timeoutMs: 15_000,
       ...opt(signal),
     }),
+  /** The first `limit` worlds people priced lately that nobody holds yet (the same for everyone
+   * for half a minute), and how many there are. */
+  exploring: (limit: number, signal?: AbortSignal) =>
+    requestJson<{ worlds: ExploringWorld[]; total?: number }>(
+      `/v2/worlds/exploring?limit=${limit}`,
+      opt(signal),
+    ).then((r) => ({ worlds: r.worlds, total: r.total ?? r.worlds.length })),
   open: (spec: Spec) =>
     requestJson<{ defHash: string; specHash: string; book: number | null; status: string }>(
       "/v2/worlds/open",
@@ -52,11 +67,21 @@ export const worldsApi = {
       `/v2/worlds/open/${defHash}`,
       opt(signal),
     ),
-  feed: (sort: string, underlying: string, signal?: AbortSignal) =>
-    requestJson<{ worlds: FeedWorld[] }>(
-      `/v2/worlds/feed?sort=${encodeURIComponent(sort)}${underlying ? `&underlying=${encodeURIComponent(underlying)}` : ""}`,
+  /** The first `limit` traded worlds in a sort (of one stock, or all), how many there are, and
+   * every traded world's stock (the filter). */
+  feed: (sort: string, underlying: string, limit: number, signal?: AbortSignal) =>
+    requestJson<{
+      worlds: FeedWorld[];
+      total?: number;
+      underlyings?: { underlying: string; symbol: string }[];
+    }>(
+      `/v2/worlds/feed?sort=${encodeURIComponent(sort)}&limit=${limit}${underlying ? `&underlying=${encodeURIComponent(underlying)}` : ""}`,
       opt(signal),
-    ).then((r) => r.worlds),
+    ).then((r) => ({
+      worlds: r.worlds,
+      total: r.total ?? r.worlds.length,
+      underlyings: r.underlyings ?? [],
+    })),
   book: (book: number, signal?: AbortSignal) =>
     requestJson<BookView>(`/v2/books/${book}`, opt(signal)),
   books: (signal?: AbortSignal) =>

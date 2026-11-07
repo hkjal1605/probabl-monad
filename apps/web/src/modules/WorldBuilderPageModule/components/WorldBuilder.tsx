@@ -94,6 +94,8 @@ export function WorldBuilder() {
         start,
         { allIn: String(first.allIn), moneyBack: String(first.moneyBack) },
         controller.signal,
+        // Every world the builder prices is one a person asked for.
+        { explore: true },
       )
       .then((p) => {
         const nextLegs = p.world.legs.map((l) => ({
@@ -190,6 +192,7 @@ export function WorldBuilder() {
           spec,
           { allIn: String(stakes.allIn), moneyBack: String(stakes.moneyBack) },
           controller.signal,
+          { explore: true },
         )
         .then((value) => {
           if (seq !== previewSeq.current) return;

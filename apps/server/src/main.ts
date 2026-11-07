@@ -457,6 +457,8 @@ const worldDesk =
         log: (level, event, fields) => logger[level](event, fields),
       })
     : null;
+/** The users' worlds routes, once mounted (their pending writes flush on shutdown). */
+let opinions: ReturnType<typeof mountOpinions> | null = null;
 const worldRecorder = worlds
   ? new WorldRecorder({
       indexer: worlds,
@@ -517,7 +519,7 @@ if (worlds) {
     return value;
   };
   const assistantModel = process.env.WORLD_ASSISTANT_MODEL?.trim() || "deepseek/deepseek-v4-pro";
-  mountOpinions(app, {
+  opinions = mountOpinions(app, {
     indexer: worlds,
     db,
     auth,
@@ -659,7 +661,7 @@ for (const signal of ["SIGINT", "SIGTERM"] as const)
     referrals.stop();
     // Under pm2's 90 s kill timeout, with room for the index to flush after.
     void drain(60_000)
-      .then(() => Promise.all([indexer.stop(), worlds?.stop()]))
+      .then(() => Promise.all([indexer.stop(), worlds?.stop(), opinions?.stop()]))
       .then(() => db.close())
       .then(() => process.exit(0));
   });

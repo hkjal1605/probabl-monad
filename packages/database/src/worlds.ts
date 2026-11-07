@@ -75,6 +75,32 @@ export interface WorldBookRecord {
   creator?: string | null;
   specHash?: string | null;
 }
+/** A world someone priced (schema version 7), as stored once per canonical opinion. `spec`,
+ * `world` and `quote` are the API's JSON (the opinion, what it says, the makers' last quote). */
+export interface WorldExplorationRecord {
+  specHash: string;
+  spec: unknown;
+  world: unknown;
+  quote: unknown;
+  /** When it stops trading, unix seconds. */
+  cutoff: number;
+  explorers: number;
+  quotes: number;
+  firstAt: Date;
+  lastAt: Date;
+}
+/** What to add to a world's exploration: its latest state, and the new explorers and quotes
+ * since the last write (counts are added to the stored ones). */
+export interface WorldExplorationNote {
+  specHash: string;
+  spec: unknown;
+  world: unknown;
+  quote: unknown;
+  cutoff: number;
+  explorers: number;
+  quotes: number;
+  at: Date;
+}
 /** The latent correlation of two events' YES outcomes (`a` < `b` as hex), its standard error
  * in Fisher z and the effective sample behind it. */
 export interface WorldCorrelationRecord {
@@ -381,6 +407,76 @@ export function worldQueries(db: Connection) {
         staked: BigInt(r.staked),
         fills: Number(r.fills),
         last: BigInt(r.last),
+      }));
+    },
+    /** Adds explorations in one statement: a world seen first is inserted, a known one takes
+     * the latest state and adds the counts. One note per spec hash. */
+    async recordWorldExplorations(domain: string, notes: readonly WorldExplorationNote[]) {
+      if (!notes.length) return;
+      await db.query(
+        `INSERT INTO probabl.world_explorations AS e
+          (deployment, spec_hash, spec, world, quote, cutoff, explorers, quotes, first_at, last_at)
+        SELECT ${DEPLOYMENT}, decode(x.h, 'hex'), x.spec::jsonb, x.world::jsonb, x.quote::jsonb,
+          x.cutoff, x.explorers, x.quotes, x.at, x.at
+        FROM unnest($2::text[], $3::text[], $4::text[], $5::text[], $6::bigint[], $7::integer[],
+          $8::integer[], $9::timestamptz[]) AS x(h, spec, world, quote, cutoff, explorers, quotes, at)
+        ON CONFLICT (deployment, spec_hash) DO UPDATE SET
+          spec = EXCLUDED.spec, world = EXCLUDED.world, quote = EXCLUDED.quote,
+          cutoff = EXCLUDED.cutoff, explorers = e.explorers + EXCLUDED.explorers,
+          quotes = e.quotes + EXCLUDED.quotes, last_at = greatest(e.last_at, EXCLUDED.last_at)`,
+        [
+          domain,
+          notes.map((n) => hex(n.specHash)),
+          notes.map((n) => JSON.stringify(n.spec)),
+          notes.map((n) => JSON.stringify(n.world)),
+          notes.map((n) => JSON.stringify(n.quote)),
+          notes.map((n) => String(Math.trunc(n.cutoff))),
+          notes.map((n) => Math.max(0, Math.trunc(n.explorers))),
+          notes.map((n) => Math.max(0, Math.trunc(n.quotes))),
+          notes.map((n) => n.at),
+        ],
+      );
+    },
+    /** The worlds explored since `since` that still trade after `tradingAfter` (unix seconds),
+     * the most recently explored first. */
+    async worldExplorations(
+      domain: string,
+      options: { since: Date; tradingAfter: number; limit: number },
+    ): Promise<WorldExplorationRecord[]> {
+      return (
+        await db.query<{
+          spec_hash: string;
+          spec: unknown;
+          world: unknown;
+          quote: unknown;
+          cutoff: string;
+          explorers: number;
+          quotes: number;
+          first_at: Date;
+          last_at: Date;
+        }>(
+          `SELECT encode(spec_hash, 'hex') AS spec_hash, spec, world, quote, cutoff::text,
+            explorers, quotes, first_at, last_at
+          FROM probabl.world_explorations
+          WHERE deployment = ${DEPLOYMENT} AND last_at >= $2 AND cutoff > $3
+          ORDER BY last_at DESC LIMIT $4`,
+          [
+            domain,
+            options.since,
+            String(Math.trunc(options.tradingAfter)),
+            bounded(options.limit, 500),
+          ],
+        )
+      ).rows.map((r) => ({
+        specHash: `0x${r.spec_hash}`,
+        spec: r.spec,
+        world: r.world,
+        quote: r.quote,
+        cutoff: Number(r.cutoff),
+        explorers: r.explorers,
+        quotes: r.quotes,
+        firstAt: r.first_at,
+        lastAt: r.last_at,
       }));
     },
     /** The assistant's audit row of one opinion read. */

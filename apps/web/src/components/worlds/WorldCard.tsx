@@ -156,7 +156,7 @@ export function WorldCard({
 }
 
 /** A world's chance as a ring, and as a percent. */
-function ChanceRing({ chance }: { chance: number | null }) {
+export function ChanceRing({ chance }: { chance: number | null }) {
   const r = 16;
   const length = 2 * Math.PI * r;
   const share = chance === null ? 0 : Math.min(1, Math.max(0, chance / 1_000_000));

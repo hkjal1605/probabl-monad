@@ -78,8 +78,8 @@ afterAll(async () => {
   await pg?.close();
 });
 
-test("version 5 storage migrates in place to version 6", async () => {
-  expect(SCHEMA_VERSION).toBe(6);
+test("version 5 storage migrates in place to version 7", async () => {
+  expect(SCHEMA_VERSION).toBe(7);
   // Version 5 as the previous release left it: no world tables, makers without `worlds`.
   for (const table of [
     "world_fills",
@@ -93,6 +93,7 @@ test("version 5 storage migrates in place to version 6", async () => {
     "leg_relations",
     "vault_marks",
     "world_prices",
+    "world_explorations",
   ])
     await pool.query(`DROP TABLE probabl.${table}`);
   await pool.query("ALTER TABLE probabl.rfq_makers DROP COLUMN worlds");
@@ -100,7 +101,7 @@ test("version 5 storage migrates in place to version 6", async () => {
   const reopened = createDatabase({ connectionString: pg.connectionString });
   await reopened.initialize();
   await reopened.close();
-  expect((await pool.query("SELECT version FROM probabl.schema_version")).rows[0].version).toBe(6);
+  expect((await pool.query("SELECT version FROM probabl.schema_version")).rows[0].version).toBe(7);
   const columns = await pool.query(
     `SELECT column_name FROM information_schema.columns
     WHERE table_schema = 'probabl' AND table_name = 'rfq_makers' AND column_name = 'worlds'`,
@@ -352,5 +353,61 @@ describe("world tables", () => {
     const marks = await db.vaultMarks(domain, vault);
     expect(marks.map((m) => m.batch)).toEqual([4, 3]);
     expect(marks[1]).toMatchObject({ nav: 1_000_000_000n, tx: h("mark"), inputs: { books: [1] } });
+  });
+
+  test("explored worlds: one row per opinion, counts added, latest state kept, listed by recency", async () => {
+    const at = (s: number) => new Date(Date.UTC(2026, 10, 7, 12, 0, s));
+    const noteOf = (hash: string, over: Record<string, unknown> = {}) => ({
+      specHash: h(hash),
+      spec: { legs: [{ id: "polymarket:1", wantYes: true }], stock: null },
+      world: { sentence: `World ${hash}`, legs: [] },
+      quote: { at: 1, products: [{ name: "All-in", stake: "20000000", payout: "185000000" }] },
+      cutoff: 2_000_000_000,
+      explorers: 1,
+      quotes: 1,
+      at: at(0),
+      ...over,
+    });
+    await db.recordWorldExplorations(domain, []);
+    await db.recordWorldExplorations(domain, [noteOf("w1"), noteOf("w2", { at: at(5) })]);
+    // A later batch adds its counts and replaces the state; an older time never moves it back.
+    await db.recordWorldExplorations(domain, [
+      noteOf("w1", {
+        world: { sentence: "World w1, again", legs: [] },
+        explorers: 2,
+        quotes: 3,
+        at: at(10),
+      }),
+      noteOf("w2", { explorers: 0, quotes: 1, at: at(1) }),
+      noteOf("expired", { cutoff: 1_000, at: at(20) }),
+    ]);
+    const list = await db.worldExplorations(domain, {
+      since: at(0),
+      tradingAfter: 1_500_000_000,
+      limit: 10,
+    });
+    expect(list.map((r) => r.specHash)).toEqual([h("w1"), h("w2")]);
+    expect(list[0]).toMatchObject({
+      world: { sentence: "World w1, again" },
+      explorers: 3,
+      quotes: 4,
+      cutoff: 2_000_000_000,
+      firstAt: at(0),
+      lastAt: at(10),
+    });
+    expect(list[1]).toMatchObject({ explorers: 1, quotes: 2, lastAt: at(5) });
+    expect(list[1]!.spec).toEqual({ legs: [{ id: "polymarket:1", wantYes: true }], stock: null });
+    // Explored before `since` is left out; the limit holds.
+    expect(
+      await db.worldExplorations(domain, { since: at(6), tradingAfter: 0, limit: 10 }),
+    ).toHaveLength(2);
+    expect(
+      (
+        await db.worldExplorations(domain, { since: at(6), tradingAfter: 1_500_000_000, limit: 10 })
+      ).map((r) => r.specHash),
+    ).toEqual([h("w1")]);
+    expect(
+      await db.worldExplorations(domain, { since: at(0), tradingAfter: 0, limit: 1 }),
+    ).toHaveLength(1);
   });
 });

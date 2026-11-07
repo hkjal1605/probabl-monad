@@ -7,15 +7,19 @@
  * - `GET  /v2/worlds/events/samples`  live Polymarket events the worlds page suggests, and the
  *                                       curated worlds it opens on, each priced;
  * - `POST /v2/worlds/parse`           an opinion read into a draft (the assistant);
- * - `POST /v2/worlds/preview`         a draft priced by the makers before it exists;
+ * - `POST /v2/worlds/preview`         a draft priced by the makers before it exists (one a
+ *                                       person asked for, once quoted, is kept as explored);
+ * - `GET  /v2/worlds/exploring`       the worlds people priced lately, nobody holds yet;
  * - `POST /v2/worlds/open`            a member opens the world (its book is created);
  * - `GET  /v2/worlds/open/:defHash`   whether the book exists yet;
- * - `GET  /v2/worlds/feed`            every world someone holds a position in;
+ * - `GET  /v2/worlds/feed`            every world someone holds a position in (both lists take
+ *                                       `?limit=`, the page's size, and say their `total`);
  * - `GET  /v2/books/:book/holders`    who holds what in a world (positions are public).
  *
  * Previews and fills are RFQ only: there is no order book. Searches, previews and the feed read
  * memory (the catalog, the replica, the makers' answers); the database is read for a world's
- * registration and, at most every few seconds, for activity totals. */
+ * registration and, at most every few seconds, for activity totals and the explored worlds, and
+ * explored worlds are written in batches off the preview's path. */
 import { randomUUID } from "node:crypto";
 import type { Database, WorldBookRecord } from "@conditional-stocks/db";
 import { BOOK_STATE, productOf } from "@conditional-stocks/evm-client";
@@ -32,6 +36,12 @@ import type { EventMarketsClient } from "../integrations/event-markets.ts";
 import type { RfqHub } from "../rfq/hub.ts";
 import { type AssistantOptions, readOpinion, type WorldDraft } from "./assistant.ts";
 import { CURATED_WORLDS, curatedSpecs } from "./curated.ts";
+import {
+  ExplorationLog,
+  type ExplorationWorld,
+  explorationOf,
+  exploringList,
+} from "./explorations.ts";
 import {
   type CanonicalWorld,
   canonicalWorld,
@@ -93,6 +103,18 @@ const SAMPLES_TTL_MS = 10 * 60_000;
 const SAMPLES_RETRY_MS = 30_000;
 /** A sample is a market people follow: at least this much traded (USD). */
 const SAMPLE_MIN_VOLUME = 100_000;
+/** How long one read of the explored worlds serves every visitor. */
+const EXPLORING_TTL_MS = 30_000;
+/** The explored worlds listed: priced in the last this, trading at least ten minutes more. */
+const EXPLORING_SINCE_MS = 14 * 86_400_000;
+const EXPLORING_LIMIT = 48;
+/** The feed's largest page. */
+const FEED_LIMIT = 200;
+/** A list's page size from `?limit=`: a whole number from 1 to `max`, else `max`. */
+export function pageSize(value: string | undefined, max: number) {
+  const n = Number(value);
+  return Number.isInteger(n) && n >= 1 ? Math.min(n, max) : max;
+}
 
 /** Live Polymarket events that show what a world can be made of: per topic, its most relevant
  * open market (the catalog's own order) that people trade ($100k+), that a maker prices (3–97%,
@@ -197,6 +219,13 @@ export function mountOpinions(
   const searches = new RateLimiter(900, 3_600_000);
   const opens = new RateLimiter(20, 3_600_000);
   const ip = (c: Context) => clientIp(c, options.trustedHops);
+  const explorations = new ExplorationLog({
+    write: (notes) => db.recordWorldExplorations(domain, notes),
+    log: options.log,
+  });
+  /** The curated worlds' spec hashes lately shown: the worlds page's own examples, not anyone's
+   * opinion, so they are not kept as explored. */
+  const curatedHashes = new Set<string>();
   const fail = (error: unknown): never => {
     if (error instanceof OpinionError)
       throw new HTTPException(error.status, { message: error.message });
@@ -350,6 +379,12 @@ export function mountOpinions(
       shown.map(({ spec }) => previewOf(spec, 20n * quoteUnit, 100n * quoteUnit).catch(() => null)),
     );
     // Each priced world with its story and its events' short names (the one-tap buttons).
+    for (const p of priced) {
+      if (!p) continue;
+      curatedHashes.delete(p.world.specHash.toLowerCase());
+      curatedHashes.add(p.world.specHash.toLowerCase());
+    }
+    while (curatedHashes.size > 200) curatedHashes.delete(curatedHashes.values().next().value!);
     const worlds = shown.flatMap(({ world }, i) => {
       const p = priced[i];
       const quoted =
@@ -521,7 +556,71 @@ export function mountOpinions(
     const stakes = body.stakes as Record<string, unknown> | undefined;
     const allIn = stakeOf(stakes?.allIn, 20n * quoteUnit),
       moneyBack = stakeOf(stakes?.moneyBack, 100n * quoteUnit);
-    return c.json(await previewOf(spec, allIn, moneyBack).catch(fail));
+    const preview = await previewOf(spec, allIn, moneyBack).catch(fail);
+    // A world a person asked to price (the app says so), once a maker quotes it, is explored.
+    if (body.explore === true) {
+      const explored = explorationOf(spec, preview);
+      if (explored && !curatedHashes.has(explored.specHash)) explorations.note(explored, ip(c));
+    }
+    return c.json(preview);
+  });
+
+  // The worlds people priced lately, for everyone: one read of the table (and one of the
+  // catalog's memory, for each event's chance now) serves every visitor for half a minute.
+  let exploring: { at: number; worlds: unknown[]; bodies: Map<number, string> } | null = null;
+  let exploringRead: Promise<void> | null = null;
+  const readExploring = async () => {
+    const nowMs = Date.now();
+    const rows = await db.worldExplorations(domain, {
+      since: new Date(nowMs - EXPLORING_SINCE_MS),
+      tradingAfter: Math.floor(nowMs / 1000) + 600,
+      limit: EXPLORING_LIMIT * 2,
+    });
+    // Worlds someone holds a position in are in the live feed instead.
+    const s = indexer.trading();
+    const traded = new Set<string>();
+    for (const r of indexer.metadataRecords()) {
+      if (r.kind !== "user" || !r.specHash) continue;
+      const id = s.bookOf.get(r.defHash.toLowerCase() as Hex);
+      if (id && (s.books.get(id)?.fills ?? 0) > 0) traded.add(r.specHash.toLowerCase());
+    }
+    const ids = [
+      ...new Set(rows.flatMap((r) => (r.world as ExplorationWorld).legs.map((l) => l.id))),
+    ];
+    const { entries } = ids.length
+      ? await catalog().catalogEntries(ids, false)
+      : { entries: [] as CatalogEntry[] };
+    exploring = {
+      at: Date.now(),
+      worlds: exploringList(rows, {
+        traded,
+        entries: new Map(entries.map((e) => [e.id, e])),
+        nowMs,
+        limit: EXPLORING_LIMIT,
+      }),
+      bodies: new Map(),
+    };
+  };
+  app.get("/v2/worlds/exploring", async (c) => {
+    // As many as the page shows (the worlds page four, its full list a page at a time).
+    const limit = pageSize(c.req.query("limit"), EXPLORING_LIMIT);
+    if (!exploring || Date.now() - exploring.at > EXPLORING_TTL_MS) {
+      exploringRead ??= readExploring().finally(() => {
+        exploringRead = null;
+      });
+      await exploringRead.catch((error) =>
+        options.log("worlds.exploring.read.failed", { error: String(error) }),
+      );
+    }
+    // A first read that failed leaves none: the page leaves the section out.
+    if (!exploring) return c.json({ worlds: [], total: 0 });
+    let body = exploring.bodies.get(limit);
+    if (body === undefined) {
+      body = json({ worlds: exploring.worlds.slice(0, limit), total: exploring.worlds.length });
+      exploring.bodies.set(limit, body);
+    }
+    c.header("Cache-Control", "public, max-age=30");
+    return c.body(body, 200, { "content-type": "application/json" });
   });
 
   // ---------------------------------------------------------------- opening a world
@@ -606,13 +705,17 @@ export function mountOpinions(
   const vaultSet = (s: WorldState) => new Set([...s.vaults.keys()].map((v) => v.toLowerCase()));
   const productName = (refund: string) => (BigInt(refund) > 0n ? "Money-back" : "All-in");
 
-  let feedMemo: { key: string; at: number; body: string } | null = null;
+  /** Recent feed answers by sort, stock, page size and replica revision (a few seconds each). */
+  const feedMemo = new Map<string, { at: number; body: string }>();
   app.get("/v2/worlds/feed", async (c) => {
     const sort = c.req.query("sort") ?? "live";
     const underlying = c.req.query("underlying") ?? "";
-    const key = `${sort}:${underlying}:${indexer.follower.revision}`;
-    if (feedMemo && feedMemo.key === key && Date.now() - feedMemo.at < 3_000)
-      return c.body(feedMemo.body, 200, { "content-type": "application/json" });
+    // As many as the page shows (the worlds page four, its full list a page at a time).
+    const limit = pageSize(c.req.query("limit"), FEED_LIMIT);
+    const key = `${sort}:${underlying}:${limit}:${indexer.follower.revision}`;
+    const memo = feedMemo.get(key);
+    if (memo && Date.now() - memo.at < 3_000)
+      return c.body(memo.body, 200, { "content-type": "application/json" });
     const s = indexer.trading();
     const now = BigInt(seconds());
     const act = await activityOf();
@@ -632,6 +735,8 @@ export function mountOpinions(
       if (list.length < 3) list.push(f);
       latest.set(f.book, list);
     }
+    // Every traded world's stock, whatever is filtered or shown: the page's stock filter.
+    const underlyings = new Map<string, string>();
     const worlds = indexer
       .metadataRecords()
       .filter((r) => r.kind === "user")
@@ -639,6 +744,8 @@ export function mountOpinions(
         const id = s.bookOf.get(r.defHash.toLowerCase() as Hex);
         const b = id ? s.books.get(id) : undefined;
         if (!id || !b || b.fills === 0) return [];
+        if (r.metadata.underlying && r.metadata.opinion?.symbol)
+          underlyings.set(r.metadata.underlying, r.metadata.opinion.symbol);
         if (underlying && r.metadata.underlying !== underlying) return [];
         const view = indexer.book(id)!;
         const stats = act.books.get(id);
@@ -695,8 +802,14 @@ export function mountOpinions(
     worlds.sort(
       (a, b) => Number(a.decided) - Number(b.decided) || (order[sort] ?? order.live!)(a, b),
     );
-    const body = json({ worlds: worlds.slice(0, 200), block: s.block.toString() });
-    feedMemo = { key, at: Date.now(), body };
+    const body = json({
+      worlds: worlds.slice(0, limit),
+      total: worlds.length,
+      underlyings: [...underlyings].map(([u, symbol]) => ({ underlying: u, symbol })),
+      block: s.block.toString(),
+    });
+    if (feedMemo.size >= 64) feedMemo.clear();
+    feedMemo.set(key, { at: Date.now(), body });
     c.header("Cache-Control", "no-store");
     return c.body(body, 200, { "content-type": "application/json" });
   });
@@ -767,6 +880,14 @@ export function mountOpinions(
     holdersMemo.set(key, body);
     return c.body(body, 200, { "content-type": "application/json" });
   });
+
+  return {
+    /** Writes the explorations still held (before the database closes). */
+    stop: async () => {
+      explorations.stop();
+      await explorations.flush();
+    },
+  };
 }
 
 /** A draft as the app shows it. */
