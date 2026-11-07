@@ -88,6 +88,9 @@ export const SAMPLE_TOPICS = [
 ];
 /** How long one set of sample events serves every visitor. */
 const SAMPLES_TTL_MS = 10 * 60_000;
+/** How soon a set without curated worlds is read again: pricing may just be starting (the
+ * makers reconnect within a minute of a restart), and the page should not wait ten minutes. */
+const SAMPLES_RETRY_MS = 30_000;
 /** A sample is a market people follow: at least this much traded (USD). */
 const SAMPLE_MIN_VOLUME = 100_000;
 
@@ -321,7 +324,7 @@ export function mountOpinions(
   // The worlds page's placeholder events and the curated worlds it opens on: one read of the
   // catalog (and one price of each curated world) serves every visitor for ten minutes
   // (concurrent misses share it); a failed read keeps the last set.
-  let samples: { at: number; body: string } | null = null;
+  let samples: { at: number; ttl: number; body: string } | null = null;
   let sampling: Promise<void> | null = null;
   /** The curated worlds that can be shown now, each with what it pays (the preview's body): a
    * world the makers decline, or price with a problem, is left out, and fewer than two show
@@ -369,11 +372,12 @@ export function mountOpinions(
     ]);
     samples = {
       at: Date.now(),
+      ttl: worlds.length || !CURATED_WORLDS.length ? SAMPLES_TTL_MS : SAMPLES_RETRY_MS,
       body: json({ events: sampleEvents(hits, Date.now(), maxTenor).map(legEntry), worlds }),
     };
   };
   app.get("/v2/worlds/events/samples", async (c) => {
-    if (!samples || Date.now() - samples.at > SAMPLES_TTL_MS) {
+    if (!samples || Date.now() - samples.at > samples.ttl) {
       sampling ??= readSamples().finally(() => {
         sampling = null;
       });
