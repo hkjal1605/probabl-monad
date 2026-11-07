@@ -99,7 +99,7 @@ function StockPicker({
       aria-label="Stock"
       variant="outline"
       spacing={1.5}
-      className="max-w-full flex-nowrap overflow-x-auto [scrollbar-width:none]"
+      className="max-w-full flex-nowrap overflow-x-auto"
       value={[value]}
       onValueChange={(next) => {
         const id = next[0];
@@ -257,7 +257,7 @@ function ResolvingSoon({
       <h2 className="font-semibold text-foreground text-lg tracking-tight">Resolving soon</h2>
       {markets.length ? (
         // On a phone the markets are cards in a row that swipes sideways, the next one peeking in.
-        <ul className="mt-4 flex min-h-0 flex-1 flex-col justify-between gap-4 max-md:-mx-4 max-md:mt-3 max-md:snap-x max-md:snap-mandatory max-md:scroll-px-4 max-md:flex-row max-md:justify-start max-md:gap-3 max-md:overflow-x-auto max-md:px-4 max-md:[scrollbar-width:none]">
+        <ul className="mt-4 flex min-h-0 flex-1 flex-col justify-between gap-4 max-md:-mx-4 max-md:mt-3 max-md:snap-x max-md:snap-mandatory max-md:scroll-px-4 max-md:flex-row max-md:justify-start max-md:gap-3 max-md:overflow-x-auto max-md:px-4">
           {markets.map((market) => (
             <ResolvingMarket key={market.id} market={market} />
           ))}

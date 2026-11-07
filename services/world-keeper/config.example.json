@@ -1,0 +1,47 @@
+{
+  "vault": "0x0000000000000000000000000000000000000001",
+  "pricing": {
+    "z": 0.5,
+    "zPriorOnly": 0.75,
+    "kappa0": 0.02,
+    "minMarkup": 0.01,
+    "maxMarkup": 0.6,
+    "minUnitPrice": 0.005
+  },
+  "risk": {
+    "perFill": 0.005,
+    "perBook": 0.02,
+    "kelly": 0.25,
+    "perLeg": 0.06,
+    "perTheme": 0.15,
+    "maxUtilization": 0.8,
+    "requesterOutstanding": 0.005,
+    "requesterDaily": 0.01,
+    "maxDrawdownBps": 500
+  },
+  "quotes": {
+    "ttlSeconds": 10,
+    "nearTtlSeconds": 5,
+    "nearSeconds": 7200,
+    "stopSeconds": 900,
+    "indicationStake": "100",
+    "indicationMs": 10000
+  },
+  "references": {
+    "maxReferenceAgeMs": 45000,
+    "maxSpread": 0.1,
+    "probabilityFloor": 0.02,
+    "maxSpotAgeMs": 60000,
+    "maxSpotDeviationBps": 150,
+    "allowStaleSpot": false
+  },
+  "underlyings": {
+    "US:NVDA": { "kind": "stock", "earnings": { "dates": ["2026-11-19"], "jump": 0.07 } },
+    "US:SPY": { "kind": "etf" },
+    "CRYPTO:BTC": { "kind": "crypto" }
+  },
+  "defaultGapSe": 0.03,
+  "pollMs": 15000,
+  "minGasWei": "1000000000000000",
+  "dailyGasBudgetWei": "50000000000000000"
+}

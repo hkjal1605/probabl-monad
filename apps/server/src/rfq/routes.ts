@@ -12,7 +12,7 @@ import { streamSSE } from "hono/streaming";
 import { type Address, getAddress } from "viem";
 import { type Auth, forbidden } from "../auth/routes.ts";
 import { clientIp, RateLimiter } from "../common/rate-limit.ts";
-import { INDICATION_TTL_MS, type RfqHub, type RfqSession } from "./hub.ts";
+import { CLOSE_RECONNECT, INDICATION_TTL_MS, type RfqHub, type RfqSession } from "./hub.ts";
 
 export const API_KEY_PREFIX = "pbl_rfq_";
 const API_KEY = /^pbl_rfq_[A-Za-z0-9_-]{43}$/;
@@ -53,7 +53,12 @@ export function mountRfq(
         throw new HTTPException(401, { message: "Send an approved RFQ API key as a Bearer token" });
       const record = await db.rfqMakerByKey(domain, apiKeyHash(key));
       if (!record) throw new HTTPException(401, { message: "Unknown or revoked RFQ API key" });
-      const maker = { id: record.id, label: record.label, wallet: getAddress(record.wallet) };
+      const maker = {
+        id: record.id,
+        label: record.label,
+        wallet: getAddress(record.wallet),
+        worlds: record.worlds,
+      };
       let session: RfqSession | null = null;
       return {
         onOpen(_event, ws) {
@@ -155,6 +160,7 @@ export function mountRfq(
     createdAt: r.createdAt.toISOString(),
     revokedAt: r.revokedAt?.toISOString() ?? null,
     status: r.revokedAt ? "revoked" : "active",
+    worlds: r.worlds,
     ...(hub?.status(r.id) ?? { connections: 0 }),
   });
 
@@ -194,6 +200,21 @@ export function mountRfq(
       createdBy,
     });
     return c.json({ maker: view(record), apiKey: key }, 201);
+  });
+
+  /** Lets a maker quote world books too (or stops it). Its connections close, so it reconnects
+   * with the new approval and, for worlds, the world signing domain. */
+  app.post("/v1/admin/rfq/makers/:id/worlds", async (c) => {
+    await admin(c);
+    const id = c.req.param("id");
+    if (!MAKER_ID.test(id)) throw new HTTPException(400, { message: "Invalid maker id" });
+    const body = (await c.req.json().catch(() => null)) as { worlds?: unknown } | null;
+    if (typeof body?.worlds !== "boolean")
+      throw new HTTPException(400, { message: "Send worlds: true or false" });
+    if (!(await db.setRfqMakerWorlds(domain, id, body.worlds)))
+      throw new HTTPException(404, { message: "No active maker with this id" });
+    hub?.disconnect(id, "World approval changed", CLOSE_RECONNECT);
+    return c.json({ worlds: body.worlds });
   });
 
   app.post("/v1/admin/rfq/makers/:id/revoke", async (c) => {

@@ -1,0 +1,190 @@
+"use client";
+import { ExternalLink, Search } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import { percent, whenDay } from "@/lib/worlds/format";
+import type { LegEntry } from "@/lib/worlds/types";
+import { worldsApi } from "@/services/worlds-api";
+import { EventThumb, VenueMark } from "./primitives";
+
+/** A venue event as a row: its picture, question, venue, chance and deadline, and one action. */
+export function EventRow({
+  event,
+  onPick,
+  className,
+  action = "Add",
+}: {
+  event: LegEntry;
+  onPick: (e: LegEntry) => void;
+  className?: string | undefined;
+  action?: string;
+}) {
+  const decided = event.yes !== null && (event.yes < 0.03 || event.yes > 0.97);
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-3 rounded-2xl px-2 py-2 transition-colors hover:bg-accent/60",
+        className,
+      )}
+    >
+      <EventThumb event={event} className="size-10" />
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="line-clamp-2 text-sm leading-5 font-medium">{event.question}</span>
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+          <VenueMark source={event.source} />
+          <span aria-hidden>·</span>
+          <span className="tabular-nums">{percent(event.yes)} yes</span>
+          <span aria-hidden>·</span>
+          <span>{whenDay(event.endTime)}</span>
+          <a
+            href={event.url}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Open on the venue"
+            className="inline-flex items-center hover:text-foreground"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ExternalLink className="size-3" />
+          </a>
+        </span>
+      </div>
+      <Button
+        size="sm"
+        variant="secondary"
+        className="shrink-0 rounded-full px-3.5"
+        disabled={decided || event.yes === null}
+        onClick={() => onPick(event)}
+      >
+        {decided ? "Decided" : event.yes === null ? "No price" : action}
+      </Button>
+    </div>
+  );
+}
+
+/** The event search: Polymarket and Kalshi, as you type. With nothing typed it offers
+ * `suggestions` (live events to start from), else a line saying what it searches. */
+export function EventSearchPanel({
+  onPick,
+  initial = "",
+  exclude = [],
+  suggestions = [],
+  autoFocus = true,
+}: {
+  onPick: (e: LegEntry) => void;
+  initial?: string;
+  exclude?: string[];
+  suggestions?: LegEntry[];
+  autoFocus?: boolean;
+}) {
+  const [q, setQ] = useState(initial);
+  const [state, setState] = useState<{ q: string; events: LegEntry[] | null; error: boolean }>({
+    q: "",
+    events: null,
+    error: false,
+  });
+  useEffect(() => {
+    const term = q.trim();
+    if (term.length < 2) return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      worldsApi
+        .searchEvents(term, controller.signal)
+        .then((events) => setState({ q: term, events, error: false }))
+        .catch((error: Error) => {
+          if (error.name !== "AbortError") setState({ q: term, events: [], error: true });
+        });
+    }, 250);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [q]);
+  const term = q.trim();
+  const shown = state.q === term ? state.events?.filter((e) => !exclude.includes(e.id)) : null;
+  const offered = suggestions.filter((e) => !exclude.includes(e.id));
+  return (
+    <>
+      <div className="relative">
+        <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          autoFocus={autoFocus}
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Fed cut, trade deal, CPI, shutdown…"
+          aria-label="Search events"
+          className="h-11 rounded-full pl-10 text-base"
+        />
+      </div>
+      <div className="-mx-2 flex min-h-40 flex-col overflow-y-auto">
+        {term.length < 2 && offered.length > 0 && (
+          <>
+            <span className="px-2 pt-1 pb-0.5 text-xs font-medium text-muted-foreground">
+              Live on Polymarket
+            </span>
+            {offered.map((e) => (
+              <EventRow key={e.id} event={e} onPick={onPick} action="Use" />
+            ))}
+          </>
+        )}
+        {term.length < 2 && !offered.length && (
+          <p className="px-2 py-6 text-center text-sm text-muted-foreground">
+            Polymarket and Kalshi events
+          </p>
+        )}
+        {term.length >= 2 &&
+          shown === null &&
+          !state.error &&
+          Array.from({ length: 4 }, (_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: placeholders.
+            <Skeleton key={i} className="mx-2 my-1.5 h-14 rounded-2xl" />
+          ))}
+        {state.error && state.q === term && (
+          <p className="px-2 py-6 text-center text-sm text-muted-foreground">
+            Search is unavailable. Try again shortly.
+          </p>
+        )}
+        {shown?.length === 0 && !state.error && (
+          <p className="px-2 py-6 text-center text-sm text-muted-foreground">
+            Nothing open matches “{term}”
+          </p>
+        )}
+        {shown?.map((e) => (
+          <EventRow key={e.id} event={e} onPick={onPick} />
+        ))}
+      </div>
+    </>
+  );
+}
+
+/** Search Polymarket and Kalshi for an event to put in a world. */
+export function EventSearchDialog({
+  open,
+  onOpenChange,
+  onPick,
+  title = "Add an event",
+  initial = "",
+  exclude = [],
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onPick: (e: LegEntry) => void;
+  title?: string;
+  initial?: string;
+  exclude?: string[];
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[85dvh] flex-col gap-3 sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        {/* Mounted only while open, so each opening starts from `initial`. */}
+        {open && <EventSearchPanel onPick={onPick} initial={initial} exclude={exclude} />}
+      </DialogContent>
+    </Dialog>
+  );
+}

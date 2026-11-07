@@ -2,7 +2,9 @@
  * after they join, accrued per fill from finalized trades in the claims those fees were charged
  * in. A market's rewards become real tokens when it resolves (only the winning side's claims pay)
  * and claimable at the first Monday 00:00 UTC after its resolution; a dedicated payout wallet then
- * sends them on request. */
+ * sends them on request. World fills (v2) pay their fee in the stablecoin up front, so their
+ * rewards are real at once and claimable at the first Monday after the fill; they share the
+ * exchange's payout ledger. */
 import type { Database, ReferralTotal } from "@conditional-stocks/db";
 import type { ChainState, MarketState } from "@conditional-stocks/evm-client/ledger";
 import { type IndexerService, publicIdOf } from "@conditional-stocks/indexer";
@@ -77,19 +79,79 @@ export class Referrals {
       onError(event: string, error: unknown): void;
       /** How often unsettled payouts are rechecked. */
       reconcileMs?: number;
+      /** The world books' domain, quote token and finalized-fill notifications (v2). */
+      worlds?: {
+        domain: string;
+        quote: Address;
+        onPersistedFills(listener: () => void): () => void;
+      };
     },
   ) {}
+  private unsubscribeWorlds: (() => void) | undefined;
+  private accruingWorlds: Promise<void> | undefined;
 
   /** Accrues what earlier runs stored, then whenever the indexer stores finalized trades, and
    * settles payouts a previous run left in flight. Idle, it makes no calls at all. */
   start() {
     this.unsubscribe = this.options.indexer.onPersistedTrades(() => void this.accrue());
     void this.accrue();
+    const worlds = this.options.worlds;
+    if (worlds) {
+      this.unsubscribeWorlds = worlds.onPersistedFills(() => void this.accrueWorlds());
+      void this.accrueWorlds();
+    }
     this.watchPayouts(0);
+  }
+  /** Accrues every stored world fill not yet counted. */
+  accrueWorlds(): Promise<void> {
+    const worlds = this.options.worlds;
+    if (!worlds || this.accruingWorlds) return this.accruingWorlds ?? Promise.resolve();
+    const { db, config } = this.options;
+    this.accruingWorlds = (async () => {
+      try {
+        while (
+          (
+            await db.accrueWorldReferrals(worlds.domain, {
+              rateBps: config.shareBps,
+              months: config.months,
+              limit: ACCRUAL_BATCH,
+            })
+          ).fills === ACCRUAL_BATCH
+        );
+      } catch (error) {
+        this.options.onError("referrals.accrue-worlds.failed", error);
+      } finally {
+        this.accruingWorlds = undefined;
+      }
+    })();
+    return this.accruingWorlds;
+  }
+  /** World rewards of a referrer (every referrer's without one): unlocked, and unlocking by
+   * week. */
+  private async worldRewards(owner: Address | undefined, now: number) {
+    const worlds = this.options.worlds;
+    if (!worlds)
+      return {
+        unlocked: [] as Amount[],
+        unlocking: [] as (Amount & { unlockAt: number })[],
+        fills: 0,
+      };
+    const weeks = await this.options.db.worldReferralWeeks(worlds.domain, owner);
+    const token = getAddress(worlds.quote);
+    let unlocked = 0n,
+      fills = 0;
+    const unlocking: (Amount & { unlockAt: number })[] = [];
+    for (const w of weeks) {
+      fills += w.fills;
+      if (w.unlockAt <= now) unlocked += w.amount;
+      else if (w.amount > 0n) unlocking.push({ token, amount: w.amount, unlockAt: w.unlockAt });
+    }
+    return { unlocked: unlocked > 0n ? [{ token, amount: unlocked }] : [], unlocking, fills };
   }
   stop() {
     this.stopped = true;
     this.unsubscribe?.();
+    this.unsubscribeWorlds?.();
     clearTimeout(this.retry);
     clearTimeout(this.reconciling);
   }
@@ -189,12 +251,18 @@ export class Referrals {
     return out.sort((a, b) => a.market.id - b.market.id);
   }
 
-  /** What a referrer may claim now, per token, net of sent and paid payouts. */
-  private claimable(rewards: MarketRewards[], paid: { token: string; amount: bigint }[]) {
+  /** What a referrer may claim now, per token, net of sent and paid payouts (`extra`: world
+   * rewards already unlocked). */
+  private claimable(
+    rewards: MarketRewards[],
+    paid: { token: string; amount: bigint }[],
+    extra: Amount[] = [],
+  ) {
     const unlocked = new Map<Address, bigint>();
     for (const r of rewards)
       if (r.status === "claimable")
         for (const a of r.realized ?? []) add(unlocked, a.token, a.amount);
+    for (const a of extra) add(unlocked, a.token, a.amount);
     for (const p of paid) add(unlocked, getAddress(p.token), -p.amount);
     return [...unlocked]
       .filter(([, amount]) => amount > 0n)
@@ -222,7 +290,13 @@ export class Referrals {
     ]);
     const rewards = this.markets(s, totals);
     const now = this.now(s);
+    const worldRewards = await this.worldRewards(owner, now);
     const unlocking = new Map<string, { token: Address; amount: bigint; unlockAt: number }>();
+    for (const w of worldRewards.unlocking) {
+      const key = `${w.unlockAt}:${w.token}`;
+      const prior = unlocking.get(key);
+      unlocking.set(key, { ...w, amount: (prior?.amount ?? 0n) + w.amount });
+    }
     for (const { status, realized, unlockAt } of rewards)
       if (status === "unlocking" && unlockAt !== null)
         for (const a of realized ?? [])
@@ -285,8 +359,15 @@ export class Referrals {
         })),
         realized: r.realized?.filter((a) => a.amount > 0n).map(amount) ?? null,
       })),
+      worlds: this.options.worlds
+        ? {
+            fills: worldRewards.fills,
+            unlocked: worldRewards.unlocked.map(amount),
+            unlocking: worldRewards.unlocking.map((u) => ({ ...amount(u), unlockAt: u.unlockAt })),
+          }
+        : null,
       totals: {
-        claimable: this.claimable(rewards, paid).map(amount),
+        claimable: this.claimable(rewards, paid, worldRewards.unlocked).map(amount),
         unlocking: [...unlocking.values()]
           .sort((a, b) => a.unlockAt - b.unlockAt)
           .map((u) => ({ ...amount(u), unlockAt: u.unlockAt })),
@@ -313,6 +394,7 @@ export class Referrals {
       const due = this.claimable(
         this.markets(s, await q.referralTotals(domain, owner)),
         await q.referralPaidTotals(domain, owner),
+        (await this.worldRewards(owner, this.now(s))).unlocked,
       );
       if (!due.length) throw new HTTPException(400, { message: "Nothing is claimable yet." });
       let [gas, nonce] = await Promise.all([
@@ -466,6 +548,9 @@ export class Referrals {
         else if (r.status === "claimable") entry(a.token).unlocked += a.amount;
     }
     for (const p of paid) entry(getAddress(p.token)).paid += p.amount;
+    const world = await this.worldRewards(undefined, this.now(s));
+    for (const a of world.unlocked) entry(a.token).unlocked += a.amount;
+    for (const a of world.unlocking) entry(a.token).unlocking += a.amount;
     const balances = payout
       ? await Promise.all(
           [...tokens.keys()].map(

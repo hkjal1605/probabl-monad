@@ -137,7 +137,7 @@ export function PortfolioClient({ markets: initial }: { markets: MarketView[] })
     );
 
   return (
-    <Page className="page-scrollbars-hidden max-w-[1280px] px-5 py-8 sm:px-6 sm:py-10">
+    <Page className="max-w-[1280px] px-5 py-8 sm:px-6 sm:py-10">
       <AccountGate
         title="Your portfolio"
         description="Connect your wallet to view balances, event positions, claims, and fills."

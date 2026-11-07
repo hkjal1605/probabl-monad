@@ -1,0 +1,22 @@
+{
+  "name": "@conditional-stocks/world-keeper",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "quote": "bun src/main.ts quote",
+    "mark": "bun src/main.ts mark",
+    "fit": "bun src/main.ts fit",
+    "test": "bun test test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@conditional-stocks/db": "workspace:*",
+    "@conditional-stocks/evm-client": "workspace:*",
+    "@conditional-stocks/indexer": "workspace:*",
+    "@conditional-stocks/market-data": "workspace:*",
+    "@conditional-stocks/operator": "workspace:*",
+    "@conditional-stocks/shared": "workspace:*",
+    "viem": "2.56.3"
+  }
+}

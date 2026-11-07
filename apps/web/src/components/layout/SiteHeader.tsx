@@ -19,6 +19,20 @@ export function SiteHeader() {
   return (
     <header className="relative z-40 flex h-14 shrink-0 items-center gap-4 border-b bg-background px-3 sm:h-12 sm:gap-6">
       <Logo />
+      <nav aria-label="Main" className="hidden items-center md:flex">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1.5"
+          render={<Link href="/worlds" />}
+          nativeButton={false}
+        >
+          Worlds
+          <span className="rounded-full bg-brand-soft px-1.5 py-px text-[10px] font-semibold text-brand-strong">
+            New
+          </span>
+        </Button>
+      </nav>
       <div className="absolute left-1/2 -translate-x-1/2">
         <MarketSearch />
       </div>
@@ -43,6 +57,32 @@ export function SiteHeader() {
               <SheetDescription>Explore impact markets</SheetDescription>
             </SheetHeader>
             <nav className="mt-6 flex flex-col gap-2" aria-label="Mobile navigation">
+              <SheetClose
+                nativeButton={false}
+                render={
+                  <Button
+                    variant="ghost"
+                    className="justify-start"
+                    render={<Link href="/worlds" />}
+                    nativeButton={false}
+                  />
+                }
+              >
+                Worlds
+              </SheetClose>
+              <SheetClose
+                nativeButton={false}
+                render={
+                  <Button
+                    variant="ghost"
+                    className="justify-start"
+                    render={<Link href="/worlds/me" />}
+                    nativeButton={false}
+                  />
+                }
+              >
+                My worlds
+              </SheetClose>
               <SheetClose
                 nativeButton={false}
                 render={

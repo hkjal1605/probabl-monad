@@ -15,6 +15,12 @@ import {
   parseMakerMessage,
   RFQ_PROTOCOL_VERSION,
 } from "./protocol.ts";
+import type {
+  WorldAnalytics,
+  WorldIndication,
+  WorldMakerQuote,
+  WorldPreviewAnswer,
+} from "./world-protocol.ts";
 
 /** One maker connection. `send` returns false when the socket could not take the frame. */
 export interface RfqSession {
@@ -22,9 +28,9 @@ export interface RfqSession {
   send(message: object): boolean;
   close(code: number, reason: string): void;
 }
-export interface CollectedQuote {
+export interface CollectedQuote<T = MakerQuote> {
   maker: MakerIdentity;
-  terms: MakerQuote;
+  terms: T;
   /** When it arrived (ms since the epoch); its place in arrival order breaks price ties. */
   receivedAt: number;
   arrival: number;
@@ -37,18 +43,30 @@ export interface MakerStats {
   awards: number;
 }
 /** Why a quote cannot stand (a signature check makes it asynchronous), or null. */
-export type QuoteCheck = (
+export type QuoteCheck<T = MakerQuote> = (
   maker: MakerIdentity,
-  terms: MakerQuote,
+  terms: T,
 ) => string | null | Promise<string | null>;
+/** A request's kind: a market order of the exchange, or a world order (version 2). */
+export type RequestKind = "market" | "world";
 interface Pending {
+  kind: RequestKind;
   open: boolean;
   recipients: Set<string>;
   done: Set<string>;
-  quotes: Map<string, CollectedQuote>;
+  quotes: Map<string, CollectedQuote<unknown>>;
   attempts: Map<string, number>;
-  validate: QuoteCheck;
+  validate: QuoteCheck<unknown>;
   finish(): void;
+}
+/** The best indicative prices of one world book across the makers online: each product's
+ * highest bid and lowest ask, and the newest maker's atom marks. */
+export interface WorldBookPrices {
+  products: Map<string, { bid: number | null; ask: number | null; at: number }>;
+  marks: number[] | null;
+  /** The newest maker's analytics (the chance chain, the stock in the world). */
+  analytics: WorldAnalytics | null;
+  at: number;
 }
 
 /** The best indicative prices of one market branch across the makers online. */
@@ -62,6 +80,8 @@ export const INDICATION_TTL_MS = 30_000;
 /** Close codes (4000-4999 are the application's). */
 export const CLOSE_REVOKED = 4001;
 export const CLOSE_LIMIT = 4002;
+/** The maker's approval changed: reconnect to pick it up. */
+export const CLOSE_RECONNECT = 4003;
 /** Quotes a maker may send per request, replacements included. */
 const MAX_ATTEMPTS = 5;
 
@@ -71,7 +91,21 @@ export class RfqHub {
   private readonly counters = new Map<string, MakerStats>();
   /** Each maker's latest indications and when they arrived. */
   private readonly indications = new Map<string, { at: number; prices: MakerIndication[] }>();
+  /** Each world maker's latest indications per book, and when each arrived. */
+  private readonly worldIndications = new Map<
+    string,
+    Map<number, WorldIndication & { at: number }>
+  >();
   private arrivals = 0;
+  /** Previews in flight: the first priced answer wins; every maker declining ends it too. */
+  private readonly previews = new Map<
+    string,
+    {
+      recipients: Set<string>;
+      declines: Map<string, WorldPreviewAnswer>;
+      finish(answer: WorldPreviewAnswer | null): void;
+    }
+  >();
 
   constructor(
     readonly options: {
@@ -79,8 +113,9 @@ export class RfqHub {
       windowMs: number;
       /** Live connections allowed per API key. */
       maxSessionsPerMaker: number;
-      /** What makers learn on connecting (the settlement delegate, the chain). */
-      welcome: () => Record<string, unknown>;
+      /** What makers learn on connecting (the settlement delegate, the chain, and for makers
+       * approved for worlds the world signing domain). */
+      welcome: (maker: MakerIdentity) => Record<string, unknown>;
       now?: () => number;
     },
   ) {}
@@ -112,7 +147,7 @@ export class RfqHub {
       version: RFQ_PROTOCOL_VERSION,
       maker: session.maker,
       quoteWindowMs: this.options.windowMs,
-      ...this.options.welcome(),
+      ...this.options.welcome(session.maker),
     });
     return true;
   }
@@ -124,14 +159,15 @@ export class RfqHub {
     if (live.size) return;
     this.sessions.delete(id);
     this.indications.delete(id);
+    this.worldIndications.delete(id);
     // A maker gone mid-request cannot answer it: the request stops waiting for it.
     for (const p of this.pending.values()) if (p.recipients.has(id)) this.answered(p, id);
   }
 
   /** Closes every connection of a maker (its key was revoked). */
-  disconnect(makerId: string, reason = "API key revoked") {
+  disconnect(makerId: string, reason = "API key revoked", code = CLOSE_REVOKED) {
     for (const session of [...(this.sessions.get(makerId) ?? [])]) {
-      session.close(CLOSE_REVOKED, reason);
+      session.close(code, reason);
       this.detach(session);
     }
   }
@@ -145,12 +181,14 @@ export class RfqHub {
       }
   }
 
-  /** Distinct makers online, leaving out `excluding` (the order's owner never quotes itself). */
-  makers(excluding?: Address) {
+  /** Distinct makers online, leaving out `excluding` (the order's owner never quotes itself);
+   * for world orders, only the makers approved for worlds. */
+  makers(excluding?: Address, kind: RequestKind = "market") {
     let count = 0;
     for (const [, live] of this.sessions) {
       const first = live.values().next().value;
-      if (first && first.maker.wallet !== excluding) count++;
+      if (first && first.maker.wallet !== excluding && (kind === "market" || first.maker.worlds))
+        count++;
     }
     return count;
   }
@@ -179,6 +217,29 @@ export class RfqHub {
     return [...best.values()].sort((a, b) => a.market - b.market || a.branch - b.branch);
   }
 
+  /** Every world book's best indications across the makers online (under the TTL). */
+  worldPrices(): Map<number, WorldBookPrices> {
+    const now = this.now(),
+      best = new Map<number, WorldBookPrices>();
+    for (const [, books] of this.worldIndications)
+      for (const [book, ind] of books) {
+        if (now - ind.at > INDICATION_TTL_MS) continue;
+        const b = best.get(book) ?? { products: new Map(), marks: null, analytics: null, at: 0 };
+        for (const p of ind.products) {
+          const q = b.products.get(p.key) ?? { bid: null, ask: null, at: ind.at };
+          if (p.bid !== null && (q.bid === null || p.bid > q.bid)) q.bid = p.bid;
+          if (p.ask !== null && (q.ask === null || p.ask < q.ask)) q.ask = p.ask;
+          q.at = Math.max(q.at, ind.at);
+          b.products.set(p.key, q);
+        }
+        if (ind.marks && ind.at >= b.at) b.marks = ind.marks;
+        if (ind.analytics && ind.at >= b.at) b.analytics = ind.analytics;
+        b.at = Math.max(b.at, ind.at);
+        best.set(book, b);
+      }
+    return best;
+  }
+
   /** Counts a quote that won part of an order. */
   awarded(makerId: string) {
     this.stats(makerId).awards++;
@@ -189,32 +250,42 @@ export class RfqHub {
     for (const session of this.sessions.get(makerId) ?? []) session.send(message);
   }
 
-  /** Broadcasts `request` and resolves with the standing quotes, in arrival order. */
-  collect(input: {
+  /** Broadcasts `request` and resolves with the standing quotes, in arrival order. A world
+   * request (`kind: "world"`) goes only to the makers approved for worlds. */
+  collect<T = MakerQuote>(input: {
     id: string;
     request: object;
     exclude?: Address;
-    validate: QuoteCheck;
-  }): Promise<CollectedQuote[]> {
+    kind?: RequestKind;
+    validate: QuoteCheck<T>;
+  }): Promise<CollectedQuote<T>[]> {
+    const kind = input.kind ?? "market";
     const recipients = [...this.sessions.entries()].filter(([, live]) => {
       const first = live.values().next().value;
-      return first !== undefined && first.maker.wallet !== input.exclude;
+      return (
+        first !== undefined &&
+        first.maker.wallet !== input.exclude &&
+        (kind === "market" || first.maker.worlds === true)
+      );
     });
     if (!recipients.length) return Promise.resolve([]);
     return new Promise((resolve) => {
       const p: Pending = {
+        kind,
         open: true,
         recipients: new Set(recipients.map(([id]) => id)),
         done: new Set(),
         quotes: new Map(),
         attempts: new Map(),
-        validate: input.validate,
+        validate: input.validate as QuoteCheck<unknown>,
         finish: () => {
           if (!p.open) return;
           p.open = false;
           clearTimeout(timer);
           this.pending.delete(input.id);
-          resolve([...p.quotes.values()].sort((a, b) => a.arrival - b.arrival));
+          resolve(
+            [...p.quotes.values()].sort((a, b) => a.arrival - b.arrival) as CollectedQuote<T>[],
+          );
         },
       };
       const timer = setTimeout(p.finish, this.options.windowMs);
@@ -225,6 +296,39 @@ export class RfqHub {
         for (const session of live) delivered = session.send(input.request) || delivered;
         if (!delivered) this.answered(p, id);
       }
+    });
+  }
+
+  /** Asks the makers approved for worlds to price a world not created yet (`world.preview`).
+   * Resolves with the first priced answer, or when every maker declined with the first
+   * decline, or null when none answered within `timeoutMs`. Nothing is signed. */
+  preview(id: string, request: object, timeoutMs: number): Promise<WorldPreviewAnswer | null> {
+    const recipients = [...this.sessions.entries()].filter(
+      ([, live]) => live.values().next().value?.maker.worlds === true,
+    );
+    if (!recipients.length) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      const entry = {
+        recipients: new Set(recipients.map(([makerId]) => makerId)),
+        declines: new Map<string, WorldPreviewAnswer>(),
+        finish: (answer: WorldPreviewAnswer | null) => {
+          if (!this.previews.has(id)) return;
+          this.previews.delete(id);
+          clearTimeout(timer);
+          resolve(answer);
+        },
+      };
+      const timer = setTimeout(
+        () => entry.finish(entry.declines.values().next().value ?? null),
+        timeoutMs,
+      );
+      this.previews.set(id, entry);
+      for (const [makerId, live] of recipients) {
+        let delivered = false;
+        for (const session of live) delivered = session.send(request) || delivered;
+        if (!delivered) entry.recipients.delete(makerId);
+      }
+      if (!entry.recipients.size) entry.finish(null);
     });
   }
 
@@ -245,10 +349,33 @@ export class RfqHub {
       this.indications.set(session.maker.id, { at: this.now(), prices: message.prices });
       return;
     }
+    if (message.type === "world.previewed") {
+      const entry = this.previews.get(message.id);
+      if (!entry?.recipients.has(session.maker.id)) return;
+      const { type: _, id: __, ...answer } = message;
+      if (answer.decline === null) return entry.finish(answer);
+      entry.declines.set(session.maker.id, answer);
+      if (entry.declines.size >= entry.recipients.size)
+        entry.finish(entry.declines.values().next().value ?? null);
+      return;
+    }
+    if (message.type === "world.indications") {
+      if (!session.maker.worlds) {
+        session.send({ type: "error", message: "This API key is not approved for worlds" });
+        return;
+      }
+      const at = this.now();
+      const books = this.worldIndications.get(session.maker.id) ?? new Map();
+      for (const b of message.books) books.set(b.book, { ...b, at });
+      // A maker's books beyond the TTL are dropped, so its map never outgrows what it quotes.
+      for (const [book, ind] of books) if (at - ind.at > INDICATION_TTL_MS) books.delete(book);
+      this.worldIndications.set(session.maker.id, books);
+      return;
+    }
     const maker = session.maker,
       p = this.pending.get(message.rfqId);
     if (!p?.recipients.has(maker.id)) {
-      if (message.type === "quote")
+      if (message.type === "quote" || message.type === "world.quote")
         session.send({
           type: "quote.rejected",
           rfqId: message.rfqId,
@@ -266,14 +393,35 @@ export class RfqHub {
     const attempts = (p.attempts.get(maker.id) ?? 0) + 1;
     p.attempts.set(maker.id, attempts);
     const rfqId = message.rfqId;
-    const terms: MakerQuote = {
-      price: message.price,
-      quantity: message.quantity,
-      fundingKind: message.fundingKind,
-      expiry: message.expiry,
-      nonce: message.nonce,
-      signature: message.signature,
-    };
+    if ((message.type === "world.quote") !== (p.kind === "world")) {
+      stats.rejections++;
+      session.send({
+        type: "quote.rejected",
+        rfqId,
+        reason:
+          p.kind === "world" ? "Answer a world request with world.quote" : "Answer with quote",
+      });
+      return;
+    }
+    const terms: MakerQuote | WorldMakerQuote =
+      message.type === "world.quote"
+        ? {
+            units: message.units,
+            refund: message.refund,
+            price: message.price,
+            expiry: message.expiry,
+            makerData: message.makerData,
+            nonce: message.nonce,
+            signature: message.signature,
+          }
+        : {
+            price: message.price,
+            quantity: message.quantity,
+            fundingKind: message.fundingKind,
+            expiry: message.expiry,
+            nonce: message.nonce,
+            signature: message.signature,
+          };
     const quote = { maker, terms, receivedAt: this.now(), arrival: ++this.arrivals };
     const reject = (reason: string) => {
       stats.rejections++;

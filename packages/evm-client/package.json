@@ -7,8 +7,11 @@
     ".": "./src/index.ts",
     "./abi": "./src/abi.ts",
     "./ledger": "./src/ledger.ts",
+    "./world-ledger": "./src/world-ledger.ts",
+    "./world-risk": "./src/world-risk.ts",
     "./evidence": "./src/evidence.ts",
-    "./admin": "./src/admin.ts"
+    "./admin": "./src/admin.ts",
+    "./world-admin": "./src/world-admin.ts"
   },
   "scripts": {
     "abi": "bun scripts/abi.ts",

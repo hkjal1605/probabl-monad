@@ -16,11 +16,13 @@ import {
 } from "@conditional-stocks/evm-client";
 import type { MarketState } from "@conditional-stocks/evm-client/ledger";
 import type { Address, Hex } from "viem";
+import { parseWorldMessage, type WorldMakerMessage } from "./world-protocol.ts";
 
 export const RFQ_PROTOCOL_VERSION = 1;
 /** Longest frame a maker may send: a quote is under 500 bytes, a full vault's indications
- * (48 markets, both branches) under 10 KB. */
-export const MAX_MAKER_FRAME = 16_384;
+ * (48 markets, both branches) under 10 KB, and a world frame of 12 books with their analytics
+ * under 16 KB. */
+export const MAX_MAKER_FRAME = 32_768;
 /** Prices one `indications` frame may carry. */
 export const MAX_INDICATIONS = 256;
 const U128_MAX = (1n << 128n) - 1n;
@@ -30,6 +32,8 @@ export interface MakerIdentity {
   id: string;
   label: string;
   wallet: Address;
+  /** Approved to quote world books (protocol version 2) too. */
+  worlds?: boolean;
 }
 /** A maker's signed offer for one request: the price it fills at and up to how much. */
 export interface MakerQuote {
@@ -58,7 +62,8 @@ export type MakerMessage =
   | ({ type: "quote"; rfqId: string } & MakerQuote)
   | { type: "decline"; rfqId: string }
   | { type: "ping"; id: string | null }
-  | { type: "indications"; prices: MakerIndication[] };
+  | { type: "indications"; prices: MakerIndication[] }
+  | WorldMakerMessage;
 
 const RFQ_ID = /^[0-9a-f-]{36}$/;
 const PING_ID = /^[A-Za-z0-9_-]{1,64}$/;
@@ -83,6 +88,7 @@ export function parseMakerMessage(text: string): MakerMessage {
     return { type: "ping", id: (m.id as string | undefined) ?? null };
   }
   if (m.type === "indications") return { type: "indications", prices: parseIndications(m.prices) };
+  if (typeof m.type === "string" && m.type.startsWith("world.")) return parseWorldMessage(m);
   if (m.type !== "quote" && m.type !== "decline") throw new Error("Unknown message type");
   if (typeof m.rfqId !== "string" || !RFQ_ID.test(m.rfqId)) throw new Error("Invalid rfqId");
   if (m.type === "decline") return { type: "decline", rfqId: m.rfqId };

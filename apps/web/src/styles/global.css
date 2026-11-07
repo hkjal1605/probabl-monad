@@ -179,8 +179,14 @@
 }
 
 @layer base {
+  /* No scrollbars anywhere: the window, panels, lists and dropdowns all still scroll (wheel,
+     touch, keys), just without a bar. */
   * {
     @apply border-border outline-ring/50;
+    scrollbar-width: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
   }
   html {
     @apply bg-background scroll-smooth font-sans;
@@ -258,26 +264,6 @@
 }
 
 @layer utilities {
-  .scrollbars-hidden {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  .scrollbars-hidden::-webkit-scrollbar {
-    display: none;
-  }
-  html:has(.page-scrollbars-hidden),
-  body:has(.page-scrollbars-hidden),
-  .page-scrollbars-hidden,
-  .page-scrollbars-hidden * {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  html:has(.page-scrollbars-hidden)::-webkit-scrollbar,
-  body:has(.page-scrollbars-hidden)::-webkit-scrollbar,
-  .page-scrollbars-hidden::-webkit-scrollbar,
-  .page-scrollbars-hidden *::-webkit-scrollbar {
-    display: none;
-  }
   /* The markets page: the header, testnet banner, filters and footer stay put while the banner and
      markets scroll. The window scrolls under them, so a swipe or wheel anywhere moves the list. */
   body:has(.markets-viewport) [data-site-chrome] {
@@ -312,20 +298,6 @@
     .home-category-tabs [data-slot="segmented-indicator"] {
       bottom: 0;
     }
-  }
-  /* A market's page scrolls without showing scrollbars, the window's included. */
-  html:has(.market-workspace-scrollbars-hidden),
-  body:has(.market-workspace-scrollbars-hidden),
-  .market-workspace-scrollbars-hidden,
-  .market-workspace-scrollbars-hidden * {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  html:has(.market-workspace-scrollbars-hidden)::-webkit-scrollbar,
-  body:has(.market-workspace-scrollbars-hidden)::-webkit-scrollbar,
-  .market-workspace-scrollbars-hidden::-webkit-scrollbar,
-  .market-workspace-scrollbars-hidden *::-webkit-scrollbar {
-    display: none;
   }
   .trade-order-details {
     display: flex;

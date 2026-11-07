@@ -38,7 +38,8 @@ async function main() {
     store.appendAlert,
   );
   await kalshi.start();
-  const app = createIngestorApp(new EventMarkets(service, kalshi), store, environment);
+  const markets = new EventMarkets(service, kalshi);
+  const app = createIngestorApp(markets, store, environment);
 
   const server = startPolymarketServer(app, environment);
   logger.info("service.started", {

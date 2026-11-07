@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { worldQueries } from "./worlds.ts";
 
 type Connection = Pick<Pool | PoolClient, "query">;
 
@@ -134,6 +135,8 @@ export interface RfqMakerRecord {
   createdBy: string;
   createdAt: Date;
   revokedAt: Date | null;
+  /** Also quotes world books (RFQ protocol version 2). */
+  worlds: boolean;
 }
 
 const bounded = (limit: number, max = 1000) => Math.min(Math.max(Math.trunc(limit), 1), max);
@@ -180,9 +183,10 @@ const rfqMakerRecord = (r: any): RfqMakerRecord => ({
   createdBy: `0x${r.created_by}`,
   createdAt: r.created_at,
   revokedAt: r.revoked_at,
+  worlds: r.worlds,
 });
 const RFQ_MAKER = `id, label, encode(wallet, 'hex') AS wallet, key_prefix,
-  encode(created_by, 'hex') AS created_by, created_at, revoked_at`;
+  encode(created_by, 'hex') AS created_by, created_at, revoked_at, worlds`;
 /** 0x hex to the bytea parameter form. */
 const hex = (value: string) => value.slice(2).toLowerCase();
 /** Resolved once per statement (an InitPlan), so every index below is probed directly. */
@@ -236,6 +240,7 @@ const closedOrderRecord = (r: any): ClosedOrderRecord => ({
 /** The only SQL surface of the services. Every statement is keyed by an index. */
 export function queries(db: Connection) {
   return {
+    ...worldQueries(db),
     async ping() {
       await db.query("SELECT 1");
     },
@@ -962,6 +967,16 @@ export function queries(db: Connection) {
         )
       ).rows[0];
       return row ? rfqMakerRecord(row) : undefined;
+    },
+    /** Lets a maker quote world books too, or stops it. */
+    async setRfqMakerWorlds(domain: string, id: string, worlds: boolean) {
+      return (
+        await db.query(
+          `UPDATE probabl.rfq_makers SET worlds = $3
+          WHERE id = $2 AND domain = $1 AND revoked_at IS NULL`,
+          [domain, id, worlds],
+        )
+      ).rowCount;
     },
     async revokeRfqMaker(domain: string, id: string) {
       return (

@@ -32,7 +32,7 @@ export function MarketDetailPageSkeleton() {
   return (
     <Page
       variant="terminal"
-      className="market-workspace-scrollbars-hidden flex min-h-0 flex-col bg-secondary px-0 py-0 xl:overflow-hidden"
+      className="flex min-h-0 flex-col bg-secondary px-0 py-0 xl:overflow-hidden"
     >
       <div role="status" aria-label="Loading market" aria-busy="true" className="contents">
         <div className="flex flex-wrap items-start justify-between gap-3 bg-background px-3 py-3">

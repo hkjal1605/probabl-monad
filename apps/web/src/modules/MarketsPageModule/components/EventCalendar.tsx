@@ -404,7 +404,7 @@ function DateStrip({
       aria-label="Days"
       className="sticky top-0 z-20 -mx-1 bg-background/90 px-1 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/75"
     >
-      <ol className="flex gap-1.5 overflow-x-auto [scrollbar-width:none]">
+      <ol className="flex gap-1.5 overflow-x-auto">
         {days.map((day) => {
           const count = day.events.length,
             isToday = dayLabel(day.start, now) === "Today";

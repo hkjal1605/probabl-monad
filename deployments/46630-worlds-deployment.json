@@ -1,0 +1,32 @@
+{
+  "chainId": 46630,
+  "network": "Robinhood Chain Testnet",
+  "quote": "0x509E319A1bA0C429596A05294594D884F5610D73",
+  "oracle": "0xF7069CEa28451ca34E68F5ffc0732e9FDa7797Ff",
+  "books": "0xB79DAdE0B14f768cb0D1E2575AAdF765984B3d5D",
+  "vaults": [
+    "0xC8bD8655B15ff6a4903EaDaF8f9B2F773232b39B"
+  ],
+  "deploymentBlock": "148448102",
+  "transactions": {
+    "oracle": "0x5e97be5030cc03bcb49828a0d11113ebd006fb25a543b42f3410868bfa1b9283",
+    "books": "0x984fe3ba066dd696df2ae45815218213f428ae658b3aee8c3357f08e9ff7d66f",
+    "vault": "0xf802ea3d6eee0a968cd63401f67398230f954baaa4e301f90a3ecc849079491a"
+  },
+  "roles": {
+    "admin": "0x4D00cfD3495c1E0e7280E74Ba92af3163Ad0531f",
+    "bookAdmin": "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0",
+    "marketAdmin": "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0",
+    "guardian": "0x3c75eE21AF23832057760433Bf95DA9f9c0c7c41",
+    "resolutionAdmin": "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0",
+    "vault": {
+      "admin": "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0",
+      "adminDelay": 0,
+      "curator": "0x727AD358b6093fF5cBECE5dE7c8aD159aEAbaba0",
+      "keeper": "0xEF84475Ca79c181D1742035c0296746FeAb4956E",
+      "marker": "0xed4df31Fe65699353f789c252CB27f001A308c9B",
+      "guardian": "0x3c75eE21AF23832057760433Bf95DA9f9c0c7c41"
+    }
+  },
+  "deployedAt": "2026-11-04T15:54:35.072Z"
+}

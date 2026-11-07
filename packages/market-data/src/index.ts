@@ -1,4 +1,5 @@
 export * from "./canonical.ts";
+export * from "./catalog.ts";
 export * from "./event-market.ts";
 export * from "./evidence.ts";
 export * from "./kalshi/metadata.ts";
@@ -7,3 +8,4 @@ export * from "./polymarket/metadata.ts";
 export * from "./polymarket/order-book.ts";
 export * from "./probability.ts";
 export * from "./request-pacer.ts";
+export * from "./world-evidence.ts";

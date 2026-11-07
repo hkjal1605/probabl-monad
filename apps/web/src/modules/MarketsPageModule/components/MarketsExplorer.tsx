@@ -185,7 +185,7 @@ export function MarketsExplorer({
   return (
     <Page
       variant="terminal"
-      className="page-scrollbars-hidden markets-viewport flex max-w-[1350px] flex-col px-4 py-0 lg:px-6"
+      className="markets-viewport flex max-w-[1350px] flex-col px-4 py-0 lg:px-6"
     >
       <section
         ref={filtersRef}
@@ -196,7 +196,7 @@ export function MarketsExplorer({
             phone the row runs to the screen's edges and fades out at them. */}
         <div
           ref={tabsRef}
-          className="home-category-tabs -mb-2 min-w-0 flex-1 overflow-x-auto pb-2 [scrollbar-width:none] max-md:-mx-4 max-md:mb-0 max-md:px-4 max-md:pb-0 max-md:[mask-image:linear-gradient(to_right,transparent,black_1rem,black_calc(100%-1rem),transparent)]"
+          className="home-category-tabs -mb-2 min-w-0 flex-1 overflow-x-auto pb-2 max-md:-mx-4 max-md:mb-0 max-md:px-4 max-md:pb-0 max-md:[mask-image:linear-gradient(to_right,transparent,black_1rem,black_calc(100%-1rem),transparent)]"
         >
           <Segmented
             label="Market category"

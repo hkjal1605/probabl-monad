@@ -1,5 +1,6 @@
 /** API process: the chain index (live replica, finalized persistence, read routes) and the
- * `/v1` product API in one process, sharing one RPC poller and one in-memory replica. */
+ * `/v1` product API in one process, sharing one RPC poller and one in-memory replica; with
+ * WORLD_BOOKS_ADDRESS, also the world books' index and the `/v2` API (docs/version-2-plan.md). */
 
 import { createDatabase } from "@conditional-stocks/db";
 import {
@@ -7,8 +8,12 @@ import {
   DEPLOYLESS_BATCH_SIZE,
   QUOTE_TYPES,
   quoteDomain,
+  WORLD_QUOTE_TYPES,
+  worldBooksAbi,
+  worldQuoteDomain,
 } from "@conditional-stocks/evm-client";
 import { IndexerService } from "@conditional-stocks/indexer";
+import { WorldIndexer } from "@conditional-stocks/indexer/worlds";
 import { MarketDataError } from "@conditional-stocks/market-data";
 import { nativeCurrency } from "@conditional-stocks/shared/chains";
 import { requestLogging } from "@conditional-stocks/shared/http";
@@ -39,6 +44,13 @@ import { mountRfq } from "./rfq/routes.ts";
 import { DelegatedTrading, tradingSigner } from "./trading/delegated.ts";
 import { createOrderPlan } from "./trading/plan.ts";
 import { mountTrading } from "./trading/routes.ts";
+import { mountWorldAdmin } from "./worlds/admin.ts";
+import { WorldDesk } from "./worlds/desk.ts";
+import { WorldRecorder } from "./worlds/history.ts";
+import { mountOpinions } from "./worlds/opinions.ts";
+import { mountWorlds } from "./worlds/routes.ts";
+import { WorldTrading } from "./worlds/trading.ts";
+import { loadWorldUnderlyings, WorldSpots } from "./worlds/underlyings.ts";
 
 const required = (name: string) => {
   const value = process.env[name]?.trim();
@@ -132,6 +144,44 @@ const indexer = new IndexerService({
 await indexer.start();
 const domain = indexer.domain;
 
+/** World books (v2): their own index beside the exchange's, over the books, the oracle and the
+ * world vaults (WORLD_VAULT_ADDRESSES), from WORLD_DEPLOYMENT_BLOCK (the oracle's). */
+const worldBooksAddress = process.env.WORLD_BOOKS_ADDRESS?.trim();
+const worlds = worldBooksAddress
+  ? await (async () => {
+      const books = getAddress(worldBooksAddress);
+      const [oracle, worldQuote] = await Promise.all([
+        client.readContract({ address: books, abi: worldBooksAbi, functionName: "oracle" }),
+        client.readContract({ address: books, abi: worldBooksAbi, functionName: "quote" }),
+      ]);
+      const world = new WorldIndexer({
+        client,
+        ...(endpoints ? { endpoints } : {}),
+        deployment: {
+          chainId,
+          books,
+          oracle,
+          quote: worldQuote,
+          vaults: (process.env.WORLD_VAULT_ADDRESSES ?? "")
+            .split(",")
+            .map((value) => value.trim())
+            .filter(Boolean)
+            .map((value) => getAddress(value)),
+        },
+        deploymentBlock: BigInt(required("WORLD_DEPLOYMENT_BLOCK")),
+        db,
+        ...(process.env.FINALITY_DEPTH
+          ? { finalityDepth: BigInt(process.env.FINALITY_DEPTH) }
+          : {}),
+        ...(process.env.POLL_MS ? { pollMs: Number(process.env.POLL_MS) } : {}),
+        ...(process.env.FINALITY_MS ? { finalityMs: Number(process.env.FINALITY_MS) } : {}),
+        onError: (error) => logger.error("worlds.indexer.error", { error }),
+      });
+      await world.start();
+      return world;
+    })()
+  : null;
+
 const app = new Hono();
 // Requests in flight, which a shutdown lets finish (see the signal handler below).
 let inflight = 0;
@@ -219,6 +269,16 @@ app.use(
   "/stream",
   ownerGate((c) => c.req.query("owner")),
 );
+// The same rule for world wallets: positions, fills and stream images need the wallet's session.
+app.use(
+  "/v2/positions/:owner",
+  ownerGate((c) => c.req.param("owner")),
+);
+for (const path of ["/v2/fills", "/v2/stream"])
+  app.use(
+    path,
+    ownerGate((c) => c.req.query("owner")),
+  );
 
 indexer.mount(app);
 app.get("/ready", async (c) => {
@@ -267,6 +327,13 @@ const events = () => {
   const url = process.env.POLYMARKET_INGESTOR_URL,
     token = process.env.POLYMARKET_INTERNAL_TOKEN;
   if (!url || !token) throw new HTTPException(503, { message: "Event ingestor is not configured" });
+  return new EventMarketsClient(url, token);
+};
+/** The event catalog (services/polymarket-ingestor/src/catalog-main.ts), its own process. */
+const catalog = () => {
+  const url = process.env.EVENT_CATALOG_URL?.trim(),
+    token = process.env.POLYMARKET_INTERNAL_TOKEN;
+  if (!url || !token) throw new HTTPException(503, { message: "Event catalog is not configured" });
   return new EventMarketsClient(url, token);
 };
 // Redis shares probability ticks across API processes; without it, reads go to the ingestor.
@@ -325,18 +392,32 @@ const prepare = createOrderPlan(indexer);
  * only with it. */
 const rfqWindowMs = whole("RFQ_QUOTE_WINDOW_MS", 500, 5_000);
 const rfqMinQuoteSeconds = whole("RFQ_MIN_QUOTE_SECONDS", 3, 300);
-const rfq = signer
-  ? new RfqHub({
-      windowMs: rfqWindowMs,
-      maxSessionsPerMaker: whole("RFQ_CONNECTIONS_PER_KEY", 2, 20) || 1,
-      welcome: () => ({
-        chainId,
-        exchange,
-        signing: { domain: quoteDomain(chainId, exchange), types: QUOTE_TYPES },
-        minQuoteSeconds: rfqMinQuoteSeconds,
-      }),
-    })
-  : null;
+const rfq =
+  signer || worlds
+    ? new RfqHub({
+        windowMs: rfqWindowMs,
+        maxSessionsPerMaker: whole("RFQ_CONNECTIONS_PER_KEY", 2, 20) || 1,
+        welcome: (maker) => ({
+          chainId,
+          exchange,
+          signing: { domain: quoteDomain(chainId, exchange), types: QUOTE_TYPES },
+          minQuoteSeconds: rfqMinQuoteSeconds,
+          // Makers approved for worlds also learn the world books and their signing domain.
+          ...(worlds && maker.worlds
+            ? {
+                worlds: {
+                  books: worlds.deployment.books,
+                  vaults: worlds.deployment.vaults,
+                  signing: {
+                    domain: worldQuoteDomain(chainId, worlds.deployment.books),
+                    types: WORLD_QUOTE_TYPES,
+                  },
+                },
+              }
+            : {}),
+        }),
+      })
+    : null;
 const delegated =
   signer &&
   new DelegatedTrading({
@@ -369,6 +450,121 @@ mountRfq(app, {
   trustedHops,
 });
 mountCustody(app, indexer, client, auth);
+// World books: reads from their index, quotes and fills through the RFQ hub, the evidence flow.
+const worldDesk =
+  worlds && rfq
+    ? new WorldDesk({
+        hub: rfq,
+        indexer: worlds,
+        chainId,
+        minQuoteSeconds: rfqMinQuoteSeconds,
+        log: (level, event, fields) => logger[level](event, fields),
+      })
+    : null;
+const worldRecorder = worlds
+  ? new WorldRecorder({
+      indexer: worlds,
+      db,
+      quotes: () => rfq?.worldPrices() ?? new Map(),
+      probability: (condition) => probabilities.get(condition),
+      onError: (error) => logger.warn("worlds.record.failed", { error }),
+    })
+  : null;
+if (worlds) {
+  // Book views and positions read the makers' indications and marks.
+  worlds.prices = (book) => rfq?.worldPrices().get(book);
+  worlds.mount(app);
+  mountWorlds(app, {
+    indexer: worlds,
+    client,
+    auth,
+    db,
+    hub: rfq,
+    desk: worldDesk,
+    trading:
+      signer && worldDesk
+        ? new WorldTrading({ indexer: worlds, desk: worldDesk, db, client, signer })
+        : null,
+    signer,
+  });
+  const { prepareUserBook } = mountWorldAdmin(app, {
+    db,
+    indexer: worlds,
+    client,
+    authenticate: auth.bearer,
+    events,
+    metadataBase: process.env.WORLD_METADATA_BASE_URL?.trim() || origins[0]!,
+  });
+  // Users' worlds: opinions read into worlds, priced before they exist, opened by members.
+  const quoteDecimals = Number(
+    await client.readContract({
+      address: worlds.deployment.quote,
+      abi: [
+        {
+          type: "function",
+          name: "decimals",
+          stateMutability: "view",
+          inputs: [],
+          outputs: [{ type: "uint8" }],
+        },
+      ],
+      functionName: "decimals",
+    }),
+  );
+  const underlyings = loadWorldUnderlyings(
+    chainId,
+    process.env.WORLD_FEEDS_PATH?.trim() || undefined,
+  );
+  const decimalsOf = (name: string, fallback: number) => {
+    const value = Number(process.env[name]?.trim() || fallback);
+    if (!Number.isFinite(value) || value < 0) throw new Error(`${name} must be a number`);
+    return value;
+  };
+  const assistantModel = process.env.WORLD_ASSISTANT_MODEL?.trim() || "deepseek/deepseek-v4-pro";
+  mountOpinions(app, {
+    indexer: worlds,
+    db,
+    auth,
+    client,
+    hub: rfq,
+    catalog,
+    underlyings,
+    spots: new WorldSpots({
+      client,
+      reference: async (tokens) => {
+        const r = await prices.getPrices(tokens);
+        const out = new Map<`0x${string}`, number>();
+        for (const p of r.prices)
+          if (p.status === "available" && typeof p.priceUsd === "number" && p.priceUsd > 0)
+            out.set(getAddress(p.token), p.priceUsd);
+        return out;
+      },
+    }),
+    // The assistant reads opinions through OpenRouter; its prices count only when OpenRouter
+    // reports no cost for a call.
+    assistant: {
+      apiKey: process.env.OPENROUTER_API_KEY?.trim() || null,
+      model: assistantModel,
+      inputPrice: decimalsOf("WORLD_ASSISTANT_INPUT_USD_PER_MTOK", 1.6),
+      outputPrice: decimalsOf("WORLD_ASSISTANT_OUTPUT_USD_PER_MTOK", 3.2),
+      timeoutMs: decimalsOf("WORLD_ASSISTANT_TIMEOUT_MS", 12_000),
+      dailyBudgetUsd: decimalsOf("WORLD_ASSISTANT_DAILY_USD", 25),
+    },
+    feeBps: whole("WORLD_USER_FEE_BPS", 100, 1_000),
+    quoteUnit: 10n ** BigInt(quoteDecimals),
+    trustedHops,
+    prepareUserBook,
+    log: (event, detail) => logger.info(event, detail),
+  });
+  worldRecorder?.start();
+  logger.info("worlds.enabled", {
+    assistant: process.env.OPENROUTER_API_KEY?.trim() ? assistantModel : null,
+    books: worlds.deployment.books,
+    oracle: worlds.deployment.oracle,
+    vaults: worlds.deployment.vaults,
+    delegated: Boolean(signer && worldDesk),
+  });
+}
 mountAdmin(app, { db, indexer, client, chainId, domain, authenticate: auth.bearer, events });
 const faucet = mountFaucet(app, {
   secret: process.env.FAUCET_PRIVATE_KEY,
@@ -402,6 +598,15 @@ const referrals = new Referrals({
     return typeof midpoint === "string" && /^[0-9]{1,7}$/.test(midpoint) ? BigInt(midpoint) : null;
   },
   onError: (event, error) => logger.error(event, { error }),
+  ...(worlds
+    ? {
+        worlds: {
+          domain: worlds.domain,
+          quote: worlds.deployment.quote,
+          onPersistedFills: (listener: () => void) => worlds.onPersistedFills(listener),
+        },
+      }
+    : {}),
 });
 referrals.start();
 mountInvites(app, {
@@ -458,10 +663,12 @@ for (const signal of ["SIGINT", "SIGTERM"] as const)
   process.on(signal, () => {
     clearInterval(prune);
     recorder.stop();
+    worldRecorder?.stop();
+    worldDesk?.stop();
     referrals.stop();
     // Under pm2's 90 s kill timeout, with room for the index to flush after.
     void drain(60_000)
-      .then(() => indexer.stop())
+      .then(() => Promise.all([indexer.stop(), worlds?.stop()]))
       .then(() => db.close())
       .then(() => process.exit(0));
   });

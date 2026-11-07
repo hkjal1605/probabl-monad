@@ -172,7 +172,7 @@ export function MarketWorkspace({
   return (
     <Page
       variant="terminal"
-      className="market-workspace-scrollbars-hidden flex min-h-0 flex-col bg-secondary px-0 py-0 xl:overflow-hidden"
+      className="flex min-h-0 flex-col bg-secondary px-0 py-0 xl:overflow-hidden"
     >
       <div className="flex flex-wrap items-start justify-between gap-3 bg-background px-3 py-3">
         <div className="min-w-0 flex-[1_1_28rem]">

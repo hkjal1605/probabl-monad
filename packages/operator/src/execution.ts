@@ -174,5 +174,6 @@ export class Executor {
     }
     await this.settle(await this.receipt(hash), pending);
     console.log(JSON.stringify({ event: cancel ? "cancelled" : "submitted", transaction: hash }));
+    return hash;
   }
 }

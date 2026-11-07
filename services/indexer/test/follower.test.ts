@@ -8,7 +8,7 @@ import {
   type PublicClient,
   zeroHash,
 } from "viem";
-import { ChainFollower } from "../src/follower.ts";
+import { ChainFollower, type FollowerOptions } from "../src/follower.ts";
 import { logRangeLimit, mapLimit } from "../src/rpc.ts";
 
 const hash = (n: bigint) => `0x${n.toString(16).padStart(64, "0")}` as Hex;
@@ -157,10 +157,7 @@ function endpoint(options: { seconds?: bigint; finalized?: bigint; bloom?: (n: b
   } as unknown as PublicClient;
   return { client, calls, state };
 }
-const follow = (
-  client: PublicClient,
-  extra: Partial<ConstructorParameters<typeof ChainFollower>[0]> = {},
-) =>
+const follow = (client: PublicClient, extra: Partial<FollowerOptions> = {}) =>
   new ChainFollower({ client, exchange, quote, deploymentBlock: 100n, domain: "stub", ...extra });
 const pacing = (f: ChainFollower) => f as unknown as { delay(advanced: boolean): number };
 
@@ -239,6 +236,35 @@ test("moves to an endpoint that is ahead when its head stalls", async () => {
   } finally {
     setSystemTime();
   }
+});
+
+test("on a sub-second chain a multi-block gap is one ranged eth_getLogs, not a header per block", async () => {
+  // Several blocks a second: their timestamps share the second.
+  const fast = endpoint({ seconds: 0n });
+  const f = follow(fast.client, { pollMs: 2_000 });
+  await f.start();
+  f.stop();
+  fast.state.head++;
+  await f.tick(); // Learns the block interval.
+  fast.calls.length = 0;
+  fast.state.head += 8n;
+  expect(await f.tick()).toBe(true);
+  expect(f.confirmed.block).toBe(fast.state.head);
+  // The head, the old tip still on the chain, one ranged read: not eight headers.
+  expect(fast.calls.filter((c) => c === "number")).toHaveLength(1);
+  expect(fast.calls.filter((c) => c === "logs")).toHaveLength(1);
+
+  // Blocks seconds apart keep the header walk (linkage checked header by header).
+  const slow = endpoint({ seconds: 2n });
+  const g = follow(slow.client, { pollMs: 2_000 });
+  await g.start();
+  g.stop();
+  slow.state.head++;
+  await g.tick();
+  slow.calls.length = 0;
+  slow.state.head += 8n;
+  expect(await g.tick()).toBe(true);
+  expect(slow.calls.filter((c) => c === "number")).toHaveLength(7);
 });
 
 test("skips blocks with an empty bloom once the endpoint is seen to compute blooms", async () => {

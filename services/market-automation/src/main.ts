@@ -3,7 +3,10 @@
  * wallet or RESOLUTION_ADMIN_PRIVATE_KEY is set. Dry run by default: --execute signs, --once runs
  * each job once. Vault curation reads AUTOMATION_VAULTS_PATH (vaults.example.json) and signs with
  * CURATOR_PRIVATE_KEY, else the market admin's key. The daily and weekly ladders are read from
- * AUTOMATION_LADDERS_PATH (ladders.example.json), their strikes from KALSHI_API_URL.
+ * AUTOMATION_LADDERS_PATH (ladders.example.json), their strikes from KALSHI_API_URL. With
+ * WORLD_BOOKS_ADDRESS, the world jobs run too: event resolution, fixings, and the books of
+ * worlds members opened (the protocol lists none of its own), whose metadata the API serves
+ * under WORLD_METADATA_BASE_URL.
  *
  *   CHAIN_ID=… RPC_URL=… EXCHANGE_ADDRESS=… MARKET_ADMIN_PRIVATE_KEY=… POLYGON_RPC_URL=…
  *   [RESOLUTION_ADMIN_PRIVATE_KEY=…] [AUTOMATION_API_URL=http://127.0.0.1:3000]
@@ -28,6 +31,7 @@ import { JOBS } from "./jobs/index.ts";
 import { type Ladder, type LadderConfig, loadLadders } from "./ladders.ts";
 import { CuratedVault, type VaultCurationConfig } from "./vaults.ts";
 import { KalshiApi } from "./venues/kalshi-api.ts";
+import { WorldAdmin } from "./worlds.ts";
 
 const env = process.env;
 const required = (name: string) => {
@@ -117,6 +121,17 @@ const ladders: LadderConfig = (await ladderFile.exists())
 const kalshi = new KalshiApi(
   env.KALSHI_API_URL?.trim() || "https://api.elections.kalshi.com/trade-api/v2",
 );
+// World books: their jobs run with WORLD_BOOKS_ADDRESS.
+const worldBooks = env.WORLD_BOOKS_ADDRESS?.trim();
+const worlds = worldBooks
+  ? new WorldAdmin({
+      admin,
+      client,
+      books: getAddress(worldBooks),
+      metadataBase: required("WORLD_METADATA_BASE_URL"),
+      sender: marketAdmin.address,
+    })
+  : undefined;
 /** Markets a fixing of these ladders creates. */
 const markets = (list: Ladder[]) =>
   list.reduce((n, ladder) => n + ladder.tokens.reduce((m, token) => m + token.rungs, 0), 0);
@@ -127,6 +142,7 @@ logger.info("automation.started", {
   resolves: Boolean(resolutionAdmin),
   vaults: vaults.map((vault) => vault.address),
   ladders: { daily: markets(ladders.daily), weekly: markets(ladders.weekly) },
+  worlds: worlds ? { books: worldBooks } : null,
 });
 
 const stopping = new AbortController();
@@ -149,6 +165,8 @@ await Promise.all(
       vaults,
       ladders,
       kalshi,
+      client,
+      ...(worlds ? { worlds } : {}),
       execute,
       logger: logger.child({ job: job.name }),
     };

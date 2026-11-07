@@ -1,4 +1,4 @@
-import type { EventMarket, Hex } from "@conditional-stocks/market-data";
+import type { CatalogEntry, EventMarket, Hex } from "@conditional-stocks/market-data";
 import { MarketDataError } from "@conditional-stocks/market-data";
 
 /** A stored venue snapshot (Polymarket or Kalshi); evidence refers to it by `snapshotId`. */
@@ -34,6 +34,28 @@ export class EventMarketsClient {
       `/internal/metadata/snapshots/${encodeURIComponent(snapshotId)}`,
       true,
     );
+  }
+
+  /** The event catalog's best matches for `query` (memory reads in the catalog process). */
+  searchCatalog(
+    query: string,
+    options: { limit?: number; before?: Date; after?: Date; source?: "polymarket" | "kalshi" } = {},
+  ): Promise<{
+    crawledAt: number;
+    size: number;
+    hits: { score: number; coverage?: number; entry: CatalogEntry }[];
+  }> {
+    const params = new URLSearchParams({ q: query.slice(0, 300) });
+    if (options.limit) params.set("limit", String(options.limit));
+    if (options.before) params.set("before", options.before.toISOString());
+    if (options.after) params.set("after", options.after.toISOString());
+    if (options.source) params.set("source", options.source);
+    return this.#get(`/internal/catalog/search?${params}`, true);
+  }
+
+  /** Catalog entries by id; `fresh` reprices each (at most one venue read per 20 seconds). */
+  catalogEntries(ids: string[], fresh: boolean): Promise<{ entries: CatalogEntry[] }> {
+    return this.#internal("/internal/catalog/entries", { ids, fresh });
   }
 
   probability(conditionId: Hex): Promise<unknown> {
