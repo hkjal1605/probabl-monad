@@ -38,7 +38,7 @@ export function DepositAmountField({
 }: {
   id: string;
   symbol: string | undefined;
-  /** What the wallet holds, written out ("1.2K USDG"); null while unknown. */
+  /** What the wallet holds, written out ("1.2K USDC"); null while unknown. */
   available: string | null;
   amount: string;
   onAmount: (amount: string) => void;

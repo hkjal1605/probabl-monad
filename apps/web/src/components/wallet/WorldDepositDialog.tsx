@@ -1,7 +1,8 @@
 "use client";
-/** The header's deposit on worlds pages: dollars (USDG, the only token worlds trade in) from the
- * wallet into the world balance, the same deposit My worlds and the ticket make. Its reads (the
- * wallet's dollars, the world account) run only while it is open. */
+/** The header's deposit on worlds pages: dollars (the one token worlds trade in, as the chain
+ * names it: USDG on Robinhood Chain, USDC on Monad) from the wallet into the world balance, the
+ * same deposit My worlds and the ticket make. Its reads (the wallet's dollars, the world account,
+ * the token) run only while it is open. */
 import { formatTokenAmount } from "@conditional-stocks/domain";
 import { ArrowDownToLine } from "lucide-react";
 import { useState } from "react";
@@ -23,10 +24,6 @@ import { tokenDisplay } from "@/lib/tokens/catalog";
 import { vaultAmount } from "@/lib/trading/vault";
 import { DepositAmountField, TokenIcon } from "./DepositFields";
 
-/** The world books' quote token: USDG, in millionths. */
-export const WORLD_DEPOSIT_TOKEN = { symbol: "USDG", decimals: 6 } as const;
-const { symbol: SYMBOL, decimals: DECIMALS } = WORLD_DEPOSIT_TOKEN;
-
 export function WorldDepositDialog({
   open,
   onOpenChange,
@@ -46,9 +43,7 @@ export function WorldDepositDialog({
       <DialogContent className="gap-5 sm:max-w-[420px]">
         <DialogHeader>
           <DialogTitle className="text-lg">Deposit funds</DialogTitle>
-          <DialogDescription>
-            Worlds trade in USDG. It goes to your world balance.
-          </DialogDescription>
+          <WorldsTradeIn />
         </DialogHeader>
         {/* Mounted only while open, so the account is read only then. */}
         <WorldDepositForm onDone={() => onOpenChange(false)} />
@@ -57,11 +52,23 @@ export function WorldDepositDialog({
   );
 }
 
+/** Which token, once the chain says. */
+function WorldsTradeIn() {
+  const token = useWorldAccount().quoteToken;
+  return (
+    <DialogDescription>
+      Worlds trade in {token?.symbol ?? "dollars"}. It goes to your world balance.
+    </DialogDescription>
+  );
+}
+
 function WorldDepositForm({ onDone }: { onDone: () => void }) {
   const account = useWorldAccount();
+  const SYMBOL = account.quoteToken?.symbol ?? "";
+  const DECIMALS = account.quoteToken?.decimals ?? 6;
   const [amount, setAmount] = useState("");
   const held = account.walletBalance;
-  const image = tokenDisplay(SYMBOL, null, protocolConfig.chainId)?.image;
+  const image = SYMBOL ? tokenDisplay(SYMBOL, null, protocolConfig.chainId)?.image : null;
   let raw: bigint | null = null;
   let error: string | null = null;
   if (amount.trim()) {
@@ -120,7 +127,12 @@ function WorldDepositForm({ onDone }: { onDone: () => void }) {
           size="lg"
           className="w-full rounded-lg"
           disabled={
-            account.busy || !account.quote || held === null || raw === null || Boolean(error)
+            account.busy ||
+            !account.quote ||
+            !account.quoteToken ||
+            held === null ||
+            raw === null ||
+            Boolean(error)
           }
           onClick={() => {
             if (raw !== null) void account.deposit(raw, onDone);

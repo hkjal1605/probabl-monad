@@ -47,6 +47,14 @@ function useWorldAccountState() {
     worldsApi.deployment(signal),
   );
   const quote = deployment.data ? (getAddress(deployment.data.quote) as Address) : null;
+  // The token worlds trade in (USDG on Robinhood Chain, USDC on Monad): read once from the chain.
+  const quoteToken = useRead(quote ? `world-quote-token:${quote}` : null, async () => {
+    const [symbol, decimals] = await Promise.all([
+      readContract(rpc(), { address: quote!, abi: erc20Abi, functionName: "symbol" }),
+      readContract(rpc(), { address: quote!, abi: erc20Abi, functionName: "decimals" }),
+    ]);
+    return { symbol, decimals };
+  });
   const balance = useRead(
     account && quote ? `world-wallet-balance:${account}:${quote}` : null,
     () =>
@@ -146,6 +154,8 @@ function useWorldAccountState() {
       /** Whether the wallet's dollars could be read (false while loading or after a failure). */
       walletBalanceLoaded: balance.data !== undefined,
       quote,
+      /** The quote token's symbol and decimals; null until read. */
+      quoteToken: quoteToken.data ?? null,
       busy,
       run,
       enable,

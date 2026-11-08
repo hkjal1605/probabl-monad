@@ -115,7 +115,7 @@ function MemberAccountControls() {
 }
 
 /** On worlds pages: the world account's value (its balance and positions, as My worlds counts
- * them) and deposits of USDG into its balance. The value is read only where it is shown, and the
+ * them) and deposits of the token worlds trade in into its balance. The value is read only where it is shown, and the
  * deposit's reads only while its dialog is open; no exchange data is read here. */
 function WorldAccountControls() {
   const shown = useMediaQuery(VALUE_SHOWN);

@@ -133,8 +133,11 @@ mock.module("../../src/hooks/useVaultTransfer", () => ({
 const viemActions = await import("viem/actions");
 mock.module("viem/actions", () => ({
   ...viemActions,
-  readContract: async () => {
-    calls.push("rpc:balanceOf");
+  readContract: async (_client: unknown, args: { functionName: string }) => {
+    calls.push(`rpc:${args.functionName}`);
+    // The world books trade in this chain's dollar token, named by the chain.
+    if (args.functionName === "symbol") return "USDG";
+    if (args.functionName === "decimals") return 6;
     return 75_250_000n;
   },
 }));
@@ -266,7 +269,10 @@ test("Deposit on a worlds page takes only USDG, into the world balance", async (
   expect(text('[data-testid="world-deposit-asset"]')).toContain("USDG");
   expect(dialog?.textContent).toContain("Available 75.25 USDG");
   expect(dialog?.textContent).toContain("Deposit USDG");
-  expect(new Set(calls)).toEqual(new Set(["api:permission", "api:deployment", "rpc:balanceOf"]));
+  expect(new Set(calls)).toEqual(
+    new Set(["api:permission", "api:deployment", "rpc:balanceOf", "rpc:symbol", "rpc:decimals"]),
+  );
+  expect(dialog?.textContent).toContain("Worlds trade in USDG");
 
   const amount = dialog?.querySelector("#world-deposit-amount") as HTMLInputElement;
   await type(amount, "100");
