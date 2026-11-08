@@ -139,6 +139,44 @@ export function mountMarketData(
     return c.json({ marketId: marketIdentity(s, m).id, range, ...history });
   });
 
+  /** A token's recorded reference price (USD per whole token, as the market charts show it), for
+   * charts of a stock without a market of their own (a world's). Every market of the token
+   * records the same price each minute: an open one's history is read (one recording now), else
+   * the newest market's. Shares the market histories' per-minute cache. */
+  app.get("/v1/tokens/:token/spot-history", async (c) => {
+    const range = c.req.query("range") ?? "1m";
+    if (!Object.hasOwn(HISTORY_RANGES, range))
+      throw new HTTPException(400, { message: "range is one of 1d, 1w, 1m, all" });
+    const token = c.req.param("token").toLowerCase();
+    if (!/^0x[0-9a-f]{40}$/.test(token)) throw new HTTPException(400, { message: "Unknown token" });
+    const s = indexer.trading();
+    let source: { id: number; state: number } | null = null;
+    for (const m of s.markets.values()) {
+      if (m.base.toLowerCase() !== token) continue;
+      if (
+        !source ||
+        (m.state === 2 && source.state !== 2) ||
+        (m.state === source.state && m.id > source.id)
+      )
+        source = m;
+    }
+    if (!source) throw new HTTPException(404, { message: "No recorded prices for this token" });
+    const market = source.id;
+    const history = await histories.get(
+      `${market}:${range}:${Math.floor(Date.now() / 60_000)}`,
+      () => priceHistory(options.db, indexer.domain, market, range as HistoryRange),
+    );
+    c.header("Cache-Control", "public, max-age=30");
+    return c.json({
+      token,
+      range,
+      interval: history.interval,
+      points: history.points.flatMap((p) =>
+        p.spot === null ? [] : [{ time: p.time, price: p.spot }],
+      ),
+    });
+  });
+
   const marketCondition = (id: string) => {
     const m = indexer.market(id);
     if (!m) throw new HTTPException(404, { message: "Unknown market" });

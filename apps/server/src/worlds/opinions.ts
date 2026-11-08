@@ -333,6 +333,8 @@ export function mountOpinions(
             name: u.name,
             kind: u.kind,
             logo: u.logo,
+            // Its price history is the token's (`/v1/tokens/:token/spot-history`), if any.
+            token: u.token,
             spot: spot.get(u.underlying) ?? null,
           })),
         }),
