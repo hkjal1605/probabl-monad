@@ -71,8 +71,13 @@ const chain = defineChain({
   nativeCurrency: nativeCurrency(chainId),
   rpcUrls: { default: { http: rpcUrls } },
 });
+// JSON-RPC requests sent in one batch at most. A provider may refuse larger batches: Monad's
+// public endpoints answer ten but refuse thirty (429, or 413 for the body).
+const rpcBatchSize = Number(process.env.RPC_BATCH_SIZE?.trim() || "100");
+if (!Number.isInteger(rpcBatchSize) || rpcBatchSize < 1 || rpcBatchSize > 1_000)
+  throw new Error("RPC_BATCH_SIZE must be a whole number from 1 to 1000");
 const transports = rpcUrls.map((url) =>
-  http(url, { batch: { batchSize: 100, wait: 5 }, retryCount: 2, timeout: 15_000 }),
+  http(url, { batch: { batchSize: rpcBatchSize, wait: 5 }, retryCount: 2, timeout: 15_000 }),
 );
 const client = createPublicClient({
   chain,
