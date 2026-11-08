@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { defaultStrike, EditableSentence } from "@/components/worlds/EditableSentence";
+import { HERO_SENTENCE } from "@/components/worlds/Sentence";
 import { useSampleCycle } from "@/hooks/useSampleCycle";
 import { useMaxTenor, useRead, useStocks } from "@/hooks/useWorlds";
 import { cn } from "@/lib/utils";
@@ -61,7 +62,8 @@ const curatedOf = (p: Preview): Curated | null => {
  *
  * It opens on the curated worlds (two events, a stock, a target and a date each, priced), shown
  * one after another; the first change a person makes (an event, the stock, its side, price or
- * date) makes the world on screen theirs, and "Place bet" bets on it as shown. Without curated
+ * date, or a curated world's tab) makes the world on screen theirs. "Place bet" is on only once
+ * every part is chosen (no event slot showing a placeholder), and bets on it as shown. Without curated
  * worlds it starts from two open events (cycling through live Polymarket events) and NVDA
  * closing 5% over its price a month out. */
 export function WorldStarter({
@@ -93,8 +95,6 @@ export function WorldStarter({
   }, [samples.data]);
   const touring = !adopted && tour.length > 0;
   const at = (step: number) => tour[step % tour.length] as Curated;
-
-  const chosen = legs.filter((l): l is LegState => l !== null);
 
   // The starting stock, once the list (with spot) is in: NVDA, else the first one priced; null
   // when none is (the sentence then starts without one), undefined while the list loads.
@@ -179,8 +179,7 @@ export function WorldStarter({
       <EditableSentence
         legs={shownLegs}
         stock={shownStock}
-        // A size smaller on a phone, so the sentence and its button fit the first screen.
-        className="text-[24px] leading-[1.5] sm:text-[36px] sm:leading-[1.5] lg:text-[42px] lg:leading-[1.5]"
+        className={HERO_SENTENCE}
         dates={worldDates(ends, maxTenor)}
         placeholders={placeholders}
         step={step}
@@ -263,19 +262,21 @@ export function WorldStarter({
     onShown?.(shown);
   }, [shown, onShown]);
 
-  const ready = showing && !busy;
-  // Touring, the button bets on the curated world on screen. Otherwise, with no event chosen
-  // yet, it opens the first event's search: the step it needs.
+  // A bet needs a whole world chosen: every event slot holds an event (none shows a placeholder,
+  // as all do while the curated worlds cycle), and the stock, its price and its date are set.
+  const chosenLegs = legs.every((l): l is LegState => l !== null) ? legs : null;
+  const complete =
+    !touring &&
+    chosenLegs !== null &&
+    chosenLegs.length > 0 &&
+    stock !== null &&
+    stock.strike !== "" &&
+    stock.date !== "";
+  const ready = showing && !busy && complete;
   const open = () => {
-    if (!ready) return;
-    const now = touring ? at(cycle.step) : null;
-    const betLegs = now ? now.legs : chosen;
-    if (!betLegs.length) {
-      live.current?.querySelector<HTMLElement>('[data-slot="event"]')?.click();
-      return;
-    }
+    if (!ready || !chosenLegs || !stock) return;
     setBusy(true);
-    const param = stashStart(betLegs, now ? now.stock : stock);
+    const param = stashStart(chosenLegs, stock);
     router.push(`/worlds/new?w=${encodeURIComponent(param)}`);
   };
 

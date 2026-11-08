@@ -79,7 +79,15 @@ export interface Stock {
   name: string;
   kind: "stock" | "etf" | "crypto";
   logo: string | null;
+  /** The token whose recorded price is its history (`worldsApi.spotHistory`), if any. */
+  token?: string | null;
   spot: number | null;
+}
+
+/** A stock's recorded price over a range: USD per whole token, oldest first. */
+export interface SpotHistory {
+  interval: number;
+  points: { time: number; price: number }[];
 }
 
 /** How a maker explains a world's price. */

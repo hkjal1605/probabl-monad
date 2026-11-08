@@ -111,7 +111,7 @@ export function LiveWorlds({
       )}
       {worlds.length ? (
         <>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {visible.map((w) => (
               <WorldCard
                 key={w.book}
@@ -125,14 +125,14 @@ export function LiveWorlds({
           )}
         </>
       ) : feed.loading && !feed.error ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {Array.from({ length: 2 }, (_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: placeholders.
-            <Skeleton key={i} className="h-72 rounded-3xl" />
+            <Skeleton key={i} className="h-72 rounded-xl" />
           ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-5 rounded-3xl bg-card px-6 py-12 text-center ring-1 ring-border">
+        <div className="flex flex-col items-center gap-5 rounded-xl bg-card px-6 py-12 text-center ring-1 ring-border">
           <Art src="/worlds/empty.webp" width={512} height={512} className="size-28" />
           {feed.error && !feed.data ? (
             <Button variant="outline" onClick={feed.refresh}>

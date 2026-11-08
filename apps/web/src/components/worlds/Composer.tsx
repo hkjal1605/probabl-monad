@@ -51,7 +51,7 @@ export function Composer({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 rounded-2xl bg-card p-3 ring-1 ring-border transition-shadow focus-within:ring-ring/60 sm:p-4",
+        "flex flex-col gap-3 rounded-xl bg-card p-3 ring-1 ring-border transition-shadow focus-within:ring-ring/60 sm:p-4",
         className,
       )}
     >

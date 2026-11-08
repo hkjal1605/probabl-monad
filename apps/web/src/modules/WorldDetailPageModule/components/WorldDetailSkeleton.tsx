@@ -10,13 +10,11 @@ export function WorldDetailSkeleton({ bare = false }: { bare?: boolean }) {
         <Skeleton className="h-10 w-11/12 rounded-lg" />
         <Skeleton className="h-10 w-2/3 rounded-lg" />
       </div>
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_400px]">
-        <div className="flex flex-col gap-3">
-          <Skeleton className="h-24 rounded-xl" />
-          <Skeleton className="h-24 rounded-xl" />
-          <Skeleton className="h-40 rounded-xl" />
-        </div>
-        <Skeleton className="h-[30rem] rounded-2xl" />
+      {/* The page's grid: the events beside the trade, the stock chart across both. */}
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_400px]">
+        <Skeleton className="h-[30rem] rounded-xl lg:col-start-2 lg:row-start-1" />
+        <Skeleton className="h-80 rounded-xl lg:col-start-1 lg:row-start-1" />
+        <Skeleton className="h-64 rounded-xl lg:col-span-2" />
       </div>
     </div>
   );

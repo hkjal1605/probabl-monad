@@ -90,7 +90,7 @@ export function EditableSentence({
           <Atom k="closes">closes</Atom>{" "}
           <Chip
             data-atom="direction"
-            tone="value"
+            tone={stock.direction}
             interactive
             className="whitespace-nowrap"
             role="button"
@@ -112,7 +112,7 @@ export function EditableSentence({
             <ResponsivePopoverTrigger
               nativeButton={false}
               data-atom="strike"
-              render={<Chip tone="value" interactive className="whitespace-nowrap" />}
+              render={<Chip tone="price" interactive className="whitespace-nowrap" />}
             >
               {strikeText(stock.strike)}
             </ResponsivePopoverTrigger>

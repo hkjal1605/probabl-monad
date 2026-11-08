@@ -10,6 +10,7 @@ import type {
   LegEntry,
   Preview,
   Spec,
+  SpotHistory,
   Stock,
   WorldFill,
   WorldPermission,
@@ -112,6 +113,9 @@ export const worldsApi = {
       "/v2/worlds/status",
       opt(signal),
     ),
+  /** A stock's recorded price (its token's, as the market charts record it) over `range`. */
+  spotHistory: (token: string, range: "1d" | "1w" | "1m" | "all", signal?: AbortSignal) =>
+    requestJson<SpotHistory>(`/v1/tokens/${token}/spot-history?range=${range}`, opt(signal)),
   deployment: (signal?: AbortSignal) =>
     requestJson<{ chainId: number; books: string; quote: string; vaults: string[] }>(
       "/v2/deployment",

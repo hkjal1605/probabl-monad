@@ -91,6 +91,25 @@ export function previewOffers(
   });
 }
 
+/** The books' taker fee on a price, in raw units: `feeBps` of it, rounded up, as `WorldBooks`
+ * charges it on top of the price. */
+const feeOn = (price: bigint, feeBps: number) => (price * BigInt(feeBps) + 9_999n) / 10_000n;
+
+/** What an order of `amount` dollars stakes when its fee comes out of it, in raw units: the most
+ * whose stake plus fee is at most the amount, so the order costs what it says (at 1%, a $20
+ * order is a $19.80 stake and its $0.20 fee). */
+export function stakeRawWithin(amount: number, feeBps: number): bigint {
+  const total = BigInt(Math.max(0, Math.round(amount * 1_000_000)));
+  let stake = (total * 10_000n) / BigInt(10_000 + feeBps);
+  while (stake > 0n && stake + feeOn(stake, feeBps) > total) stake -= 1n;
+  return stake;
+}
+/** `stakeRawWithin`, in dollars. */
+export const stakeWithin = (amount: number, feeBps: number) =>
+  Number(stakeRawWithin(amount, feeBps)) / 1_000_000;
+/** A stake in dollars as the API reads one: up to six decimals, no trailing zeros. */
+export const stakeText = (stake: number) => stake.toFixed(6).replace(/\.?0+$/, "");
+
 /** The same offers rescaled to another stake (prices per unit hold for small changes). */
 export function atStake(o: Offer, stake: number): Offer {
   if (o.stake <= 0 || o.payout === null) return { ...o, stake };

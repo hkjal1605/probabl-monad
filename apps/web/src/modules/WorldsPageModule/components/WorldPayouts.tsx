@@ -5,12 +5,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ChanceBar } from "@/components/worlds/Outcomes";
 import { cn } from "@/lib/utils";
 import { chancePercent, money } from "@/lib/worlds/format";
-import { type Offer, previewOffers } from "@/lib/worlds/offer";
+import { atStake, type Offer, previewOffers, stakeText, stakeWithin } from "@/lib/worlds/offer";
 import type { Preview, Spec } from "@/lib/worlds/types";
 import { worldsApi } from "@/services/worlds-api";
 
-/** The stakes the cards show: the builder's first stakes. */
-const STAKES = { allIn: "20", moneyBack: "100" } as const;
+/** The orders the cards show (the builder's first ones), fee included: each is priced at the
+ * stake it buys once the fee (1% until a preview says) comes out of it. */
+const AMOUNTS = { allIn: 20, moneyBack: 100 } as const;
+const STAKES = {
+  allIn: stakeText(stakeWithin(AMOUNTS.allIn, 100)),
+  moneyBack: stakeText(stakeWithin(AMOUNTS.moneyBack, 100)),
+};
 /** A world's price is reused this long: the samples come round every half minute or so, and a
  * card is an illustration (the builder prices the world afresh). */
 const FRESH_MS = 5 * 60_000;
@@ -43,11 +48,24 @@ export function WorldPayouts({ shown }: { shown: ShownWorld | null }) {
   const preview = priced?.value ?? null;
   const offers =
     preview?.offer && !preview.problems.length
-      ? previewOffers(preview.offer, preview.marks ?? null, preview.world.feeBps, !!spec?.stock)
+      ? previewOffers(
+          preview.offer,
+          preview.marks ?? null,
+          preview.world.feeBps,
+          !!spec?.stock,
+        ).map((o) =>
+          atStake(
+            o,
+            stakeWithin(
+              o.name === "Money-back" ? AMOUNTS.moneyBack : AMOUNTS.allIn,
+              preview.world.feeBps,
+            ),
+          ),
+        )
       : [];
   const problem = priced?.error ?? preview?.problems[0] ?? null;
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
       {PRODUCTS.map((p) => (
         <ProductCard
           key={p.name}
@@ -63,8 +81,8 @@ export function WorldPayouts({ shown }: { shown: ShownWorld | null }) {
 }
 
 const PRODUCTS = [
-  { name: "All-in", art: "/worlds/allin.webp", stake: Number(STAKES.allIn) },
-  { name: "Money-back", art: "/worlds/moneyback.webp", stake: Number(STAKES.moneyBack) },
+  { name: "All-in", art: "/worlds/allin.webp", stake: AMOUNTS.allIn },
+  { name: "Money-back", art: "/worlds/moneyback.webp", stake: AMOUNTS.moneyBack },
 ] as const;
 
 function ProductCard({
@@ -83,7 +101,7 @@ function ProductCard({
   const rows = offer && spec ? rowsOf(offer, spec) : [];
   const note = offer?.decline ?? (!loading && !offer ? (problem ?? "Not priced right now") : null);
   return (
-    <article className="flex flex-col gap-5 rounded-3xl bg-card p-5 ring-1 ring-border sm:p-6">
+    <article className="flex flex-col gap-5 rounded-xl bg-card p-5 ring-1 ring-border sm:p-6">
       <div className="flex items-center gap-4">
         <Art src={product.art} width={512} height={512} className="size-20 shrink-0 sm:size-24" />
         <div className="flex min-w-0 flex-col gap-1">
@@ -181,7 +199,7 @@ function rowsOf(offer: Offer, spec: Spec) {
       key: "back",
       kind: "back",
       label: fails,
-      pays: `${money(offer.stake)} back`,
+      pays: `${money(offer.stake, { cents: true })} back`,
       chance: chance("world-fails"),
     });
     if (stock)

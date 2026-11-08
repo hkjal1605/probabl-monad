@@ -26,7 +26,7 @@ export function ExploredCard({
       href={`/worlds/new?w=${encodeURIComponent(startParam(e.spec))}`}
       aria-label={`${world.sentence}. Take a position`}
       className={cn(
-        "group flex min-w-0 flex-col gap-5 rounded-3xl bg-card p-5 ring-1 ring-border transition-[box-shadow,transform] outline-none hover:-translate-y-0.5 hover:ring-foreground/20 focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:hover:translate-y-0 sm:p-6",
+        "group flex min-w-0 flex-col gap-5 rounded-xl bg-card p-5 ring-1 ring-border transition-[box-shadow,transform] outline-none hover:-translate-y-0.5 hover:ring-foreground/20 focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:hover:translate-y-0 sm:p-6",
         className,
       )}
     >

@@ -67,7 +67,7 @@ export function PositionCard({
     .sort((a, b) => Date.parse(a.venue!.endTime) - Date.parse(b.venue!.endTime))[0];
 
   return (
-    <article className="flex flex-col gap-4 rounded-2xl bg-card p-4 ring-1 ring-border sm:p-5">
+    <article className="flex flex-col gap-4 rounded-xl bg-card p-4 ring-1 ring-border sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
         <span className="flex items-center gap-2">
           <span

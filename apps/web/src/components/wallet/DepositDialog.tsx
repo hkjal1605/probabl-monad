@@ -2,7 +2,6 @@
 
 import { ArrowDownToLine } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,13 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Field, FieldError, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-  InputGroupText,
-} from "@/components/ui/input-group";
+import { Field, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
 import { Item, ItemContent, ItemTitle } from "@/components/ui/item";
 import {
   Select,
@@ -32,14 +25,10 @@ import { useVaultTransfer } from "@/hooks/useVaultTransfer";
 import type { WalletAsset, WalletAssetBalance } from "@/hooks/useWalletAssets";
 import { formatCompactNumber, tokenAmount } from "@/lib/format/display";
 import { vaultAmount } from "@/lib/trading/vault";
+import { DepositAmountField, TokenIcon } from "./DepositFields";
 
 function AssetIcon({ asset }: { asset: WalletAsset }) {
-  return (
-    <Avatar size="sm">
-      {asset.metadata?.image && <AvatarImage src={asset.metadata.image} alt="" />}
-      <AvatarFallback>{asset.symbol.slice(0, 2)}</AvatarFallback>
-    </Avatar>
-  );
+  return <TokenIcon symbol={asset.symbol} image={asset.metadata?.image} />;
 }
 
 export function DepositDialog({
@@ -175,46 +164,20 @@ export function DepositDialog({
                 </Select>
               </Field>
 
-              <Field data-invalid={Boolean(amountError)}>
-                <div className="flex items-center justify-between gap-3">
-                  <FieldLabel htmlFor="header-deposit-amount">Amount</FieldLabel>
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm font-medium tabular-nums text-muted-foreground">
-                      Available{" "}
-                      {walletRaw === null || !asset
-                        ? "—"
-                        : `${formatCompactNumber(
-                            tokenAmount(walletRaw.toString(), asset.decimals),
-                          )} ${asset.symbol}`}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="link"
-                      size="sm"
-                      disabled={!selectedBalance || !fresh}
-                      onClick={() => setAmount(transfer.maxAmount())}
-                    >
-                      Max
-                    </Button>
-                  </div>
-                </div>
-                <InputGroup className="h-14 rounded-xl border-0 bg-secondary">
-                  <InputGroupInput
-                    id="header-deposit-amount"
-                    inputMode="decimal"
-                    autoComplete="off"
-                    placeholder="0"
-                    value={amount}
-                    aria-invalid={Boolean(amountError)}
-                    className="text-xl font-medium tabular-nums md:text-xl"
-                    onChange={(event) => setAmount(event.target.value)}
-                  />
-                  <InputGroupAddon align="inline-end">
-                    <InputGroupText>{asset?.symbol}</InputGroupText>
-                  </InputGroupAddon>
-                </InputGroup>
-                {amountError && <FieldError>{amountError}</FieldError>}
-              </Field>
+              <DepositAmountField
+                id="header-deposit-amount"
+                symbol={asset?.symbol}
+                available={
+                  walletRaw === null || !asset
+                    ? null
+                    : `${formatCompactNumber(tokenAmount(walletRaw.toString(), asset.decimals))} ${asset.symbol}`
+                }
+                amount={amount}
+                onAmount={setAmount}
+                error={amountError}
+                onMax={() => setAmount(transfer.maxAmount())}
+                maxDisabled={!selectedBalance || !fresh}
+              />
             </FieldGroup>
           </FieldSet>
         )}
