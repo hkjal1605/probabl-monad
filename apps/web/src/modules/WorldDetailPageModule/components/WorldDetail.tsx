@@ -6,27 +6,17 @@ import { useMemberAccount } from "@/components/providers/WalletProvider";
 import { Button } from "@/components/ui/button";
 import { DataError, EmptyState } from "@/components/ui/page";
 import { Segmented } from "@/components/ui/segmented";
-import { toast } from "@/components/ui/toast";
-import { ChanceChain } from "@/components/worlds/ChanceChain";
-import { LegRow } from "@/components/worlds/LegRow";
-import { OutcomeTable } from "@/components/worlds/Outcomes";
 import { ActivityList, HolderList } from "@/components/worlds/People";
 import { SectionTitle, WalletDot } from "@/components/worlds/primitives";
-import { WorldSentence } from "@/components/worlds/Sentence";
+import { HERO_SENTENCE, HERO_WIDTH, WorldSentence } from "@/components/worlds/Sentence";
+import { StockChart } from "@/components/worlds/StockChart";
+import { shareLink } from "@/components/worlds/share";
+import { type BreakdownLeg, WorldBreakdown } from "@/components/worlds/WorldBreakdown";
 import { WorldTicket } from "@/components/worlds/WorldTicket";
-import { useBook, useFills, useHolders, useRead } from "@/hooks/useWorlds";
-import {
-  ago,
-  calendarDay,
-  legLabel,
-  midSentence,
-  shortWallet,
-  strikeText,
-  until,
-  venueResult,
-  whenDay,
-} from "@/lib/worlds/format";
-import { bookOffers, type ProductName } from "@/lib/worlds/offer";
+import { useBook, useFills, useHolders, useRead, useStocks } from "@/hooks/useWorlds";
+import { cn } from "@/lib/utils";
+import { ago, legLabel, shortWallet, strikeText, until, venueResult } from "@/lib/worlds/format";
+import { bookOffers, type ProductName, stakeWithin } from "@/lib/worlds/offer";
 import type { BookView } from "@/lib/worlds/types";
 import { worldsApi } from "@/services/worlds-api";
 import { WorldDetailSkeleton } from "./WorldDetailSkeleton";
@@ -49,6 +39,8 @@ export function WorldDetail({ book: raw }: { book: string }) {
   const book = useBook(id);
   const holders = useHolders(id);
   const fills = useFills(id);
+  // The stocks list (shared, read once a minute), for the chart.
+  const stocks = useStocks();
   const deployment = useRead("world-deployment", (signal) => worldsApi.deployment(signal));
   const packet = useRead(
     book.data?.metadataUri ? `packet:${book.data.metadataUri}` : null,
@@ -57,6 +49,9 @@ export function WorldDetail({ book: raw }: { book: string }) {
   const [side, setSide] = useState<"Same view" | "Other side">("Same view");
   const [product, setProduct] = useState<ProductName>("All-in");
   const onProduct = useCallback((p: ProductName) => setProduct(p), []);
+  // What the ticket's orders cost, fee included: the outcomes are for the stake they buy.
+  const [amounts, setAmounts] = useState({ allIn: 20, moneyBack: 100 });
+  const onAmounts = useCallback((a: { allIn: number; moneyBack: number }) => setAmounts(a), []);
 
   const b = book.data;
   const opinionDirection = b?.opinion?.direction ?? null;
@@ -69,9 +64,16 @@ export function WorldDetail({ book: raw }: { book: string }) {
   const sentence = useMemo(() => (b ? sentenceOf(b, direction) : null), [b, direction]);
   const offer = useMemo(() => {
     if (!b) return null;
-    const offers = bookOffers(b, { allIn: 20, moneyBack: 100 }, direction);
+    const offers = bookOffers(
+      b,
+      {
+        allIn: stakeWithin(amounts.allIn, b.feeBps),
+        moneyBack: stakeWithin(amounts.moneyBack, b.feeBps),
+      },
+      direction,
+    );
     return offers.find((o) => o.name === product) ?? offers[0] ?? null;
-  }, [b, direction, product]);
+  }, [b, direction, product, amounts]);
 
   if (id === null) return <EmptyState>This world doesn't exist.</EmptyState>;
   if (book.loading) return <WorldDetailSkeleton bare />;
@@ -85,26 +87,16 @@ export function WorldDetail({ book: raw }: { book: string }) {
 
   const vaults = (deployment.data?.vaults ?? []).map((v) => v.toLowerCase());
   const analytics = b.analytics;
-  const openLegs = b.legs.filter((l) => l.outcome === null);
   const rulesOf = (eventKey: string) =>
     packet.data?.packet.legs.find((l) => l.eventKey.toLowerCase() === eventKey.toLowerCase())
       ?.rules ?? null;
   const decided = ["failed", "passed", "fixed"].includes(b.state);
   const stock = sentence!.stock;
-  const stockWords = stock
-    ? `${stock.symbol} closes ${stock.direction} ${strikeText(stock.strike)} on ${calendarDay(stock.date)}`
+  // Its stock in the stocks list: the chart's token and logo.
+  const listed = b.underlying
+    ? stocks.data?.find((x) => x.underlying.toLowerCase() === b.underlying!.toLowerCase())
     : undefined;
-  const firstEnd =
-    openLegs
-      .map((l) => l.venue?.endTime)
-      .filter(Boolean)
-      .sort()[0] ?? null;
-  const share = () => {
-    void navigator.clipboard?.writeText(window.location.href).then(
-      () => toast.add({ type: "success", title: "Link copied" }),
-      () => {},
-    );
-  };
+  const share = () => void shareLink(window.location.href, b.title ?? undefined);
   const ownWords = sentence ? `${b.opinion?.sentence ?? b.title ?? ""}`.replace(/\.$/, "") : "";
 
   return (
@@ -137,8 +129,14 @@ export function WorldDetail({ book: raw }: { book: string }) {
         </div>
       </div>
 
-      <section className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+      {/* The world as the worlds page says it: the same size, spacing and width, centred. */}
+      <section
+        className={cn(
+          "mx-auto flex w-full flex-col items-center gap-5 text-center sm:gap-7",
+          HERO_WIDTH,
+        )}
+      >
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           {b.creator && (
             <span className="flex items-center gap-2">
               <WalletDot address={b.creator} className="size-4" />
@@ -158,11 +156,17 @@ export function WorldDetail({ book: raw }: { book: string }) {
             </span>
           )}
         </div>
-        <WorldSentence world={sentenceOf(b, opinionDirection)} size="display" />
+        <WorldSentence
+          world={sentenceOf(b, opinionDirection)}
+          size="display"
+          className={cn("w-full", HERO_SENTENCE)}
+        />
       </section>
 
-      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_400px]">
-        <aside className="flex flex-col gap-3 lg:sticky lg:top-20 lg:order-last">
+      {/* One grid: the events and the trade side by side, the stock across both under them, then
+          who's in and what happened. The trade comes first on a phone. */}
+      <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_400px]">
+        <aside className="flex min-w-0 flex-col gap-3 lg:col-start-2 lg:row-start-1">
           {opinionDirection && !decided && (
             <Segmented
               label="Your view"
@@ -179,7 +183,7 @@ export function WorldDetail({ book: raw }: { book: string }) {
             </p>
           )}
           {decided ? (
-            <div className="flex flex-col gap-2 rounded-2xl bg-card p-5 ring-1 ring-border">
+            <div className="flex flex-col gap-2 rounded-xl bg-card p-5 ring-1 ring-border">
               <h2 className="text-base font-medium">This world is settled</h2>
               <p className="text-sm leading-5 text-muted-foreground">
                 {b.state === "failed"
@@ -201,100 +205,78 @@ export function WorldDetail({ book: raw }: { book: string }) {
               sentence={sentence!}
               direction={direction}
               onProduct={onProduct}
+              onAmounts={onAmounts}
             />
           )}
         </aside>
 
-        <div className="flex min-w-0 flex-col gap-10">
-          <section className="flex flex-col gap-3">
-            <SectionTitle>What has to happen</SectionTitle>
-            {b.legs.map((l) => {
-              const q = analytics?.legs.find((x) => x.eventKey === l.eventKey)?.chance ?? null;
-              const yes = q === null ? null : (l.wantYes ? q : 1_000_000 - q) / 1e6;
-              return (
-                <LegRow
-                  key={l.eventKey}
-                  leg={{
-                    question: l.venue?.question ?? "An event",
-                    source: l.venue?.source ?? null,
-                    marketId: l.venue?.marketId ?? null,
-                    url: l.venue?.url ?? "#",
-                    endTime: l.venue?.endTime ?? null,
-                    rules: rulesOf(l.eventKey),
-                  }}
-                  wantYes={l.wantYes}
-                  chance={yes}
-                  result={venueResult(l.state)}
-                  status={
-                    l.outcome === "passed"
-                      ? "passed"
-                      : l.outcome === "failed"
-                        ? "failed"
-                        : l.state === "frozen" || l.state === "resolving"
-                          ? "frozen"
-                          : "open"
-                  }
-                />
-              );
-            })}
-          </section>
+        <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+          <WorldBreakdown
+            legs={b.legs.map(
+              (l): BreakdownLeg => ({
+                key: l.eventKey,
+                question: l.venue?.question ?? "An event",
+                source: l.venue?.source ?? null,
+                marketId: l.venue?.marketId ?? null,
+                image: null,
+                url: l.venue?.url ?? "#",
+                endTime: l.venue?.endTime ?? null,
+                rules: rulesOf(l.eventKey),
+                wantYes: l.wantYes,
+                yes: (() => {
+                  const q = analytics?.legs.find((x) => x.eventKey === l.eventKey)?.chance;
+                  return q === undefined || q === null ? null : q / 1e6;
+                })(),
+                result: venueResult(l.state),
+                status:
+                  l.outcome === "passed"
+                    ? "passed"
+                    : l.outcome === "failed"
+                      ? "failed"
+                      : l.state === "frozen" || l.state === "resolving"
+                        ? "frozen"
+                        : "open",
+              }),
+            )}
+            offer={offer && !decided && b.marks ? offer : null}
+            paid={offer?.name === "Money-back" ? amounts.moneyBack : amounts.allIn}
+            stock={stock}
+          />
+        </div>
 
-          {!decided && (
-            <section className="flex flex-col gap-4">
-              <SectionTitle>How likely is this world?</SectionTitle>
-              {analytics ? (
-                <ChanceChain
-                  legs={b.legs.map((l) => ({
-                    label: legLabel(l.venue?.question ?? "An event"),
-                    wantYes: l.wantYes,
-                    source: l.venue?.source ?? null,
-                    marketId: l.venue?.marketId ?? null,
-                    chance: analytics.legs.find((x) => x.eventKey === l.eventKey)?.chance ?? null,
-                    passed: l.outcome === "passed",
-                  }))}
-                  chain={analytics.chain}
-                  naive={analytics.naive}
-                  stock={
-                    stock && offer
-                      ? { words: stockWords!, chance: offer.win, world: analytics.world }
-                      : null
-                  }
-                />
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  The vault isn't quoting this world right now, so its chance isn't shown.
-                </p>
-              )}
-            </section>
-          )}
+        {stock && (
+          <div className="min-w-0 lg:col-span-2">
+            <StockChart
+              token={listed?.token ?? null}
+              symbol={stock.symbol}
+              logo={listed?.logo ?? null}
+              spot={
+                analytics?.spot && b.feedDecimals !== null
+                  ? analytics.spot / 10 ** b.feedDecimals
+                  : (listed?.spot ?? null)
+              }
+              strike={Number(stock.strike)}
+              direction={stock.direction}
+              date={stock.date}
+              fixingTime={b.fixingTime ? Number(b.fixingTime) : null}
+              events={b.legs.map((l) => ({
+                key: l.eventKey,
+                question: l.venue?.question ?? "An event",
+                endTime: l.outcome === null ? (l.venue?.endTime ?? null) : null,
+                source: l.venue?.source ?? null,
+                marketId: l.venue?.marketId ?? null,
+                image: null,
+              }))}
+              payout={offer && !decided ? offer.payout : null}
+              paid={
+                offer ? (offer.name === "Money-back" ? amounts.moneyBack : amounts.allIn) : null
+              }
+            />
+          </div>
+        )}
 
-          {offer && !decided && b.marks && (
-            <section className="flex flex-col gap-4">
-              <SectionTitle
-                aside={<span className="text-xs text-muted-foreground">{offer.name}</span>}
-              >
-                How this can end
-              </SectionTitle>
-              <div className="rounded-xl bg-card p-4 ring-1 ring-border">
-                <OutcomeTable
-                  offer={offer}
-                  priced={!b.eventOnly}
-                  {...(stockWords ? { stockWords: midSentence(stockWords) } : {})}
-                  when={{
-                    fixing: stock
-                      ? `On ${calendarDay(stock.date)}`
-                      : "When the last event is decided",
-                    refund:
-                      offer.name === "Money-back" && firstEnd
-                        ? `The day an event fails, from ${whenDay(firstEnd)}`
-                        : "When an event fails",
-                  }}
-                />
-              </div>
-            </section>
-          )}
-
-          <section className="flex flex-col gap-3">
+        <div className="mt-3 grid min-w-0 items-start gap-3 md:grid-cols-2 lg:col-span-2">
+          <section className="flex min-w-0 flex-col gap-3">
             <SectionTitle
               aside={holders.data && <span className="text-xs text-muted-foreground">public</span>}
             >
@@ -316,7 +298,7 @@ export function WorldDetail({ book: raw }: { book: string }) {
             </div>
           </section>
 
-          <section className="flex flex-col gap-3">
+          <section className="flex min-w-0 flex-col gap-3">
             <SectionTitle>Activity</SectionTitle>
             <div className="rounded-xl bg-card px-4 py-2 ring-1 ring-border">
               {fills.data ? (

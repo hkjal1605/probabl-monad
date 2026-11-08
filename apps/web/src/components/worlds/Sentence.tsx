@@ -3,6 +3,13 @@ import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { calendarDay, midSentence, strikeText } from "@/lib/worlds/format";
 
+/** The sentence at the top of the worlds page and of each world's page, the same on both: a size
+ * smaller on a phone, so the sentence and what follows it fit the first screen. */
+export const HERO_SENTENCE =
+  "text-[24px] leading-[1.5] sm:text-[36px] sm:leading-[1.5] lg:text-[42px] lg:leading-[1.5]";
+/** The width of that top section: the worlds page's content width. */
+export const HERO_WIDTH = "max-w-[1072px]";
+
 /** A world as one sentence: the connecting words quiet, the parts that define it as chips.
  * Every card, page, ticket and position says a world the same way. */
 export function Sentence({
@@ -30,11 +37,16 @@ export function Sentence({
   );
 }
 
-export type ChipTone = "event" | "no" | "stock" | "value";
+export type ChipTone = "event" | "no" | "stock" | "price" | "above" | "below" | "value";
 const tones: Record<ChipTone, string> = {
   event: "bg-secondary text-foreground",
   no: "bg-secondary text-foreground",
-  stock: "bg-brand-soft text-brand-strong",
+  // The stock and the price it must close past, in blue; the way it must move, green up and red
+  // down.
+  stock: "bg-info-soft text-info",
+  price: "bg-info-soft text-info",
+  above: "bg-positive-soft text-positive",
+  below: "bg-danger-soft text-danger",
   value: "bg-accent text-foreground",
 };
 
@@ -119,7 +131,7 @@ export function StockWords({ stock }: { stock: NonNullable<SentenceWorld["stock"
   return (
     <>
       <Chip tone="stock">{stock.symbol}</Chip> closes{" "}
-      <Chip tone="value">
+      <Chip tone={stock.direction}>
         {stock.direction === "above" ? (
           <ArrowUpRight className="mr-[0.08em] inline size-[0.8em] align-[-0.06em]" />
         ) : (
@@ -127,7 +139,7 @@ export function StockWords({ stock }: { stock: NonNullable<SentenceWorld["stock"
         )}
         {stock.direction}
       </Chip>{" "}
-      <Chip tone="value">{strikeText(stock.strike)}</Chip> on{" "}
+      <Chip tone="price">{strikeText(stock.strike)}</Chip> on{" "}
       <Chip tone="value">{calendarDay(stock.date)}</Chip>
     </>
   );

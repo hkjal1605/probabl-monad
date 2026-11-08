@@ -79,7 +79,15 @@ export interface Stock {
   name: string;
   kind: "stock" | "etf" | "crypto";
   logo: string | null;
+  /** The token whose recorded price is its history (`worldsApi.spotHistory`), if any. */
+  token?: string | null;
   spot: number | null;
+}
+
+/** A stock's recorded price over a range: USD per whole token, oldest first. */
+export interface SpotHistory {
+  interval: number;
+  points: { time: number; price: number }[];
 }
 
 /** How a maker explains a world's price. */
@@ -139,7 +147,52 @@ export interface Preview {
   offer: OfferProduct[] | null;
   chance: Analytics | null;
   priorOnly?: boolean;
+  /** A curated world's story and its events' short names (the worlds page's one-tap buttons). */
+  curated?: { story: string; short: string[] };
   marks?: number[] | null;
+}
+
+/** A world someone priced lately, traded or not (`/v2/worlds/exploring`): the opinion to price
+ * and open again, what it says (venue wording), the makers' last quote, and how many priced it. */
+export interface ExploringWorld {
+  specHash: string;
+  spec: Spec;
+  world: {
+    sentence: string;
+    legs: {
+      id: string;
+      source: Venue;
+      marketId: string;
+      question: string;
+      label: string;
+      url: string;
+      image: string | null;
+      endTime: string;
+      wantYes: boolean;
+      /** The venue's YES chance now. */
+      yes: number | null;
+    }[];
+    stock: {
+      underlying: string;
+      symbol: string;
+      name: string;
+      logo: string | null;
+      direction: "above" | "below";
+      strike: string;
+      date: string;
+    } | null;
+    fixingTime: number | null;
+    cutoff: number;
+  };
+  /** Each product as last quoted (raw quote units) and the winning ending's chance (x 1e6). */
+  quote: {
+    at: number;
+    products: { name: "All-in" | "Money-back"; stake: string; payout: string }[];
+    win: number | null;
+  };
+  explorers: number;
+  lastAt: string;
+  firstAt: string;
 }
 
 /** A world's book as the index serves it (`/v2/books/:book`). */

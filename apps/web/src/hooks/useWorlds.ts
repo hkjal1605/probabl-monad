@@ -4,7 +4,14 @@
  * Each read aborts when its inputs change or its component goes away. */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { subscribeWorlds, type WorldUpdate } from "@/lib/worlds/stream";
-import type { BookView, FeedWorld, Holder, Stock, WorldFill } from "@/lib/worlds/types";
+import type {
+  BookView,
+  ExploringWorld,
+  FeedWorld,
+  Holder,
+  Stock,
+  WorldFill,
+} from "@/lib/worlds/types";
 import { worldsApi } from "@/services/worlds-api";
 
 export interface Read<T> {
@@ -18,7 +25,12 @@ export interface Read<T> {
 export function useRead<T>(
   key: string | null,
   load: (signal: AbortSignal) => Promise<T>,
-  options: { everyMs?: number; follows?: (update: WorldUpdate) => boolean } = {},
+  options: {
+    everyMs?: number;
+    follows?: (update: WorldUpdate) => boolean;
+    /** Keep the last answer on screen while a new key loads (a longer page of the same list). */
+    keep?: boolean;
+  } = {},
 ): Read<T> {
   const [state, setState] = useState<{
     key: string | null;
@@ -70,7 +82,7 @@ export function useRead<T>(
   }, [key, options.everyMs, refresh]);
   const current = state.key === key;
   return {
-    data: current ? state.data : undefined,
+    data: current || (options.keep && key !== null) ? state.data : undefined,
     error: current ? state.error : null,
     loading: key !== null && (!current || (state.data === undefined && !state.error)),
     refresh,
@@ -107,13 +119,29 @@ export function useMaxTenor() {
   return read.data ?? null;
 }
 
-export function useWorldsFeed(sort: string, underlying: string) {
-  return useRead<FeedWorld[]>(
-    `feed:${sort}:${underlying}`,
-    (signal) => worldsApi.feed(sort, underlying, signal),
+/** The first `limit` worlds people priced lately (only what the page shows), read again every
+ * minute. */
+export function useExploring(limit: number) {
+  return useRead<{ worlds: ExploringWorld[]; total: number }>(
+    `exploring:${limit}`,
+    (signal) => worldsApi.exploring(limit, signal),
+    { everyMs: 60_000, keep: true },
+  );
+}
+
+/** The first `limit` traded worlds in a sort (only what the page shows). */
+export function useWorldsFeed(sort: string, underlying: string, limit: number) {
+  return useRead<{
+    worlds: FeedWorld[];
+    total: number;
+    underlyings: { underlying: string; symbol: string }[];
+  }>(
+    `feed:${sort}:${underlying}:${limit}`,
+    (signal) => worldsApi.feed(sort, underlying, limit, signal),
     {
       everyMs: 30_000,
       follows: (u) => u.books.length > 0,
+      keep: true,
     },
   );
 }

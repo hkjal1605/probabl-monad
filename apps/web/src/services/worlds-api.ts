@@ -4,11 +4,13 @@
 import type {
   BookView,
   Draft,
+  ExploringWorld,
   FeedWorld,
   Holder,
   LegEntry,
   Preview,
   Spec,
+  SpotHistory,
   Stock,
   WorldFill,
   WorldPermission,
@@ -27,20 +29,35 @@ export const worldsApi = {
       `/v2/worlds/events/search?q=${encodeURIComponent(q)}`,
       opt(signal),
     ).then((r) => r.events),
-  /** Live Polymarket events the worlds page offers to start from (the same set for everyone,
-   * refreshed every ten minutes). */
-  sampleEvents: (signal?: AbortSignal) =>
-    requestJson<{ events: LegEntry[] }>("/v2/worlds/events/samples", opt(signal)).then(
-      (r) => r.events,
-    ),
+  /** What the worlds page starts from (the same for everyone, refreshed every ten minutes): live
+   * Polymarket events to suggest, and the curated worlds it opens on, each priced (a preview). */
+  samples: (signal?: AbortSignal) =>
+    requestJson<{ events: LegEntry[]; worlds?: Preview[] }>(
+      "/v2/worlds/events/samples",
+      opt(signal),
+    ).then((r) => ({ events: r.events, worlds: r.worlds ?? [] })),
   parse: (text: string, signal?: AbortSignal) =>
     requestJson<Draft>("/v2/worlds/parse", { body: { text }, timeoutMs: 30_000, ...opt(signal) }),
-  preview: (spec: Spec, stakes: { allIn: string; moneyBack: string }, signal?: AbortSignal) =>
+  /** A world priced by the makers. `explore` says a person asked for it (their own world, or
+   * one they opened), so once quoted it shows among the worlds people explore. */
+  preview: (
+    spec: Spec,
+    stakes: { allIn: string; moneyBack: string },
+    signal?: AbortSignal,
+    options: { explore?: boolean } = {},
+  ) =>
     requestJson<Preview>("/v2/worlds/preview", {
-      body: { spec, stakes },
+      body: { spec, stakes, ...(options.explore ? { explore: true } : {}) },
       timeoutMs: 15_000,
       ...opt(signal),
     }),
+  /** The first `limit` worlds people priced lately that nobody holds yet (the same for everyone
+   * for half a minute), and how many there are. */
+  exploring: (limit: number, signal?: AbortSignal) =>
+    requestJson<{ worlds: ExploringWorld[]; total?: number }>(
+      `/v2/worlds/exploring?limit=${limit}`,
+      opt(signal),
+    ).then((r) => ({ worlds: r.worlds, total: r.total ?? r.worlds.length })),
   open: (spec: Spec) =>
     requestJson<{ defHash: string; specHash: string; book: number | null; status: string }>(
       "/v2/worlds/open",
@@ -51,11 +68,21 @@ export const worldsApi = {
       `/v2/worlds/open/${defHash}`,
       opt(signal),
     ),
-  feed: (sort: string, underlying: string, signal?: AbortSignal) =>
-    requestJson<{ worlds: FeedWorld[] }>(
-      `/v2/worlds/feed?sort=${encodeURIComponent(sort)}${underlying ? `&underlying=${encodeURIComponent(underlying)}` : ""}`,
+  /** The first `limit` traded worlds in a sort (of one stock, or all), how many there are, and
+   * every traded world's stock (the filter). */
+  feed: (sort: string, underlying: string, limit: number, signal?: AbortSignal) =>
+    requestJson<{
+      worlds: FeedWorld[];
+      total?: number;
+      underlyings?: { underlying: string; symbol: string }[];
+    }>(
+      `/v2/worlds/feed?sort=${encodeURIComponent(sort)}&limit=${limit}${underlying ? `&underlying=${encodeURIComponent(underlying)}` : ""}`,
       opt(signal),
-    ).then((r) => r.worlds),
+    ).then((r) => ({
+      worlds: r.worlds,
+      total: r.total ?? r.worlds.length,
+      underlyings: r.underlyings ?? [],
+    })),
   book: (book: number, signal?: AbortSignal) =>
     requestJson<BookView>(`/v2/books/${book}`, opt(signal)),
   books: (signal?: AbortSignal) =>
@@ -86,6 +113,9 @@ export const worldsApi = {
       "/v2/worlds/status",
       opt(signal),
     ),
+  /** A stock's recorded price (its token's, as the market charts record it) over `range`. */
+  spotHistory: (token: string, range: "1d" | "1w" | "1m" | "all", signal?: AbortSignal) =>
+    requestJson<SpotHistory>(`/v1/tokens/${token}/spot-history?range=${range}`, opt(signal)),
   deployment: (signal?: AbortSignal) =>
     requestJson<{ chainId: number; books: string; quote: string; vaults: string[] }>(
       "/v2/deployment",

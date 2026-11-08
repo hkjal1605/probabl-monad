@@ -41,6 +41,11 @@ describe("numbers", () => {
     expect(legLabel("Will CPI be above 3% in November?")).toBe("CPI is above 3% in November");
     expect(midSentence("The Fed cut rates")).toBe("the Fed cut rates");
     expect(midSentence("US–China trade deal")).toBe("US–China trade deal");
+    expect(midSentence("There is no change in Fed interest rates")).toBe(
+      "there is no change in Fed interest rates",
+    );
+    expect(midSentence("Another Fed rate hike in 2026")).toBe("another Fed rate hike in 2026");
+    expect(midSentence("Apple is the largest company")).toBe("Apple is the largest company");
     expect(venueResult("yes")).toBe("happened");
     expect(venueResult("no")).toBe("didn't happen");
     expect(venueResult("open")).toBeNull();

@@ -9,7 +9,7 @@ import { DataError } from "@/components/ui/page";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { AccountGate } from "@/components/wallet/AccountGate";
-import { useWorldAccount } from "@/hooks/useWorldAccount";
+import { useWorldAccount, useWorldPositions } from "@/hooks/useWorldAccount";
 import { useRead } from "@/hooks/useWorlds";
 import { dollars, money } from "@/lib/worlds/format";
 import { worldsApi } from "@/services/worlds-api";
@@ -29,14 +29,8 @@ function Positions() {
   const account = useWorldAccount();
   const owner = account.owner;
   const lower = owner?.toLowerCase();
-  const wallet = useRead(
-    owner ? `world-wallet:${owner}` : null,
-    (signal) => worldsApi.wallet(owner!, signal),
-    {
-      everyMs: 20_000,
-      follows: (u) => u.owners.some((o) => o.toLowerCase() === lower) || u.books.length > 0,
-    },
-  );
+  // The same read as the header's portfolio value (one for both).
+  const wallet = useWorldPositions();
   const books = useRead("world-books", (signal) => worldsApi.books(signal), {
     everyMs: 30_000,
     follows: (u) => u.books.length > 0 || u.events.length > 0,
@@ -89,12 +83,12 @@ function Positions() {
         {wallet.error && !wallet.data ? (
           <DataError message="Your positions are unavailable right now." retry={wallet.refresh} />
         ) : wallet.loading ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            <Skeleton className="h-72 rounded-2xl" />
-            <Skeleton className="h-72 rounded-2xl" />
+          <div className="grid gap-3 md:grid-cols-2">
+            <Skeleton className="h-72 rounded-xl" />
+            <Skeleton className="h-72 rounded-xl" />
           </div>
         ) : open.length ? (
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-2">
             {open.map((p) => (
               <PositionCard
                 key={p.book}
@@ -107,7 +101,7 @@ function Positions() {
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed px-6 py-12 text-center">
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed px-6 py-12 text-center">
             <p className="text-base font-medium">No open worlds yet.</p>
             <p className="max-w-sm text-sm text-muted-foreground">
               Say what you think will happen, or back a world someone else opened.
@@ -122,7 +116,7 @@ function Positions() {
       {settled.length > 0 && (
         <section className="flex flex-col gap-4">
           <h2 className="text-lg font-medium">Settled</h2>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-2">
             {settled.map((p) => (
               <PositionCard
                 key={p.book}
@@ -148,7 +142,7 @@ function Balance({ account }: { account: ReturnType<typeof useWorldAccount> }) {
   const value = Number(amount);
   const raw = value > 0 ? BigInt(Math.round(value * 100)) * 10_000n : 0n;
   return (
-    <section className="grid gap-4 rounded-2xl bg-card p-4 ring-1 ring-border sm:grid-cols-[minmax(0,1fr)_auto] sm:p-5">
+    <section className="grid gap-4 rounded-xl bg-card p-4 ring-1 ring-border sm:grid-cols-[minmax(0,1fr)_auto] sm:p-5">
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
           <div className="flex flex-col gap-1">

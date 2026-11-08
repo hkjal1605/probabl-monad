@@ -1,48 +1,30 @@
 "use client";
-import {
-  ArrowRight,
-  CalendarDays,
-  Check,
-  ExternalLink,
-  Eye,
-  Info,
-  Rocket,
-  RotateCcw,
-  Share2,
-  ShieldCheck,
-} from "lucide-react";
+import { Check, ExternalLink, Info, Rocket, RotateCcw, Share2, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
-import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { toast } from "@/components/ui/toast";
 import { explorerFor, protocolConfig, worldsEnabled } from "@/config/protocol";
 import { useWorldAccount } from "@/hooks/useWorldAccount";
 import { cn } from "@/lib/utils";
-import {
-  calendarDay,
-  chancePercent,
-  dollars,
-  money,
-  multiple,
-  shortWallet,
-  whenDay,
-} from "@/lib/worlds/format";
+import { chancePercent, dollars, money, multiple, whenDay } from "@/lib/worlds/format";
 import {
   atStake,
   bookOffers,
   type Offer,
   type ProductName,
   previewOffers,
+  stakeRawWithin,
+  stakeWithin,
 } from "@/lib/worlds/offer";
 import type { BookView, Preview, Spec } from "@/lib/worlds/types";
 import { worldsApi } from "@/services/worlds-api";
 import { Fact } from "./primitives";
 import { type SentenceWorld, WorldSentence } from "./Sentence";
+import { shareLink } from "./share";
 
 export type TicketWorld =
   | { kind: "draft"; spec: Spec; preview: Preview | null; pricing: boolean }
@@ -52,28 +34,38 @@ const STAKES: Record<ProductName, number[]> = {
   "All-in": [10, 20, 50, 100],
   "Money-back": [50, 100, 250, 500],
 };
+/** An order's least and most (one-tap trading's limit a trade), fee included. */
+const MIN_ORDER = 1;
+const MAX_ORDER = 1_000;
+/** The books' fee until a preview says (1%). */
+const DEFAULT_FEE_BPS = 100;
+/** An amount as "You pay" shows it: whole dollars, or with its cents. */
+const amountText = (amount: number) =>
+  Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
 /** How far the price may move between the offer shown and the fill. */
 const TOLERANCE = 0.03;
 const LOW_CHANCE = 10_000;
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** What a world offers, and the one gesture that trades it: the product chosen as a belief, a
- * stake, the four numbers that matter at equal weight, the cost in dollars, then the account
- * steps and the trade. Fills are RFQ only: a maker's firm quote at the moment of the trade. */
+/** What a world offers, and the one gesture that trades it: the product chosen as a belief, what
+ * to pay (the fee comes out of it, so an order costs what it says), what it pays and how many
+ * times over, then the account steps and the trade. Fills are RFQ only: a maker's firm quote at
+ * the moment of the trade. */
 export function WorldTicket({
   world,
   sentence,
   direction,
-  onStakes,
+  onAmounts,
   onProduct,
   className,
 }: {
   world: TicketWorld;
   sentence: SentenceWorld;
   direction: "above" | "below" | null;
-  /** The stakes the offer is priced at (a draft re-prices at them). */
-  onStakes?: (stakes: { allIn: number; moneyBack: number }) => void;
+  /** What the person pays for each product, fee included (a draft re-prices at the stakes it
+   * buys). */
+  onAmounts?: (amounts: { allIn: number; moneyBack: number }) => void;
   onProduct?: (product: ProductName) => void;
   className?: string | undefined;
 }) {
@@ -81,11 +73,12 @@ export function WorldTicket({
   const onboarding = useOnboarding();
   // The product the user chose; until then the first one offered.
   const [product, setProduct] = useState<ProductName | null>(null);
-  const [stakes, setStakes] = useState({ "All-in": 20, "Money-back": 100 } as Record<
+  // What each product's order costs, fee included; and "You pay" as typed, while it is edited.
+  const [amounts, setAmounts] = useState({ "All-in": 20, "Money-back": 100 } as Record<
     ProductName,
     number
   >);
-  const [custom, setCustom] = useState("");
+  const [payText, setPayText] = useState<string | null>(null);
   const [ack, setAck] = useState(false);
   const [phase, setPhase] = useState<"idle" | "opening" | "pricing" | "placing">("idle");
   const [receipt, setReceipt] = useState<{
@@ -99,19 +92,23 @@ export function WorldTicket({
   const clientId = useRef<string | null>(null);
 
   const priced = sentence.stock !== null;
+  const feeBps =
+    world.kind === "book" ? world.book.feeBps : (world.preview?.world.feeBps ?? DEFAULT_FEE_BPS);
+  // Each product priced at the stake its order buys.
   const offers = useMemo(() => {
+    const stakeOf = (name: ProductName) => stakeWithin(amounts[name], feeBps);
     if (world.kind === "book")
       return bookOffers(
         world.book,
-        { allIn: stakes["All-in"], moneyBack: stakes["Money-back"] },
+        { allIn: stakeOf("All-in"), moneyBack: stakeOf("Money-back") },
         direction,
       );
     const p = world.preview;
     if (!p?.offer) return [];
     return previewOffers(p.offer, p.marks ?? null, p.world.feeBps, priced).map((o) =>
-      atStake(o, stakes[o.name]),
+      atStake(o, stakeOf(o.name)),
     );
-  }, [world, stakes, direction, priced]);
+  }, [world, amounts, direction, priced, feeBps]);
   const names = offers.map((o) => o.name);
   const offered = offers.find((o) => !o.decline)?.name ?? names[0] ?? "All-in";
   const selected: ProductName = product && names.includes(product) ? product : offered;
@@ -125,18 +122,20 @@ export function WorldTicket({
     setAck(false);
   }
 
-  const stake = stakes[selected];
-  const fee =
-    offer?.fee ??
-    (stake * (world.kind === "book" ? world.book.feeBps : (world.preview?.world.feeBps ?? 100))) /
-      10_000;
-  const total = stake + fee;
+  // The order: what it costs (all of it), the stake it buys and the fee taken from it.
+  const amount = amounts[selected];
+  const stake = stakeWithin(amount, feeBps);
+  const fee = amount - stake;
+  const total = amount;
   const lowChance = offer !== null && offer.win < LOW_CHANCE;
-  const setStake = (value: number) => {
-    const next = { ...stakes, [selected]: value };
-    setStakes(next);
-    onStakes?.({ allIn: next["All-in"], moneyBack: next["Money-back"] });
+  const setAmount = (value: number) => {
+    const next = { ...amounts, [selected]: value };
+    setAmounts(next);
+    onAmounts?.({ allIn: next["All-in"], moneyBack: next["Money-back"] });
   };
+  // "You pay" as typed: a whole amount from $1 to $1,000 (one-tap trading's limit a trade).
+  const typed = payText === null || payText === "" ? null : Number(payText);
+  const payInvalid = typed !== null && !(typed >= MIN_ORDER && typed <= MAX_ORDER);
 
   // When money comes back.
   const legEnds =
@@ -145,9 +144,6 @@ export function WorldTicket({
       : (world.preview?.world.legs.map((l) => l.endTime) ?? []);
   const firstEnd = legEnds.length
     ? legEnds.reduce((a, b) => (Date.parse(a) < Date.parse(b) ? a : b))
-    : null;
-  const lastEnd = legEnds.length
-    ? legEnds.reduce((a, b) => (Date.parse(a) > Date.parse(b) ? a : b))
     : null;
 
   const credit = account.credit;
@@ -194,11 +190,12 @@ export function WorldTicket({
         if (!live || !p?.ask)
           throw new Error("No maker is quoting this world right now. Try again shortly.");
         if (!live.tradable) throw new Error("This world is not trading right now.");
-        const units = stake / (p.ask / 1_000_000);
+        // The stake the order buys: with the books' fee on top, it costs the order's amount.
+        const stakeRaw = stakeRawWithin(amount, live.feeBps);
+        const units = Number(stakeRaw) / 1_000_000 / (p.ask / 1_000_000);
         const minUnits = BigInt(Math.floor(units * (1 - TOLERANCE) * 1_000_000));
         // 3. The trade: an RFQ, filled by the trading delegate within the grant.
         setPhase("placing");
-        const stakeRaw = BigInt(Math.round(stake * 100)) * 10_000n;
         const result = await worldsApi.submit(
           {
             book: bookId,
@@ -215,9 +212,13 @@ export function WorldTicket({
         setReceipt({
           book: bookId!,
           product: selected,
-          paid: stake + fee,
+          paid: amount,
           payout: award ? dollars(award.units) : units,
-          refund: award ? dollars(award.refund) : selected === "Money-back" ? stake : 0,
+          refund: award
+            ? dollars(award.refund)
+            : selected === "Money-back"
+              ? Number(stakeRaw) / 1_000_000
+              : 0,
           tx: result.transactionHash,
         });
         account.refresh();
@@ -236,21 +237,14 @@ export function WorldTicket({
 
   const refund = offer?.endings.find((e) => e.key === "world-fails")?.pays ?? 0;
   const cost = offer && offer.fair !== null ? Math.max(0, stake - offer.fair) + fee : fee;
-  const when = sentence.stock ? calendarDay(sentence.stock.date) : lastEnd ? whenDay(lastEnd) : "—";
+  const pricing = world.kind === "draft" && world.pricing;
   return (
     <section
       className={cn(
-        "flex flex-col gap-5 rounded-3xl bg-card p-4 ring-1 ring-border sm:p-5",
+        "flex flex-col gap-5 rounded-xl bg-card p-4 ring-1 ring-border sm:p-5",
         className,
       )}
     >
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-medium">Your bet</h2>
-        {world.kind === "draft" && world.pricing && (
-          <Spinner className="size-4 text-muted-foreground" />
-        )}
-      </div>
-
       {offers.length === 0 ? (
         <div className="flex items-start gap-2.5 rounded-2xl bg-secondary/60 p-4 text-sm text-muted-foreground">
           {world.kind === "draft" && world.pricing && !decline ? (
@@ -267,6 +261,7 @@ export function WorldTicket({
             <ProductTile
               key={o.key}
               offer={o}
+              paid={amounts[o.name]}
               selected={o.name === selected}
               onSelect={() => setProduct(o.name)}
             />
@@ -276,72 +271,89 @@ export function WorldTicket({
 
       {offer && !offer.decline && (
         <>
-          <div className="flex flex-wrap gap-1.5">
-            {STAKES[selected].map((s) => (
+          {/* Amounts in one tap, sharing the ticket's width; any other is typed in "You pay". */}
+          <div className="grid grid-cols-4 gap-1.5">
+            {STAKES[selected].map((a) => (
               <Button
-                key={s}
+                key={a}
                 size="sm"
-                className="rounded-full px-3.5"
-                variant={stake === s && !custom ? "default" : "secondary"}
+                className="h-9 rounded-full px-2 sm:h-8"
+                variant={amount === a && payText === null ? "default" : "secondary"}
                 onClick={() => {
-                  setCustom("");
-                  setStake(s);
+                  setPayText(null);
+                  setAmount(a);
                 }}
               >
-                ${s}
+                ${a}
               </Button>
             ))}
-            <Input
-              value={custom}
-              inputMode="decimal"
-              placeholder="$ other"
-              aria-label="Other stake in dollars"
-              className="h-7 w-24 rounded-full px-3.5 text-sm"
-              onChange={(e) => {
-                const text = e.target.value.replace(/[^\d.]/g, "");
-                setCustom(text);
-                const v = Number(text);
-                if (v >= 1 && v <= 1_000) setStake(Math.round(v * 100) / 100);
-              }}
-            />
           </div>
 
-          <div className="flex flex-col gap-4 rounded-2xl bg-secondary/50 p-4">
+          <div className="flex flex-col gap-3 rounded-2xl bg-secondary/50 p-4">
             <div className="flex items-end justify-between gap-3">
-              <div className="flex flex-col gap-1">
+              <label htmlFor="world-ticket-amount" className="flex min-w-0 flex-col gap-1.5">
                 <span className="text-xs text-muted-foreground">You pay</span>
-                <span className="text-xl leading-none font-medium tabular-nums">
-                  {money(total, { cents: true })}
+                <span
+                  className={cn(
+                    "flex h-10 w-28 items-center rounded-xl bg-background px-3 text-xl font-medium tabular-nums ring-1 ring-border transition-shadow focus-within:ring-2 focus-within:ring-ring/60",
+                    payInvalid && "ring-danger/60 focus-within:ring-danger/60",
+                  )}
+                >
+                  <span className="text-muted-foreground">$</span>
+                  <input
+                    id="world-ticket-amount"
+                    value={payText ?? amountText(amount)}
+                    inputMode="decimal"
+                    enterKeyHint="done"
+                    autoComplete="off"
+                    aria-invalid={payInvalid}
+                    className="w-full min-w-0 bg-transparent pl-0.5 outline-none"
+                    onFocus={(e) => {
+                      setPayText(amountText(amount));
+                      e.currentTarget.select();
+                    }}
+                    onChange={(e) => {
+                      const text = e.target.value.replace(/[^\d.]/g, "");
+                      if (!/^\d{0,4}(\.\d{0,2})?$/.test(text)) return;
+                      setPayText(text);
+                      const v = Number(text);
+                      if (text && v >= MIN_ORDER && v <= MAX_ORDER) setAmount(v);
+                    }}
+                    onBlur={() => {
+                      // Back to the order's amount, unless what is typed can't be one.
+                      if (!payInvalid) setPayText(null);
+                    }}
+                  />
                 </span>
-              </div>
-              <ArrowRight className="mb-0.5 size-5 text-muted-foreground" aria-hidden />
-              <div className="flex flex-col items-end gap-1">
-                <span className="text-xs text-muted-foreground">If you're right</span>
-                <span className="text-xl leading-none font-medium text-positive tabular-nums">
-                  {offer.payout === null ? "—" : money(offer.payout)}
+              </label>
+              <div className="flex flex-col items-end gap-1.5">
+                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  {pricing && <Spinner className="size-3" />}
+                  If you're right
+                </span>
+                {/* The payout, then how many times what you pay it is. */}
+                <span className="flex h-10 items-center gap-2 tabular-nums">
+                  <span className="text-xl font-medium text-positive">
+                    {offer.payout === null ? "—" : money(offer.payout)}
+                  </span>
+                  {offer.payout !== null && (
+                    <span className="rounded-full bg-positive-soft px-2 py-1 text-base leading-none font-semibold text-positive">
+                      {multiple(offer.payout, amount)}
+                    </span>
+                  )}
                 </span>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-              <span className="flex items-center gap-2">
-                <MiniRing chance={offer.win} />
-                <span className="tabular-nums">{chancePercent(offer.win)} chance</span>
-              </span>
-              <span className="flex items-center gap-1.5 text-muted-foreground">
-                <CalendarDays className="size-4" aria-hidden />
-                {when}
-              </span>
-              {offer.payout !== null && (
-                <span className="ml-auto text-xs text-muted-foreground tabular-nums">
-                  {multiple(offer.payout, stake)}
-                </span>
-              )}
-            </div>
+            {payInvalid && (
+              <p className="text-xs text-danger">
+                From {money(MIN_ORDER)} to {money(MAX_ORDER)} an order.
+              </p>
+            )}
             {refund > 0 && (
               <div className="flex items-center gap-2 text-sm text-info">
                 <RotateCcw className="size-4 shrink-0" aria-hidden />
                 <span>
-                  {money(refund)} back if an event fails
+                  {money(refund, { cents: true })} back if an event fails
                   {firstEnd && (
                     <span className="text-muted-foreground"> · from {whenDay(firstEnd)}</span>
                   )}
@@ -354,8 +366,8 @@ export function WorldTicket({
             <InfoTooltip
               content={
                 offer.fair === null
-                  ? `${money(fee, { cents: true })} fee; the price includes the vault's spread`
-                  : `${money(Math.max(0, stake - offer.fair), { cents: true })} spread over the fair price + ${money(fee, { cents: true })} fee`
+                  ? `${money(fee, { cents: true })} fee, taken from what you pay; the price includes the vault's spread`
+                  : `${money(Math.max(0, stake - offer.fair), { cents: true })} spread over the fair price + ${money(fee, { cents: true })} fee, taken from what you pay`
               }
             >
               <span className="inline-flex cursor-help items-center gap-1.5">
@@ -401,46 +413,23 @@ export function WorldTicket({
         total={total}
         product={selected}
         blocked={lowChance && !ack}
+        hold={payInvalid ? "Enter an amount to pay" : null}
         onPlace={place}
         onFaucet={onboarding.enabled ? onboarding.show : null}
       />
-      <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-        <Eye className="size-3.5" aria-hidden />
-        Public{account.owner ? ` as ${shortWallet(account.owner)}` : ""} · fills within{" "}
-        {Math.round(TOLERANCE * 100)}% or not at all
-      </p>
     </section>
-  );
-}
-
-/** A small ring of a chance out of 1,000,000. */
-function MiniRing({ chance }: { chance: number }) {
-  const r = 7,
-    length = 2 * Math.PI * r;
-  const share = Math.min(1, Math.max(0, chance / 1_000_000));
-  return (
-    <svg viewBox="0 0 18 18" className="size-4 -rotate-90" aria-hidden>
-      <circle cx="9" cy="9" r={r} fill="none" strokeWidth="2.5" className="stroke-border" />
-      <circle
-        cx="9"
-        cy="9"
-        r={r}
-        fill="none"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeDasharray={`${Math.max(share * length, 0.6)} ${length}`}
-        className="stroke-positive"
-      />
-    </svg>
   );
 }
 
 function ProductTile({
   offer,
+  paid,
   selected,
   onSelect,
 }: {
   offer: Offer;
+  /** What its order costs, fee included. */
+  paid: number;
   selected: boolean;
   onSelect: () => void;
 }) {
@@ -453,7 +442,7 @@ function ProductTile({
       aria-pressed={selected}
       title={offer.decline ?? undefined}
       className={cn(
-        "relative flex flex-col items-start gap-2.5 rounded-2xl p-3.5 text-left ring-1 transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+        "relative flex flex-col items-start gap-2.5 rounded-xl p-3.5 text-left ring-1 transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
         selected ? "bg-primary/8 ring-2 ring-primary" : "ring-border hover:bg-accent/60",
       )}
     >
@@ -474,14 +463,14 @@ function ProductTile({
       ) : (
         <span className="flex flex-col gap-0.5">
           <span className="text-base font-medium tabular-nums">
-            <span className="text-muted-foreground">{money(offer.stake)}</span>
+            <span className="text-muted-foreground">{money(paid)}</span>
             {" → "}
             <span className="text-positive">
               {offer.payout === null ? "—" : money(offer.payout)}
             </span>
           </span>
           <span className={cn("text-xs", moneyBack ? "text-info" : "text-muted-foreground")}>
-            {moneyBack ? `or ${money(offer.stake)} back` : "all or nothing"}
+            {moneyBack ? `or ${money(offer.stake, { cents: true })} back` : "all or nothing"}
           </span>
         </span>
       )}
@@ -501,6 +490,8 @@ function TradeButton(props: {
   total: number;
   product: ProductName;
   blocked: boolean;
+  /** Why the order can't be placed as it stands (what is typed isn't an amount). */
+  hold: string | null;
   onPlace: () => void;
   onFaucet: (() => void) | null;
 }) {
@@ -597,10 +588,11 @@ function TradeButton(props: {
     <Button
       size="lg"
       className="w-full"
-      disabled={props.busy || props.blocked}
+      disabled={props.busy || props.blocked || props.hold !== null}
       onClick={props.onPlace}
     >
-      {props.blocked ? "Tick the box above" : `Place ${money(props.total, { cents: true })}`}
+      {props.hold ??
+        (props.blocked ? "Tick the box above" : `Place ${money(props.total, { cents: true })}`)}
     </Button>
   );
 }
@@ -624,17 +616,11 @@ function Receipt({
   className?: string | undefined;
 }) {
   const explorer = explorerFor(protocolConfig);
-  const share = () => {
-    const url = `${window.location.origin}/worlds/${receipt.book}`;
-    void navigator.clipboard?.writeText(url).then(
-      () => toast.add({ type: "success", title: "Link copied" }),
-      () => toast.add({ type: "error", title: url }),
-    );
-  };
+  const share = () => void shareLink(`${window.location.origin}/worlds/${receipt.book}`);
   return (
     <section
       className={cn(
-        "flex flex-col gap-5 rounded-3xl bg-card p-4 ring-1 ring-border sm:p-5",
+        "flex flex-col gap-5 rounded-xl bg-card p-4 ring-1 ring-border sm:p-5",
         className,
       )}
     >

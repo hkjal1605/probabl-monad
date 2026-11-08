@@ -10,6 +10,7 @@ import { IndexStreamProvider } from "./IndexStreamProvider";
 import { ThemeProvider } from "./ThemeProvider";
 import { UiStateProvider } from "./UiStateProvider";
 import { WalletProvider } from "./WalletProvider";
+import { WorldAccountProvider } from "./WorldAccountProvider";
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
@@ -19,7 +20,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
           <WalletLoginProvider>
             <OnboardingProvider>
               <IndexStreamProvider>
-                <UiStateProvider>{children}</UiStateProvider>
+                <UiStateProvider>
+                  <WorldAccountProvider>{children}</WorldAccountProvider>
+                </UiStateProvider>
               </IndexStreamProvider>
             </OnboardingProvider>
           </WalletLoginProvider>

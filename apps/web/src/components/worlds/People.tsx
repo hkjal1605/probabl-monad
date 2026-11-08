@@ -34,11 +34,12 @@ export function HolderList({
           <li key={h.owner} className="flex items-center gap-3 border-b py-3 last:border-b-0">
             <WalletDot address={h.owner} className="size-7" />
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <span className="flex items-center gap-2 text-sm">
-                {mine ? "You" : shortWallet(h.owner)}
+              {/* On a narrow screen the labels wrap under the wallet rather than squeezing it. */}
+              <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                <span className="whitespace-nowrap">{mine ? "You" : shortWallet(h.owner)}</span>
                 <span
                   className={cn(
-                    "rounded-md px-1.5 py-0.5 text-[11px] font-medium",
+                    "rounded-md px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap",
                     h.product === "Money-back"
                       ? "bg-info-soft text-info"
                       : "bg-brand-soft text-brand-strong",
@@ -47,7 +48,7 @@ export function HolderList({
                   {h.product}
                 </span>
                 {other && (
-                  <span className="rounded-md bg-secondary px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                  <span className="rounded-md bg-secondary px-1.5 py-0.5 text-[11px] whitespace-nowrap text-muted-foreground">
                     other side · {side}
                   </span>
                 )}

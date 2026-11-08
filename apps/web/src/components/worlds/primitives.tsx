@@ -1,4 +1,3 @@
-import { Check, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { Avatar, AvatarFallback, AvatarLazyImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -141,8 +140,8 @@ export function EventThumb({
   );
 }
 
-/** Which way a world needs an event to go, as a switch with both sides in view: the chosen side
- * slides under its label, green for "Happens", red for "Doesn't happen". */
+/** Which way a world needs an event to go, as a small switch with both answers in view: the
+ * chosen one slides under its label, green for Yes, red for No. */
 export function SideSwitch({
   wantYes,
   onChange,
@@ -158,7 +157,7 @@ export function SideSwitch({
       aria-pressed={wantYes === yes}
       onClick={() => onChange(yes)}
       className={cn(
-        "relative z-10 flex h-9 items-center justify-center gap-1.5 rounded-full px-3.5 text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+        "relative z-10 flex h-6 items-center justify-center rounded-full px-2.5 text-xs font-semibold transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
         wantYes === yes
           ? yes
             ? "text-positive"
@@ -166,20 +165,22 @@ export function SideSwitch({
           : "text-muted-foreground hover:text-foreground",
       )}
     >
-      {yes ? <Check className="size-4" /> : <X className="size-4" />}
-      {yes ? "Happens" : "Doesn't happen"}
+      {yes ? "Yes" : "No"}
     </button>
   );
   return (
-    <fieldset className={cn("relative grid grid-cols-2 rounded-full bg-secondary p-1", className)}>
+    <fieldset
+      className={cn(
+        "relative grid shrink-0 grid-cols-2 rounded-full bg-secondary p-0.5",
+        className,
+      )}
+    >
       <legend className="sr-only">The way this event has to go</legend>
       <span
         aria-hidden
         className={cn(
-          "absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-full ring-1 transition-[translate,background-color] duration-200 ease-out motion-reduce:transition-none",
-          wantYes
-            ? "translate-x-0 bg-positive-soft ring-positive/25"
-            : "translate-x-full bg-danger-soft ring-danger/25",
+          "absolute inset-y-0.5 left-0.5 w-[calc(50%-2px)] rounded-full transition-[translate,background-color] duration-200 ease-out motion-reduce:transition-none",
+          wantYes ? "translate-x-0 bg-positive-soft" : "translate-x-full bg-danger-soft",
         )}
       />
       {side(true)}

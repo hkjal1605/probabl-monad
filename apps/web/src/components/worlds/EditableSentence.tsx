@@ -2,13 +2,18 @@
 import { Plus, Trash2 } from "lucide-react";
 import { Fragment, type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
+import {
+  ResponsivePopover,
+  ResponsivePopoverContent,
+  ResponsivePopoverTrigger,
+} from "@/components/ui/responsive-popover";
 import { Segmented } from "@/components/ui/segmented";
 import { DatePicker, StrikeEditor } from "@/components/worlds/Editors";
 import { EventRow, EventSearchPanel } from "@/components/worlds/EventSearch";
 import { VenueMark } from "@/components/worlds/primitives";
 import { Chip, Sentence } from "@/components/worlds/Sentence";
 import { StockList } from "@/components/worlds/StockPicker";
+import { usePhone } from "@/hooks/usePhone";
 import { calendarDay, midSentence, percent, strikeText, whenDay } from "@/lib/worlds/format";
 import type { LegEntry, LegState, Stock, StockState } from "@/lib/worlds/types";
 
@@ -18,7 +23,9 @@ import type { LegEntry, LegState, Stock, StockState } from "@/lib/worlds/types";
  * An event not chosen yet (`null`) is a placeholder chip showing `placeholders[i][step]` (one of
  * the live events to start from; the caller steps every open event together) that opens the
  * event search where it stands. The parts that move when a placeholder changes are marked
- * `data-atom` (see `useSampleCycle`). */
+ * `data-atom` (see `useSampleCycle`).
+ *
+ * Each chip opens its picker under it on a wide screen and as a bottom sheet on a phone. */
 export function EditableSentence({
   legs,
   stock,
@@ -29,6 +36,7 @@ export function EditableSentence({
   onStock,
   placeholders,
   step = 0,
+  className,
 }: {
   legs: (LegState | null)[];
   stock: StockState | null;
@@ -39,6 +47,8 @@ export function EditableSentence({
   onStock: (stock: StockState | null) => void;
   placeholders?: LegEntry[][];
   step?: number;
+  /** Type size or leading for a page that gives the sentence more room. */
+  className?: string;
 }) {
   const chosen = legs.flatMap((l) => (l ? [l.entry.id] : []));
   // "A", "A and B", "A, B and C".
@@ -72,7 +82,7 @@ export function EditableSentence({
     );
   });
   return (
-    <Sentence size="display">
+    <Sentence size="display" className={className}>
       {stock ? (
         <>
           <Atom k="if">If</Atom> {events}
@@ -80,7 +90,7 @@ export function EditableSentence({
           <Atom k="closes">closes</Atom>{" "}
           <Chip
             data-atom="direction"
-            tone="value"
+            tone={stock.direction}
             interactive
             className="whitespace-nowrap"
             role="button"
@@ -98,42 +108,24 @@ export function EditableSentence({
           >
             {stock.direction}
           </Chip>{" "}
-          <Popover>
-            <PopoverTrigger
+          <ResponsivePopover>
+            <ResponsivePopoverTrigger
               nativeButton={false}
               data-atom="strike"
-              render={<Chip tone="value" interactive className="whitespace-nowrap" />}
+              render={<Chip tone="price" interactive className="whitespace-nowrap" />}
             >
               {strikeText(stock.strike)}
-            </PopoverTrigger>
-            <PopoverContent>
+            </ResponsivePopoverTrigger>
+            <ResponsivePopoverContent title={`${stock.symbol}'s price`} done>
               <StrikeEditor
                 strike={stock.strike}
                 spot={stock.spot}
                 direction={stock.direction}
                 onChange={(strike) => onStock({ ...stock, strike })}
               />
-            </PopoverContent>
-          </Popover>{" "}
-          <Atom k="on">on</Atom>{" "}
-          <Popover>
-            <PopoverTrigger
-              nativeButton={false}
-              data-atom="date"
-              render={<Chip tone="value" interactive className="whitespace-nowrap" />}
-            >
-              {calendarDay(stock.date)}
-            </PopoverTrigger>
-            <PopoverContent className="w-96">
-              <DatePicker
-                value={stock.date}
-                earliest={dates.earliest}
-                lastDate={dates.last}
-                suggested={dates.suggested}
-                onChange={(date) => onStock({ ...stock, date })}
-              />
-            </PopoverContent>
-          </Popover>
+            </ResponsivePopoverContent>
+          </ResponsivePopover>{" "}
+          <Atom k="on">on</Atom> <DateChip stock={stock} dates={dates} onStock={onStock} />
         </>
       ) : (
         <>
@@ -183,8 +175,8 @@ function EventSlot({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
+    <ResponsivePopover open={open} onOpenChange={setOpen}>
+      <ResponsivePopoverTrigger
         nativeButton={false}
         data-slot="event"
         data-atom={atom}
@@ -193,8 +185,14 @@ function EventSlot({
         render={<Chip tone="event" interactive className="text-muted-foreground/75" />}
       >
         <Words key={shown?.id ?? ""} text={shown ? midSentence(shown.label) : "an event"} />
-      </PopoverTrigger>
-      <PopoverContent className="flex max-h-[min(32rem,80dvh)] w-[26rem] flex-col gap-3">
+      </ResponsivePopoverTrigger>
+      <ResponsivePopoverContent
+        title="Choose an event"
+        className="flex max-h-[min(32rem,80dvh)] w-[26rem] flex-col gap-3"
+        size="tall"
+        keyboard
+        scroll={false}
+      >
         <EventSearchPanel
           suggestions={samples}
           exclude={exclude}
@@ -217,8 +215,8 @@ function EventSlot({
             Remove this event
           </Button>
         )}
-      </PopoverContent>
-    </Popover>
+      </ResponsivePopoverContent>
+    </ResponsivePopover>
   );
 }
 
@@ -244,18 +242,24 @@ function LegChip({
   onRemove: (() => void) | null;
 }) {
   const [open, setOpen] = useState(false);
+  const phone = usePhone();
   const e = leg.entry;
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
+    <ResponsivePopover open={open} onOpenChange={setOpen}>
+      <ResponsivePopoverTrigger
         nativeButton={false}
         data-atom={`leg-${e.id}`}
         render={<Chip tone={leg.wantYes ? "event" : "no"} interactive />}
       >
         {midSentence(e.label)}
-      </PopoverTrigger>
-      <PopoverContent className="flex w-[26rem] flex-col gap-3">
-        <PopoverTitle className="leading-5">{e.question}</PopoverTitle>
+      </ResponsivePopoverTrigger>
+      <ResponsivePopoverContent
+        title={e.question}
+        showTitle
+        className="flex w-[26rem] flex-col gap-3"
+        sheetClassName="gap-4"
+        done
+      >
         <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <VenueMark source={e.source} />
           <span className="tabular-nums">YES {percent(e.yes)}</span>
@@ -266,7 +270,8 @@ function LegChip({
           value={leg.wantYes ? "It happens" : "It doesn't happen"}
           options={["It happens", "It doesn't happen"] as const}
           onChange={(v) => onChange({ ...leg, wantYes: v === "It happens" })}
-          variant="compact"
+          variant={phone ? "default" : "compact"}
+          className={phone ? "w-full *:flex-1" : ""}
         />
         {leg.alternatives.length > 0 && (
           <div className="flex flex-col gap-1 border-t pt-2">
@@ -303,23 +308,29 @@ function LegChip({
             Remove this event
           </Button>
         )}
-      </PopoverContent>
-    </Popover>
+      </ResponsivePopoverContent>
+    </ResponsivePopover>
   );
 }
 
 function StockChip({ stock, onStock }: { stock: StockState; onStock: (s: StockState) => void }) {
   const [open, setOpen] = useState(false);
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
+    <ResponsivePopover open={open} onOpenChange={setOpen}>
+      <ResponsivePopoverTrigger
         nativeButton={false}
         data-atom="stock"
         render={<Chip tone="stock" interactive />}
       >
         {stock.symbol}
-      </PopoverTrigger>
-      <PopoverContent className="flex flex-col gap-2">
+      </ResponsivePopoverTrigger>
+      <ResponsivePopoverContent
+        title="Choose a stock"
+        className="flex flex-col gap-2"
+        size="tall"
+        keyboard
+        scroll={false}
+      >
         <StockList
           selected={stock.underlying}
           onPick={(s: Stock) => {
@@ -336,8 +347,8 @@ function StockChip({ stock, onStock }: { stock: StockState; onStock: (s: StockSt
             });
           }}
         />
-      </PopoverContent>
-    </Popover>
+      </ResponsivePopoverContent>
+    </ResponsivePopover>
   );
 }
 
@@ -350,8 +361,8 @@ function AddStock({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
+    <ResponsivePopover open={open} onOpenChange={setOpen}>
+      <ResponsivePopoverTrigger
         nativeButton={false}
         data-atom="add-stock"
         render={
@@ -359,8 +370,14 @@ function AddStock({
         }
       >
         + a stock
-      </PopoverTrigger>
-      <PopoverContent>
+      </ResponsivePopoverTrigger>
+      <ResponsivePopoverContent
+        title="Add a stock"
+        className="flex flex-col gap-2"
+        size="tall"
+        keyboard
+        scroll={false}
+      >
         <StockList
           onPick={(s) => {
             setOpen(false);
@@ -375,8 +392,46 @@ function AddStock({
             });
           }}
         />
-      </PopoverContent>
-    </Popover>
+      </ResponsivePopoverContent>
+    </ResponsivePopover>
+  );
+}
+
+/** The day the stock is read: a calendar of closes. On a phone, picking a day is the choice made
+ * and closes the sheet; on a wide screen the popover stays for another look. */
+function DateChip({
+  stock,
+  dates,
+  onStock,
+}: {
+  stock: StockState;
+  dates: { earliest: string; last: string; suggested: string | null };
+  onStock: (s: StockState) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const phone = usePhone();
+  return (
+    <ResponsivePopover open={open} onOpenChange={setOpen}>
+      <ResponsivePopoverTrigger
+        nativeButton={false}
+        data-atom="date"
+        render={<Chip tone="value" interactive className="whitespace-nowrap" />}
+      >
+        {calendarDay(stock.date)}
+      </ResponsivePopoverTrigger>
+      <ResponsivePopoverContent title="The day it closes" className="w-96">
+        <DatePicker
+          value={stock.date}
+          earliest={dates.earliest}
+          lastDate={dates.last}
+          suggested={dates.suggested}
+          onChange={(date) => {
+            onStock({ ...stock, date });
+            if (phone) setOpen(false);
+          }}
+        />
+      </ResponsivePopoverContent>
+    </ResponsivePopover>
   );
 }
 

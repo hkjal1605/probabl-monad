@@ -37,6 +37,8 @@ export type {
   WorldBookMetadata,
   WorldBookRecord,
   WorldCorrelationRecord,
+  WorldExplorationNote,
+  WorldExplorationRecord,
   WorldFillRow,
   WorldFinalizedBatch,
   WorldGapRecord,

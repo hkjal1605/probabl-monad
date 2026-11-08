@@ -17,6 +17,7 @@ import {
   roundStrike,
   undated,
 } from "../src/worlds/assistant.ts";
+import { closeAfter, curatedSpecs, readableStrike } from "../src/worlds/curated.ts";
 import {
   canonicalWorld,
   closeOf,
@@ -1017,4 +1018,67 @@ test("sample events: per topic, its most relevant traded Polymarket market a mak
     year,
   );
   expect(picked.map((e) => e.marketId)).toEqual(["relevant", "other"]);
+});
+
+test("curated worlds: a target at a step people say, the first trading close after the events", () => {
+  expect(readableStrike(190.965 * 1.1)).toBe("210");
+  expect(readableStrike(668.5 * 0.955)).toBe("640");
+  expect(readableStrike(133.11 * 1.125)).toBe("150");
+  expect(readableStrike(42.6)).toBe("43");
+  expect(readableStrike(7.3)).toBe("7.50");
+  // A Dec 31 market (closing 23:59 New York) fixes after New Year's Day and the weekend.
+  expect(closeAfter(Date.parse("2027-01-01T04:59:00Z") / 1000).date).toBe("2027-01-04");
+  // Never the day the event ends, even before that day's close: the next trading day.
+  expect(closeAfter(Date.parse("2026-12-10T15:00:00Z") / 1000).date).toBe("2026-12-11");
+  expect(closeAfter(Date.parse("2027-01-28T19:00:00Z") / 1000).date).toBe("2027-01-29");
+  // A Friday's event fixes on Monday.
+  expect(closeAfter(Date.parse("2026-12-11T15:00:00Z") / 1000).date).toBe("2026-12-14");
+});
+
+test("curated worlds: shown only while open, liquid, priced and inside the tenor", () => {
+  const now = Date.parse("2026-11-07T12:00:00Z");
+  const end = "2027-01-01T04:59:00.000Z";
+  const world = (story: string, legs: string[], underlying = "US:NVDA") => ({
+    story,
+    short: ["A", "B"] as [string, string],
+    legs,
+    underlying,
+    direction: "above" as const,
+    move: 0.1,
+  });
+  const entries = new Map(
+    [
+      entry("A", "Will A happen?", { endTime: end }),
+      entry("B", "Will B happen?", { endTime: "2027-01-28T19:00:00.000Z" }),
+      entry("WIDE", "Will wide happen?", { endTime: end, bid: 0.4, ask: 0.5 }),
+      entry("SOON", "Will soon happen?", { endTime: "2026-11-08T12:00:00.000Z" }),
+      entry("FAR", "Will far happen?", { endTime: "2028-01-01T04:59:00.000Z" }),
+    ].map((e) => [e.id, e]),
+  );
+  const shown = curatedSpecs(
+    [
+      world("ok", ["kalshi:A", "kalshi:B"]),
+      world("missing", ["kalshi:A", "kalshi:GONE"]),
+      world("wide", ["kalshi:A", "kalshi:WIDE"]),
+      world("soon", ["kalshi:A", "kalshi:SOON"]),
+      world("past the tenor", ["kalshi:A", "kalshi:FAR"]),
+      world("no price", ["kalshi:A", "kalshi:B"], "US:AAPL"),
+    ],
+    entries,
+    new Map([
+      ["US:NVDA", 190.965],
+      ["US:AAPL", null],
+    ]),
+    now,
+    365 * 86_400,
+  );
+  expect(shown.map((s) => s.world.story)).toEqual(["ok"]);
+  expect(shown[0]?.spec).toEqual({
+    legs: [
+      { id: "kalshi:A", wantYes: true },
+      { id: "kalshi:B", wantYes: true },
+    ],
+    // The trading day after the later event's day (Thu, Jan 28): Fri, Jan 29.
+    stock: { underlying: "US:NVDA", direction: "above", strike: "210", date: "2027-01-29" },
+  });
 });

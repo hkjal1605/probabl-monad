@@ -1,5 +1,12 @@
 import { expect, test } from "bun:test";
-import { LINK_PREVIEW, PREVIEW_IMAGE, PREVIEW_VIDEO } from "../src/lib/link-preview";
+import {
+  LINK_PREVIEW,
+  PREVIEW_IMAGE,
+  PREVIEW_VIDEO,
+  WORLDS_LINK_PREVIEW,
+  WORLDS_PREVIEW_IMAGE,
+  WORLDS_PREVIEW_VIDEO,
+} from "../src/lib/link-preview";
 import { byteRange, servePreviewVideo, withPlayerCard } from "../src/lib/link-preview-worker";
 
 const publicFile = (path: string) => Bun.file(new URL(`../public${path}`, import.meta.url));
@@ -16,27 +23,46 @@ test("the preview's video is an absolute https URL to the MP4, at the image's 1.
   }
 });
 
-test("the preview files are small enough for every app that fetches them", async () => {
-  const image = publicFile(PREVIEW_IMAGE.url);
-  const video = publicFile(PREVIEW_VIDEO.path);
-  // WhatsApp drops images over ~300 KB; iMessage takes 10 MB for image and video together,
-  // Discord about 8 MB per file
-  expect(image.size).toBeLessThan(300_000);
-  expect(image.size + video.size).toBeLessThan(8_000_000);
-  const head = new Uint8Array(await image.slice(0, 3).arrayBuffer());
-  expect([...head]).toEqual([0xff, 0xd8, 0xff]);
-  // an MP4 with its index first, so a preview can start before the whole file has arrived
-  const mp4 = Buffer.from(await video.slice(0, 64 * 1024).arrayBuffer()).toString("latin1");
-  expect(mp4.slice(4, 8)).toBe("ftyp");
-  expect(mp4.indexOf("moov")).toBeGreaterThan(0);
-  expect(mp4.indexOf("moov")).toBeLessThan(
-    mp4.indexOf("mdat") === -1 ? Infinity : mp4.indexOf("mdat"),
-  );
+test("Worlds links preview as Worlds: their own image, loop, title and words", () => {
+  expect(WORLDS_LINK_PREVIEW.images).toEqual([WORLDS_PREVIEW_IMAGE]);
+  expect(WORLDS_LINK_PREVIEW.videos).toHaveLength(1);
+  const [video] = WORLDS_LINK_PREVIEW.videos;
+  expect(video?.url).toMatch(/^https:\/\/[^/]+\/og-worlds\.mp4$/);
+  expect(video?.secureUrl).toBe(video?.url);
+  expect(video?.type).toBe("video/mp4");
+  expect(WORLDS_LINK_PREVIEW.title).toContain("what if");
+  expect(WORLDS_LINK_PREVIEW.description.length).toBeGreaterThan(40);
 });
+
+test.each([
+  ["the site's", PREVIEW_IMAGE.url, PREVIEW_VIDEO.path],
+  ["Worlds'", WORLDS_PREVIEW_IMAGE.url, WORLDS_PREVIEW_VIDEO.path],
+])(
+  "%s preview files are small enough for every app that fetches them",
+  async (_, imagePath, videoPath) => {
+    const image = publicFile(imagePath);
+    const video = publicFile(videoPath);
+    // WhatsApp drops images over ~300 KB; iMessage takes 10 MB for image and video together,
+    // Discord about 8 MB per file
+    expect(image.size).toBeLessThan(300_000);
+    expect(image.size + video.size).toBeLessThan(8_000_000);
+    const head = new Uint8Array(await image.slice(0, 3).arrayBuffer());
+    expect([...head]).toEqual([0xff, 0xd8, 0xff]);
+    // an MP4 with its index first, so a preview can start before the whole file has arrived
+    const mp4 = Buffer.from(await video.slice(0, 64 * 1024).arrayBuffer()).toString("latin1");
+    expect(mp4.slice(4, 8)).toBe("ftyp");
+    expect(mp4.indexOf("moov")).toBeGreaterThan(0);
+    expect(mp4.indexOf("moov")).toBeLessThan(
+      mp4.indexOf("mdat") === -1 ? Infinity : mp4.indexOf("mdat"),
+    );
+  },
+);
 
 test("the worker gets the video before the asset server (which ignores byte ranges)", async () => {
   const wrangler = await Bun.file(new URL("../wrangler.jsonc", import.meta.url)).text();
-  expect(wrangler).toMatch(/"run_worker_first":\s*\[\s*"\/og-video\.mp4"\s*\]/);
+  expect(wrangler).toMatch(
+    /"run_worker_first":\s*\[\s*"\/og-video\.mp4",\s*"\/og-worlds\.mp4"\s*\]/,
+  );
 });
 
 test("byte ranges: first-last, open-ended, suffix, out of bounds, and ones to ignore", () => {
@@ -137,4 +163,18 @@ test("the player card is only added to HTML pages that carry a video", async () 
   const noVideo = PAGE.replace(/<meta property="og:video[^>]*>\n/g, "");
   expect(await crawl("Discordbot/2.0", noVideo)).toBe(noVideo);
   expect(await crawl("Discordbot/2.0", PAGE, "application/json")).toBe(PAGE);
+});
+
+test("the worker answers the preview video asked for, and only a preview video", async () => {
+  const asked: string[] = [];
+  const recorder = {
+    fetch: async (url: URL) => {
+      asked.push(url.pathname);
+      return new Response(FILE, { headers: { etag: '"v1"' } });
+    },
+  } as unknown as Fetcher;
+  await servePreviewVideo(new Request("https://probabl.trade/og-worlds.mp4"), recorder);
+  await servePreviewVideo(new Request("https://probabl.trade/og-video.mp4"), recorder);
+  await servePreviewVideo(new Request("https://probabl.trade/other.mp4"), recorder);
+  expect(asked).toEqual(["/og-worlds.mp4", "/og-video.mp4", "/og-video.mp4"]);
 });
