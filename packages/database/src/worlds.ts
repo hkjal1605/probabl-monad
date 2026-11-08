@@ -75,9 +75,12 @@ export interface WorldBookRecord {
   creator?: string | null;
   specHash?: string | null;
 }
-/** A world someone priced (schema version 7), as stored once per canonical opinion. `spec`,
- * `world` and `quote` are the API's JSON (the opinion, what it says, the makers' last quote). */
+/** A world someone priced (schema version 8), as stored once per set of events and stock (its
+ * topic): the one priced last. `spec`, `world` and `quote` are the API's JSON (the opinion, what
+ * it says, the makers' last quote). */
 export interface WorldExplorationRecord {
+  topicHash: string;
+  /** The stored opinion's canonical hash. */
   specHash: string;
   spec: unknown;
   world: unknown;
@@ -89,9 +92,10 @@ export interface WorldExplorationRecord {
   firstAt: Date;
   lastAt: Date;
 }
-/** What to add to a world's exploration: its latest state, and the new explorers and quotes
+/** What to add to a topic's exploration: the world priced last, and the new explorers and quotes
  * since the last write (counts are added to the stored ones). */
 export interface WorldExplorationNote {
+  topicHash: string;
   specHash: string;
   spec: unknown;
   world: unknown;
@@ -409,23 +413,29 @@ export function worldQueries(db: Connection) {
         last: BigInt(r.last),
       }));
     },
-    /** Adds explorations in one statement: a world seen first is inserted, a known one takes
-     * the latest state and adds the counts. One note per spec hash. */
+    /** Adds explorations in one statement: a topic seen first is inserted; a known one adds the
+     * counts and takes the note's world (its opinion, words, quote and cutoff) when the note is
+     * at least as recent as the stored one. One note per topic hash. */
     async recordWorldExplorations(domain: string, notes: readonly WorldExplorationNote[]) {
       if (!notes.length) return;
+      const newer = (column: string) =>
+        `${column} = CASE WHEN EXCLUDED.last_at >= e.last_at THEN EXCLUDED.${column} ELSE e.${column} END`;
       await db.query(
         `INSERT INTO probabl.world_explorations AS e
-          (deployment, spec_hash, spec, world, quote, cutoff, explorers, quotes, first_at, last_at)
-        SELECT ${DEPLOYMENT}, decode(x.h, 'hex'), x.spec::jsonb, x.world::jsonb, x.quote::jsonb,
-          x.cutoff, x.explorers, x.quotes, x.at, x.at
-        FROM unnest($2::text[], $3::text[], $4::text[], $5::text[], $6::bigint[], $7::integer[],
-          $8::integer[], $9::timestamptz[]) AS x(h, spec, world, quote, cutoff, explorers, quotes, at)
-        ON CONFLICT (deployment, spec_hash) DO UPDATE SET
-          spec = EXCLUDED.spec, world = EXCLUDED.world, quote = EXCLUDED.quote,
-          cutoff = EXCLUDED.cutoff, explorers = e.explorers + EXCLUDED.explorers,
-          quotes = e.quotes + EXCLUDED.quotes, last_at = greatest(e.last_at, EXCLUDED.last_at)`,
+          (deployment, topic_hash, spec_hash, spec, world, quote, cutoff, explorers, quotes,
+            first_at, last_at)
+        SELECT ${DEPLOYMENT}, decode(x.t, 'hex'), decode(x.h, 'hex'), x.spec::jsonb,
+          x.world::jsonb, x.quote::jsonb, x.cutoff, x.explorers, x.quotes, x.at, x.at
+        FROM unnest($2::text[], $3::text[], $4::text[], $5::text[], $6::text[], $7::bigint[],
+          $8::integer[], $9::integer[], $10::timestamptz[])
+          AS x(t, h, spec, world, quote, cutoff, explorers, quotes, at)
+        ON CONFLICT (deployment, topic_hash) DO UPDATE SET
+          ${["spec_hash", "spec", "world", "quote", "cutoff"].map(newer).join(", ")},
+          explorers = e.explorers + EXCLUDED.explorers, quotes = e.quotes + EXCLUDED.quotes,
+          last_at = greatest(e.last_at, EXCLUDED.last_at)`,
         [
           domain,
+          notes.map((n) => hex(n.topicHash)),
           notes.map((n) => hex(n.specHash)),
           notes.map((n) => JSON.stringify(n.spec)),
           notes.map((n) => JSON.stringify(n.world)),
@@ -445,6 +455,7 @@ export function worldQueries(db: Connection) {
     ): Promise<WorldExplorationRecord[]> {
       return (
         await db.query<{
+          topic_hash: string;
           spec_hash: string;
           spec: unknown;
           world: unknown;
@@ -455,7 +466,8 @@ export function worldQueries(db: Connection) {
           first_at: Date;
           last_at: Date;
         }>(
-          `SELECT encode(spec_hash, 'hex') AS spec_hash, spec, world, quote, cutoff::text,
+          `SELECT encode(topic_hash, 'hex') AS topic_hash, encode(spec_hash, 'hex') AS spec_hash,
+            spec, world, quote, cutoff::text,
             explorers, quotes, first_at, last_at
           FROM probabl.world_explorations
           WHERE deployment = ${DEPLOYMENT} AND last_at >= $2 AND cutoff > $3
@@ -468,6 +480,7 @@ export function worldQueries(db: Connection) {
           ],
         )
       ).rows.map((r) => ({
+        topicHash: `0x${r.topic_hash}`,
         specHash: `0x${r.spec_hash}`,
         spec: r.spec,
         world: r.world,

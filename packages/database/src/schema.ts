@@ -1,7 +1,7 @@
 import type { Pool } from "pg";
 
 /** Bump with a migration step below when a table or its meaning changes. */
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 /** The protocol's persistent state. Trading and custody reads are served from the in-memory
  * chain index; PostgreSQL keeps only what must survive a restart or is read historically:
@@ -271,20 +271,22 @@ const DDL = [
     product text NOT NULL, bid integer, ask integer,
     PRIMARY KEY (deployment, book, product, minute))`,
 
-  // ---------------------------------------------------------------- explored worlds (version 7)
+  // ---------------------------------------------------------------- explored worlds (version 8)
 
-  // Every world the makers quoted for someone, traded or not, once per canonical opinion (its
-  // spec hash): the opinion to price and open again (`spec`), what it says (`world`: venue
-  // wording, never the words typed), the makers' last quote, when it stops trading (`cutoff`,
-  // unix seconds), and how many visitors priced it (`explorers`, at most one a day each; no
-  // visitor is stored) and how often (`quotes`). The index serves the only read, the worlds
-  // explored most recently that still trade.
+  // Every world the makers quoted for someone, traded or not, once per set of events (each with
+  // the side it wants) and stock: its topic hash. Worlds that differ only in the stock's price,
+  // side or date are one row, holding the one priced last: its opinion's hash and the opinion to
+  // price and open again (`spec`), what it says (`world`: venue wording, never the words typed),
+  // the makers' last quote, when it stops trading (`cutoff`, unix seconds); and how many visitors
+  // priced any of them (`explorers`, at most one a day each; no visitor is stored) and how often
+  // (`quotes`). The index serves the only read, the worlds explored most recently that still
+  // trade.
   `CREATE TABLE IF NOT EXISTS probabl.world_explorations (
-    spec_hash bytea NOT NULL, deployment smallint NOT NULL, spec jsonb NOT NULL,
-    world jsonb NOT NULL, quote jsonb NOT NULL, cutoff bigint NOT NULL,
+    topic_hash bytea NOT NULL, deployment smallint NOT NULL, spec_hash bytea NOT NULL,
+    spec jsonb NOT NULL, world jsonb NOT NULL, quote jsonb NOT NULL, cutoff bigint NOT NULL,
     explorers integer NOT NULL DEFAULT 1, quotes integer NOT NULL DEFAULT 1,
     first_at timestamptz NOT NULL DEFAULT now(), last_at timestamptz NOT NULL DEFAULT now(),
-    PRIMARY KEY (deployment, spec_hash))`,
+    PRIMARY KEY (deployment, topic_hash))`,
   `CREATE INDEX IF NOT EXISTS world_explorations_recent ON probabl.world_explorations
     (deployment, last_at DESC) INCLUDE (cutoff)`,
 ];
@@ -334,6 +336,11 @@ const FROM_V1_AFTER = [
   "DROP TABLE probabl.orders",
 ];
 
+/** Version 8 keeps explored worlds once per set of events and stock instead of once per whole
+ * opinion (version 7 kept a row for every price and date of the same events and stock). Version
+ * 7's rows are not carried over: the table is recreated empty (asked for on 2026-11-08). */
+const BEFORE_V8 = ["DROP TABLE IF EXISTS probabl.world_explorations"];
+
 /** Version 3 records each trade's maker rebate (the market's share of the taker fee, which the
  * Trade log does not carry); trades before it paid none. */
 const FROM_V2 = [
@@ -351,11 +358,13 @@ export async function initializeStorage(pool: Pool) {
     const row = (await tx.query("SELECT version FROM probabl.schema_version WHERE id")).rows[0];
     const version: number | undefined = row?.version;
     // Versions 4 to 7 only add tables and columns (invites, members, referrals; RFQ makers;
-    // worlds; explored worlds), which the DDL creates.
+    // worlds; explored worlds), which the DDL creates. Version 8 recreates the explored worlds.
     if (version !== undefined && (version < 1 || version > SCHEMA_VERSION))
       throw new Error("Database schema belongs to another release: provision a fresh schema");
     if (version === 1) for (const statement of FROM_V1_BEFORE) await tx.query(statement);
     if (version === 2) for (const statement of FROM_V2) await tx.query(statement);
+    if (version !== undefined && version < 8)
+      for (const statement of BEFORE_V8) await tx.query(statement);
     for (const statement of DDL.slice(2)) await tx.query(statement);
     if (version === 1) for (const statement of FROM_V1_AFTER) await tx.query(statement);
     await tx.query(

@@ -78,8 +78,8 @@ afterAll(async () => {
   await pg?.close();
 });
 
-test("version 5 storage migrates in place to version 7", async () => {
-  expect(SCHEMA_VERSION).toBe(7);
+test("version 5 storage migrates in place to version 8", async () => {
+  expect(SCHEMA_VERSION).toBe(8);
   // Version 5 as the previous release left it: no world tables, makers without `worlds`.
   for (const table of [
     "world_fills",
@@ -101,13 +101,45 @@ test("version 5 storage migrates in place to version 7", async () => {
   const reopened = createDatabase({ connectionString: pg.connectionString });
   await reopened.initialize();
   await reopened.close();
-  expect((await pool.query("SELECT version FROM probabl.schema_version")).rows[0].version).toBe(7);
+  expect((await pool.query("SELECT version FROM probabl.schema_version")).rows[0].version).toBe(8);
   const columns = await pool.query(
     `SELECT column_name FROM information_schema.columns
     WHERE table_schema = 'probabl' AND table_name = 'rfq_makers' AND column_name = 'worlds'`,
   );
   expect(columns.rowCount).toBe(1);
   expect(await db.worldFills(domain, { limit: 10 })).toEqual([]);
+});
+
+test("version 7's explored worlds are cleared: version 8 keeps one per events and stock", async () => {
+  // Version 7's table: one row per whole opinion, with a row in it.
+  await pool.query("DROP TABLE probabl.world_explorations");
+  await pool.query(
+    `CREATE TABLE probabl.world_explorations (
+      spec_hash bytea NOT NULL, deployment smallint NOT NULL, spec jsonb NOT NULL,
+      world jsonb NOT NULL, quote jsonb NOT NULL, cutoff bigint NOT NULL,
+      explorers integer NOT NULL DEFAULT 1, quotes integer NOT NULL DEFAULT 1,
+      first_at timestamptz NOT NULL DEFAULT now(), last_at timestamptz NOT NULL DEFAULT now(),
+      PRIMARY KEY (deployment, spec_hash))`,
+  );
+  await pool.query(
+    `INSERT INTO probabl.world_explorations (spec_hash, deployment, spec, world, quote, cutoff)
+    VALUES ('\\x01', 1, '{}', '{}', '{}', 2000000000)`,
+  );
+  await pool.query("UPDATE probabl.schema_version SET version = 7");
+  const reopened = createDatabase({ connectionString: pg.connectionString });
+  await reopened.initialize();
+  await reopened.close();
+  expect((await pool.query("SELECT version FROM probabl.schema_version")).rows[0].version).toBe(8);
+  expect(
+    (await pool.query("SELECT count(*)::int AS n FROM probabl.world_explorations")).rows[0].n,
+  ).toBe(0);
+  const key = await pool.query(
+    `SELECT a.attname FROM pg_index i
+    JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+    WHERE i.indrelid = 'probabl.world_explorations'::regclass AND i.indisprimary
+    ORDER BY a.attname`,
+  );
+  expect(key.rows.map((r) => r.attname)).toEqual(["deployment", "topic_hash"]);
 });
 
 describe("world tables", () => {
@@ -355,9 +387,10 @@ describe("world tables", () => {
     expect(marks[1]).toMatchObject({ nav: 1_000_000_000n, tx: h("mark"), inputs: { books: [1] } });
   });
 
-  test("explored worlds: one row per opinion, counts added, latest state kept, listed by recency", async () => {
+  test("explored worlds: one row per topic, counts added, latest state kept, listed by recency", async () => {
     const at = (s: number) => new Date(Date.UTC(2026, 10, 7, 12, 0, s));
     const noteOf = (hash: string, over: Record<string, unknown> = {}) => ({
+      topicHash: h(`topic ${hash}`),
       specHash: h(hash),
       spec: { legs: [{ id: "polymarket:1", wantYes: true }], stock: null },
       world: { sentence: `World ${hash}`, legs: [] },
@@ -370,15 +403,23 @@ describe("world tables", () => {
     });
     await db.recordWorldExplorations(domain, []);
     await db.recordWorldExplorations(domain, [noteOf("w1"), noteOf("w2", { at: at(5) })]);
-    // A later batch adds its counts and replaces the state; an older time never moves it back.
+    // A later batch adds its counts and replaces the state, here with another price of w1's
+    // events and stock (its own spec hash, w1's topic); an older note never moves it back.
     await db.recordWorldExplorations(domain, [
       noteOf("w1", {
+        specHash: h("w1 at another price"),
         world: { sentence: "World w1, again", legs: [] },
         explorers: 2,
         quotes: 3,
         at: at(10),
       }),
-      noteOf("w2", { explorers: 0, quotes: 1, at: at(1) }),
+      noteOf("w2", {
+        specHash: h("w2, older"),
+        world: { sentence: "older", legs: [] },
+        explorers: 0,
+        quotes: 1,
+        at: at(1),
+      }),
       noteOf("expired", { cutoff: 1_000, at: at(20) }),
     ]);
     const list = await db.worldExplorations(domain, {
@@ -386,7 +427,8 @@ describe("world tables", () => {
       tradingAfter: 1_500_000_000,
       limit: 10,
     });
-    expect(list.map((r) => r.specHash)).toEqual([h("w1"), h("w2")]);
+    expect(list.map((r) => r.specHash)).toEqual([h("w1 at another price"), h("w2")]);
+    expect(list.map((r) => r.topicHash)).toEqual([h("topic w1"), h("topic w2")]);
     expect(list[0]).toMatchObject({
       world: { sentence: "World w1, again" },
       explorers: 3,
@@ -395,7 +437,12 @@ describe("world tables", () => {
       firstAt: at(0),
       lastAt: at(10),
     });
-    expect(list[1]).toMatchObject({ explorers: 1, quotes: 2, lastAt: at(5) });
+    expect(list[1]).toMatchObject({
+      world: { sentence: "World w2" },
+      explorers: 1,
+      quotes: 2,
+      lastAt: at(5),
+    });
     expect(list[1]!.spec).toEqual({ legs: [{ id: "polymarket:1", wantYes: true }], stock: null });
     // Explored before `since` is left out; the limit holds.
     expect(
@@ -405,7 +452,7 @@ describe("world tables", () => {
       (
         await db.worldExplorations(domain, { since: at(6), tradingAfter: 1_500_000_000, limit: 10 })
       ).map((r) => r.specHash),
-    ).toEqual([h("w1")]);
+    ).toEqual([h("w1 at another price")]);
     expect(
       await db.worldExplorations(domain, { since: at(0), tradingAfter: 0, limit: 1 }),
     ).toHaveLength(1);

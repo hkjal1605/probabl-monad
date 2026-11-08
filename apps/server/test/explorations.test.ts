@@ -1,6 +1,7 @@
-/** The worlds people explore: only a world a maker quoted is kept, one visitor counts once a day
- * per world (in memory, never stored), notes merge per world and go out in one write, a failed
- * write is kept, and the list leaves out traded worlds and worlds with a decided event. */
+/** The worlds people explore: only a world a maker quoted is kept, once per topic (its events and
+ * stock: another price, side or date is the same market), one visitor counts once a day per
+ * topic (in memory, never stored), notes merge per topic and go out in one write, a failed write
+ * is kept, and the list leaves out traded topics and worlds with a decided event. */
 import { expect, test } from "bun:test";
 import type { WorldExplorationNote, WorldExplorationRecord } from "@conditional-stocks/db";
 import { type CatalogEntry, kalshiConditionId } from "@conditional-stocks/market-data";
@@ -13,6 +14,7 @@ import {
   explorationOf,
   exploringList,
   QUOTE_WINDOW_MS,
+  topicOf,
 } from "../src/worlds/explorations.ts";
 import { canonicalWorld, offerProducts } from "../src/worlds/opinion.ts";
 import { mountOpinions, pageSize } from "../src/worlds/opinions.ts";
@@ -86,6 +88,7 @@ test("a world is explored once a maker quotes a product of it, and kept in venue
   const e = explorationOf(spec, preview(), 1_000);
   expect(e).not.toBeNull();
   expect(e!.specHash).toBe("0xabcdef");
+  expect(e!.topicHash).toBe(topicOf(spec.legs, "US:NVDA"));
   // The canonical opinion, legs in the world's order.
   expect(e!.spec.legs.map((l) => l.id)).toEqual(["polymarket:b", "polymarket:a"]);
   expect(e!.world.legs[0]).toEqual({
@@ -129,6 +132,42 @@ test("a world nobody quoted is not explored: a problem, every maker declining, o
       }),
     ),
   ).toBeNull();
+});
+
+test("the same events and stock are one market, whatever the price, side, date or order", () => {
+  const stock = (over: Record<string, unknown>) => ({
+    ...preview().world.stock,
+    ...over,
+  });
+  const base = explorationOf(spec, preview())!;
+  // Another price, side and date of the same events and stock: the same topic.
+  const repriced = explorationOf(
+    {
+      ...spec,
+      stock: { underlying: "US:NVDA", direction: "below", strike: "180", date: "2027-02-01" },
+    },
+    preview({
+      world: {
+        ...preview().world,
+        specHash: "0x1234",
+        stock: stock({ direction: "below", strike: "180", date: "2027-02-01" }),
+      },
+    }),
+  )!;
+  expect(repriced.specHash).not.toBe(base.specHash);
+  expect(repriced.topicHash).toBe(base.topicHash);
+  // Order and letter case don't matter either.
+  expect(topicOf([...spec.legs].reverse(), "us:nvda")).toBe(base.topicHash);
+  // Another side of an event, another event, another stock, or no stock: another market.
+  const yes = (id: string) => ({ id, wantYes: true });
+  for (const other of [
+    topicOf([yes("polymarket:a"), { id: "polymarket:b", wantYes: false }], "US:NVDA"),
+    topicOf([yes("polymarket:a")], "US:NVDA"),
+    topicOf([yes("polymarket:a"), yes("polymarket:b"), yes("polymarket:c")], "US:NVDA"),
+    topicOf(spec.legs, "US:TSLA"),
+    topicOf(spec.legs, null),
+  ])
+    expect(other).not.toBe(base.topicHash);
 });
 
 const note = (e = explorationOf(spec, preview())!) => e;
@@ -183,9 +222,33 @@ test("a visitor counts once a day per world, and a reprice once in ten minutes",
   t.log.stop();
 });
 
-test("notes merge per world into one write; a failed write is kept for the next", async () => {
+test("another price of the same events and stock is the same explorer, and the latest is kept", async () => {
   const t = logged();
-  const other = { ...note(), specHash: "0x0b" };
+  t.log.note(note(), "1.1.1.1");
+  t.at(60_000);
+  const repriced = {
+    ...note(),
+    specHash: "0x1234",
+    spec: { ...spec, stock: { ...spec.stock, strike: "230" } },
+  };
+  t.log.note(repriced, "1.1.1.1");
+  t.log.note(repriced, "2.2.2.2");
+  await t.log.flush();
+  // One row for both prices: two people, the price asked last.
+  expect(t.writes[0]).toHaveLength(1);
+  expect(t.writes[0]![0]).toMatchObject({
+    topicHash: note().topicHash,
+    specHash: "0x1234",
+    explorers: 2,
+    quotes: 2,
+    spec: { stock: { strike: "230" } },
+  });
+  t.log.stop();
+});
+
+test("notes merge per topic into one write; a failed write is kept for the next", async () => {
+  const t = logged();
+  const other = { ...note(), topicHash: "0x0b", specHash: "0x0b" };
   t.log.note(note(), "1.1.1.1");
   t.log.note(other, "1.1.1.1");
   t.failing(true);
@@ -196,15 +259,17 @@ test("notes merge per world into one write; a failed write is kept for the next"
   await t.log.flush();
   expect(t.writes).toHaveLength(1);
   const byHash = new Map(t.writes[0]!.map((n) => [n.specHash, n]));
+  expect(t.writes[0]).toHaveLength(2);
   expect(byHash.get("0xabcdef")).toMatchObject({ explorers: 2, quotes: 2 });
   expect(byHash.get("0x0b")).toMatchObject({ explorers: 1, quotes: 1 });
   t.log.stop();
 });
 
-test("the list leaves out traded worlds and decided or delisted events, with chances read now", () => {
-  const row = (hash: string, legs = ["polymarket:a"]) => {
+test("the list leaves out traded topics and decided or delisted events, with chances read now", () => {
+  const row = (hash: string, legs = ["polymarket:a"], topic = hash) => {
     const e = note();
     return {
+      topicHash: topic,
       specHash: hash,
       spec: e.spec,
       world: { ...e.world, legs: legs.map((id) => ({ ...e.world.legs[0]!, id })) },
@@ -248,6 +313,15 @@ test("the list leaves out traded worlds and decided or delisted events, with cha
       limit: 10,
     }).map((w) => w.specHash),
   ).toEqual(["0x01", "0x06"]);
+  // One card per topic, should two rows ever share one.
+  expect(
+    exploringList([row("0x01"), row("0x07", undefined, "0x01")], {
+      traded: new Set(),
+      entries,
+      nowMs: Date.parse("2026-11-07T00:00:00Z"),
+      limit: 10,
+    }).map((w) => w.specHash),
+  ).toEqual(["0x01"]);
 });
 
 // ------------------------------------------------------------------ the routes
@@ -297,7 +371,14 @@ function routes(answer: () => WorldPreviewAnswer | null) {
     bookOf: new Map<string, number>(),
     books: new Map<number, { fills: number }>(),
   };
-  const records: { kind: string; specHash: string; defHash: string }[] = [];
+  const records: {
+    kind: string;
+    defHash: string;
+    metadata: {
+      legs: { source: string; marketId: string; wantYes: boolean }[];
+      underlying: string | null;
+    };
+  }[] = [];
   const writes: WorldExplorationNote[][] = [];
   let stored: WorldExplorationRecord[] = [];
   const reads: string[] = [];
@@ -400,6 +481,7 @@ test("a quoted world a person asked for is kept; an example, a declined world an
   await r.handle.stop();
   expect(r.writes).toHaveLength(1);
   expect(r.writes[0]!.map((n) => n.specHash)).toEqual([r.world(["kalshi:FED"]).specHash]);
+  expect(r.writes[0]![0]!.topicHash).toBe(topicOf([{ id: "kalshi:FED", wantYes: true }], null));
   expect(r.writes[0]![0]).toMatchObject({
     explorers: 1,
     quotes: 1,
@@ -419,6 +501,10 @@ test("the list reads the table and the catalog once per half minute, without tra
   const fed = r.world(["kalshi:FED"]);
   const deal = r.world(["kalshi:DEAL"]);
   const row = (w: typeof fed, lastAt: number): WorldExplorationRecord => ({
+    topicHash: topicOf(
+      w.legs.map((l) => ({ id: l.entry.id, wantYes: true })),
+      null,
+    ),
     specHash: w.specHash,
     spec: { legs: w.legs.map((l) => ({ id: l.entry.id, wantYes: true })), stock: null },
     world: {
@@ -436,8 +522,12 @@ test("the list reads the table and the catalog once per half minute, without tra
     lastAt: new Date(lastAt),
   });
   r.store([row(fed, 2_000), row(deal, 1_000)]);
-  // DEAL's world is traded: it is in the live feed instead.
-  r.records.push({ kind: "user", specHash: deal.specHash, defHash: "0xdef" });
+  // A world on DEAL's events is traded: it is in the live feed instead.
+  r.records.push({
+    kind: "user",
+    defHash: "0xdef",
+    metadata: { legs: [{ source: "kalshi", marketId: "DEAL", wantYes: true }], underlying: null },
+  });
   r.state.bookOf.set("0xdef", 7);
   r.state.books.set(7, { fills: 1 });
   const read = async () =>

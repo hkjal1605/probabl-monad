@@ -5,12 +5,29 @@
  * - A world is kept only when a person asked for its price (the app marks those previews; its
  *   rotating examples and the curated worlds it opens on are not anyone's opinion) and a maker
  *   quoted at least one of its products.
+ * - Worlds with the same events (each wanting the same side) on the same stock are one market
+ *   here, whatever the stock's price, side or date: they share a topic, kept once (the one priced
+ *   last stands for all), counted together, and left out once any of them trades.
  * - What is kept is the canonical opinion and its venue wording, never the words someone typed,
  *   and no visitor: an explorer is counted at most once a day per world, in memory only.
  * - Writes leave the preview's path: notes merge in memory and are written together every few
  *   seconds, one statement for all of them. */
+import { createHash } from "node:crypto";
 import type { WorldExplorationNote, WorldExplorationRecord } from "@conditional-stocks/db";
 import type { OpinionSpec } from "./opinion.ts";
+
+/** A world's topic: its set of events, each with the side it wants, and its stock (null for
+ * events only). Its order, the stock's price, side and date leave it unchanged. */
+export function topicOf(
+  legs: readonly { id: string; wantYes: boolean }[],
+  underlying: string | null | undefined,
+): string {
+  const events = [
+    ...new Set(legs.map((l) => `${l.id.toLowerCase()}=${l.wantYes ? "yes" : "no"}`)),
+  ].sort();
+  const key = JSON.stringify({ events, stock: underlying?.toUpperCase() ?? null });
+  return `0x${createHash("sha256").update(key).digest("hex")}`;
+}
 
 /** A visitor pricing the same world again within this counts once. */
 export const EXPLORER_WINDOW_MS = 24 * 3_600_000;
@@ -59,6 +76,8 @@ export interface ExplorationQuote {
   win: number | null;
 }
 export interface Exploration {
+  /** Its events and stock (`topicOf`): what makes it a different market here. */
+  topicHash: string;
   specHash: string;
   spec: OpinionSpec;
   world: ExplorationWorld;
@@ -134,10 +153,12 @@ export function explorationOf(
           date: w.stock.date,
         }
       : null;
+  const legs = w.legs.map((l) => ({ id: l.id, wantYes: l.wantYes }));
   return {
+    topicHash: topicOf(legs, spec.stock?.underlying),
     specHash: w.specHash.toLowerCase(),
     // The canonical opinion: its legs in the world's order, the stock as asked.
-    spec: { legs: w.legs.map((l) => ({ id: l.id, wantYes: l.wantYes })), stock: spec.stock },
+    spec: { legs, stock: spec.stock },
     world: {
       sentence: w.sentence,
       legs: w.legs.map((l) => ({
@@ -165,7 +186,8 @@ export function explorationOf(
   };
 }
 
-/** Explorations as they arrive, merged per world and written in batches. */
+/** Explorations as they arrive, merged per topic and written in batches. A visitor pricing the
+ * same events and stock again (another price or date) is the same explorer. */
 export class ExplorationLog {
   private readonly seen = new Map<string, { explorer: number; quote: number }>();
   private pending = new Map<string, WorldExplorationNote>();
@@ -188,7 +210,7 @@ export class ExplorationLog {
   /** One person (`visitor`, kept in memory only) was quoted `e`. */
   note(e: Exploration, visitor: string) {
     const now = this.now();
-    const key = `${e.specHash}|${visitor}`;
+    const key = `${e.topicHash}|${visitor}`;
     const last = this.seen.get(key);
     const explorer = !last || now - last.explorer >= EXPLORER_WINDOW_MS;
     const quote = explorer || !last || now - last.quote >= QUOTE_WINDOW_MS;
@@ -201,8 +223,9 @@ export class ExplorationLog {
     if (this.seen.size > MAX_SEEN)
       for (const k of [...this.seen.keys()].slice(0, this.seen.size - MAX_SEEN))
         this.seen.delete(k);
-    const held = this.pending.get(e.specHash);
-    this.pending.set(e.specHash, {
+    const held = this.pending.get(e.topicHash);
+    this.pending.set(e.topicHash, {
+      topicHash: e.topicHash,
       specHash: e.specHash,
       spec: e.spec,
       world: e.world,
@@ -239,11 +262,11 @@ export class ExplorationLog {
           worlds: batch.size,
         });
         // Newer notes win; the failed batch's counts are added back under them.
-        for (const [hash, old] of batch) {
+        for (const [topic, old] of batch) {
           if (this.pending.size >= MAX_PENDING) break;
-          const newer = this.pending.get(hash);
+          const newer = this.pending.get(topic);
           this.pending.set(
-            hash,
+            topic,
             newer
               ? {
                   ...newer,
@@ -277,12 +300,13 @@ export interface ExploringWorld {
   firstAt: string;
 }
 
-/** The worlds to list, from the stored ones: none that already trade (they are in the live
- * feed), none whose event is no longer listed or already decided (its venue at the edges), each
- * event's chance as the venue has it now. */
+/** The worlds to list, from the stored ones (one per topic): none whose events and stock a traded
+ * world has (it is in the live feed), none whose event is no longer listed or already decided
+ * (its venue at the edges), each event's chance as the venue has it now. */
 export function exploringList(
   rows: readonly WorldExplorationRecord[],
   options: {
+    /** The topics of the worlds someone holds a position in. */
     traded: ReadonlySet<string>;
     entries: ReadonlyMap<string, { yes: number | null; endTime: string }>;
     nowMs: number;
@@ -290,9 +314,11 @@ export function exploringList(
   },
 ): ExploringWorld[] {
   const out: ExploringWorld[] = [];
+  const listed = new Set<string>();
   for (const r of rows) {
     if (out.length >= options.limit) break;
-    if (options.traded.has(r.specHash.toLowerCase())) continue;
+    const topic = r.topicHash.toLowerCase();
+    if (options.traded.has(topic) || listed.has(topic)) continue;
     const world = r.world as ExplorationWorld;
     let open = true;
     const legs = world.legs.map((l) => {
@@ -308,6 +334,7 @@ export function exploringList(
       return { ...l, yes: now?.yes ?? l.yes };
     });
     if (!open) continue;
+    listed.add(topic);
     out.push({
       specHash: r.specHash,
       spec: r.spec,

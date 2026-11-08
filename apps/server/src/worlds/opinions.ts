@@ -41,6 +41,7 @@ import {
   type ExplorationWorld,
   explorationOf,
   exploringList,
+  topicOf,
 } from "./explorations.ts";
 import {
   type CanonicalWorld,
@@ -576,13 +577,18 @@ export function mountOpinions(
       tradingAfter: Math.floor(nowMs / 1000) + 600,
       limit: EXPLORING_LIMIT * 2,
     });
-    // Worlds someone holds a position in are in the live feed instead.
+    // Worlds someone holds a position in are in the live feed instead, and so is every explored
+    // world with the same events and stock (whatever its price or date).
     const s = indexer.trading();
     const traded = new Set<string>();
     for (const r of indexer.metadataRecords()) {
-      if (r.kind !== "user" || !r.specHash) continue;
       const id = s.bookOf.get(r.defHash.toLowerCase() as Hex);
-      if (id && (s.books.get(id)?.fills ?? 0) > 0) traded.add(r.specHash.toLowerCase());
+      if (!id || (s.books.get(id)?.fills ?? 0) === 0) continue;
+      const legs = r.metadata.legs.map((l) => ({
+        id: `${l.source}:${l.marketId}`,
+        wantYes: l.wantYes,
+      }));
+      traded.add(topicOf(legs, r.metadata.underlying));
     }
     const ids = [
       ...new Set(rows.flatMap((r) => (r.world as ExplorationWorld).legs.map((l) => l.id))),
