@@ -27,6 +27,7 @@ import { mountAdmin } from "./admin/routes.ts";
 import { mountAuthentication } from "./auth/routes.ts";
 import { browserCors } from "./common/browser-cors.ts";
 import { logger } from "./common/logger.ts";
+import { createShutdown } from "./common/shutdown.ts";
 import { mountCustody } from "./custody/routes.ts";
 import { mountDeltaVaults } from "./delta-vaults/routes.ts";
 import { mountFaucet } from "./faucet.ts";
@@ -680,28 +681,30 @@ const server = Bun.serve({
   },
 });
 logger.info("api.listening", { url: server.url.toString(), chainId, exchange });
-/** Stops accepting connections, lets in-flight requests finish (up to `timeoutMs`), then closes
- * what is left. Bun's own graceful stop never settles once the server has closed a WebSocket (as
- * RFQ revocations and this shutdown do; Bun 1.3.14), so the drain counts requests itself. */
-async function drain(timeoutMs: number) {
-  void server.stop();
-  rfq?.closeAll();
-  const until = Date.now() + timeoutMs;
-  while (inflight > 0 && Date.now() < until) await Bun.sleep(50);
-  await server.stop(true);
-}
-for (const signal of ["SIGINT", "SIGTERM"] as const)
-  process.on(signal, () => {
+/** Stops the API in order (`createShutdown`): the listener closes and requests in flight
+ * finish, a delegated fill among them for up to a minute (it may be waiting on its receipt);
+ * makers' sockets close so they reconnect to the next process; then the indexes checkpoint, the
+ * queued writes flush and the database closes. With nothing in flight that is well under a
+ * second, and the whole of it sits inside pm2's 90 s kill timeout. Bun's own stop is never
+ * waited on: it does not settle while a browser holds a live stream open. */
+const shutdown = createShutdown({
+  stopListening: () => server.stop(),
+  quiesce: () => {
     clearInterval(prune);
     recorder.stop();
     worldRecorder?.stop();
     worldDesk?.stop();
     referrals.stop();
-    // Under pm2's 90 s kill timeout, with room for the index to flush after.
-    void drain(60_000)
-      .then(() =>
-        Promise.all([indexer.stop(), worlds?.stop(), opinions?.stop(), worldRfqs?.stop()]),
-      )
-      .then(() => db.close())
-      .then(() => process.exit(0));
-  });
+    rfq?.closeAll();
+  },
+  inflight: () => inflight,
+  flush: async () => {
+    await Promise.all([indexer.stop(), worlds?.stop(), opinions?.stop(), worldRfqs?.stop()]);
+    await db.close();
+  },
+  drainMs: 60_000,
+  flushMs: 20_000,
+  log: (level, event, fields) => logger[level](event, fields),
+});
+for (const signal of ["SIGINT", "SIGTERM"] as const)
+  process.on(signal, () => void shutdown(signal));
