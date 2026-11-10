@@ -4,11 +4,13 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { defaultStrike, EditableSentence } from "@/components/worlds/EditableSentence";
+import { EventSearchDialog } from "@/components/worlds/EventSearch";
 import { HERO_SENTENCE } from "@/components/worlds/Sentence";
 import { useSampleCycle } from "@/hooks/useSampleCycle";
 import { useMaxTenor, useRead, useStocks } from "@/hooks/useWorlds";
 import { cn } from "@/lib/utils";
 import { clampDate, monthAhead, nyDate, weekdayFrom, worldDates } from "@/lib/worlds/dates";
+import { addEvent, chosenEvent, removeEvent, setEvent } from "@/lib/worlds/events";
 import { strikeText } from "@/lib/worlds/format";
 import { specOf, stashStart } from "@/lib/worlds/start";
 import type { LegEntry, LegState, Preview, Stock, StockState } from "@/lib/worlds/types";
@@ -60,12 +62,16 @@ const curatedOf = (p: Preview): Curated | null => {
 /** Where a world starts on the worlds page: the builder's sentence with its parts laid out, so
  * every part a world is made of is in view and changes in place.
  *
- * It opens on the curated worlds (two events, a stock, a target and a date each, priced), shown
- * one after another; the first change a person makes (an event, the stock, its side, price or
- * date, or a curated world's tab) makes the world on screen theirs. "Place bet" is on only once
- * every part is chosen (no event slot showing a placeholder), and bets on it as shown. Without curated
- * worlds it starts from two open events (cycling through live Polymarket events) and NVDA
- * closing 5% over its price a month out. */
+ * It opens on examples: the curated worlds (two events, a stock, a target and a date each,
+ * priced), shown one after another; the first change a person makes (an event, the stock, its
+ * side, price or date, or a curated world's tab) makes the world on screen theirs. Without
+ * curated worlds the examples are two events (cycling through live Polymarket events) with NVDA
+ * closing 5% over its price a month out, and the first event a person picks is their world's.
+ *
+ * From then on the sentence holds the events the person chose and nothing else
+ * (`lib/worlds/events`): removing one takes it out, "+ event" opens the search for another, and
+ * with none left one selector asks for an event. "Place bet" is on once there is an event with
+ * the stock, its price and its date, and bets on the world as shown. */
 export function WorldStarter({
   onShown,
 }: {
@@ -73,12 +79,15 @@ export function WorldStarter({
   onShown?: (shown: ShownWorld | null) => void;
 }) {
   const router = useRouter();
-  const [legs, setLegs] = useState<(LegState | null)[]>([null, null]);
+  /** The person's own events, once they have chosen any; null while the page shows its examples. */
+  const [legs, setLegs] = useState<LegState[] | null>(null);
+  /** Without curated worlds: how many example events the sentence shows. */
+  const [exampleSlots, setExampleSlots] = useState(2);
   const [stock, setStock] = useState<StockState | null>(null);
   /** Once the person has changed the stock (or removed it), it is theirs: no default replaces it. */
   const [ownStock, setOwnStock] = useState(false);
-  /** Once the person changes anything, the curated world on screen is theirs: the tour ends. */
-  const [adopted, setAdopted] = useState(false);
+  /** The search "+ event" opens. */
+  const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const stocks = useStocks();
@@ -93,7 +102,9 @@ export function WorldStarter({
     const same = all.filter((c) => c.legs.length === count);
     return same.length >= 2 ? same : [];
   }, [samples.data]);
-  const touring = !adopted && tour.length > 0;
+  // The examples: the curated worlds in turn, else live events in the sentence's event places.
+  const touring = legs === null && tour.length > 0;
+  const sampling = legs === null && tour.length === 0;
   const at = (step: number) => tour[step % tour.length] as Curated;
 
   // The starting stock, once the list (with spot) is in: NVDA, else the first one priced; null
@@ -121,60 +132,68 @@ export function WorldStarter({
   const settled = stock !== null || ownStock || Boolean(stocks.error) || first === null;
   const showing = loaded && (touring || settled);
 
-  // Touring, each slot shows its event of each curated world in turn. Otherwise each open slot
-  // has its own share of the sample events, alternating as the server listed them (a third or
-  // fourth slot starts later in the same share), so two slots never show the same event; an
-  // event already chosen leaves its share without moving the others. The open slots step
-  // through their shares together, so every share is cut to the shortest one's length. The
-  // first share runs shortest first and the second longest first, so each pair shown is about
-  // as long as the others: the sentence's height, kept at the tallest pair's, leaves little room
-  // unused.
+  // What each example event shows, set after set. Touring, each shows its event of each curated
+  // world in turn. Otherwise each has its own share of the sample events, alternating as the
+  // server listed them (a third or fourth starts later in the same share), so two never show
+  // the same event. They step through their shares together, so every share is cut to the
+  // shortest one's length. The first share runs shortest first and the second longest first, so
+  // each pair shown is about as long as the others: the sentence's height, kept at the tallest
+  // pair's, leaves little room unused. A person's own events are shown as they are (no sets).
   const events = samples.data?.events;
   const placeholders = useMemo(() => {
     if (touring)
       return (tour[0]?.legs ?? []).map((_, i) => tour.flatMap((c) => c.legs[i]?.entry ?? []));
-    const taken = new Set(legs.flatMap((l) => (l ? [l.entry.id] : [])));
+    if (!sampling) return [];
     const list = events ?? [];
     const length = (e: LegEntry) => e.label.length;
-    const shares = legs.map((_, i) => {
+    const shares = Array.from({ length: exampleSlots }, (_, i) => {
       const own = list
-        .filter((e, j) => j % 2 === i % 2 && !taken.has(e.id))
+        .filter((_, j) => j % 2 === i % 2)
         .sort((a, b) => (i % 2 === 0 ? length(a) - length(b) : length(b) - length(a)));
       const turn = Math.floor(i / 2) % Math.max(own.length, 1);
       return [...own.slice(turn), ...own.slice(0, turn)];
     });
-    const sets = Math.min(
-      ...shares.flatMap((own, i) => (legs[i] === null && own.length ? [own.length] : [])),
-    );
+    const sets = Math.min(...shares.flatMap((own) => (own.length ? [own.length] : [])));
     return Number.isFinite(sets) ? shares.map((own) => own.slice(0, sets)) : shares;
-  }, [touring, tour, events, legs]);
-  const shownLegs: (LegState | null)[] = touring ? placeholders.map(() => null) : legs;
-  const sets = touring
-    ? tour.length
-    : Math.max(0, ...placeholders.map((own, i) => (legs[i] === null ? own.length : 0)));
+  }, [touring, sampling, tour, events, exampleSlots]);
+  const sets = touring ? tour.length : Math.max(0, ...placeholders.map((own) => own.length));
+  // The sentence's events: the person's own, else an example in each place (with no example to
+  // show, none: the sentence then asks for an event in one place).
+  const shownLegs: (LegState | null)[] = legs ?? (sets > 0 ? placeholders.map(() => null) : []);
+  // Live events the search offers before anything is typed: the ones not chosen yet.
+  const suggestions = useMemo(() => {
+    const taken = new Set((legs ?? []).map((l) => l.entry.id));
+    return (events ?? []).filter((e) => !taken.has(e.id));
+  }, [events, legs]);
 
   const live = useRef<HTMLDivElement>(null);
   const ghosts = useRef<(HTMLDivElement | null)[]>([]);
   const epoch = useMemo(
-    () => JSON.stringify([touring, legs.map((l) => (l ? [l.entry.id, l.wantYes] : null)), stock]),
-    [touring, legs, stock],
+    () =>
+      JSON.stringify([
+        touring,
+        exampleSlots,
+        legs?.map((l) => [l.entry.id, l.wantYes]) ?? null,
+        stock,
+      ]),
+    [touring, exampleSlots, legs, stock],
   );
   const cycle = useSampleCycle({ count: sets, live, ghosts, epoch, ready: showing });
 
-  /** The curated world shown at `step` becomes the person's: its events chosen, its stock set. */
+  /** The curated world shown at `step` becomes the person's: its stock set, its events theirs
+   * (returned, for the change that made it so). */
   const adopt = (step: number) => {
     const c = at(step);
-    setAdopted(true);
     setOwnStock(true);
     setStock(c.stock);
-    return c.legs as (LegState | null)[];
+    return c.legs;
   };
 
   const sentence = (step: number) => {
     const shownStock = touring ? at(step).stock : stock;
     const ends = touring
       ? at(step).legs.map((l) => l.entry.endTime)
-      : legs.flatMap((l) => (l ? [l.entry.endTime] : []));
+      : (legs ?? []).map((l) => l.entry.endTime);
     return (
       <EditableSentence
         legs={shownLegs}
@@ -182,25 +201,28 @@ export function WorldStarter({
         className={HERO_SENTENCE}
         dates={worldDates(ends, maxTenor)}
         placeholders={placeholders}
+        suggestions={suggestions}
         step={step}
+        // An event picked in a curated world's place changes that world; picked in place of a
+        // live example, it is the person's world (the other examples go: one event is a world).
         onLeg={(i, leg) =>
           touring
-            ? setLegs(adopt(step).map((l, j) => (j === i ? leg : l)))
-            : setLegs((ls) => ls.map((l, j) => (j === i ? leg : l)))
+            ? setLegs(setEvent(adopt(step), i, leg))
+            : setLegs((ls) => (ls ? setEvent(ls, i, leg) : [leg]))
         }
-        // A chosen event goes back to its placeholder; an empty one goes away.
-        onRemoveLeg={(i) =>
-          touring
-            ? setLegs(adopt(step).map((l, j) => (j === i ? null : l)))
-            : setLegs((ls) =>
-                ls[i] ? ls.map((l, j) => (j === i ? null : l)) : ls.filter((_, j) => j !== i),
-              )
-        }
-        onAddEvent={() =>
-          touring
-            ? setLegs([...adopt(step), null])
-            : setLegs((ls) => (ls.length < 4 ? [...ls, null] : ls))
-        }
+        // An event removed goes, with its place in the sentence. Of a curated world the rest
+        // become the person's; of the live examples there is one fewer.
+        onRemoveLeg={(i) => {
+          if (touring) setLegs(removeEvent(adopt(step), i));
+          else if (sampling) setExampleSlots((n) => Math.max(1, n - 1));
+          else setLegs((ls) => (ls ? removeEvent(ls, i) : ls));
+        }}
+        // Another event: the search opens, and the event picked joins the sentence. A curated
+        // world on screen is the one it joins, so it stays as it is while the person searches.
+        onAddEvent={() => {
+          if (touring) setLegs(adopt(step));
+          setAdding(true);
+        }}
         onStock={(s) => {
           if (touring) setLegs(adopt(step));
           setOwnStock(true);
@@ -214,7 +236,6 @@ export function WorldStarter({
   // the chosen events with each open one as the sample it shows.
   /** A one-tap button's world: its events, stock, target and date fill the sentence. */
   const pick = (c: Curated) => {
-    setAdopted(true);
     setOwnStock(true);
     setStock(c.stock);
     setLegs(c.legs);
@@ -222,10 +243,10 @@ export function WorldStarter({
   // The curated world the sentence now holds, if it is one (its button shows picked, and the
   // cards take its known price).
   const held = useMemo(() => {
-    if (touring || !stock || legs.some((l) => l === null)) return null;
-    const key = JSON.stringify(specOf(legs as LegState[], stock));
+    if (!legs?.length || !stock) return null;
+    const key = JSON.stringify(specOf(legs, stock));
     return tour.find((c) => c.key === key) ?? null;
-  }, [touring, tour, legs, stock]);
+  }, [tour, legs, stock]);
 
   const shown = useMemo<ShownWorld | null>(() => {
     if (!showing) return null;
@@ -239,44 +260,36 @@ export function WorldStarter({
         nextPreview: next.preview,
       };
     }
+    // The person's own events; with none chosen yet there is no world to price.
+    if (legs)
+      return legs.length
+        ? // Theirs, unless it is a curated world as it came.
+          { spec: specOf(legs, stock), next: null, preview: held?.preview, own: !held }
+        : null;
+    // The live examples, as each set shows them.
     const specAt = (step: number) => {
-      const withSamples = legs.flatMap((l, i): LegState[] => {
-        if (l) return [l];
-        const own = placeholders[i] ?? [];
-        const entry = own.length ? own[step % own.length] : undefined;
-        return entry ? [{ entry, wantYes: true, note: null, alternatives: [] }] : [];
-      });
-      return withSamples.length ? specOf(withSamples, stock) : null;
+      const examples = placeholders.flatMap((own) =>
+        own.length ? [chosenEvent(own[step % own.length] as LegEntry)] : [],
+      );
+      return examples.length ? specOf(examples, stock) : null;
     };
     const spec = specAt(cycle.step);
     if (!spec) return null;
-    return {
-      spec,
-      next: sets > 1 ? specAt(cycle.step + 1) : null,
-      preview: held?.preview,
-      // Every event chosen (none a sample), and not a curated world as it came.
-      own: !held && legs.every((l) => l !== null),
-    };
+    return { spec, next: sets > 1 ? specAt(cycle.step + 1) : null };
   }, [showing, touring, tour, cycle.step, legs, placeholders, stock, sets, held]);
   useEffect(() => {
     onShown?.(shown);
   }, [shown, onShown]);
 
-  // A bet needs a whole world chosen: every event slot holds an event (none shows a placeholder,
-  // as all do while the curated worlds cycle), and the stock, its price and its date are set.
-  const chosenLegs = legs.every((l): l is LegState => l !== null) ? legs : null;
+  // A bet needs a world of the person's own: an event (one is enough; the examples are not
+  // theirs until they change one), and the stock, its price and its date.
   const complete =
-    !touring &&
-    chosenLegs !== null &&
-    chosenLegs.length > 0 &&
-    stock !== null &&
-    stock.strike !== "" &&
-    stock.date !== "";
+    legs !== null && legs.length > 0 && stock !== null && stock.strike !== "" && stock.date !== "";
   const ready = showing && !busy && complete;
   const open = () => {
-    if (!ready || !chosenLegs || !stock) return;
+    if (!ready || !legs || !stock) return;
     setBusy(true);
-    const param = stashStart(chosenLegs, stock);
+    const param = stashStart(legs, stock);
     router.push(`/worlds/new?w=${encodeURIComponent(param)}`);
   };
 
@@ -323,6 +336,16 @@ export function WorldStarter({
         {busy ? <Spinner data-icon="inline-start" /> : null}
         Place bet
       </Button>
+      <EventSearchDialog
+        open={adding}
+        onOpenChange={setAdding}
+        onPick={(entry) => {
+          setAdding(false);
+          setLegs((ls) => addEvent(ls ?? [], entry));
+        }}
+        exclude={(legs ?? []).map((l) => l.entry.id)}
+        suggestions={suggestions}
+      />
     </div>
   );
 }

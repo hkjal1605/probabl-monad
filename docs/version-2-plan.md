@@ -1742,6 +1742,16 @@ their own. Fills are RFQ only (no order book). The design follows
    another event, the stock, above or below, the price with a slider around spot, the date); each
    leg with its venue, odds, deadline and rules; the chance chain on a base of 1,000 with the
    unrelated chain beside it; every ending with its chance, payout and date; a 1,000-dot grid.
+   The sentence holds the events chosen and nothing else, here and on `/worlds`
+   (`lib/worlds/events`): an event removed goes with its place in the sentence; with none left one
+   selector asks for an event ("Select an event"), and nothing is priced until one is picked;
+   "+ event" opens the search and the event picked joins the end. One event is a whole world.
+   An event's chip opens the event: its side, the same search to put another event in its place
+   (one step: the event picked stands where it stood; one the words may have meant keeps its
+   side, any other starts as "it happens"), and its removal.
+   On `/worlds` the examples the page opens on (the curated worlds in turn, else live events) are
+   the person's from their first change: a curated world's other events stay as they are, a live
+   example's do not.
 4. **The offer** (`POST /v2/worlds/preview`). The API builds the world's one canonical book and asks
    the makers to price it before it exists (`world.preview`); the keeper prices it through the very
    quote path of a real book against the replica with the book added (every guard, cap and the

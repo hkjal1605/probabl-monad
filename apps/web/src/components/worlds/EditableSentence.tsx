@@ -9,20 +9,30 @@ import {
 } from "@/components/ui/responsive-popover";
 import { Segmented } from "@/components/ui/segmented";
 import { DatePicker, StrikeEditor } from "@/components/worlds/Editors";
-import { EventRow, EventSearchPanel } from "@/components/worlds/EventSearch";
+import { EventSearchPanel } from "@/components/worlds/EventSearch";
 import { VenueMark } from "@/components/worlds/primitives";
 import { Chip, Sentence } from "@/components/worlds/Sentence";
 import { StockList } from "@/components/worlds/StockPicker";
 import { usePhone } from "@/hooks/usePhone";
+import { cn } from "@/lib/utils";
+import { chosenEvent, MAX_EVENTS } from "@/lib/worlds/events";
 import { calendarDay, midSentence, percent, strikeText, whenDay } from "@/lib/worlds/format";
 import type { LegEntry, LegState, Stock, StockState } from "@/lib/worlds/types";
 
 /** The world as the sentence the user said, every defining part a chip they can change in
  * place: an event's side or another event, the stock, above or below, the price, the date.
  *
- * An event not chosen yet (`null`) is a placeholder chip showing `placeholders[i][step]` (one of
- * the live events to start from; the caller steps every open event together) that opens the
- * event search where it stands. The parts that move when a placeholder changes are marked
+ * An event's chip opens the event itself: its side, the search for another event to take its
+ * place (one step: the event picked stands where this one stood), and its removal.
+ *
+ * The events are the ones chosen (`lib/worlds/events`): removing one takes its place out of the
+ * sentence, and "+ event" (`onAddEvent`) opens the search for another. With none, the sentence
+ * shows one empty selector, "Select an event", which opens the event search where it stands
+ * (offering `suggestions`); the event picked there comes as `onLeg(0, …)`.
+ *
+ * A page showing examples before anything is chosen passes `null` for each event with
+ * `placeholders`: a chip showing `placeholders[i][step]` (the caller steps every such event
+ * together) that opens the same search. The parts that move when a placeholder changes are marked
  * `data-atom` (see `useSampleCycle`).
  *
  * Each chip opens its picker under it on a wide screen and as a bottom sheet on a phone. */
@@ -35,9 +45,11 @@ export function EditableSentence({
   onAddEvent,
   onStock,
   placeholders,
+  suggestions = [],
   step = 0,
   className,
 }: {
+  /** The events chosen; `null` for an example the page shows in an event's place. */
   legs: (LegState | null)[];
   stock: StockState | null;
   dates: { earliest: string; last: string; suggested: string | null };
@@ -46,36 +58,44 @@ export function EditableSentence({
   onAddEvent: () => void;
   onStock: (stock: StockState | null) => void;
   placeholders?: LegEntry[][];
+  /** Live events the empty selector's search offers before anything is typed. */
+  suggestions?: LegEntry[];
   step?: number;
   /** Type size or leading for a page that gives the sentence more room. */
   className?: string;
 }) {
-  const chosen = legs.flatMap((l) => (l ? [l.entry.id] : []));
+  // With no event there is one selector to choose the first in.
+  const slots: (LegState | null)[] = legs.length ? legs : [null];
+  const chosen = slots.flatMap((l) => (l ? [l.entry.id] : []));
   // "A", "A and B", "A, B and C".
-  const events = legs.map((l, i) => {
+  const events = slots.map((l, i) => {
     const samples = placeholders?.[i] ?? [];
     return (
       <Fragment key={l ? l.entry.id : `slot-${i}`}>
         {i > 0 && (
           <>
-            {i === legs.length - 1 && " "}
-            <Atom k={`join-${i}`}>{i === legs.length - 1 ? "and" : ","}</Atom>{" "}
+            {i === slots.length - 1 && " "}
+            <Atom k={`join-${i}`}>{i === slots.length - 1 ? "and" : ","}</Atom>{" "}
           </>
         )}
         {l ? (
+          // Any event can go: the last one leaves the empty selector in its place.
           <LegChip
             leg={l}
+            exclude={chosen}
+            suggestions={suggestions}
             onChange={(next) => onLeg(i, next)}
-            onRemove={legs.length > 1 || placeholders ? () => onRemoveLeg(i) : null}
+            onRemove={() => onRemoveLeg(i)}
           />
         ) : (
           <EventSlot
             atom={`slot-${i}`}
             shown={samples.length ? samples[step % samples.length] : undefined}
-            samples={samples}
+            samples={samples.length ? samples : suggestions}
             exclude={chosen}
-            onPick={(entry) => onLeg(i, { entry, wantYes: true, note: null, alternatives: [] })}
-            onRemove={legs.length > 1 ? () => onRemoveLeg(i) : null}
+            onPick={(entry) => onLeg(i, chosenEvent(entry))}
+            // The only selector stays: a world has an event.
+            onRemove={slots.length > 1 ? () => onRemoveLeg(i) : null}
           />
         )}
       </Fragment>
@@ -131,7 +151,7 @@ export function EditableSentence({
         <>
           {events}{" "}
           <Atom k="happens">
-            {legs.length === 1 ? "happens" : legs.length === 2 ? "both happen" : "all happen"}
+            {slots.length === 1 ? "happens" : slots.length === 2 ? "both happen" : "all happen"}
           </Atom>
           <AddStock onStock={onStock} dates={dates} />
         </>
@@ -142,7 +162,8 @@ export function EditableSentence({
         size="sm"
         className="ml-1 h-auto translate-y-[-0.18em] rounded-full px-2 py-1 align-middle text-sm font-medium text-muted-foreground"
         onClick={onAddEvent}
-        disabled={legs.length >= 4}
+        disabled={slots.length >= MAX_EVENTS}
+        title={slots.length >= MAX_EVENTS ? `A world takes up to ${MAX_EVENTS} events` : undefined}
       >
         <Plus data-icon="inline-start" />
         event
@@ -156,8 +177,8 @@ function Atom({ k, children }: { k: string; children: ReactNode }) {
   return <span data-atom={k}>{children}</span>;
 }
 
-/** An event not chosen yet: a chip the size of one, showing a live event it could be (`shown`),
- * that opens the event search where it stands. */
+/** An event not chosen yet: a chip the size of one that opens the event search where it stands.
+ * It shows a live event it could be (`shown`, an example), else asks for one. */
 function EventSlot({
   atom,
   shown,
@@ -184,7 +205,7 @@ function EventSlot({
         aria-label="Choose an event"
         render={<Chip tone="event" interactive className="text-muted-foreground/75" />}
       >
-        <Words key={shown?.id ?? ""} text={shown ? midSentence(shown.label) : "an event"} />
+        <Words key={shown?.id ?? ""} text={shown ? midSentence(shown.label) : "Select an event"} />
       </ResponsivePopoverTrigger>
       <ResponsivePopoverContent
         title="Choose an event"
@@ -232,18 +253,42 @@ function Words({ text }: { text: string }) {
   ));
 }
 
+/** An event chosen: its chip opens the event (its venue, chance and deadline), the side the
+ * world needs of it, the search for another event to take its place, and its removal. */
 function LegChip({
   leg,
+  exclude,
+  suggestions,
   onChange,
   onRemove,
 }: {
   leg: LegState;
+  /** The events already in the world (this one among them): never offered in its place. */
+  exclude: string[];
+  /** Live events the search offers before anything is typed. */
+  suggestions: LegEntry[];
   onChange: (leg: LegState) => void;
   onRemove: (() => void) | null;
 }) {
   const [open, setOpen] = useState(false);
   const phone = usePhone();
   const e = leg.entry;
+  /** Another event takes this one's place. One the words may have meant is the same question
+   * asked another way: it keeps the side, and this one stays among the ones meant. Any other
+   * event starts as "it happens". */
+  const swap = (next: LegEntry) => {
+    setOpen(false);
+    onChange(
+      leg.alternatives.some((a) => a.id === next.id)
+        ? {
+            entry: next,
+            wantYes: leg.wantYes,
+            note: null,
+            alternatives: [e, ...leg.alternatives.filter((x) => x.id !== next.id)],
+          }
+        : chosenEvent(next),
+    );
+  };
   return (
     <ResponsivePopover open={open} onOpenChange={setOpen}>
       <ResponsivePopoverTrigger
@@ -256,11 +301,15 @@ function LegChip({
       <ResponsivePopoverContent
         title={e.question}
         showTitle
-        className="flex w-[26rem] flex-col gap-3"
+        className="flex max-h-[min(34rem,80dvh)] w-[26rem] flex-col gap-3"
         sheetClassName="gap-4"
+        size="tall"
+        keyboard
+        scroll={false}
         done
       >
-        <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        {/* This event: where it trades, its chance, its deadline, and the side the world needs. */}
+        <span className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <VenueMark source={e.source} />
           <span className="tabular-nums">YES {percent(e.yes)}</span>
           <span>closes {whenDay(e.endTime)}</span>
@@ -271,34 +320,25 @@ function LegChip({
           options={["It happens", "It doesn't happen"] as const}
           onChange={(v) => onChange({ ...leg, wantYes: v === "It happens" })}
           variant={phone ? "default" : "compact"}
-          className={phone ? "w-full *:flex-1" : ""}
+          className={cn("shrink-0", phone && "w-full *:flex-1")}
         />
-        {leg.alternatives.length > 0 && (
-          <div className="flex flex-col gap-1 border-t pt-2">
-            <span className="px-2 text-xs font-medium text-muted-foreground">Or did you mean</span>
-            {leg.alternatives.slice(0, 3).map((a) => (
-              <EventRow
-                key={a.id}
-                event={a}
-                action="Use"
-                onPick={(next) => {
-                  setOpen(false);
-                  onChange({
-                    entry: next,
-                    wantYes: leg.wantYes,
-                    note: null,
-                    alternatives: [e, ...leg.alternatives.filter((x) => x.id !== next.id)],
-                  });
-                }}
-              />
-            ))}
-          </div>
-        )}
+        {/* Another event in its place: the search an empty place opens, under a rule. */}
+        <div className="flex min-h-0 flex-1 flex-col gap-3 border-t pt-3">
+          <EventSearchPanel
+            tight
+            placeholder="Swap for another event"
+            action="Use"
+            similar={leg.alternatives.slice(0, 3)}
+            suggestions={suggestions}
+            exclude={exclude}
+            onPick={swap}
+          />
+        </div>
         {onRemove && (
           <Button
             variant="ghost"
             size="sm"
-            className="self-start text-muted-foreground"
+            className="shrink-0 self-start text-muted-foreground"
             onClick={() => {
               setOpen(false);
               onRemove();
