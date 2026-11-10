@@ -6,7 +6,8 @@
 
 :root {
   color-scheme: light;
-  /* Light is a neutral companion theme; the Figma reference specifies dark. */
+  /* Light is the default theme: the neutral companion of the dark one the Figma reference
+     specifies. */
   --primary: #00e191;
   --primary-foreground: #071a12;
   --primary-hover: #00c77f;
