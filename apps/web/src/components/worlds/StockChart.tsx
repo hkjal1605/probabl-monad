@@ -1,7 +1,8 @@
 "use client";
-/** A world's stock as one chart: its recorded price up to now, then the way to its date as a zone
- * the target line splits into where the bet pays and where it loses, each event's close marked
- * on the way. The price is the token's, as the market charts record it (once a minute). */
+/** A world's stock as one chart: its recorded price up to now, then the way to the day the world
+ * pays, a line at now, at each event's deadline and at the payout, and past the payout the target
+ * splitting where the price wins (green) from where it loses (red). The price is the token's, as
+ * the market charts record it (once a minute). */
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import {
   type PointerEvent as ReactPointerEvent,
@@ -29,8 +30,13 @@ const RANGES: { key: Range; label: string }[] = [
 const HEIGHT = 216;
 const TOP = 8;
 const AXIS = 24;
-/** The share of the width the price so far takes; the rest is the way to the date. */
-const PAST = 0.6;
+/** The zone past the payout line: a fifth of the width, with room for its words. */
+const ZONE = { share: 0.2, min: 84, max: 160 };
+/** The share of the width before the zone the price so far takes; the rest is the way to the
+ * payout. */
+const PAST = 0.62;
+/** The zone's outer corners. */
+const RADIUS = 10;
 
 export interface ChartEvent {
   key: string;
@@ -90,12 +96,22 @@ export function StockChart({
     const points = [...(history.data?.points ?? [])].filter((p) => p.time < now);
     if (spot !== null) points.push({ time: now, price: spot });
     const fix = Math.max(fixingTime ?? Date.parse(`${date}T21:00:00Z`) / 1000, now + 60);
+    const deadlines = events.flatMap((e) => {
+      const t = e.endTime ? Date.parse(e.endTime) / 1000 : Number.NaN;
+      return Number.isFinite(t) && t > now ? [{ e, t }] : [];
+    });
+    // The world pays once the stock is read and every event is decided, whichever comes last.
+    const pay = Math.max(fix, ...deadlines.map((d) => d.t));
     const start = points[0]?.time ?? now - 30 * 86_400;
     const bottom = HEIGHT - AXIS;
-    const xNow = Math.round(width * PAST);
+    const xPay = width - Math.round(Math.min(Math.max(width * ZONE.share, ZONE.min), ZONE.max));
+    const xNow = Math.round(xPay * PAST);
     const xPast = (t: number) => (now > start ? ((t - start) / (now - start)) * xNow : xNow);
     const xFuture = (t: number) =>
-      xNow + ((Math.min(Math.max(t, now), fix) - now) / (fix - now)) * (width - xNow);
+      xNow + ((Math.min(Math.max(t, now), pay) - now) / (pay - now)) * (xPay - xNow);
+    // Past the payout, square where it meets the line and rounded at the chart's edge.
+    const r = RADIUS;
+    const zone = `M${xPay},${TOP}H${width - r}A${r},${r} 0 0 1 ${width},${TOP + r}V${bottom - r}A${r},${r} 0 0 1 ${width - r},${bottom}H${xPay}Z`;
     // The prices, the target and the price now in view, with room on both sides of the target
     // for the words in its zone.
     const values = [...points.map((p) => p.price), strike];
@@ -120,21 +136,35 @@ export function StockChart({
     const target = y(strike);
     // Price levels behind the line: round numbers, none crowding the target.
     const ticks = niceTicks(lo, hi, 3).filter((v) => Math.abs(y(v) - target) > 16);
-    // Each event's close on the way to the date, stacked where two would touch.
+    // Each event's deadline on the way to the payout, stacked where two would touch.
     let previous = -Infinity,
       lift = 0;
-    const marks = events
-      .flatMap((e) => {
-        const t = e.endTime ? Date.parse(e.endTime) / 1000 : Number.NaN;
-        return Number.isFinite(t) && t > now ? [{ e, t, x: xFuture(t) }] : [];
-      })
+    const marks = deadlines
+      .map((d) => ({ ...d, x: xFuture(d.t) }))
       .sort((a, b) => a.x - b.x)
       .map((m) => {
         lift = m.x - previous < 22 ? lift + 1 : 0;
         previous = m.x;
         return { ...m, lift };
       });
-    return { now, fix, start, points, bottom, xNow, xPast, y, line, area, target, ticks, marks };
+    // The stock's own day unless an event is decided after it.
+    const payDay = pay > fix ? short(pay) : calendarDay(date).replace(/^\w+, /, "");
+    return {
+      start,
+      points,
+      bottom,
+      xNow,
+      xPay,
+      xPast,
+      y,
+      line,
+      area,
+      target,
+      ticks,
+      marks,
+      zone,
+      payDay,
+    };
   }, [width, history.data, spot, strike, fixingTime, date, events]);
 
   const pays = direction === "above";
@@ -221,58 +251,64 @@ export function StockChart({
                   <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
                 </linearGradient>
                 <clipPath id={clip}>
-                  <rect
-                    x={chart.xNow}
-                    y={TOP}
-                    width={width - chart.xNow}
-                    height={chart.bottom - TOP}
-                    rx={10}
-                  />
+                  <path d={chart.zone} />
                 </clipPath>
               </defs>
 
-              {/* The way to the date: where it pays, and where it loses. */}
+              {/* Past the payout: where the price wins, and where it loses. */}
               <g clipPath={`url(#${clip})`}>
                 <rect
-                  x={chart.xNow}
+                  x={chart.xPay}
                   y={TOP}
-                  width={width - chart.xNow}
-                  height={chart.bottom - TOP}
-                  className="fill-secondary"
+                  width={width - chart.xPay}
+                  height={chart.target - TOP}
+                  className={pays ? "fill-positive/15" : "fill-danger/12"}
                 />
                 <rect
-                  x={chart.xNow}
-                  y={pays ? TOP : chart.target}
-                  width={width - chart.xNow}
-                  height={pays ? chart.target - TOP : chart.bottom - chart.target}
-                  className="fill-positive/15"
+                  x={chart.xPay}
+                  y={chart.target}
+                  width={width - chart.xPay}
+                  height={chart.bottom - chart.target}
+                  className={pays ? "fill-danger/12" : "fill-positive/15"}
                 />
               </g>
-              {chart.marks.map((m) => (
-                <line
-                  key={m.e.key}
-                  x1={m.x}
-                  x2={m.x}
-                  y1={TOP + 4}
-                  y2={chart.bottom}
-                  className="stroke-muted-foreground/40"
-                  strokeDasharray="2 3"
-                />
-              ))}
               <text
-                x={chart.xNow + 10}
+                x={chart.xPay + 8}
                 y={pays ? TOP + 17 : chart.bottom - 9}
                 className="fill-positive text-[11px] font-medium"
               >
                 {payout !== null ? `Pays ${money(payout)}` : "Pays"}
               </text>
               <text
-                x={chart.xNow + 10}
+                x={chart.xPay + 8}
                 y={pays ? chart.bottom - 9 : TOP + 17}
-                className="fill-muted-foreground text-[11px] font-medium"
+                className="fill-danger text-[11px] font-medium"
               >
                 {paid !== null ? `Lose ${money(paid)}` : "Loses"}
               </text>
+
+              {/* Now, each event's deadline, and the payout. */}
+              {chart.marks.map((m) => (
+                <line
+                  key={m.e.key}
+                  x1={m.x}
+                  x2={m.x}
+                  y1={TOP}
+                  y2={chart.bottom}
+                  className="stroke-muted-foreground/45"
+                  strokeDasharray="2 3"
+                />
+              ))}
+              {[chart.xNow, chart.xPay].map((x) => (
+                <line
+                  key={x}
+                  x1={x}
+                  x2={x}
+                  y1={TOP}
+                  y2={chart.bottom}
+                  className="stroke-muted-foreground/50"
+                />
+              ))}
 
               {/* The price so far. */}
               {chart.ticks.map((v) => (
@@ -354,7 +390,7 @@ export function StockChart({
               Target {strikeText(String(strike))}
             </span>
 
-            {/* Each event's close. */}
+            {/* Each event, at its deadline. */}
             {chart.marks.map((m) => (
               <span
                 key={m.e.key}
@@ -375,7 +411,7 @@ export function StockChart({
               </span>
             )}
 
-            {/* The dates: where the chart starts, now, each event, and the close. */}
+            {/* The dates: where the chart starts, now, each event, and the payout. */}
             <Dates
               width={width}
               top={chart.bottom + 6}
@@ -387,7 +423,7 @@ export function StockChart({
                   text: short(m.t),
                   align: "center" as const,
                 })),
-                { x: width, text: calendarDay(date).replace(/^\w+, /, ""), align: "end" },
+                { x: chart.xPay, text: chart.payDay, align: "center" },
               ]}
             />
           </>
