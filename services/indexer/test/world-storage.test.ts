@@ -1,7 +1,8 @@
 /** World books' storage (schema version 6): version 5 storage migrates in place, finalized fills
  * persist once with their checkpoint, and each query of the world tables reads back what it
  * wrote: book metadata, delegated fills, referral accruals, probability and price history, the
- * keeper's pricing inputs (an admin's estimate survives a fit) and the vault's marks. */
+ * keeper's pricing inputs (an admin's estimate survives a fit), the vault's marks, and (version
+ * 9) requests for quotes. */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import {
   createDatabase,
@@ -78,8 +79,8 @@ afterAll(async () => {
   await pg?.close();
 });
 
-test("version 5 storage migrates in place to version 8", async () => {
-  expect(SCHEMA_VERSION).toBe(8);
+test("version 5 storage migrates in place to version 9", async () => {
+  expect(SCHEMA_VERSION).toBe(9);
   // Version 5 as the previous release left it: no world tables, makers without `worlds`.
   for (const table of [
     "world_fills",
@@ -94,6 +95,7 @@ test("version 5 storage migrates in place to version 8", async () => {
     "vault_marks",
     "world_prices",
     "world_explorations",
+    "world_rfqs",
   ])
     await pool.query(`DROP TABLE probabl.${table}`);
   await pool.query("ALTER TABLE probabl.rfq_makers DROP COLUMN worlds");
@@ -101,13 +103,27 @@ test("version 5 storage migrates in place to version 8", async () => {
   const reopened = createDatabase({ connectionString: pg.connectionString });
   await reopened.initialize();
   await reopened.close();
-  expect((await pool.query("SELECT version FROM probabl.schema_version")).rows[0].version).toBe(8);
+  expect((await pool.query("SELECT version FROM probabl.schema_version")).rows[0].version).toBe(9);
   const columns = await pool.query(
     `SELECT column_name FROM information_schema.columns
     WHERE table_schema = 'probabl' AND table_name = 'rfq_makers' AND column_name = 'worlds'`,
   );
   expect(columns.rowCount).toBe(1);
   expect(await db.worldFills(domain, { limit: 10 })).toEqual([]);
+});
+
+test("version 8 storage gains the world requests in place, its rows untouched", async () => {
+  await db.recordWorldPrices(domain, [
+    { book: 9, product: "bet:world", minute: 1, bid: 1, ask: 2 },
+  ]);
+  await pool.query("DROP TABLE probabl.world_rfqs");
+  await pool.query("UPDATE probabl.schema_version SET version = 8");
+  const reopened = createDatabase({ connectionString: pg.connectionString });
+  await reopened.initialize();
+  await reopened.close();
+  expect((await pool.query("SELECT version FROM probabl.schema_version")).rows[0].version).toBe(9);
+  expect(await db.openWorldRfqs(domain)).toEqual([]);
+  expect(await db.worldPriceHistory(domain, 9, "bet:world", 0, 60)).toHaveLength(1);
 });
 
 test("version 7's explored worlds are cleared: version 8 keeps one per events and stock", async () => {
@@ -129,7 +145,7 @@ test("version 7's explored worlds are cleared: version 8 keeps one per events an
   const reopened = createDatabase({ connectionString: pg.connectionString });
   await reopened.initialize();
   await reopened.close();
-  expect((await pool.query("SELECT version FROM probabl.schema_version")).rows[0].version).toBe(8);
+  expect((await pool.query("SELECT version FROM probabl.schema_version")).rows[0].version).toBe(9);
   expect(
     (await pool.query("SELECT count(*)::int AS n FROM probabl.world_explorations")).rows[0].n,
   ).toBe(0);
@@ -143,6 +159,116 @@ test("version 7's explored worlds are cleared: version 8 keeps one per events an
 });
 
 describe("world tables", () => {
+  test("a request for quotes is kept open, takes one journaled fill, and closes once", async () => {
+    const at = new Date("2026-11-10T10:00:00.000Z");
+    const order = {
+      taker: alice,
+      book: 3,
+      mask: 0b110,
+      sell: false,
+      conditional: true,
+      units: null,
+      refund: 0n,
+      stake: 20_000_000n,
+      worst: 1n,
+      createdAt: at,
+      expiresAt: new Date(at.getTime() + 1_800_000),
+    };
+    const [first, second, sale] = [
+      "11111111-1111-4111-8111-111111111111",
+      "22222222-2222-4222-8222-222222222222",
+      "33333333-3333-4333-8333-333333333333",
+    ] as const;
+    await db.recordWorldRfq(domain, { ...order, id: first });
+    // A retry of the same request is kept once.
+    await db.recordWorldRfq(domain, { ...order, id: first, stake: 1n });
+    await db.recordWorldRfq(domain, {
+      ...order,
+      id: second,
+      createdAt: new Date(at.getTime() + 1_000),
+      expiresAt: new Date(at.getTime() + 60_000),
+    });
+    await db.recordWorldRfq(domain, {
+      ...order,
+      id: sale,
+      taker: bob,
+      sell: true,
+      conditional: false,
+      units: 7n,
+      refund: 2n,
+      stake: null,
+    });
+    // Open requests read back as asked, the soonest to run out first.
+    const open = await db.openWorldRfqs(domain);
+    expect(open.map((r) => r.id)).toEqual([second, first, sale]);
+    expect(open[1]).toEqual({
+      ...order,
+      id: first,
+      status: "open",
+      reason: null,
+      closedAt: null,
+      quotes: 0,
+      fill: null,
+    });
+    expect(open[2]).toMatchObject({ taker: bob, sell: true, units: 7n, refund: 2n, stake: null });
+    // The chosen quote is journaled while the request is open, and can be forgotten again.
+    const chosen = {
+      maker: "aaaaaaaa-0000-4000-8000-000000000000",
+      makerLabel: "World vault",
+      units: 80_000_000n,
+      refund: 20_000_000n,
+      price: 20_000_000n,
+      tx: h("fill"),
+    };
+    expect(await db.journalWorldRfqFill(domain, first, chosen)).toBe(true);
+    expect((await db.worldRfq(domain, first))?.fill).toEqual(chosen);
+    await db.clearWorldRfqFill(domain, first, h("another"));
+    expect((await db.worldRfq(domain, first))?.fill).toEqual(chosen);
+    await db.clearWorldRfqFill(domain, first, chosen.tx);
+    expect((await db.worldRfq(domain, first))?.fill).toBeNull();
+    expect(await db.journalWorldRfqFill(domain, first, chosen)).toBe(true);
+    // Closing happens once: a later close, or a fill journaled after it, changes nothing.
+    const closedAt = new Date(at.getTime() + 5_000);
+    expect(
+      await db.closeWorldRfq(domain, first, {
+        status: "filled",
+        reason: null,
+        quotes: 3,
+        at: closedAt,
+      }),
+    ).toBe(true);
+    const cancel = {
+      status: "cancelled" as const,
+      reason: "Cancelled by its owner",
+      quotes: 1,
+      at: closedAt,
+    };
+    expect(await db.closeWorldRfq(domain, first, cancel)).toBe(false);
+    expect(await db.closeWorldRfq(domain, second, cancel)).toBe(true);
+    expect(await db.journalWorldRfqFill(domain, second, chosen)).toBe(false);
+    expect(await db.worldRfq(domain, first)).toMatchObject({
+      status: "filled",
+      quotes: 3,
+      closedAt,
+      fill: chosen,
+    });
+    expect(await db.worldRfq(domain, second)).toMatchObject({
+      status: "cancelled",
+      reason: "Cancelled by its owner",
+      fill: null,
+    });
+    expect((await db.openWorldRfqs(domain)).map((r) => r.id)).toEqual([sale]);
+    // A wallet's requests, newest first; another deployment has none.
+    expect((await db.worldRfqs(domain, alice, 10)).map((r) => r.id)).toEqual([second, first]);
+    expect((await db.worldRfqs(domain, alice, 1)).map((r) => r.id)).toEqual([second]);
+    expect(await db.worldRfq(domain, "44444444-4444-4444-8444-444444444444")).toBeUndefined();
+    await db.registerDeployment("31337:0x00000000000000000000000000000000000000c3");
+    expect(await db.openWorldRfqs("31337:0x00000000000000000000000000000000000000c3")).toEqual([]);
+    expect(
+      await db.worldRfq("31337:0x00000000000000000000000000000000000000c3", first),
+    ).toBeUndefined();
+  });
+
   test("finalized fills persist once, with the checkpoint, and read by book and by owner", async () => {
     const batch = [
       fill(10n, 0),

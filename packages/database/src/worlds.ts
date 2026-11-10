@@ -105,6 +105,43 @@ export interface WorldExplorationNote {
   quotes: number;
   at: Date;
 }
+export type WorldRfqStatus = "open" | "filled" | "cancelled" | "expired";
+/** A world order out for quotes (schema version 9), as its taker asked it: `units` or `stake`
+ * is null, `worst` is its limit. Amounts are raw quote units. */
+export interface WorldRfqOrder {
+  id: string;
+  taker: string;
+  book: number;
+  mask: number;
+  sell: boolean;
+  conditional: boolean;
+  units: bigint | null;
+  refund: bigint;
+  stake: bigint | null;
+  worst: bigint;
+  createdAt: Date;
+  expiresAt: Date;
+}
+/** The quote a taker chose, as its fill was journaled. */
+export interface WorldRfqFill {
+  /** The maker's id (`rfq_makers`) and its name then. */
+  maker: string;
+  makerLabel: string;
+  units: bigint;
+  refund: bigint;
+  price: bigint;
+  tx: string;
+}
+export interface WorldRfqRecord extends WorldRfqOrder {
+  status: WorldRfqStatus;
+  /** Why it closed without a fill (who cancelled it, or that it ran out). */
+  reason: string | null;
+  closedAt: Date | null;
+  /** How many quotes it received. */
+  quotes: number;
+  /** Set once a fill is journaled; the request is filled when that transaction succeeded. */
+  fill: WorldRfqFill | null;
+}
 /** The latent correlation of two events' YES outcomes (`a` < `b` as hex), its standard error
  * in Fisher z and the effective sample behind it. */
 export interface WorldCorrelationRecord {
@@ -231,6 +268,40 @@ const bookRecord = (r: any): WorldBookRecord => ({
   createdAt: r.created_at,
   creator: r.creator ? `0x${r.creator}` : null,
   specHash: r.spec_hash ? `0x${r.spec_hash}` : null,
+});
+const RFQ = `id::text, encode(taker, 'hex') AS taker, book, mask, sell, conditional, units::text,
+  refund::text, stake::text, worst::text, status, reason, created_at, expires_at, closed_at, quotes,
+  maker, maker_label, fill_units::text, fill_refund::text, fill_price::text,
+  encode(tx, 'hex') AS tx`;
+// biome-ignore lint/suspicious/noExplicitAny: pg rows are untyped.
+const rfqRecord = (r: any): WorldRfqRecord => ({
+  id: r.id,
+  taker: `0x${r.taker}`,
+  book: r.book,
+  mask: r.mask,
+  sell: r.sell,
+  conditional: r.conditional,
+  units: r.units === null ? null : BigInt(r.units),
+  refund: BigInt(r.refund),
+  stake: r.stake === null ? null : BigInt(r.stake),
+  worst: BigInt(r.worst),
+  status: r.status,
+  reason: r.reason,
+  createdAt: r.created_at,
+  expiresAt: r.expires_at,
+  closedAt: r.closed_at,
+  quotes: r.quotes,
+  fill:
+    r.tx === null
+      ? null
+      : {
+          maker: r.maker,
+          makerLabel: r.maker_label,
+          units: BigInt(r.fill_units),
+          refund: BigInt(r.fill_refund),
+          price: BigInt(r.fill_price),
+          tx: `0x${r.tx}`,
+        },
 });
 // biome-ignore lint/suspicious/noExplicitAny: pg rows are untyped.
 const relationRecord = (r: any): LegRelationRecord => ({
@@ -607,6 +678,119 @@ export function worldQueries(db: Connection) {
         (domain, owner, client_id, terms_hash, delegate, tx_hash, raw)
         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [domain, owner, clientId, termsHash, delegate, txHash, raw],
+      );
+    },
+
+    // ---------------------------------------------------------------- requests for quotes
+
+    /** A world order going out for quotes (a retry of the same id is kept once). */
+    async recordWorldRfq(domain: string, r: WorldRfqOrder) {
+      await db.query(
+        `INSERT INTO probabl.world_rfqs (id, deployment, taker, book, mask, sell, conditional,
+          units, refund, stake, worst, status, created_at, expires_at)
+        VALUES ($2, ${DEPLOYMENT}, decode($3, 'hex'), $4, $5, $6, $7, $8, $9, $10, $11, 'open',
+          $12, $13)
+        ON CONFLICT (id) DO NOTHING`,
+        [
+          domain,
+          r.id,
+          hex(r.taker),
+          r.book,
+          r.mask,
+          r.sell,
+          r.conditional,
+          r.units?.toString() ?? null,
+          r.refund.toString(),
+          r.stake?.toString() ?? null,
+          r.worst.toString(),
+          r.createdAt,
+          r.expiresAt,
+        ],
+      );
+    },
+    /** The requests still open, oldest first: what a restart takes up again. */
+    async openWorldRfqs(domain: string): Promise<WorldRfqRecord[]> {
+      return (
+        await db.query(
+          `SELECT ${RFQ} FROM probabl.world_rfqs
+          WHERE deployment = ${DEPLOYMENT} AND status = 'open' ORDER BY expires_at`,
+          [domain],
+        )
+      ).rows.map(rfqRecord);
+    },
+    async worldRfq(domain: string, id: string): Promise<WorldRfqRecord | undefined> {
+      const row = (
+        await db.query(
+          `SELECT ${RFQ} FROM probabl.world_rfqs WHERE id = $2 AND deployment = ${DEPLOYMENT}`,
+          [domain, id],
+        )
+      ).rows[0];
+      return row ? rfqRecord(row) : undefined;
+    },
+    /** A wallet's requests, newest first. */
+    async worldRfqs(domain: string, taker: string, limit: number): Promise<WorldRfqRecord[]> {
+      return (
+        await db.query(
+          `SELECT ${RFQ} FROM probabl.world_rfqs
+          WHERE deployment = ${DEPLOYMENT} AND taker = decode($2, 'hex')
+          ORDER BY created_at DESC LIMIT $3`,
+          [domain, hex(taker), bounded(limit, 200)],
+        )
+      ).rows.map(rfqRecord);
+    },
+    /** Records the quote an open request's taker chose and the transaction filling it (in the
+     * fill journal's own transaction, before broadcast); false when the request is not open. */
+    async journalWorldRfqFill(domain: string, id: string, f: WorldRfqFill) {
+      return (
+        (
+          await db.query(
+            `UPDATE probabl.world_rfqs SET maker = $3, maker_label = $4, fill_units = $5,
+              fill_refund = $6, fill_price = $7, tx = decode($8, 'hex')
+            WHERE id = $2 AND deployment = ${DEPLOYMENT} AND status = 'open'`,
+            [
+              domain,
+              id,
+              f.maker,
+              f.makerLabel,
+              f.units.toString(),
+              f.refund.toString(),
+              f.price.toString(),
+              hex(f.tx),
+            ],
+          )
+        ).rowCount === 1
+      );
+    },
+    /** Forgets a journaled fill that did not execute, so the open request can fill again. */
+    async clearWorldRfqFill(domain: string, id: string, tx: string) {
+      await db.query(
+        `UPDATE probabl.world_rfqs SET maker = NULL, maker_label = NULL, fill_units = NULL,
+          fill_refund = NULL, fill_price = NULL, tx = NULL
+        WHERE id = $2 AND deployment = ${DEPLOYMENT} AND status = 'open'
+          AND tx = decode($3, 'hex')`,
+        [domain, id, hex(tx)],
+      );
+    },
+    /** Closes an open request (filled, cancelled or expired), with how many quotes it had;
+     * false when it was closed already. */
+    async closeWorldRfq(
+      domain: string,
+      id: string,
+      close: {
+        status: Exclude<WorldRfqStatus, "open">;
+        reason: string | null;
+        quotes: number;
+        at: Date;
+      },
+    ) {
+      return (
+        (
+          await db.query(
+            `UPDATE probabl.world_rfqs SET status = $3, reason = $4, quotes = $5, closed_at = $6
+            WHERE id = $2 AND deployment = ${DEPLOYMENT} AND status = 'open'`,
+            [domain, id, close.status, close.reason, Math.max(0, close.quotes), close.at],
+          )
+        ).rowCount === 1
       );
     },
 

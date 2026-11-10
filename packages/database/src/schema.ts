@@ -1,7 +1,7 @@
 import type { Pool } from "pg";
 
 /** Bump with a migration step below when a table or its meaning changes. */
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 /** The protocol's persistent state. Trading and custody reads are served from the in-memory
  * chain index; PostgreSQL keeps only what must survive a restart or is read historically:
@@ -18,7 +18,9 @@ export const SCHEMA_VERSION = 8;
  * off-chain metadata of each book (its legs' venue events), delegated fills, the vault's marks,
  * product prices, and the pricing inputs the world keeper fits (venue probability history,
  * factor loadings, event gaps, volatilities and leg relations). Version 7 keeps the worlds people
- * explore: every world the makers quoted for someone, whether or not they took a position. */
+ * explore: every world the makers quoted for someone, whether or not they took a position.
+ * Version 9 keeps world requests for quotes: an order stays open to the makers for minutes (15
+ * by default), so it outlives a request and a restart. */
 const DDL = [
   "CREATE SCHEMA IF NOT EXISTS probabl",
   `CREATE TABLE IF NOT EXISTS probabl.schema_version (
@@ -289,6 +291,32 @@ const DDL = [
     PRIMARY KEY (deployment, topic_hash))`,
   `CREATE INDEX IF NOT EXISTS world_explorations_recent ON probabl.world_explorations
     (deployment, last_at DESC) INCLUDE (cutoff)`,
+
+  // ---------------------------------------------------------------- world requests (version 9)
+
+  // A world order out for quotes: open to the makers until `expires_at` unless its taker fills
+  // it with a quote they chose, or cancels it. The order is as the taker asked it (`worst` is its
+  // limit; `units` or `stake` is null). The quotes themselves live in the API's memory, each
+  // until its maker's expiry; only the one the taker chose is kept: its maker and terms are set,
+  // with `tx`, when its fill is journaled (in the journal's transaction, before broadcast), and
+  // `status` turns to filled once that transaction succeeded. `quotes` counts the quotes the
+  // request received, written when it closes (so for one that outlived an API restart, those
+  // since the restart). The indexes serve the two reads: a wallet's requests, newest first,
+  // and the open ones a restart loads.
+  `CREATE TABLE IF NOT EXISTS probabl.world_rfqs (
+    id uuid PRIMARY KEY, deployment smallint NOT NULL, book integer NOT NULL,
+    mask integer NOT NULL, quotes integer NOT NULL DEFAULT 0, sell boolean NOT NULL,
+    conditional boolean NOT NULL,
+    status text NOT NULL CHECK (status IN ('open', 'filled', 'cancelled', 'expired')),
+    taker bytea NOT NULL, units numeric(78,0), refund numeric(78,0) NOT NULL,
+    stake numeric(78,0), worst numeric(78,0) NOT NULL, created_at timestamptz NOT NULL,
+    expires_at timestamptz NOT NULL, closed_at timestamptz, reason text, maker text,
+    maker_label text, fill_units numeric(78,0), fill_refund numeric(78,0),
+    fill_price numeric(78,0), tx bytea)`,
+  `CREATE INDEX IF NOT EXISTS world_rfqs_taker ON probabl.world_rfqs
+    (deployment, taker, created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS world_rfqs_open ON probabl.world_rfqs (deployment, expires_at)
+    WHERE status = 'open'`,
 ];
 
 const P96 = "79228162514264337593543950336";
@@ -358,7 +386,8 @@ export async function initializeStorage(pool: Pool) {
     const row = (await tx.query("SELECT version FROM probabl.schema_version WHERE id")).rows[0];
     const version: number | undefined = row?.version;
     // Versions 4 to 7 only add tables and columns (invites, members, referrals; RFQ makers;
-    // worlds; explored worlds), which the DDL creates. Version 8 recreates the explored worlds.
+    // worlds; explored worlds), which the DDL creates. Version 8 recreates the explored worlds;
+    // version 9 adds the world requests for quotes.
     if (version !== undefined && (version < 1 || version > SCHEMA_VERSION))
       throw new Error("Database schema belongs to another release: provision a fresh schema");
     if (version === 1) for (const statement of FROM_V1_BEFORE) await tx.query(statement);
