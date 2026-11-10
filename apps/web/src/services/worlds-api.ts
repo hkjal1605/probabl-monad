@@ -148,6 +148,12 @@ export const worldsApi = {
         auth: true,
         timeoutMs: 20_000,
       }).then((r) => r.rfq),
+    /** The wallet's open orders, newest first (the API holds them in memory). */
+    list: (owner: string, signal?: AbortSignal) =>
+      requestJson<{ rfqs: Rfq[] }>(`/v2/worlds/rfqs?owner=${owner}`, {
+        auth: true,
+        ...opt(signal),
+      }).then((r) => r.rfqs),
     read: (owner: string, id: string, signal?: AbortSignal) =>
       requestJson<{ rfq: Rfq }>(`/v2/worlds/rfqs/${id}?owner=${owner}`, {
         auth: true,
@@ -173,12 +179,11 @@ export const worldsApi = {
         auth: true,
         timeoutMs: 20_000,
       }).then((r) => r.rfq),
-    /** Ends the order. `leaving` lets the call finish as the page is left. */
-    cancel: (id: string, leaving = false) =>
+    /** Ends the order. */
+    cancel: (id: string) =>
       requestJson<{ rfq: Rfq }>(`/v2/worlds/rfqs/${id}/cancel`, {
         body: {},
         auth: true,
-        ...(leaving ? { keepalive: true } : {}),
       }).then((r) => r.rfq),
     /** The wallet's open orders as they change: `onRfq` with each, as quotes arrive, are
      * replaced, withdrawn or run out, and when it closes. Resolves when the stream ends. */

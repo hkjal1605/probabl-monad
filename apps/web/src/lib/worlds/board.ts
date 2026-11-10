@@ -4,7 +4,8 @@
 import { nyDate } from "./dates";
 import { legLabel } from "./format";
 import { feeOn, type ProductName } from "./offer";
-import type { BoardRfq, BookView, Venue } from "./types";
+import { startParam } from "./start";
+import type { BoardRfq, BookView, Spec, Venue } from "./types";
 
 export interface OrderWorld {
   legs: {
@@ -45,6 +46,32 @@ export function orderWorld(book: BookView, mask: number): OrderWorld {
     })),
     stock: direction && strike && date && symbol ? { symbol, direction, strike, date } : null,
   };
+}
+
+/** Where an order of `mask` is placed and shown: the builder with its world's parts (each event
+ * as the catalog names it, the stock's move the order bets on), or the world's own page when its
+ * book does not say them all. */
+export function orderHref(book: BookView, mask: number) {
+  const { stock } = orderWorld(book, mask);
+  const legs = book.legs.map((l) =>
+    l.venue ? { id: `${l.venue.source}:${l.venue.marketId}`, wantYes: l.wantYes } : null,
+  );
+  const whole =
+    legs.every((l) => l !== null) && (stock ? book.underlying !== null : book.eventOnly);
+  if (!whole) return `/worlds/${book.id}`;
+  const spec: Spec = {
+    legs: legs.filter((l): l is Spec["legs"][number] => l !== null),
+    stock:
+      stock && book.underlying
+        ? {
+            underlying: book.underlying,
+            direction: stock.direction,
+            strike: stock.strike,
+            date: stock.date,
+          }
+        : null,
+  };
+  return `/worlds/new?w=${encodeURIComponent(startParam(spec))}`;
 }
 
 /** Which of the two bets an order (or a fill) is: Money-back returns the stake if an event

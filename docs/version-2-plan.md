@@ -1089,8 +1089,11 @@ open request, not an auction.
   Place opens the world if it is new, then the request; the ticket becomes a board with the
   request's countdown, the order said once, and a row per maker (what it pays, how long the
   price is held, Accept and Decline), kept current over the request stream. A row keeps its
-  place and its Accept rests a moment when its quote changes. Leaving the page cancels the
-  open request, so no maker holds funds for a screen nobody sees.
+  place and its Accept rests a moment when its quote changes. Leaving the page leaves the
+  request open until it is cancelled, a quote is accepted or it runs out: the ticket of its
+  world shows its board again (one read of the wallet's open requests), and the worlds page
+  lists the signed-in wallet's open requests under "Your open orders", each linking to its
+  board in the builder.
 - **The public board** (`src/worlds/board.ts`). Open requests are public, and any member may
   be the maker of one order:
   - `GET /v2/worlds/board` lists every open request (its taker, what it asks, how long it stays

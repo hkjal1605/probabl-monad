@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { clock, urgency } from "@/components/worlds/QuoteBoard";
+import { Countdown, ProductTag, Stat } from "@/components/worlds/OrderParts";
 import { WorldCell } from "@/components/worlds/WorldCell";
 import type { BoardState } from "@/hooks/useWorldBoard";
 import { cn } from "@/lib/utils";
@@ -189,38 +189,12 @@ export function OpenOrders({
   );
 }
 
-function Stat({
-  label,
-  className,
-  children,
-}: {
-  label: string;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className={cn("flex min-w-0 flex-col gap-1", className)}>
-      <dt className="text-[11px] font-medium text-muted-foreground">{label}</dt>
-      <dd className="min-w-0">{children}</dd>
-    </div>
-  );
-}
-
 /** What the taker pays, and for which of the two bets. */
 function Pays({ row }: { row: Row }) {
   return (
     <div className="flex flex-col gap-1">
       <span className="text-sm font-medium tabular-nums">{money(row.paid, { cents: true })}</span>
-      <span
-        className={cn(
-          "w-fit rounded-md px-1.5 py-0.5 text-[11px] font-medium",
-          row.product === "Money-back"
-            ? "bg-info-soft text-info"
-            : "bg-brand-soft text-brand-strong",
-        )}
-      >
-        {row.product}
-      </span>
+      <ProductTag product={row.product} />
     </div>
   );
 }
@@ -252,27 +226,7 @@ function Closes({ row }: { row: Row }) {
         {ENDED[row.rfq.status as keyof typeof ENDED]}
       </span>
     );
-  return (
-    <div className="flex w-16 flex-col gap-1.5">
-      <span
-        className={cn(
-          "text-sm font-medium tabular-nums",
-          row.left <= 60_000 ? urgency(row.left) : "text-foreground",
-        )}
-      >
-        {clock(row.left)}
-      </span>
-      <span className="h-0.5 overflow-hidden rounded-full bg-secondary" aria-hidden>
-        <span
-          className={cn(
-            "block h-full rounded-full transition-[width] duration-1000 ease-linear",
-            row.left <= 60_000 ? "bg-warning" : "bg-foreground/40",
-          )}
-          style={{ width: `${Math.round(row.share * 100)}%` }}
-        />
-      </span>
-    </div>
-  );
+  return <Countdown left={row.left} share={row.share} />;
 }
 
 /** The row's one action: quote it, or see the quote this wallet has on it. An order is not

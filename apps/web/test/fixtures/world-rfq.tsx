@@ -2,7 +2,7 @@
  * until Place; Place opens the world if it is new and sends one order for quotes; the board lists
  * each maker's quote with its own countdown, in the place it arrived; a quote is accepted,
  * declined, or the order cancelled; an order that runs out can be asked again; and leaving the
- * ticket cancels an open order. */
+ * ticket leaves an open order open, for its world's ticket to show again. */
 import { afterAll, afterEach, expect, mock, test } from "bun:test";
 import { Window } from "happy-dom";
 import { act, type ReactNode } from "react";
@@ -197,6 +197,10 @@ mock.module("../../src/services/worlds-api", () => ({
         };
         return answer("rfq.open", current);
       },
+      list: async () => {
+        calls.push("rfq.list");
+        return current && current.status === "open" ? [current] : [];
+      },
       read: async (_owner: string, id: string) => {
         calls.push(`rfq.read:${id}`);
         return current;
@@ -213,8 +217,8 @@ mock.module("../../src/services/worlds-api", () => ({
         calls.push(`rfq.again:${id}`);
         return frame({ quotes: [quote("vault", 83.5)], received: current!.received + 1 });
       },
-      cancel: async (id: string, leaving = false) => {
-        calls.push(`rfq.cancel:${id}${leaving ? ":leaving" : ""}`);
+      cancel: async (id: string) => {
+        calls.push(`rfq.cancel:${id}`);
         return frame({ status: "cancelled", quotes: [] });
       },
       follow: (_owner: string, signal: AbortSignal, onRfq: (rfq: Rfq) => void) => {
@@ -294,8 +298,10 @@ test("until Place nothing is asked; Place sends one order and the board shows th
   // The ticket as before: an estimate from the world's live prices, and no call of its own.
   expect(page()).toContain("If you're right");
   expect(button(/^Place \$20/)).not.toBeNull();
-  expect(calls).toEqual([]);
+  // Its one read: whether the wallet left an order open on this world (it did not).
+  expect(calls).toEqual(["rfq.list"]);
   expect(streams).toBe(0);
+  calls.length = 0;
   await place();
   // The world exists: one call opens the order (the fee comes out of the $20), for any price.
   expect(calls).toEqual([
@@ -333,6 +339,7 @@ test("until Place nothing is asked; Place sends one order and the board shows th
 
 test("rows keep their place as quotes arrive and change; the best is marked", async () => {
   await render();
+  calls.length = 0;
   await place();
   const vault = current!.quotes[0]!;
   // Another maker quotes more: the API lists it first, the board keeps the vault's row on top.
@@ -489,17 +496,25 @@ test("cancelling ends the order and brings the ticket back; an order that ran ou
   expect(button(/^Place \$20/)).not.toBeNull();
 });
 
-test("leaving the ticket cancels an open order; an order filled elsewhere shows its bet", async () => {
+test("leaving keeps an open order open, and its world's ticket shows it again; an order filled elsewhere shows its bet", async () => {
   await render();
   await place();
   const id = current!.id;
   calls.length = 0;
   await act(async () => root.unmount());
   root = createRoot(host);
-  expect(calls).toEqual([`rfq.cancel:${id}:leaving`]);
-  // The answer to an accept was lost, and the stream says the order filled.
+  // Nothing is cancelled: the order stays open, and its stream is closed.
+  expect(calls).toEqual([]);
+  expect(push).toBeNull();
+  // Back on the world: one read of the wallet's open orders puts its board back as it stands.
   await render();
-  await place();
+  expect(calls).toEqual(["rfq.list"]);
+  expect(page()).toContain("Choose a quote");
+  expect(page()).toContain("All-inYou pay $20");
+  expect(rows()).toHaveLength(1);
+  expect(push).not.toBeNull();
+  expect(current!.id).toBe(id);
+  // The answer to an accept was lost, and the stream says the order filled.
   calls.length = 0;
   await stream(
     frame({
@@ -550,4 +565,110 @@ test("a new world is opened by Place, then its order goes out", async () => {
     `rfq.open:${JSON.stringify({ book: 7, mask: 4, side: "buy", stake: "19801980", conditional: false, limit: "0" })}`,
   ]);
   expect(page()).toContain("Choose a quote");
+});
+
+test("a draft finds its world's open order through its book, unless the order bets the other way", async () => {
+  const spec = { legs: [{ id: "polymarket:1", wantYes: true }], stock: null };
+  const draft = {
+    kind: "draft",
+    spec,
+    preview: {
+      world: { feeBps: 100, legs: [{ endTime: "2026-12-10T05:00:00.000Z" }] },
+      problems: [],
+      existing: { defHash: "0xdef", book: 7 },
+      marks: [700_000, 80_000, 220_000],
+      offer: [
+        {
+          key: "bet:above:1",
+          name: "All-in",
+          stake: "19801980",
+          units: "84000000",
+          payout: "84000000",
+          ask: 240_000,
+          decline: null,
+          endings: [],
+        },
+      ],
+    },
+    pricing: false,
+  };
+  // An order left open on the world's book: a $50 Money-back, on mask 4 (above) or 2 (below).
+  const left = (mask: number): Rfq => {
+    const now = Date.now();
+    return {
+      id: `rfq${nextId++}`,
+      status: "open",
+      reason: null,
+      book: 7,
+      order: {
+        side: "buy",
+        mask,
+        units: null,
+        refund: "0",
+        stake: "49504950",
+        conditional: true,
+        limit: "0",
+      },
+      now,
+      createdAt: now - 60_000,
+      expiresAt: now + 840_000,
+      closedAt: null,
+      makers: 1,
+      received: 1,
+      quotes: [quote("vault", 120)],
+      fill: null,
+    };
+  };
+  const saved = { ...book };
+  Object.assign(book, {
+    underlying: "US:NVDA",
+    opinion: {
+      sentence: "",
+      direction: "above",
+      strike: "240",
+      symbol: "NVDA",
+      fixingDate: "2026-12-11",
+    },
+    strikes: [{ raw: "24000000000", price: "240" }],
+    products: [
+      {
+        key: "bet:above:1",
+        kind: "world-bet",
+        outcome: { kind: "above", strike: 1 },
+        mask: 4,
+        bid: null,
+        ask: 240_000,
+      },
+      {
+        key: "bet:below:1",
+        kind: "world-bet",
+        outcome: { kind: "below", strike: 1 },
+        mask: 2,
+        bid: null,
+        ask: 700_000,
+      },
+    ],
+  });
+  try {
+    // It bets the other way from the sentence: the ticket stays as it is.
+    current = left(2);
+    await render(draft);
+    expect(calls).toEqual(["rfq.list", "book:7"]);
+    expect(button(/^Place \$/)).not.toBeNull();
+    expect(push).toBeNull();
+    await act(async () => root.unmount());
+    root = createRoot(host);
+    calls.length = 0;
+    // It bets the sentence's way: its board, as placed.
+    current = left(4);
+    await render(draft);
+    expect(calls).toEqual(["rfq.list", "book:7"]);
+    expect(page()).toContain("Choose a quote");
+    expect(page()).toContain("Money-backYou pay $50");
+    expect(rows()).toHaveLength(1);
+    expect(push).not.toBeNull();
+  } finally {
+    for (const key of Object.keys(book)) if (!(key in saved)) Reflect.deleteProperty(book, key);
+    Object.assign(book, saved);
+  }
 });

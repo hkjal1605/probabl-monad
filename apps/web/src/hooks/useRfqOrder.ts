@@ -15,8 +15,8 @@ export interface RfqOrder {
  * arrive, are replaced, withdrawn or run out, and when it closes. A stream that breaks is
  * picked up again after one read of the order.
  *
- * An order needs its owner in front of it (nothing fills until a quote is accepted), so leaving
- * the page, or the component, cancels it: no maker keeps funds aside for a screen nobody sees. */
+ * Leaving the page leaves the order open: it stays until its owner cancels it, accepts a quote
+ * or it runs out, and opening its world again shows it (`WorldTicket`). */
 export function useRfqOrder(owner: string | null) {
   const [order, setOrder] = useState<RfqOrder | null>(null);
   const show = useCallback((rfq: Rfq | null) => {
@@ -33,35 +33,19 @@ export function useRfqOrder(owner: string | null) {
   useEffect(() => {
     if (!id || !open || !owner) return;
     const controller = new AbortController();
-    let attempt = 0;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const mine = (rfq: Rfq) => {
-      attempt = 0;
-      if (rfq.id === id) show(rfq);
-    };
-    const follow = () => {
-      worldsApi.rfq
-        .follow(owner, controller.signal, mine)
-        .catch(() => {})
-        .then(() => {
-          if (controller.signal.aborted) return;
-          timer = setTimeout(
-            () => {
-              worldsApi.rfq
-                .read(owner, id, controller.signal)
-                .then(mine)
-                .catch(() => {});
-              follow();
-            },
-            Math.min(15_000, 1_000 * 2 ** attempt++),
-          );
-        });
-    };
-    follow();
-    return () => {
-      controller.abort();
-      clearTimeout(timer);
-    };
+    followOrders(
+      owner,
+      controller.signal,
+      (rfq) => {
+        if (rfq.id === id) show(rfq);
+      },
+      () =>
+        worldsApi.rfq
+          .read(owner, id, controller.signal)
+          .then(show)
+          .catch(() => {}),
+    );
+    return () => controller.abort();
   }, [id, open, owner, show]);
 
   // Another wallet's order is not this one's to show.
@@ -71,22 +55,40 @@ export function useRfqOrder(owner: string | null) {
     shownFor.current = owner;
   }, [owner]);
 
-  // Leaving cancels the open order (the call outlives the page).
-  const live = useRef<string | null>(null);
-  live.current = open ? id : null;
-  useEffect(() => {
-    const leave = () => {
-      if (live.current) void worldsApi.rfq.cancel(live.current, true).catch(() => {});
-      live.current = null;
-    };
-    window.addEventListener("pagehide", leave);
-    return () => {
-      window.removeEventListener("pagehide", leave);
-      leave();
-    };
-  }, []);
-
   return { order, show };
+}
+
+/** Follows the wallet's orders over the API's stream (`onRfq` with each as it changes) until
+ * `signal` aborts. A stream that breaks is picked up again after a pause that grows while it
+ * keeps breaking, with `missed` first: a read that covers what the gap hid. */
+export function followOrders(
+  owner: string,
+  signal: AbortSignal,
+  onRfq: (rfq: Rfq) => void,
+  missed: () => void,
+) {
+  let attempt = 0;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  signal.addEventListener("abort", () => clearTimeout(timer));
+  const follow = () => {
+    worldsApi.rfq
+      .follow(owner, signal, (rfq) => {
+        attempt = 0;
+        onRfq(rfq);
+      })
+      .catch(() => {})
+      .then(() => {
+        if (signal.aborted) return;
+        timer = setTimeout(
+          () => {
+            missed();
+            follow();
+          },
+          Math.min(15_000, 1_000 * 2 ** attempt++),
+        );
+      });
+  };
+  follow();
 }
 
 /** The clock, once a second while `active` (a countdown on screen), and not at all otherwise. */

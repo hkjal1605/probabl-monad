@@ -12,6 +12,7 @@ import { explorerFor, protocolConfig, worldsEnabled } from "@/config/protocol";
 import { type RfqOrder, useRfqOrder } from "@/hooks/useRfqOrder";
 import { useWorldAccount } from "@/hooks/useWorldAccount";
 import { cn } from "@/lib/utils";
+import { orderCost, orderWorld } from "@/lib/worlds/board";
 import { chancePercent, dollars, money, multiple, whenDay } from "@/lib/worlds/format";
 import {
   atStake,
@@ -56,7 +57,9 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * steps. Placing the order opens the world if it is new and sends the order to the makers: the
  * ticket then shows their quotes as they arrive (`QuoteBoard`), each firm until its own expiry,
  * and the person accepts one, declines one, or cancels. Nothing fills until a quote is accepted,
- * and until Place nothing is opened or asked: the prices before it are estimates. */
+ * and until Place nothing is opened or asked: the prices before it are estimates. An order stays
+ * open when the page is left (until it is cancelled, accepted or runs out), and the ticket of its
+ * world shows it again. */
 export function WorldTicket({
   world,
   sentence,
@@ -95,6 +98,58 @@ export function WorldTicket({
   const held = useRef<RfqOrder | null>(null);
   /** One request id a quote: accepting the same quote again never fills twice. */
   const clientIds = useRef(new Map<string, string>());
+
+  // An order this wallet left open on this world is its board again: once the world has a book,
+  // one read of the wallet's open orders (the API holds them in memory) finds it, and a draft's
+  // book is read too, to know the order bets the way the sentence says.
+  const bookId = world.kind === "book" ? world.book.id : (world.preview?.existing?.book ?? null);
+  const owner = account.owner;
+  const resumedFor = useRef<string | null>(null);
+  const latest = useRef({ order, phase, amounts, world, direction, onAmounts });
+  latest.current = { order, phase, amounts, world, direction, onAmounts };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once a wallet and world; the rest is read when the answer comes.
+  useEffect(() => {
+    const key = owner && bookId !== null ? `${owner}:${bookId}` : null;
+    if (!owner || bookId === null || resumedFor.current === key) return;
+    resumedFor.current = key;
+    const controller = new AbortController();
+    const { signal } = controller;
+    let done = false;
+    (async () => {
+      const open = (await worldsApi.rfq.list(owner, signal)).filter(
+        (r) => r.status === "open" && r.book === bookId,
+      );
+      if (!open.length) return;
+      const now = latest.current;
+      const live =
+        now.world.kind === "book" ? now.world.book : await worldsApi.book(bookId, signal);
+      const rfq = open.find((r) => {
+        const side = orderWorld(live, r.order.mask).stock?.direction ?? null;
+        return !now.direction || !side || side === now.direction;
+      });
+      const at = latest.current;
+      // Placed here meanwhile, or another order already on the board: that one stands.
+      if (!rfq || signal.aborted || at.order || at.phase !== "idle") return;
+      const resumed: ProductName = rfq.order.conditional ? "Money-back" : "All-in";
+      const paid = Math.round(dollars(orderCost(rfq.order, live.feeBps)) * 100) / 100;
+      const next = { ...at.amounts, [resumed]: paid };
+      setProduct(resumed);
+      setAmounts(next);
+      at.onAmounts?.({ allIn: next["All-in"], moneyBack: next["Money-back"] });
+      setPlaced({ product: resumed, amount: paid });
+      show(rfq);
+    })()
+      .catch(() => {})
+      .finally(() => {
+        done = true;
+      });
+    return () => {
+      controller.abort();
+      // Stopped before its answer (React's development remount, or the world changed): asked
+      // again next time.
+      if (!done) resumedFor.current = null;
+    };
+  }, [owner, bookId]);
 
   const priced = sentence.stock !== null;
   const feeBps =
