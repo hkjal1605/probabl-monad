@@ -1023,10 +1023,36 @@ protocol lists no worlds of its own.
 
 | Message | Direction | Content |
 |---|---|---|
-| `world.rfq` | server → makers | id, deadline (500 ms window, `RFQ_QUOTE_WINDOW_MS`), the book (number, or def for a pending book), the bundle, side, the taker's limit, its stake |
+| `world.rfq` | server → makers | id, `open` (the taker chooses) or an auction, deadline (the request's end, or the 500 ms window, `RFQ_QUOTE_WINDOW_MS`), `replay` when sent again, the book, the bundle, side, the taker's limit, its stake |
 | `world.quote` | maker → server | price, expiry, nonce, signature (`WorldQuote`) |
+| `decline` | maker → server | no quote; after a quote, withdraws it |
+| `world.declined` | server → maker | the taker turned its standing quote down; the request stays open |
 | `world.result` | server → maker | filled / unfilled / lost, with the transaction |
+| `world.closed` | server → makers | an open request ended: filled / cancelled / expired |
 | `world.indications` | maker → server | bid and ask per (book, standard product), with a 30 s TTL as v1's `indications` |
+
+**Requests for quotes** (built 2026-11-10; `src/worlds/rfqs.ts`). A member's world order is an
+open request, not an auction.
+- **Lifetime.** It stays open `WORLD_RFQ_SECONDS` (900; never past the book's cutoff). A wallet
+  holds at most `WORLD_RFQS_PER_WALLET` (8) open.
+- **Quotes.** Every maker approved for worlds may quote it while it is open, replace its quote, or
+  withdraw it. A maker that connects later is sent it; a maker gone offline takes its quotes with
+  it. Each quote keeps its maker's own expiry.
+- **The taker chooses.** Nothing fills by itself. The taker reads the standing quotes (each
+  checked again on the replica, with the reason when it no longer fills) and fills one through
+  the trading delegate, cancels, or lets the request run out. Makers hear the outcome.
+- **The vault.** Its keeper answers at once, as for an auction, with a quote that lives
+  `quotes.openTtlSeconds` (300; the vault's `maxTtl` must allow it). Each second, after the
+  model refresh, it looks at its standing quotes again: one that ran out unaccepted is followed
+  by a new one; one the book's fair value has moved against past `quotes.withdrawEdge` of its
+  margin is replaced by one at the new price; one the vault could not give at all any more is
+  withdrawn, and given again once it can see. It gives each ask `quotes.openQuotes` (2) quotes
+  of its own accord, so a request nobody acts on holds its capacity for two quote lives (ten
+  minutes) at most, not for the request's whole life. After that it quotes the request again
+  only when its taker asks again.
+- **Storage.** Open requests are read from memory. `world_rfqs` (schema version 9) keeps each
+  request's row, written behind the answer: a restart takes the open ones up again (makers quote
+  them afresh as they reconnect) and a wallet lists its past ones. Quotes are not stored.
 
 - **Validation:**
   - the signer recovers with `ecrecover` for wallets, or ERC-1271 for contract makers (cached
@@ -1037,20 +1063,32 @@ protocol lists no worlds of its own.
   - the price is within the taker's limit;
   - the maker can fund it from its credit plus atoms (and the premium, for a buy);
   - the nonce is unspent.
-- **Awards:** one maker per fill (the best price; ties go to the earliest quote), checked again
-  on the replica as it is at the award (`WorldDesk`, `src/worlds/desk.ts`). Splitting a bundle
-  across makers isn't worth its gas in v2.0.
+- **Awards (auctions):** one maker per fill (the best price; ties go to the earliest quote),
+  checked again on the replica as it is at the award (`WorldDesk`, `src/worlds/desk.ts`).
+  Splitting a bundle across makers isn't worth its gas in v2.0.
 - **Cost.** A quote costs no RPC call and no database read; the window closes as soon as every
-  maker online has answered. A delegated fill costs exactly what a v1 delegated order does
-  (`test/worlds.test.ts` counts both).
+  maker online has answered. Opening a request costs the same, plus one write behind the answer.
+  A delegated fill costs exactly what a v1 delegated order does, and a chosen quote's fill two
+  writes more: the choice in the journal's transaction, and the close behind the answer
+  (`test/worlds.test.ts` counts them all).
 
 **Trading.**
-- `POST /v2/worlds/quote {order}`: a firm quote the wallet fills itself, with its `fillQuote`
-  transaction.
-- `POST /v2/worlds/submit {order, clientId}`: run the RFQ, then `fillQuoteFor` by the trading
-  delegate (`TRADING_DELEGATE_PRIVATE_KEY`, sharing its nonce lock with v1). It is journaled in
-  `world_submissions` before broadcast, idempotent by `clientId`, and inside the daily limit.
-- `POST /v2/worlds/cashout {order, clientId}`: the same, as a sell.
+- `POST /v2/worlds/rfqs {order, replaces?}`: opens a request for quotes and answers with the
+  quotes of the makers online (as fast as an auction). `GET /v2/worlds/rfqs/:id` reads it,
+  `GET /v2/worlds/rfqs?owner=` lists the wallet's open ones (`history=1` adds the closed), and
+  `GET /v2/worlds/rfqs/stream?owner=` (SSE) sends each as it changes.
+- `POST /v2/worlds/rfqs/:id/execute {quote, clientId}`: fills the quote the wallet chose with
+  `fillQuoteFor` by the trading delegate (`TRADING_DELEGATE_PRIVATE_KEY`, sharing its nonce lock
+  with v1). It is journaled in `world_submissions` before broadcast, idempotent by `clientId`,
+  and inside the daily limit. A request fills once; if the fill does not execute it stays open.
+- `POST /v2/worlds/rfqs/:id/decline {quote}` turns one standing quote down (its maker hears,
+  and the request stays open); `POST /v2/worlds/rfqs/:id/requote` asks the makers that hold no
+  quote that fills again; `POST /v2/worlds/rfqs/:id/cancel` ends the request.
+- The auctions, which fill at once: `POST /v2/worlds/quote {order}` (a firm quote the wallet
+  fills itself, with its `fillQuote` transaction; the app's cash-out of a position), `POST
+  /v2/worlds/submit {order, clientId}` (the best quote, filled by the delegate) and `POST
+  /v2/worlds/cashout` (the same, as a sell). The vault answers them with quotes that live
+  seconds.
 - Transactions the wallet signs itself: `/v2/worlds/{deposit,withdraw,redeem,delegate,
   delegate/revoke}/prepare` and `/v2/vaults/:vault/{deposit,redeem,cancel-deposit,
   cancel-redeem,claim}/prepare`, simulated where the chain allows (a deposit after a new

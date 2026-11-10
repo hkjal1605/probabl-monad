@@ -1,4 +1,6 @@
-/** Runs the RFQ for a world order (docs/version-2-plan.md §10.2).
+/** Checks world orders and the quotes makers give them, and runs the short auction of the
+ * orders the API fills at once (docs/version-2-plan.md §10.2). An order its taker chooses a
+ * quote for stays open instead (`rfqs.ts`), on the same checks.
  *
  * 1. The order goes to every maker approved for worlds that is online (never the taker). Each
  *    quote is checked as it arrives against the world replica: the bundle and price it was
@@ -59,7 +61,7 @@ const WATCH_GRACE_MS = 60_000;
 const seconds = () => BigInt(Math.floor(Date.now() / 1000));
 /** The time the chain will check a fill at: its next block, no earlier than the replica's head
  * nor this clock (quotes are signed at the chain's time and must not count as signed later). */
-const chainTime = (s: WorldState) => (s.timestamp > seconds() ? s.timestamp : seconds());
+export const chainTime = (s: WorldState) => (s.timestamp > seconds() ? s.timestamp : seconds());
 
 /** The `WorldQuote` a maker's answer to `order` signs. */
 export const signedQuote = (order: WorldOrder, terms: WorldMakerQuote): WorldQuote => ({
@@ -95,7 +97,7 @@ export function termsProblem(order: WorldOrder, terms: WorldMakerQuote): string 
 }
 
 /** The better of two standing quotes for `order`: lower price, more units, higher bid. */
-const better = (order: WorldOrder, a: WorldMakerQuote, b: WorldMakerQuote) =>
+export const better = (order: WorldOrder, a: WorldMakerQuote, b: WorldMakerQuote) =>
   order.side === "sell"
     ? a.price > b.price
     : order.stake !== null
@@ -182,6 +184,73 @@ export class WorldDesk {
     minQuoteSeconds: number,
     delegate?: Address,
   ): Promise<string | null> {
+    const checked = await this.checkQuote(s, order, maker, terms, now, minQuoteSeconds, delegate);
+    return "problem" in checked ? checked.problem : null;
+  }
+
+  /** `quoteProblem`, also saying who signed a quote that fills: `standingProblem` checks the
+   * quote again later without recovering the signer again. */
+  async checkQuote(
+    s: WorldState,
+    order: WorldOrder,
+    maker: MakerIdentity,
+    terms: WorldMakerQuote,
+    now: bigint,
+    minQuoteSeconds: number,
+    delegate?: Address,
+  ): Promise<{ signer: Address } | { problem: string }> {
+    const unsigned = this.unsignedProblem(s, order, maker, terms, now, minQuoteSeconds, delegate);
+    if (unsigned) return { problem: unsigned };
+    let signature: ReturnType<typeof compactSignature>;
+    try {
+      signature = compactSignature(terms.signature);
+    } catch {
+      return { problem: "Malformed signature" };
+    }
+    if (!signature.lowS) return { problem: "A high-s signature does not fill" };
+    const { chainId, indexer } = this.options;
+    const q = signedQuote(order, terms);
+    const signer = await recoverTypedDataAddress({
+      domain: worldQuoteDomain(chainId, indexer.deployment.books),
+      types: WORLD_QUOTE_TYPES,
+      primaryType: "WorldQuote",
+      message: worldQuoteMessage(q),
+      signature: signature.full,
+    }).catch(() => null);
+    if (!signer) return { problem: "Malformed signature" };
+    const problem = this.signerProblem(s, maker, q, signer, now);
+    return problem ? { problem } : { signer };
+  }
+
+  /** Why a quote that stood (signed by `signer`) no longer fills `order` on the replica `s`,
+   * or null: every check of `quoteProblem` but the signature's recovery. */
+  standingProblem(
+    s: WorldState,
+    order: WorldOrder,
+    maker: MakerIdentity,
+    terms: WorldMakerQuote,
+    signer: Address,
+    now: bigint,
+    minQuoteSeconds: number,
+    delegate?: Address,
+  ): string | null {
+    return (
+      this.unsignedProblem(s, order, maker, terms, now, minQuoteSeconds, delegate) ??
+      this.signerProblem(s, maker, signedQuote(order, terms), signer, now)
+    );
+  }
+
+  /** What a quote must pass before its signature matters: the bundle and price asked for, its
+   * lifetime, an unspent nonce naming its maker, and the fill itself on the replica. */
+  private unsignedProblem(
+    s: WorldState,
+    order: WorldOrder,
+    maker: MakerIdentity,
+    terms: WorldMakerQuote,
+    now: bigint,
+    minQuoteSeconds: number,
+    delegate?: Address,
+  ): string | null {
     const shape = termsProblem(order, terms);
     if (shape) return shape;
     const q = signedQuote(order, terms);
@@ -190,26 +259,20 @@ export class WorldDesk {
     if (q.expiry < now + BigInt(minQuoteSeconds)) return "The quote expires too soon to fill";
     if (this.spent.get(maker.wallet)?.has(q.nonce)) return "This nonce has already filled";
     const contract = q.nonce >= CONTRACT_NONCE_FLOOR ? quoteNonceMaker(q.nonce) : null;
-    const filler = contract ?? maker.wallet;
     if (contract && contract !== maker.wallet) return "The nonce names another maker";
-    const problem = fillProblem(s, q, filler, now, delegate);
-    if (problem) return problem;
-    let signature: ReturnType<typeof compactSignature>;
-    try {
-      signature = compactSignature(terms.signature);
-    } catch {
-      return "Malformed signature";
-    }
-    if (!signature.lowS) return "A high-s signature does not fill";
-    const { chainId, indexer } = this.options;
-    const signer = await recoverTypedDataAddress({
-      domain: worldQuoteDomain(chainId, indexer.deployment.books),
-      types: WORLD_QUOTE_TYPES,
-      primaryType: "WorldQuote",
-      message: worldQuoteMessage(q),
-      signature: signature.full,
-    }).catch(() => null);
-    if (!signer) return "Malformed signature";
+    return fillProblem(s, q, contract ?? maker.wallet, now, delegate);
+  }
+
+  /** Whether `signer` may sign for the quote's maker: the maker's own wallet, or for a world
+   * vault a keeper its `onWorldFill` hook accepts now. */
+  private signerProblem(
+    s: WorldState,
+    maker: MakerIdentity,
+    q: WorldQuote,
+    signer: Address,
+    now: bigint,
+  ): string | null {
+    const contract = q.nonce >= CONTRACT_NONCE_FLOOR ? quoteNonceMaker(q.nonce) : null;
     if (!contract)
       return signer === maker.wallet ? null : "The quote is not signed by the maker's wallet";
     const v = s.vaults.get(contract);
@@ -359,7 +422,8 @@ export class WorldDesk {
     this.settle(w.auction, fill.tx as Hex);
   }
 
-  private spend(maker: Address, nonce: bigint) {
+  /** Remembers a nonce that filled, so a quote reusing it is refused on arrival. */
+  spend(maker: Address, nonce: bigint) {
     const nonces = this.spent.get(maker) ?? new Set<bigint>();
     nonces.add(nonce);
     if (nonces.size > SPENT_PER_MAKER) nonces.delete(nonces.values().next().value!);

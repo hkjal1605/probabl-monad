@@ -187,3 +187,118 @@ A contract cannot sign, so a maker contract such as a Δ-vault names itself in i
 
 You pay the market's maker fee on every fill. The taker pays the taker fee, and you receive the
 market's maker rebate out of it.
+
+## World orders (protocol version 2)
+
+A maker the market admin also approved for worlds receives world orders on the same connection.
+Its `welcome` then carries `worlds`: the world books' address, the vaults, and the `WorldQuote`
+signing domain. A world order is a bundle of a book's outcomes (`mask`), bought with a `stake` or
+by `units`, or sold back (`side: "sell"`). Amounts are decimal strings of raw quote units.
+
+### Two ways an order is asked
+
+**An open request** (`open: true`) is how members trade worlds.
+
+- **It stays open.** Until `quoteDeadline`, 15 minutes after it was asked by default (never past
+  the book's cutoff), or until its taker fills or cancels it.
+- **The taker chooses.** The taker sees every standing quote, each with its maker's name, its
+  terms and its own `expiry`, and fills the one they choose. Nothing fills by itself, and the
+  taker may choose none. The API's trading delegate sends the fill, so the taker never holds
+  your signature.
+- **Quote when you like.** You can quote any time before the deadline, including long after the
+  request was asked. A later quote replaces your earlier one (up to 256 quotes per request).
+- **Your expiry is yours.** Set each quote's `expiry` to as long as you will honour it. It must
+  be at least `minQuoteSeconds` away when it arrives. A quote that runs out leaves the request;
+  quote again if you still want the trade. The world vault quotes five minutes at a time and
+  gives a request two quotes of its own accord (the first, and one more when that runs out or
+  the price moves against it); after that it quotes again only when the taker asks again.
+- **Withdraw with `decline`.** Declining a request you quoted withdraws your quote at once. A
+  quote the taker has already chosen still fills.
+- **Late joiners.** When you connect, you are sent every open request you hold no quote on, with
+  `replay: true`, in bursts of 25. You are sent a request again when its taker asks for fresh
+  quotes and you hold none on it that still fills.
+- **Offline means withdrawn.** When your last connection closes, your standing quotes leave with
+  it: you could no longer withdraw them. Quote again when you reconnect.
+
+**An auction** (`open: false`) fills at once: the request closes after `quoteWindowMs`, or as soon
+as every maker online has answered, and the best quote fills in the same call.
+
+### Messages
+
+**`world.rfq`**, for every world order:
+
+```json
+{ "type": "world.rfq", "version": 2, "id": "7d1f…", "sentAt": 1794284040657,
+  "quoteDeadline": 1794285840657, "open": true, "replay": false,
+  "chainId": 46630, "books": "0x…",
+  "book": { "id": "12", "defHash": "0x…", "atoms": 3, "feeBps": 100,
+            "cutoff": "1797019200", "fixingTime": "1797022800", "state": "trading" },
+  "order": { "taker": "0x…", "side": "buy", "mask": 2, "units": null, "refund": "0",
+             "stake": "20000000", "conditional": false, "limit": "0" },
+  "signing": { "domain": { "name": "Probabl Worlds", "version": "1", "chainId": 46630,
+                           "verifyingContract": "0x…" },
+               "types": { "WorldQuote": [ … ] }, "primaryType": "WorldQuote",
+               "minQuoteSeconds": 3 } }
+```
+
+`sentAt` is when the order was asked: a request sent again keeps it.
+
+**`world.quote`**, your answer, a signed `WorldQuote`:
+
+```json
+{ "type": "world.quote", "rfqId": "7d1f…", "units": "81200000", "refund": "0",
+  "price": "20000000", "expiry": "1794284340", "makerData": "0", "nonce": "41",
+  "signature": "0x…" }
+```
+
+- **A buy by stake** is quoted at `price` = the stake, with the `units` you give for it (and
+  `refund` = the stake for a conditional payout). More units is the better quote.
+- **A buy by units** is quoted at the `price` you sell the bundle for; a **sell** at the `price`
+  you pay for it.
+- **`limit`** is the taker's worst acceptable terms: the fewest units for a stake, the most it
+  pays for units, the least it takes for a sell.
+
+**`quote.accepted` / `quote.rejected`** answer each quote, as in version 1. A rejected quote
+never fills.
+
+**`world.declined`**, when the taker turns your standing quote down:
+
+```json
+{ "type": "world.declined", "rfqId": "7d1f…" }
+```
+
+Your quote left the request and fills no more. The request is still open: you may quote it
+again, and you are sent it again if the taker asks for fresh quotes.
+
+**`world.result`**, when a request you hold a quote on ends:
+
+- `filled`: the taker chose your quote, with the fill's `transaction`;
+- `lost`: the taker chose another maker's quote;
+- `unfilled`: the request was cancelled or ran out (`reason` says which), or for an auction the
+  order's transaction did not fill your quote.
+
+**`world.closed`**, to every world maker online when an open request ends:
+
+```json
+{ "type": "world.closed", "rfqId": "7d1f…", "reason": "filled" }
+```
+
+`reason` is `filled`, `cancelled` or `expired`. Take the request off your board.
+
+**`world.indications`** carries your current, unsigned prices per book, as `indications` does for
+market branches.
+
+### What a world quote must satisfy
+
+It is checked when it arrives, again whenever the taker reads the request, and once more before
+it fills:
+
+- it answers the bundle asked for, within the taker's limit;
+- it is signed by your approved wallet, or for a world vault by one of its keepers for its
+  current quote epoch, within every limit its `onWorldFill` hook enforces;
+- its nonce has not filled before;
+- the book is trading, and both sides can fund the fill.
+
+A standing quote that stops passing is shown to the taker as not fillable, with the reason, and
+cannot be chosen.
+

@@ -47,6 +47,7 @@ import { mountWorldAdmin } from "./worlds/admin.ts";
 import { WorldDesk } from "./worlds/desk.ts";
 import { WorldRecorder } from "./worlds/history.ts";
 import { mountOpinions } from "./worlds/opinions.ts";
+import { WorldRfqs } from "./worlds/rfqs.ts";
 import { mountWorlds } from "./worlds/routes.ts";
 import { WorldTrading } from "./worlds/trading.ts";
 import { loadWorldUnderlyings, WorldSpots } from "./worlds/underlyings.ts";
@@ -462,6 +463,30 @@ const worldDesk =
         log: (level, event, fields) => logger[level](event, fields),
       })
     : null;
+/** World orders out for quotes: open for `WORLD_RFQ_SECONDS` (15 minutes), filled with the
+ * quote their taker chooses by the trading delegate, so they exist only with it. */
+const worldRfqs =
+  worlds && rfq && worldDesk && signer
+    ? new WorldRfqs({
+        hub: rfq,
+        indexer: worlds,
+        desk: worldDesk,
+        db,
+        chainId,
+        delegate: signer.address,
+        minQuoteSeconds: rfqMinQuoteSeconds,
+        rfqSeconds: whole("WORLD_RFQ_SECONDS", 900, 3_600) || 900,
+        maxOpenPerTaker: whole("WORLD_RFQS_PER_WALLET", 8, 100) || 8,
+        maxOpen: 2_000,
+        log: (level, event, fields) => logger[level](event, fields),
+      })
+    : null;
+// The requests a restart left open go out again as the makers reconnect.
+if (worldRfqs)
+  await worldRfqs.restore(client).then(
+    (open) => logger.info("world.rfq.restored", { open }),
+    (error) => logger.warn("world.rfq.restore-failed", { error }),
+  );
 /** The users' worlds routes, once mounted (their pending writes flush on shutdown). */
 let opinions: ReturnType<typeof mountOpinions> | null = null;
 const worldRecorder = worlds
@@ -484,9 +509,17 @@ if (worlds) {
     db,
     hub: rfq,
     desk: worldDesk,
+    rfqs: worldRfqs,
     trading:
       signer && worldDesk
-        ? new WorldTrading({ indexer: worlds, desk: worldDesk, db, client, signer })
+        ? new WorldTrading({
+            indexer: worlds,
+            desk: worldDesk,
+            db,
+            client,
+            signer,
+            ...(worldRfqs ? { rfqs: worldRfqs } : {}),
+          })
         : null,
     signer,
   });
@@ -666,7 +699,9 @@ for (const signal of ["SIGINT", "SIGTERM"] as const)
     referrals.stop();
     // Under pm2's 90 s kill timeout, with room for the index to flush after.
     void drain(60_000)
-      .then(() => Promise.all([indexer.stop(), worlds?.stop(), opinions?.stop()]))
+      .then(() =>
+        Promise.all([indexer.stop(), worlds?.stop(), opinions?.stop(), worldRfqs?.stop()]),
+      )
       .then(() => db.close())
       .then(() => process.exit(0));
   });
