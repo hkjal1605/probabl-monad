@@ -111,7 +111,8 @@ const MAX_WRITE_ROWS = 20_000;
 const seconds = () => BigInt(Math.floor(Date.now() / 1000));
 const json = (value: unknown) =>
   JSON.stringify(value, (_k, v) => (typeof v === "bigint" ? v.toString() : v));
-const fillView = (f: WorldFillRow, finality: "confirmed" | "finalized") => ({
+/** A fill as the API serves it. */
+export const fillView = (f: WorldFillRow, finality: "confirmed" | "finalized") => ({
   book: f.book,
   block: f.block.toString(),
   logIndex: f.logIndex,
@@ -675,11 +676,22 @@ export class WorldIndexer {
 
   /** Fills newest first: the unpersisted tail (captured before history is read) and then the
    * finalized history, deduplicated. */
-  async fills(options: { books?: number[]; owner?: Address; limit: number }) {
-    const { books, owner, limit } = options;
+  async fills(options: {
+    books?: number[];
+    owner?: Address;
+    limit: number;
+    /** Continues a listing of every fill after (older than) the fill it names. */
+    before?: { block: bigint; logIndex: number };
+  }) {
+    const { books, owner, limit, before } = options;
+    const older = (f: { block: bigint; logIndex: number }) =>
+      !before ||
+      f.block < before.block ||
+      (f.block === before.block && f.logIndex < before.logIndex);
     const tail = this.tail
       .filter(
         (f) =>
+          older(f) &&
           (!books || books.includes(f.book)) &&
           (!owner || getAddress(f.maker) === owner || getAddress(f.taker) === owner),
       )
@@ -687,15 +699,23 @@ export class WorldIndexer {
     const rows = await this.options.db.worldFills(this.domain, {
       ...(books ? { books } : {}),
       ...(owner ? { owner } : {}),
+      ...(before && !books && !owner ? { before } : {}),
       limit,
     });
+    // The tail keeps fills the database has stored too, some older than this page of rows: the
+    // two are merged in chain order, newest first, so a page never runs ahead of the next.
     const seen = new Set(rows.map((r) => `${r.tx}:${r.logIndex}`));
     return [
       ...tail
         .filter((f) => !seen.has(`${f.tx}:${f.logIndex}`))
-        .map((f) => fillView(f, "confirmed")),
-      ...rows.map((f) => fillView(f, "finalized")),
-    ].slice(0, limit);
+        .map((f) => ({ f, finality: "confirmed" as const })),
+      ...rows.map((f) => ({ f, finality: "finalized" as const })),
+    ]
+      .sort((a, b) =>
+        a.f.block === b.f.block ? b.f.logIndex - a.f.logIndex : a.f.block < b.f.block ? 1 : -1,
+      )
+      .slice(0, limit)
+      .map(({ f, finality }) => fillView(f, finality));
   }
 }
 

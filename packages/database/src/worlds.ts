@@ -350,13 +350,19 @@ export function worldQueries(db: Connection) {
     worldBook,
     // ---------------------------------------------------------------- fills
 
-    /** Finalized fills, newest first, of some books and/or one owner (taker or maker). */
+    /** Finalized fills, newest first, of some books and/or one owner (taker or maker). With
+     * neither, `before` continues a listing after the fill it names (the primary key's order). */
     async worldFills(
       domain: string,
-      options: { books?: number[]; owner?: string; limit: number },
+      options: {
+        books?: number[];
+        owner?: string;
+        limit: number;
+        before?: { block: bigint; logIndex: number };
+      },
     ): Promise<WorldFillRow[]> {
       const limit = bounded(options.limit);
-      const { books, owner } = options;
+      const { books, owner, before } = options;
       if (owner) {
         const scope = books ? " AND book = ANY($4::integer[])" : "";
         return (
@@ -380,6 +386,14 @@ export function worldQueries(db: Connection) {
               ${NEWEST} $3) f
             ORDER BY f.block DESC, f.log_index DESC LIMIT $3`,
             [domain, books, limit],
+          )
+        ).rows.map(fillRow);
+      if (before)
+        return (
+          await db.query(
+            `SELECT ${FILL} FROM probabl.world_fills f WHERE deployment = ${DEPLOYMENT}
+              AND (f.block, f.log_index) < ($3::bigint, $4::integer) ${NEWEST} $2`,
+            [domain, limit, before.block.toString(), before.logIndex],
           )
         ).rows.map(fillRow);
       return (
