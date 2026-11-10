@@ -45,6 +45,7 @@ import { DelegatedTrading, tradingSigner } from "./trading/delegated.ts";
 import { createOrderPlan } from "./trading/plan.ts";
 import { mountTrading } from "./trading/routes.ts";
 import { mountWorldAdmin } from "./worlds/admin.ts";
+import { mountWorldBoard } from "./worlds/board.ts";
 import { WorldDesk } from "./worlds/desk.ts";
 import { WorldRecorder } from "./worlds/history.ts";
 import { mountOpinions } from "./worlds/opinions.ts";
@@ -524,6 +525,7 @@ if (worlds) {
         : null,
     signer,
   });
+  mountWorldBoard(app, { indexer: worlds, auth, rfqs: worldRfqs });
   const { prepareUserBook } = mountWorldAdmin(app, {
     db,
     indexer: worlds,

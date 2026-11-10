@@ -302,3 +302,21 @@ it fills:
 A standing quote that stops passing is shown to the taker as not fillable, with the reason, and
 cannot be chosen.
 
+### Quoting one order without the stream
+
+Open requests are public, and any member's wallet can quote one over HTTP, with no approval and
+no connection to keep (the app's Explore page does exactly this):
+
+- `GET /v2/worlds/board` lists the open requests, each with its taker, its order, its expiry
+  and its standing quotes; `GET /v2/worlds/board/stream` (server-sent events) follows them.
+- `POST /v2/worlds/board/:id/quote` with a session sends the wallet's signed `WorldQuote` for
+  the request: `units`, `refund`, `price`, `expiry`, `nonce` (below 2^96) and `signature`, the
+  same typed data a stream maker signs. A buy by stake is priced at the stake (and refunds it,
+  for a conditional payout), so the quote names its `units`. Its expiry is no later than the
+  request's.
+- `POST /v2/worlds/board/:id/withdraw` takes it back.
+
+Such a quote passes the checks above and stands beside the stream makers' quotes, one per
+wallet. It is not told how the request ended: read the board, or its stream, where a filled
+request names the quote that won.
+

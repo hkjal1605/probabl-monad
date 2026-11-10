@@ -1084,6 +1084,25 @@ open request, not an auction.
 - `POST /v2/worlds/rfqs/:id/decline {quote}` turns one standing quote down (its maker hears,
   and the request stays open); `POST /v2/worlds/rfqs/:id/requote` asks the makers that hold no
   quote that fills again; `POST /v2/worlds/rfqs/:id/cancel` ends the request.
+- **The public board** (`src/worlds/board.ts`). Open requests are public, and any member may
+  be the maker of one order:
+  - `GET /v2/worlds/board` lists every open request (its taker, what it asks, how long it stays
+    open, each standing quote with its maker, payout, expiry and whether it fills now) with the
+    book of each; `GET /v2/worlds/board/stream` (SSE, no session) sends the same once, then
+    each request as it changes and each trade as it confirms. A quote's id is its taker's to
+    choose with, and stays out of both.
+  - `POST /v2/worlds/board/:id/quote {units, refund, price, expiry, nonce, signature}` is the
+    signed-in wallet's own `WorldQuote` for the request (a wallet nonce, below 2^96; an expiry
+    no later than the request's). It passes the checks a maker's quote passes and stands
+    beside the makers', one per wallet, a later one replacing the earlier;
+    `POST /v2/worlds/board/:id/withdraw` takes it back. Nothing is set aside while it stands:
+    it fills from the wallet's world credit if the taker accepts it, and reads as not filling
+    while that credit is short. Never the taker's own request.
+  - `GET /v2/worlds/trades?limit=&before=` is every fill, newest first, a page at a time
+    (`next` is the cursor), each with its taker, its maker (`vault` marks a world vault) and
+    the books it names.
+  - The board is read from memory (no RPC call, no database read); checking a wallet's quote
+    reads no chain; a page of trades is one database read.
 - The auctions, which fill at once: `POST /v2/worlds/quote {order}` (a firm quote the wallet
   fills itself, with its `fillQuote` transaction; the app's cash-out of a position), `POST
   /v2/worlds/submit {order, clientId}` (the best quote, filled by the delegate) and `POST

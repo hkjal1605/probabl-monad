@@ -7,6 +7,11 @@
  * and chooses one, which the trading delegate fills (`WorldTrading.execute`), or cancels the
  * request, or lets it run out. Makers hear how it ended.
  *
+ * Anyone may be a maker for one order: open requests are public (`all`, `publicView`,
+ * `watch`), and a wallet signs its own quote on one (`offer`), which stands beside the makers'
+ * on the same checks, one per wallet, until it runs out, its wallet takes it back (`retract`)
+ * or the taker turns it down.
+ *
  * Open requests live in memory and are read from there: opening one, reading it and checking
  * its quotes cost no RPC call and no database read. The database keeps each request's row,
  * written behind the answer and never awaited by it, so a restart takes the open ones up again
@@ -14,7 +19,7 @@
  * connection and with it its quotes, and makers quote again when they reconnect. */
 import { randomUUID } from "node:crypto";
 import type { Database, WorldRfqRecord } from "@conditional-stocks/db";
-import { BOOK_STATE, worldFee } from "@conditional-stocks/evm-client";
+import { BOOK_STATE, CONTRACT_NONCE_FLOOR, worldFee } from "@conditional-stocks/evm-client";
 import { bookStateAt, type WorldState } from "@conditional-stocks/evm-client/world-ledger";
 import type { WorldIndexer } from "@conditional-stocks/indexer/worlds";
 import { HTTPException } from "hono/http-exception";
@@ -80,6 +85,20 @@ const FILL_GRACE_MS = 60_000;
 /** Closed requests kept in memory for reads that follow the close at once. */
 const CLOSED_KEPT = 1_000;
 const SWEEP_MS = 1_000;
+/** How far past its request's end a wallet's quote may be signed to last (the clocks' slack). */
+const OFFER_SLACK_MS = 60_000;
+
+/** A wallet quoting an order of its own accord (the public board) is its own maker, named by
+ * its address; makers on the stream are named by the market admin. */
+const WALLET_MAKER = "wallet:";
+export const walletMakerId = (wallet: Address) => `${WALLET_MAKER}${wallet}`;
+const isWalletMaker = (id: string) => id.startsWith(WALLET_MAKER);
+const walletMaker = (wallet: Address): MakerIdentity => ({
+  id: walletMakerId(wallet),
+  label: `${wallet.slice(0, 6)}…${wallet.slice(-4)}`,
+  wallet,
+  worlds: true,
+});
 
 export class WorldRfqs {
   private readonly rfqs = new Map<string, OpenRfq>();
@@ -87,6 +106,8 @@ export class WorldRfqs {
   private readonly byTx = new Map<string, string>();
   private readonly closed = new Map<string, OpenRfq>();
   private readonly listeners = new Map<Address, Set<(rfq: OpenRfq) => void>>();
+  private readonly watchers = new Set<(rfq: OpenRfq) => void>();
+  private arrivals = 0;
   private readonly signers = new WeakMap<WorldMakerQuote, Address>();
   private readonly writes = new Set<Promise<void>>();
   private sweep: ReturnType<typeof setInterval> | undefined;
@@ -225,6 +246,8 @@ export class WorldRfqs {
       }),
     );
     rfq.request = this.listen(rfq);
+    // Whoever watches the board hears of the order now, before any quote on it.
+    this.emit(rfq);
     await rfq.request.firstRound;
     this.options.log?.("info", "world.rfq.opened", {
       rfq: rfq.id,
@@ -322,6 +345,9 @@ export class WorldRfqs {
         (a, b) =>
           Number(Boolean(a.problem)) - Number(Boolean(b.problem)) ||
           (better(o, a.q.terms, b.q.terms) ? -1 : better(o, b.q.terms, a.q.terms) ? 1 : 0) ||
+          // Equal quotes: the earlier (a wallet's own quote counts arrivals apart from the
+          // stream's, so the time decides first).
+          a.q.receivedAt - b.q.receivedAt ||
           a.q.arrival - b.q.arrival,
       )
       .map(({ q, problem }) => {
@@ -396,6 +422,140 @@ export class WorldRfqs {
     };
   }
 
+  // ---------------------------------------------------------------- the public board
+
+  /** Every open request, newest first. */
+  all() {
+    return [...this.rfqs.values()].sort((a, b) => b.createdAt - a.createdAt);
+  }
+  /** An open request, or one closed a moment ago, whoever asks. */
+  find(id: string) {
+    return this.rfqs.get(id) ?? this.closed.get(id);
+  }
+
+  /** A request as anyone reads it: who asks, what for, how long it stays open and every
+   * standing quote (its maker, what it gives, its own expiry and whether it fills now), best
+   * first. A quote's id is its taker's to choose with, so it is left out; `wallet` names a
+   * wallet quoting of its own accord, which is how a reader knows its own. */
+  publicView(rfq: OpenRfq) {
+    const view = this.view(rfq);
+    const makers = new Map([...rfq.quotes.values()].map((q) => [q.id, q.maker]));
+    const wallet = (maker: { id: string; wallet: Address | null } | undefined) =>
+      maker && isWalletMaker(maker.id) ? maker.wallet : null;
+    return {
+      id: view.id,
+      status: view.status,
+      reason: view.reason,
+      book: view.book,
+      taker: rfq.order.taker,
+      order: view.order,
+      now: view.now,
+      createdAt: view.createdAt,
+      expiresAt: view.expiresAt,
+      closedAt: view.closedAt,
+      received: view.received,
+      quotes: view.quotes.map((q) => ({
+        maker: q.maker,
+        makerId: q.makerId,
+        wallet: wallet(makers.get(q.id)),
+        vault: q.vault,
+        units: q.units,
+        refund: q.refund,
+        price: q.price,
+        expiry: q.expiry,
+        receivedAt: q.receivedAt,
+        fills: q.problem === null,
+      })),
+      /** The quote its taker chose, once it filled. */
+      fill:
+        rfq.status === "filled" && rfq.chosen
+          ? {
+              maker: rfq.chosen.maker.label,
+              makerId: rfq.chosen.maker.id,
+              wallet: wallet(rfq.chosen.maker),
+              units: rfq.chosen.units,
+              refund: rfq.chosen.refund,
+              price: rfq.chosen.price,
+              transactionHash: rfq.chosen.tx,
+            }
+          : null,
+    };
+  }
+
+  /** Calls `listener` with every request as it changes, whoever asked it. */
+  watch(listener: (rfq: OpenRfq) => void) {
+    this.watchers.add(listener);
+    return () => void this.watchers.delete(listener);
+  }
+
+  /** `wallet`'s own signed quote on an open request of another wallet: checked as a maker's is
+   * (the bundle and price the order asks, its lifetime, both sides' funds on the replica, an
+   * unspent wallet nonce, a low-s signature by `wallet`), then standing beside the makers' for
+   * the taker to choose. A wallet holds one quote on a request: a later one replaces it. No
+   * funds are set aside: the quote fills from the wallet's world credit if it is chosen, and
+   * reads as not filling while that credit is short. */
+  async offer(wallet: Address, id: string, terms: WorldMakerQuote) {
+    const { indexer, desk, delegate, minQuoteSeconds } = this.options;
+    const rfq = this.standing(id);
+    if (rfq.order.taker === wallet)
+      throw new HTTPException(400, { message: "This is your own order" });
+    if (terms.nonce >= CONTRACT_NONCE_FLOOR)
+      throw new HTTPException(400, { message: "A wallet's quote carries a wallet's nonce" });
+    if (Number(terms.expiry) * 1000 > rfq.expiresAt + OFFER_SLACK_MS)
+      throw new HTTPException(400, { message: "A quote lasts no longer than its order" });
+    const maker = walletMaker(wallet);
+    const s = indexer.trading();
+    const checked = await desk.checkQuote(
+      s,
+      rfq.order,
+      maker,
+      terms,
+      chainTime(s),
+      minQuoteSeconds,
+      delegate,
+    );
+    if ("problem" in checked)
+      throw new HTTPException(400, { message: offerProblem(checked.problem, minQuoteSeconds) });
+    // It may have closed, or been chosen from, while the signature was checked.
+    this.standing(id);
+    rfq.quotes.set(maker.id, {
+      id: randomUUID(),
+      maker,
+      terms,
+      signer: checked.signer,
+      receivedAt: this.now(),
+      arrival: ++this.arrivals,
+    });
+    rfq.received++;
+    this.options.log?.("info", "world.rfq.offer", { rfq: rfq.id, maker: wallet });
+    this.emit(rfq);
+    return rfq;
+  }
+
+  /** Takes `wallet`'s own quote off an open request (one the taker is filling stays). A quote
+   * already gone is taken back already. */
+  retract(wallet: Address, id: string) {
+    const rfq = this.find(id);
+    if (!rfq) throw new HTTPException(404, { message: "No open order with this id" });
+    const maker = walletMakerId(wallet);
+    if (rfq.chosen?.maker.id === maker && rfq.status === "open")
+      throw new HTTPException(409, { message: "The taker accepted this quote: it is filling" });
+    if (rfq.quotes.delete(maker)) this.emit(rfq);
+    return rfq;
+  }
+
+  /** An open request that takes quotes now. */
+  private standing(id: string) {
+    const rfq = this.rfqs.get(id);
+    if (!rfq)
+      throw this.closed.has(id)
+        ? new HTTPException(409, { message: "This order is no longer open" })
+        : new HTTPException(404, { message: "No open order with this id" });
+    if (rfq.chosen)
+      throw new HTTPException(409, { message: "The taker is filling a quote on this order" });
+    return rfq;
+  }
+
   // ---------------------------------------------------------------- the taker's choice
 
   /** The standing quote `taker` chose on its open request, checked on the replica as it is
@@ -466,7 +626,7 @@ export class WorldRfqs {
     if (rfq.status !== "open" || !rfq.chosen) return;
     rfq.chosen.tx = tx;
     const { hub, desk } = this.options;
-    hub.awarded(rfq.chosen.maker.id);
+    if (!isWalletMaker(rfq.chosen.maker.id)) hub.awarded(rfq.chosen.maker.id);
     if (rfq.chosen.maker.wallet && rfq.chosen.nonce !== null)
       desk.spend(rfq.chosen.maker.wallet, rfq.chosen.nonce);
     this.close(rfq, "filled", null);
@@ -656,6 +816,7 @@ export class WorldRfqs {
 
   private emit(rfq: OpenRfq) {
     for (const listener of this.listeners.get(rfq.order.taker) ?? []) listener(rfq);
+    for (const listener of this.watchers) listener(rfq);
   }
 
   /** Queues a write of `rfq`'s row after its earlier ones; a failure is logged, never thrown. */
@@ -674,6 +835,30 @@ export class WorldRfqs {
 }
 
 const RAN_OUT = "The request ran out before a quote was chosen";
+
+/** Why a wallet's own quote was refused, said to the person who signed it. */
+function offerProblem(problem: string, minQuoteSeconds: number) {
+  switch (problem) {
+    case "The maker cannot fund the sets it must split":
+    case "The maker cannot pay the price":
+      return "Your world balance does not cover this quote. Deposit more, or offer less.";
+    case "Fewer units than the order accepts":
+      return "This order asks for a higher payout than that.";
+    case "The quote expires too soon to fill":
+      return `Keep the quote open for at least ${minQuoteSeconds} seconds.`;
+    case "The quote is not signed by the maker's wallet":
+      return "The signature is not this wallet's. Sign with the wallet you are signed in with.";
+    case "This nonce has already filled":
+      return "This quote already filled once. Sign a new one.";
+    case "The taker's credit does not cover the price and fee":
+    case "The taker's trading permission is inactive":
+    case "The trade exceeds the trading permission's budget":
+    case "The book's fee exceeds the permission's fee cap":
+      return "The taker cannot fill this order right now.";
+    default:
+      return problem;
+  }
+}
 const FILL_IN_FLIGHT = "A fill of this request is in flight. Wait for it to settle.";
 
 /** An open request as the database kept it: its order, and a fill that was in flight. */

@@ -49,6 +49,7 @@ import { WorldRfqMaker } from "../../../services/world-keeper/src/rfq.ts";
 import type { Auth } from "../src/auth/routes.ts";
 import { RfqHub, type RfqSession } from "../src/rfq/hub.ts";
 import { mountWorldAdmin } from "../src/worlds/admin.ts";
+import { mountWorldBoard } from "../src/worlds/board.ts";
 import { WorldDesk } from "../src/worlds/desk.ts";
 import { WorldRfqs } from "../src/worlds/rfqs.ts";
 import { mountWorlds } from "../src/worlds/routes.ts";
@@ -290,6 +291,7 @@ beforeAll(async () => {
     }),
     signer: delegate,
   });
+  mountWorldBoard(app, { indexer, auth, rfqs });
   mountWorldAdmin(app, {
     db,
     indexer,
@@ -1061,6 +1063,214 @@ describe("requests for quotes", () => {
     await stream.close();
     hub.detach(m.session);
     expect(hub.status(second.id)).toMatchObject({ awards: 1, quotes: 3 });
+  });
+
+  test("the board is public: any wallet quotes an open order, and the taker fills the quote it chooses", async () => {
+    // Someone watches the board, without a session, before the order exists.
+    const stream = await follow("/v2/worlds/board/stream", bob!);
+    await until(() => stream.events.length === 1);
+    expect(stream.events[0]!.event).toBe("board");
+    const sentBooks = (stream.events[0]!.data.books as { id: number }[]).map((b) => b.id);
+    const heard: number[] = [];
+    const unwatch = rfqs.watch((r) => heard.push(r.quotes.size));
+    const rfq = await ask();
+    unwatch();
+    // The board hears of an order as it opens, before any quote on it.
+    expect(heard[0]).toBe(0);
+    const vaultUnits = BigInt(rfq.quotes[0]!.units);
+    type PublicQuote = {
+      id?: string;
+      maker: string;
+      wallet: Address | null;
+      vault: boolean;
+      units: string;
+      fills: boolean;
+    };
+    type PublicRfq = {
+      id: string;
+      status: string;
+      taker: Address;
+      book: number;
+      order: { stake: string; side: string };
+      quotes: PublicQuote[];
+      fill: { wallet: Address | null; units: string; transactionHash: Hex } | null;
+    };
+    // Without a session: the order, who asks, its world and the vault's quote. A quote's id is
+    // its taker's to choose with, and stays out.
+    const open = await app.request("/v2/worlds/board");
+    expect(open.status).toBe(200);
+    const board = (await open.json()) as { rfqs: PublicRfq[]; books: { id: number }[] };
+    const listed = board.rfqs.find((r) => r.id === rfq.id)!;
+    expect(listed).toMatchObject({
+      status: "open",
+      taker: alice,
+      book: 2,
+      order: { side: "buy", stake: "20000000" },
+      quotes: [{ maker: "World vault", vault: true, wallet: null, fills: true }],
+    });
+    expect(listed.quotes[0]!.id).toBeUndefined();
+    expect(board.books.map((b) => b.id)).toContain(2);
+    // The watcher was sent the order, and its world unless it had been sent that already.
+    const frames = () =>
+      stream.events.filter((e) => e.event === "rfq" && (e.data.rfq as PublicRfq).id === rfq.id);
+    await until(() => frames().length > 0);
+    expect(Boolean(frames()[0]!.data.book)).toBe(!sentBooks.includes(2));
+    expect(frames().filter((e) => e.data.book)).toHaveLength(sentBooks.includes(2) ? 0 : 1);
+
+    /** Account `index` signs `units` for the order's stake; `as` posts it. */
+    const why = (r: { body: Record<string, unknown> }) =>
+      (r.body.error as { message: string } | undefined)?.message;
+    const offer = async (
+      units: bigint,
+      options: { index?: number; as?: Address; seconds?: number } = {},
+    ) => {
+      const index = options.index ?? 2;
+      const signed = await walletQuote(node, worlds, index, {
+        taker: alice!,
+        book: 2n,
+        mask: 0b10,
+        units,
+        refund: 0n,
+        sell: false,
+        price: 20_000_000n,
+        expiry: BigInt(Math.floor(Date.now() / 1000) + (options.seconds ?? 120)),
+      });
+      return call(
+        `/v2/worlds/board/${rfq.id}/quote`,
+        {
+          units: units.toString(),
+          refund: "0",
+          price: "20000000",
+          expiry: signed.quote.expiry.toString(),
+          nonce: signed.quote.nonce.toString(),
+          signature: signed.signature,
+        },
+        options.as ?? (accounts[index]!.address as Address),
+      );
+    };
+    // Refused, each for its own reason: the taker's own order, a signature of another wallet,
+    // a payout the wallet's credit cannot back, and a quote that outlives the order.
+    const rpc = calls["rpc.call"] ?? 0;
+    expect(why(await offer(vaultUnits, { index: 1 }))).toBe("This is your own order");
+    expect(why(await offer(vaultUnits, { index: 6, as: bob! }))).toBe(
+      "The signature is not this wallet's. Sign with the wallet you are signed in with.",
+    );
+    expect(why(await offer(10n ** 18n))).toBe(
+      "Your world balance does not cover this quote. Deposit more, or offer less.",
+    );
+    expect(why(await offer(vaultUnits, { seconds: 3_600 }))).toBe(
+      "A quote lasts no longer than its order",
+    );
+    expect((await read(rfq.id)).quotes).toHaveLength(1);
+
+    // Bob offers more than the vault: his quote stands beside it and leads.
+    const more = vaultUnits + 3_000_000n;
+    const placed = await offer(more);
+    expect([placed.status, why(placed)]).toEqual([201, undefined]);
+    expect((placed.body.rfq as PublicRfq).quotes).toMatchObject([
+      { wallet: bob, vault: false, units: more.toString(), fills: true },
+      { maker: "World vault", vault: true },
+    ]);
+    // Checking and standing a quote reads no chain.
+    expect(calls["rpc.call"] ?? 0).toBe(rpc);
+    const taker = await read(rfq.id);
+    expect(taker.quotes.map((x) => [x.vault, x.units])).toEqual([
+      [false, more.toString()],
+      [true, vaultUnits.toString()],
+    ]);
+    expect(taker.quotes[0]!.maker).toBe(`${bob!.slice(0, 6)}…${bob!.slice(-4)}`);
+    await until(() => (frames().at(-1)!.data.rfq as PublicRfq).quotes.length === 2);
+    // A later quote of his replaces the earlier; taking it back leaves the vault's alone.
+    await offer(more + 1_000_000n);
+    expect((await read(rfq.id)).quotes).toHaveLength(2);
+    const back = await call(`/v2/worlds/board/${rfq.id}/withdraw`, {}, bob!);
+    expect((back.body.rfq as PublicRfq).quotes.map((x) => x.vault)).toEqual([true]);
+    // Only a wallet's own quote is its to take back.
+    expect(
+      (
+        (await call(`/v2/worlds/board/${rfq.id}/withdraw`, {}, accounts[6]!.address as Address))
+          .body.rfq as PublicRfq
+      ).quotes,
+    ).toHaveLength(1);
+    await offer(more);
+
+    // The taker accepts Bob's quote: it fills from Bob's credit, and Bob holds the other side.
+    const before = position();
+    const held = () => (indexer.trading().holdings.get(`2:${bob}`) ?? [])[0] ?? 0n;
+    const bobBefore = held();
+    const mine = (await read(rfq.id)).quotes.find((x) => !x.vault)!;
+    const filled = await call(`/v2/worlds/rfqs/${rfq.id}/execute`, {
+      quote: mine.id,
+      clientId: "client-board-1",
+    });
+    expect([filled.status, filled.body.error]).toEqual([200, undefined]);
+    expect(position() - before).toBe(more);
+    expect(held() - bobBefore).toBe(more);
+    // Everyone watching the board sees the order filled and by whom, and the trade.
+    const last = () =>
+      stream.events
+        .filter((e) => e.event === "rfq" && (e.data.rfq as PublicRfq).id === rfq.id)
+        .at(-1)?.data.rfq as PublicRfq | undefined;
+    await until(() => last()?.status === "filled");
+    expect(last()!.fill).toMatchObject({
+      wallet: bob,
+      units: more.toString(),
+      transactionHash: filled.body.transactionHash,
+    });
+    await until(() => stream.events.some((e) => e.event === "trade"));
+    const traded = stream.events.find((e) => e.event === "trade")!.data;
+    expect(traded).toMatchObject({
+      trade: {
+        transactionHash: filled.body.transactionHash,
+        maker: bob,
+        taker: alice,
+        vault: false,
+      },
+    });
+    // Its world was sent to this watcher once already.
+    expect(traded.book).toBeUndefined();
+    await stream.close();
+    // A closed order takes no quote.
+    expect(why(await offer(more))).toBe("This order is no longer open");
+    expect(
+      ((await (await app.request("/v2/worlds/board")).json()) as { rfqs: PublicRfq[] }).rfqs.some(
+        (r) => r.id === rfq.id,
+      ),
+    ).toBe(false);
+
+    // Every trade, newest first, a page at a time, with its world.
+    type Trade = {
+      transactionHash: Hex;
+      block: string;
+      logIndex: number;
+      maker: Address;
+      vault: boolean;
+    };
+    const page = async (query: string) =>
+      (await (await app.request(`/v2/worlds/trades?${query}`)).json()) as {
+        trades: Trade[];
+        books: { id: number }[];
+        next: string | null;
+      };
+    await until(
+      async () =>
+        (await page("limit=1")).trades[0]?.transactionHash === filled.body.transactionHash,
+    );
+    const first = await page("limit=2");
+    expect(first.trades).toHaveLength(2);
+    expect(first.trades[0]).toMatchObject({ maker: bob, vault: false });
+    expect(first.trades[1]!.vault || first.trades[1]!.maker === second.wallet).toBe(true);
+    expect(first.books.length).toBeGreaterThan(0);
+    expect(first.next).toBe(`${first.trades[1]!.block}:${first.trades[1]!.logIndex}`);
+    const all = await page("limit=100");
+    const rest = await page(`limit=100&before=${first.next}`);
+    expect(rest.trades.map((t) => t.transactionHash)).toEqual(
+      all.trades.slice(2).map((t) => t.transactionHash),
+    );
+    expect(rest.next).toBeNull();
+    const keys = all.trades.map((t) => BigInt(t.block) * 100_000n + BigInt(t.logIndex));
+    expect(keys).toEqual([...keys].sort((a, b) => (a < b ? 1 : a > b ? -1 : 0)));
+    expect((await app.request("/v2/worlds/trades?before=x")).status).toBe(400);
   });
 
   test("the vault replaces a quote the price moved against once; after that it waits to be asked", async () => {
