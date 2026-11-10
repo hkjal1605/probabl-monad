@@ -2,6 +2,7 @@
  * a world's book, holders and fills, and a wallet's world account. Reads are public unless they
  * name a wallet; anything that trades carries the session. */
 import type {
+  BoardRfq,
   BookView,
   Draft,
   ExploringWorld,
@@ -9,14 +10,16 @@ import type {
   Holder,
   LegEntry,
   Preview,
+  Rfq,
   Spec,
   SpotHistory,
   Stock,
+  Trade,
   WorldFill,
   WorldPermission,
   WorldWallet,
 } from "@/lib/worlds/types";
-import { requestJson } from "./api";
+import { requestEvents, requestJson } from "./api";
 
 const opt = (signal?: AbortSignal) => (signal ? { signal } : {});
 
@@ -135,11 +138,94 @@ export const worldsApi = {
     }),
   prepare: <T = { transactions: unknown[] }>(path: string, body: unknown) =>
     requestJson<T>(`/v2/${path}`, { body, auth: true, timeoutMs: 20_000 }),
-  submit: (order: Record<string, unknown>, clientId: string) =>
-    requestJson<{
-      transactionHash: string;
-      rfq?: { award: { units: string; refund: string; price: string } | null };
-    }>("/v2/worlds/submit", { body: { order, clientId }, auth: true, timeoutMs: 90_000 }),
+  /** A world order out for quotes: it stays open for minutes, each maker's quote is listed
+   * with its own expiry, and nothing fills until one is accepted. */
+  rfq: {
+    /** Opens the order for quotes; answers with the quotes of the makers online now. */
+    open: (order: Record<string, unknown>, replaces?: string) =>
+      requestJson<{ rfq: Rfq }>("/v2/worlds/rfqs", {
+        body: { order, ...(replaces ? { replaces } : {}) },
+        auth: true,
+        timeoutMs: 20_000,
+      }).then((r) => r.rfq),
+    read: (owner: string, id: string, signal?: AbortSignal) =>
+      requestJson<{ rfq: Rfq }>(`/v2/worlds/rfqs/${id}?owner=${owner}`, {
+        auth: true,
+        ...opt(signal),
+      }).then((r) => r.rfq),
+    /** Fills the quote chosen, through one-tap trading. The same `clientId` never fills twice. */
+    accept: (id: string, quote: string, clientId: string) =>
+      requestJson<{ transactionHash: string; rfq?: Rfq }>(`/v2/worlds/rfqs/${id}/execute`, {
+        body: { quote, clientId },
+        auth: true,
+        timeoutMs: 90_000,
+      }),
+    /** Turns one quote down: it leaves the order, and its maker is told. */
+    decline: (id: string, quote: string) =>
+      requestJson<{ rfq: Rfq }>(`/v2/worlds/rfqs/${id}/decline`, {
+        body: { quote },
+        auth: true,
+      }).then((r) => r.rfq),
+    /** Asks the makers with no quote on the order again. */
+    again: (id: string) =>
+      requestJson<{ rfq: Rfq }>(`/v2/worlds/rfqs/${id}/requote`, {
+        body: {},
+        auth: true,
+        timeoutMs: 20_000,
+      }).then((r) => r.rfq),
+    /** Ends the order. `leaving` lets the call finish as the page is left. */
+    cancel: (id: string, leaving = false) =>
+      requestJson<{ rfq: Rfq }>(`/v2/worlds/rfqs/${id}/cancel`, {
+        body: {},
+        auth: true,
+        ...(leaving ? { keepalive: true } : {}),
+      }).then((r) => r.rfq),
+    /** The wallet's open orders as they change: `onRfq` with each, as quotes arrive, are
+     * replaced, withdrawn or run out, and when it closes. Resolves when the stream ends. */
+    follow: (owner: string, signal: AbortSignal, onRfq: (rfq: Rfq) => void) =>
+      requestEvents(`/v2/worlds/rfqs/stream?owner=${owner}`, {
+        auth: true,
+        signal,
+        onEvent: (event, data) => {
+          const d = data as { rfq?: Rfq; rfqs?: Rfq[] };
+          if (event === "rfq" && d.rfq) onRfq(d.rfq);
+          else if (event === "rfqs") for (const rfq of d.rfqs ?? []) onRfq(rfq);
+        },
+      }),
+  },
+  /** The public board: every order out for quotes, and a wallet's own quote on one. */
+  board: {
+    /** The wallet's signed quote on another wallet's open order (it replaces its earlier one). */
+    quote: (
+      id: string,
+      quote: {
+        units: string;
+        refund: string;
+        price: string;
+        expiry: string;
+        nonce: string;
+        signature: string;
+      },
+    ) =>
+      requestJson<{ rfq: BoardRfq }>(`/v2/worlds/board/${id}/quote`, {
+        body: quote,
+        auth: true,
+        timeoutMs: 20_000,
+      }).then((r) => r.rfq),
+    /** Takes the wallet's quote off an order. */
+    withdraw: (id: string) =>
+      requestJson<{ rfq: BoardRfq }>(`/v2/worlds/board/${id}/withdraw`, {
+        body: {},
+        auth: true,
+      }).then((r) => r.rfq),
+  },
+  /** Every world trade, newest first: a page, the worlds it names, and where the next starts. */
+  trades: (limit: number, before: string | null, signal?: AbortSignal) =>
+    requestJson<{ trades: Trade[]; books: BookView[]; next: string | null }>(
+      `/v2/worlds/trades?limit=${limit}${before ? `&before=${encodeURIComponent(before)}` : ""}`,
+      opt(signal),
+    ),
+  /** A firm quote the wallet fills itself, at once (a position's cash-out). */
   quote: (order: Record<string, unknown>) =>
     requestJson<{
       quote: Record<string, unknown> & {

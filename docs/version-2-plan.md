@@ -1084,6 +1084,13 @@ open request, not an auction.
 - `POST /v2/worlds/rfqs/:id/decline {quote}` turns one standing quote down (its maker hears,
   and the request stays open); `POST /v2/worlds/rfqs/:id/requote` asks the makers that hold no
   quote that fills again; `POST /v2/worlds/rfqs/:id/cancel` ends the request.
+- **In the app** (`apps/web`, `WorldTicket` and `QuoteBoard`): until Place nothing is opened or
+  asked, and the ticket's prices are estimates (the preview, or a live world's indications).
+  Place opens the world if it is new, then the request; the ticket becomes a board with the
+  request's countdown, the order said once, and a row per maker (what it pays, how long the
+  price is held, Accept and Decline), kept current over the request stream. A row keeps its
+  place and its Accept rests a moment when its quote changes. Leaving the page cancels the
+  open request, so no maker holds funds for a screen nobody sees.
 - **The public board** (`src/worlds/board.ts`). Open requests are public, and any member may
   be the maker of one order:
   - `GET /v2/worlds/board` lists every open request (its taker, what it asks, how long it stays
@@ -1103,6 +1110,16 @@ open request, not an auction.
     the books it names.
   - The board is read from memory (no RPC call, no database read); checking a wallet's quote
     reads no chain; a page of trades is one database read.
+- **In the app, for makers** (`/worlds/explore`, linked as Explore in the header): the open
+  orders as a table (a card each on a phone), the one closing soonest first and new ones at the
+  end, so no row moves under a finger; a row says the bet in two lines (the stock's move, then
+  the first event and how many more), what its taker pays, the best quote and the time left.
+  A row opens the order: the bet in full, the quotes on it, and the reader's own quote, which
+  is one figure (what they pay if the bet is right) with what it means in every ending, the
+  best quote and the break-even at the vault's marks beside it. Sending it is one wallet
+  signature (`eth_signTypedData_v4`), no gas. Under the orders, every trade. Each list scrolls
+  inside itself past a height cap, under a header row that stays put. One stream keeps the page
+  current; it reads one page of trades when it opens and nothing on a timer.
 - The auctions, which fill at once: `POST /v2/worlds/quote {order}` (a firm quote the wallet
   fills itself, with its `fillQuote` transaction; the app's cash-out of a position), `POST
   /v2/worlds/submit {order, clientId}` (the best quote, filled by the delegate) and `POST

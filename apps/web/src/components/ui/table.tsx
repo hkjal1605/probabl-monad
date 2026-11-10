@@ -5,11 +5,22 @@ import { cn } from "@/lib/utils";
 
 function Table({
   className,
+  containerClassName,
+  containerRef,
   density = "default",
   ...props
-}: React.ComponentProps<"table"> & { density?: "default" | "compact" }) {
+}: React.ComponentProps<"table"> & {
+  density?: "default" | "compact";
+  /** The box the table scrolls in: a height cap here scrolls the rows under a sticky header. */
+  containerClassName?: string;
+  containerRef?: React.Ref<HTMLDivElement>;
+}) {
   return (
-    <div data-slot="table-container" className="relative w-full min-w-0 overflow-x-auto">
+    <div
+      ref={containerRef}
+      data-slot="table-container"
+      className={cn("relative w-full min-w-0 overflow-x-auto", containerClassName)}
+    >
       <table
         data-slot="table"
         data-density={density}

@@ -257,6 +257,129 @@ export interface BookView {
   marks: number[] | null;
   analytics: Analytics | null;
 }
+/** A maker's quote standing on a request: what it gives for the order, firm until `expiry`
+ * (unix seconds), unless its maker replaces or withdraws it first. Amounts are raw quote units. */
+export interface RfqQuote {
+  id: string;
+  /** The maker's name, what names it across its quotes (a maker's later quote replaces its
+   * earlier one), and whether it is the protocol's own vault. */
+  maker: string;
+  makerId: string;
+  vault: boolean;
+  /** What the order pays if it is right, and comes back if an event fails. */
+  units: string;
+  refund: string;
+  /** The stake, the books' fee on it, and what the wallet pays in all. */
+  price: string;
+  fee: string;
+  total: string;
+  expiry: string;
+  receivedAt: number;
+  /** Why it cannot be filled right now (null when it can). */
+  problem: string | null;
+}
+/** A world order out for quotes (`/v2/worlds/rfqs`): open until `expiresAt`, a quote is
+ * accepted, or it is cancelled. Times are the API's clock in milliseconds; `now` is that clock
+ * when this was read. */
+export interface Rfq {
+  id: string;
+  status: "open" | "filled" | "cancelled" | "expired";
+  reason: string | null;
+  book: number;
+  order: {
+    side: "buy" | "sell";
+    mask: number;
+    units: string | null;
+    refund: string;
+    stake: string | null;
+    conditional: boolean;
+    limit: string;
+  };
+  now: number;
+  createdAt: number;
+  expiresAt: number;
+  closedAt: number | null;
+  /** Makers online that may quote it. */
+  makers: number;
+  received: number;
+  quotes: RfqQuote[];
+  fill: {
+    quote: string;
+    maker: string;
+    units: string;
+    refund: string;
+    price: string;
+    transactionHash: string | null;
+  } | null;
+}
+/** A quote standing on an open order, as anyone reads it (`/v2/worlds/board`). `wallet` names a
+ * wallet that quoted of its own accord (how a reader knows its own); `fills` is whether it
+ * could be filled right now. Amounts are raw quote units; `expiry` is unix seconds. */
+export interface BoardQuote {
+  maker: string;
+  makerId: string;
+  wallet: string | null;
+  vault: boolean;
+  units: string;
+  refund: string;
+  price: string;
+  expiry: string;
+  receivedAt: number;
+  fills: boolean;
+}
+/** An order out for quotes, as anyone reads it: who asks, what for, and its standing quotes,
+ * best first. Times are the API's clock in milliseconds; `now` is that clock when it was read. */
+export interface BoardRfq {
+  id: string;
+  status: "open" | "filled" | "cancelled" | "expired";
+  reason: string | null;
+  book: number;
+  taker: string;
+  order: Rfq["order"];
+  now: number;
+  createdAt: number;
+  expiresAt: number;
+  closedAt: number | null;
+  received: number;
+  quotes: BoardQuote[];
+  /** The quote its taker accepted, once it filled. */
+  fill: {
+    maker: string;
+    makerId: string;
+    wallet: string | null;
+    units: string;
+    refund: string;
+    price: string;
+    transactionHash: string | null;
+  } | null;
+}
+export interface Board {
+  available: boolean;
+  now: number;
+  rfqSeconds: number | null;
+  /** The least lifetime a quote must have left when it is sent. */
+  minQuoteSeconds: number | null;
+  rfqs: BoardRfq[];
+  books: BookView[];
+}
+/** A world trade (`/v2/worlds/trades`): the taker bought (or, `sell`, sold) a bundle from the
+ * maker at `price`, the books' `fee` on top. `vault` says the maker is a world vault. */
+export interface Trade {
+  book: number;
+  block: string;
+  logIndex: number;
+  time: string;
+  transactionHash: string;
+  maker: string;
+  taker: string;
+  mask: number;
+  sell: boolean;
+  units: string;
+  refund: string;
+  price: string;
+  fee: string;
+  vault: boolean;
+}
 export interface FeedWorld {
   book: number;
   defHash: string;

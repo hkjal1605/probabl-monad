@@ -45,6 +45,8 @@ export async function requestJson<T>(
     /** The wallet a cookie request acts for, when no session is active (signing out). */
     wallet?: string;
     bearer?: string;
+    /** Lets the request outlive the page (a last call as it is left). */
+    keepalive?: boolean;
   } = {},
 ): Promise<T> {
   if (!path.startsWith("/") || path.startsWith("//") || path.includes("\\"))
@@ -79,6 +81,7 @@ export async function requestJson<T>(
     method: mutation ? "POST" : "GET",
     cache: "no-store",
     redirect: "error",
+    ...(options.keepalive ? { keepalive: true } : {}),
     signal: options.signal ? AbortSignal.any([options.signal, timeout]) : timeout,
     headers: {
       ...(mutation ? { "content-type": "application/json" } : {}),
@@ -112,4 +115,65 @@ export async function requestJson<T>(
     );
   }
   return response.json() as Promise<T>;
+}
+
+/** Reads a server-sent event stream as the signed-in wallet (an `EventSource` cannot carry a
+ * bearer token), calling `onEvent` with each event's name and JSON data until the stream ends or
+ * `signal` aborts. Resolves when the server closes it; rejects when it cannot be opened or
+ * breaks. The caller reconnects. */
+export async function requestEvents(
+  path: string,
+  options: {
+    signal: AbortSignal;
+    auth: string | true;
+    onEvent: (event: string, data: unknown) => void;
+  },
+): Promise<void> {
+  if (!path.startsWith("/") || path.startsWith("//") || path.includes("\\"))
+    throw new Error("Invalid API path");
+  if (options.auth === true && !hasRequestSession())
+    throw new ApiError("Sign in to continue.", 401, null, undefined, "signed-out");
+  const session = assertRequestSession(options.auth === true ? undefined : options.auth);
+  const response = await fetch(apiUrl(path), {
+    credentials: session.transport === "cookie" ? "include" : "omit",
+    cache: "no-store",
+    redirect: "error",
+    signal: options.signal,
+    headers: {
+      accept: "text/event-stream",
+      ...(session.transport === "token" ? { authorization: `Bearer ${session.token}` } : {}),
+    },
+  });
+  if (!response.ok || !response.body) {
+    if (response.status === 401) announce(SESSION_EXPIRED_EVENT, session.id);
+    throw new ApiError(
+      `Stream unavailable (${response.status})`,
+      response.status,
+      response.headers.get("x-request-id"),
+    );
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) return;
+    buffer += decoder.decode(value, { stream: true });
+    for (let end = buffer.indexOf("\n\n"); end >= 0; end = buffer.indexOf("\n\n")) {
+      const block = buffer.slice(0, end);
+      buffer = buffer.slice(end + 2);
+      let event = "message";
+      const data: string[] = [];
+      for (const line of block.split("\n")) {
+        if (line.startsWith("event:")) event = line.slice(6).trim();
+        else if (line.startsWith("data:")) data.push(line.slice(5).trimStart());
+      }
+      if (!data.length) continue;
+      try {
+        options.onEvent(event, JSON.parse(data.join("\n")));
+      } catch {
+        // A malformed frame changes nothing.
+      }
+    }
+  }
 }

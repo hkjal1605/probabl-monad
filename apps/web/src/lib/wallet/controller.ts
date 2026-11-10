@@ -633,6 +633,28 @@ export function createWalletController(deps: Dependencies) {
       finish(id);
     }
   };
+  /** Asks the wallet to sign EIP-712 typed data (`typed` is its JSON, as `eth_signTypedData_v4`
+   * takes it) on the deployment's chain. Nothing is sent and no gas is spent: the signature is
+   * the caller's to use. */
+  const signTypedData = async (typed: string) => {
+    const check = capture();
+    const owner = state.account;
+    if (!owner) throw new Error("Connect a wallet first.");
+    const id = begin();
+    publish({ status: "signing" });
+    try {
+      await verifyNetwork();
+      check();
+      const signature = (await currentWallet().request({
+        method: "eth_signTypedData_v4",
+        params: [owner as Address, typed],
+      })) as Hex;
+      check();
+      return signature;
+    } finally {
+      finish(id);
+    }
+  };
   /** An earlier release kept one bearer session in storage: it carries over (into its wallet's
    * cookie, or the token store), so upgrading never asks for a signature. */
   const carryOver = async () => {
@@ -760,5 +782,6 @@ export function createWalletController(deps: Dependencies) {
     refreshSession: () => restoreSession(true),
     invalidateSession,
     sendTransaction,
+    signTypedData,
   };
 }
