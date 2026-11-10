@@ -374,6 +374,8 @@ async function main() {
   const timers = [
     setInterval(() => {
       keeper.refresh();
+      // Quotes standing on open requests are looked at again against the refreshed models.
+      maker?.review();
       if (keeper.unannounced()) maker?.indicate();
     }, 1_000),
     setInterval(

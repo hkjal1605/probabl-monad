@@ -24,6 +24,10 @@
     "nearTtlSeconds": 5,
     "nearSeconds": 7200,
     "stopSeconds": 900,
+    "openTtlSeconds": 300,
+    "nearOpenTtlSeconds": 60,
+    "openQuotes": 2,
+    "withdrawEdge": 0.5,
     "indicationStake": "100",
     "indicationMs": 10000
   },

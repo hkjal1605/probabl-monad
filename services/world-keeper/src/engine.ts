@@ -143,6 +143,10 @@ export interface PreviewBook {
   feeBps: number;
   spot: number | null;
 }
+/** Why `review` names a standing quote: it ran out unaccepted, or the price moved against it.
+ * Either way the vault quotes the open request afresh. */
+export const QUOTE_EXPIRED = "Expired";
+export const PRICE_MOVED = "The price moved";
 /** The book id a preview prices under: never a real book's (ids are sequential from 1). */
 export const PREVIEW_BOOK = 2 ** 48;
 /** How old a preview's reference probability may be. */
@@ -160,6 +164,12 @@ export class WorldKeeper {
   readonly centers = new Map<number, Float64Array>();
   /** In-flight quotes by `nonce`, to release them when the replica shows their fill. */
   private readonly byNonce = new Map<bigint, string>();
+  /** Quotes standing on open requests, by request: the bundle signed, the margin it had over
+   * the book's fair value, and the model it was last looked at against. */
+  private readonly standing = new Map<
+    string,
+    { quote: WorldQuote; edge: number; model: BookModel | null }
+  >();
   stopped = false;
 
   constructor(
@@ -372,11 +382,13 @@ export class WorldKeeper {
   }
 
   /** Prices `order` for the vault from memory, or declines it. A preview passes a book that
-   * is not on chain yet (`preview`: the replica with it added, and its model). */
+   * is not on chain yet (`preview`: the replica with it added, and its model). `open` prices
+   * for an open request, whose quote lives long enough for its taker to choose it. */
   price(
     order: WorldOrderRequest,
     minQuoteSeconds: number,
     preview?: { s: WorldState; c: Cached },
+    open = false,
   ): Priced {
     const set = this.options.settings;
     const decline = (reason: string) => ({ decline: reason }) as const;
@@ -404,8 +416,16 @@ export class WorldKeeper {
       Number.POSITIVE_INFINITY,
     );
     if (soonest < set.quotes.stopSeconds * 1000) return decline("A leg resolves soon");
+    const near = soonest < set.quotes.nearSeconds * 1000;
+    const q = set.quotes;
     const ttl = Math.min(
-      soonest < set.quotes.nearSeconds * 1000 ? set.quotes.nearTtlSeconds : set.quotes.ttlSeconds,
+      open
+        ? near
+          ? q.nearOpenTtlSeconds
+          : q.openTtlSeconds
+        : near
+          ? q.nearTtlSeconds
+          : q.ttlSeconds,
       v.limits.maxTtl,
       b.def.cutoff - v.limits.cutoffBuffer - Number(now),
     );
@@ -759,13 +779,22 @@ export class WorldKeeper {
   }
 
   /** Signs a priced quote as the keeper (the nonce names the vault) and holds its capital
-   * against the limits until it expires or is reported lost. */
-  async sign(id: string, priced: Extract<Priced, { quote: WorldQuote }>) {
+   * against the limits until it expires or is reported lost. A quote for an open request
+   * (`open`) replaces the vault's earlier one on it and stays under `review` while it stands. */
+  async sign(id: string, priced: Extract<Priced, { quote: WorldQuote }>, open = false) {
     const account = this.options.account;
     if (!account) throw new Error("Dry run: no keeper key");
     const counter = BigInt(this.options.state.counter) + 1n;
     this.options.state.counter = counter.toString();
     const quote = { ...priced.quote, nonce: contractQuoteNonce(this.vault, counter) };
+    const replaced = this.standing.get(id);
+    if (replaced) this.byNonce.delete(replaced.quote.nonce);
+    if (open)
+      this.standing.set(id, {
+        quote,
+        edge: this.edge(quote, priced.fair),
+        model: this.models.get(Number(quote.book))?.model ?? null,
+      });
     this.risk.hold({
       id,
       book: Number(quote.book),
@@ -792,14 +821,98 @@ export class WorldKeeper {
     } catch (error) {
       this.risk.release(id);
       this.byNonce.delete(quote.nonce);
+      this.standing.delete(id);
       throw error;
     }
   }
 
   /** What a request came to: a lost or unfilled quote frees its capacity at once. */
   outcome(id: string, outcome: string) {
+    this.standing.delete(id);
     if (outcome === "filled") this.options.follower.poke();
     else this.risk.release(id);
+  }
+
+  /** The vault's margin on a quote against the bundle's fair value `fair` (raw quote units):
+   * what it is paid over it selling, or pays under it buying, with the books' fee when the
+   * quote credits it. */
+  private edge(quote: WorldQuote, fair: number) {
+    const b = this.options.follower.confirmed.books.get(Number(quote.book));
+    const fee =
+      b && this.options.settings.pricing.feeCredit
+        ? (Number(quote.price) * b.def.feeBps) / 10_000
+        : 0;
+    return (quote.sell ? fair - Number(quote.price) : Number(quote.price) - fair) + fee;
+  }
+
+  /** The open requests whose standing quote no longer stands, and why: it ran out unaccepted
+   * (`QUOTE_EXPIRED`, already forgotten here); the vault could not quote at all now (stopping,
+   * halted, paused, its chain view or the book's model gone); or the book's fair value moved
+   * against the quote until less than `withdrawEdge` of its margin is left (`PRICE_MOVED`). A
+   * quote's price is looked at again only when its book's model was rebuilt: unchanged inputs
+   * leave its fair value where it was. */
+  review(): { id: string; reason: string }[] {
+    if (!this.standing.size) return [];
+    const nowMs = this.now();
+    this.risk.expire(nowMs);
+    const st = this.state();
+    const blind = this.stopped
+      ? "Stopping"
+      : this.options.state.halted
+        ? "Drawdown latch set"
+        : !this.options.follower.health().healthy
+          ? "Chain view unavailable"
+          : !st
+            ? "The vault is not followed"
+            : st.s.config.paused || st.v.paused
+              ? "Paused"
+              : null;
+    const out: { id: string; reason: string }[] = [];
+    for (const [id, held] of this.standing) {
+      // Its hold ran out with it: the quote fills no more.
+      if (!this.risk.outstanding.has(id)) {
+        this.standing.delete(id);
+        this.byNonce.delete(held.quote.nonce);
+        out.push({ id, reason: QUOTE_EXPIRED });
+        continue;
+      }
+      if (blind) {
+        out.push({ id, reason: blind });
+        continue;
+      }
+      const c = this.models.get(Number(held.quote.book));
+      if (!c) {
+        out.push({ id, reason: "The book is not quoted" });
+        continue;
+      }
+      if (c.model === held.model) continue;
+      held.model = c.model;
+      const holding = Array.from({ length: c.model.atoms }, (_, a) =>
+        Number(bundlePays(held.quote, a)),
+      );
+      const left = this.edge(held.quote, bundleSensitivity(c.model, holding).value);
+      if (left < held.edge * this.options.settings.quotes.withdrawEdge)
+        out.push({ id, reason: PRICE_MOVED });
+    }
+    return out;
+  }
+
+  /** Forgets a standing quote the vault withdrew and frees its capacity. */
+  withdraw(id: string) {
+    const held = this.standing.get(id);
+    if (!held) return;
+    this.standing.delete(id);
+    this.byNonce.delete(held.quote.nonce);
+    this.risk.release(id);
+  }
+
+  /** The API dropped every quote standing on an open request (the stream closed): none of them
+   * fills any more. */
+  dropStanding() {
+    for (const id of [...this.standing.keys()]) this.withdraw(id);
+  }
+  get standingQuotes() {
+    return this.standing.size;
   }
 
   /** A fill the replica applied: the vault's own release its in-flight hold (the replica now
@@ -813,6 +926,7 @@ export class WorldKeeper {
       if (id) {
         this.risk.release(id);
         this.byNonce.delete(f.nonce);
+        this.standing.delete(id);
       }
       const model = this.models.get(f.book)?.model;
       const holding = model
