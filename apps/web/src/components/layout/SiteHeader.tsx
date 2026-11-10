@@ -7,7 +7,6 @@ import {
   Sheet,
   SheetClose,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -62,7 +61,6 @@ export function SiteHeader() {
           <SheetContent>
             <SheetHeader>
               <SheetTitle>probabl</SheetTitle>
-              <SheetDescription>Explore impact markets</SheetDescription>
             </SheetHeader>
             <nav className="mt-6 flex flex-col gap-2" aria-label="Mobile navigation">
               <SheetClose
