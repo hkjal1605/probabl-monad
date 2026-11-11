@@ -7,7 +7,6 @@ import {
   Sheet,
   SheetClose,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -32,6 +31,14 @@ export function SiteHeader() {
             New
           </span>
         </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          render={<Link href="/worlds/explore" />}
+          nativeButton={false}
+        >
+          Explore
+        </Button>
       </nav>
       <div className="absolute left-1/2 -translate-x-1/2">
         <MarketSearch />
@@ -54,7 +61,6 @@ export function SiteHeader() {
           <SheetContent>
             <SheetHeader>
               <SheetTitle>probabl</SheetTitle>
-              <SheetDescription>Explore impact markets</SheetDescription>
             </SheetHeader>
             <nav className="mt-6 flex flex-col gap-2" aria-label="Mobile navigation">
               <SheetClose
@@ -69,6 +75,19 @@ export function SiteHeader() {
                 }
               >
                 Worlds
+              </SheetClose>
+              <SheetClose
+                nativeButton={false}
+                render={
+                  <Button
+                    variant="ghost"
+                    className="justify-start"
+                    render={<Link href="/worlds/explore" />}
+                    nativeButton={false}
+                  />
+                }
+              >
+                Explore
               </SheetClose>
               <SheetClose
                 nativeButton={false}

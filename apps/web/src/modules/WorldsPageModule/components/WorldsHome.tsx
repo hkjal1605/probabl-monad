@@ -5,12 +5,13 @@ import { ExploringWorlds } from "./ExploringWorlds";
 import { LiveWorlds } from "./LiveWorlds";
 import { type ShownWorld, WorldPayouts } from "./WorldPayouts";
 import { WorldStarter } from "./WorldStarter";
+import { YourOrders } from "./YourOrders";
 
 /** Cards each list shows here (and reads: no more), with "View All" to its own page. */
 const HOME_CARDS = 4;
 
-/** The worlds home: where a world starts (someone's words), the worlds people are exploring,
- * and every world people trade. */
+/** The worlds home: where a world starts (someone's words), the signed-in wallet's orders still
+ * out for quotes, the worlds people are exploring, and every world people trade. */
 export function WorldsHome() {
   const [shown, setShown] = useState<ShownWorld | null>(null);
   /** Back to the starter, with its first open event's search opened. */
@@ -40,6 +41,9 @@ export function WorldsHome() {
       <section>
         <WorldPayouts shown={shown} />
       </section>
+
+      {/* The signed-in wallet's orders still waiting for quotes */}
+      <YourOrders />
 
       {/* Worlds others priced that nobody holds yet, each a tap from a bet */}
       <ExploringWorlds limit={HOME_CARDS} />

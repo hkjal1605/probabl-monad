@@ -50,12 +50,31 @@ export function PositionCard({
   const [cashing, setCashing] = useState(false);
   const refund = BigInt(position.refund) > 0n;
   const layer = position.layers.find((l) => l.outcome) ?? null;
-  const direction = (
-    layer?.outcome?.kind === "above" || layer?.outcome?.kind === "below" ? layer.outcome.kind : null
-  ) as "above" | "below" | null;
-  const sentence = book ? sentenceOf(book, direction ?? book.opinion?.direction ?? null) : null;
+  // The other side of someone's bet (what a wallet holds once its quote on the Explore page
+  // filled): it pays in full if the world fails and on every outcome but the bet's own.
+  const atoms = position.atoms.map((a) => BigInt(a));
+  const top = atoms.reduce((most, a) => (a > most ? a : most), 0n);
+  const against = top > 0n && atoms[0] === top && atoms.some((a) => a < top);
+  const betMask = atoms.reduce((mask, a, i) => (i > 0 && a < top ? mask | (1 << i) : mask), 0);
+  const bet = against
+    ? book?.products.find((p) => p.kind === "world-bet" && p.mask === betMask)?.outcome
+    : layer?.outcome;
+  // The stock's move the card names: the holder's own, or, against a bet, the bet's.
+  const direction = (bet?.kind === "above" || bet?.kind === "below" ? bet.kind : null) as
+    | "above"
+    | "below"
+    | null;
+  const sentence = book
+    ? sentenceOf(book, direction ?? (against ? null : (book.opinion?.direction ?? null)))
+    : null;
   const decided = book ? ["failed", "passed", "fixed"].includes(book.state) : false;
-  const winAtoms = book && layer?.outcome ? outcomeAtoms(layer.outcome, book.atoms) : [];
+  const winAtoms = !book
+    ? []
+    : against
+      ? atoms.flatMap((a, i) => (a === top ? [i] : []))
+      : layer?.outcome
+        ? outcomeAtoms(layer.outcome, book.atoms)
+        : [];
   const winChance = book?.marks ? winAtoms.reduce((s, a) => s + (book.marks![a] ?? 0), 0) : null;
   const spot =
     book?.analytics?.spot && book.feedDecimals !== null
@@ -73,10 +92,14 @@ export function PositionCard({
           <span
             className={cn(
               "rounded-md px-1.5 py-0.5 text-[11px] font-medium",
-              refund ? "bg-info-soft text-info" : "bg-brand-soft text-brand-strong",
+              against
+                ? "bg-secondary text-foreground"
+                : refund
+                  ? "bg-info-soft text-info"
+                  : "bg-brand-soft text-brand-strong",
             )}
           >
-            {refund ? "Money-back" : "All-in"}
+            {against ? "Other side" : refund ? "Money-back" : "All-in"}
           </span>
           {paid > 0 && <span>you paid {money(paid, { cents: true })}</span>}
         </span>
@@ -84,6 +107,9 @@ export function PositionCard({
           World #{position.book} →
         </Link>
       </div>
+      {against && (
+        <p className="-mb-2 text-xs text-muted-foreground">You win unless this bet comes true:</p>
+      )}
       {sentence ? (
         <WorldSentence world={sentence} size="card" />
       ) : (
@@ -152,7 +178,7 @@ export function PositionCard({
         </div>
         <div className="flex flex-col gap-0.5">
           <span className="text-[11px] font-medium text-muted-foreground">
-            {decided ? "Pays" : "If right"}
+            {decided ? "Pays" : against ? "If it fails" : "If right"}
           </span>
           <span className="text-base font-medium tabular-nums text-positive">
             {decided ? moneyRaw(position.payout ?? "0") : moneyRaw(position.maxPayout)}
@@ -173,7 +199,7 @@ export function PositionCard({
               ? `Settled. Collect ${moneyRaw(position.payout ?? "0")} into your world balance.`
               : "Settled."
             : nextLeg
-              ? refund
+              ? refund && !against
                 ? `Next: ${whenDay(nextLeg.venue!.endTime)}. If that event doesn't happen, your stake comes back that day.`
                 : `Next: ${whenDay(nextLeg.venue!.endTime)}, when “${legLabel(nextLeg.venue!.question)}” is decided.`
               : book?.fixingTime
@@ -182,7 +208,7 @@ export function PositionCard({
         </p>
         {position.redeemable ? (
           <RedeemButton book={position.book} account={account} onDone={onChanged} />
-        ) : !decided && book?.tradable ? (
+        ) : !decided && book?.tradable && !against ? (
           <Button variant="secondary" size="sm" onClick={() => setCashing(true)}>
             Cash out
           </Button>

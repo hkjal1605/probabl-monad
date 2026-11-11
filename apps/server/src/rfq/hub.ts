@@ -5,7 +5,14 @@
  * fully answered request never waits out the window, and with no maker online `collect` returns
  * at once without a timer. Each quote is checked as it arrives and the maker hears whether it
  * stands; a later quote from the same maker replaces its earlier one. Makers also post their
- * current prices for a standard order (`indications`), which `prices` combines across them. */
+ * current prices for a standard order (`indications`), which `prices` combines across them.
+ *
+ * A standing request (`open`: a world order out for quotes) is not decided by a window. It
+ * stays open until its owner closes it; meanwhile any maker approved for its kind quotes it,
+ * replaces its quote, or withdraws it with `decline`. A maker that connects later receives every
+ * standing request, and one whose last connection drops takes its quotes with it (it can no
+ * longer withdraw them). The window only bounds how long the owner waits for the first answers
+ * (`firstRound`, and each `ask` after it). */
 import type { Address } from "viem";
 import {
   type MakerIdentity,
@@ -49,15 +56,42 @@ export type QuoteCheck<T = MakerQuote> = (
 ) => string | null | Promise<string | null>;
 /** A request's kind: a market order of the exchange, or a world order (version 2). */
 export type RequestKind = "market" | "world";
+/** Why a standing quote left its request other than by the request closing: its maker
+ * withdrew it, or went offline. */
+export type QuoteWithdrawal = "withdrawn" | "offline";
+/** A request that stays open until `close`. */
+export interface OpenRequest<T = MakerQuote> {
+  /** Settles once every maker the request first went to has answered, or the window passed. */
+  firstRound: Promise<void>;
+  /** The standing quotes, in arrival order. */
+  quotes(): CollectedQuote<T>[];
+  /** Sends the request again to the makers online that hold no quote on it; settles like
+   * `firstRound`. */
+  ask(): Promise<void>;
+  /** Forgets a maker's standing quote (it expired or no longer fills), so the maker is asked
+   * again. */
+  drop(makerId: string): void;
+  /** Ends the request: later quotes are refused. */
+  close(): void;
+}
 interface Pending {
   kind: RequestKind;
   open: boolean;
+  /** The makers this round waits for. */
   recipients: Set<string>;
   done: Set<string>;
   quotes: Map<string, CollectedQuote<unknown>>;
   attempts: Map<string, number>;
   validate: QuoteCheck<unknown>;
+  /** Ends the round (and a request that is not standing). */
   finish(): void;
+  /** A standing request's own. */
+  standing: {
+    request(replay: boolean): object;
+    exclude: Address | undefined;
+    onQuote(quote: CollectedQuote<unknown>, replaced: CollectedQuote<unknown> | null): void;
+    onWithdrawn(quote: CollectedQuote<unknown>, why: QuoteWithdrawal): void;
+  } | null;
 }
 /** The best indicative prices of one world book across the makers online: each product's
  * highest bid and lowest ask, and the newest maker's atom marks. */
@@ -84,6 +118,13 @@ export const CLOSE_LIMIT = 4002;
 export const CLOSE_RECONNECT = 4003;
 /** Quotes a maker may send per request, replacements included. */
 const MAX_ATTEMPTS = 5;
+/** The same for a standing request, which a maker quotes again as its quotes run out or the
+ * price moves. */
+const MAX_STANDING_ATTEMPTS = 256;
+/** Standing requests a connecting maker receives per burst, and the pause between bursts: a
+ * long list never fills a connection's send buffer. */
+const REPLAY_BURST = 25;
+const REPLAY_PAUSE_MS = 20;
 
 export class RfqHub {
   private readonly sessions = new Map<string, Set<RfqSession>>();
@@ -149,7 +190,34 @@ export class RfqHub {
       quoteWindowMs: this.options.windowMs,
       ...this.options.welcome(session.maker),
     });
+    this.replay(session);
     return true;
+  }
+
+  /** Whether `maker` may quote a request of `kind` that `exclude` owns. */
+  private eligible(maker: MakerIdentity, kind: RequestKind, exclude?: Address) {
+    return maker.wallet !== exclude && (kind === "market" || maker.worlds === true);
+  }
+
+  /** Sends a maker that just connected every standing request it holds no quote on, oldest
+   * first, in bursts. */
+  private replay(session: RfqSession) {
+    const maker = session.maker;
+    const ids = [...this.pending.entries()]
+      .filter(([, p]) => p.standing && this.eligible(maker, p.kind, p.standing.exclude))
+      .map(([id]) => id);
+    if (!ids.length) return;
+    const burst = () => {
+      if (!this.sessions.get(maker.id)?.has(session)) return;
+      for (const id of ids.splice(0, REPLAY_BURST)) {
+        const p = this.pending.get(id);
+        if (!p?.open || !p.standing || p.quotes.has(maker.id)) continue;
+        this.stats(maker.id).requests++;
+        if (!session.send(p.standing.request(true))) return;
+      }
+      if (ids.length) setTimeout(burst, REPLAY_PAUSE_MS);
+    };
+    burst();
   }
 
   detach(session: RfqSession) {
@@ -160,8 +228,16 @@ export class RfqHub {
     this.sessions.delete(id);
     this.indications.delete(id);
     this.worldIndications.delete(id);
-    // A maker gone mid-request cannot answer it: the request stops waiting for it.
-    for (const p of this.pending.values()) if (p.recipients.has(id)) this.answered(p, id);
+    for (const p of [...this.pending.values()]) {
+      // A maker gone offline cannot withdraw a standing quote: it goes with the maker.
+      const held = p.standing ? p.quotes.get(id) : undefined;
+      if (held) {
+        p.quotes.delete(id);
+        p.standing?.onWithdrawn(held, "offline");
+      }
+      // A maker gone mid-request cannot answer it: the request stops waiting for it.
+      if (p.recipients.has(id)) this.answered(p, id);
+    }
   }
 
   /** Closes every connection of a maker (its key was revoked). */
@@ -250,6 +326,13 @@ export class RfqHub {
     for (const session of this.sessions.get(makerId) ?? []) session.send(message);
   }
 
+  /** Sends to every maker online that may quote requests of `kind` (never `exclude`). */
+  broadcast(kind: RequestKind, message: object, exclude?: Address) {
+    for (const live of this.sessions.values())
+      for (const session of live)
+        if (this.eligible(session.maker, kind, exclude)) session.send(message);
+  }
+
   /** Broadcasts `request` and resolves with the standing quotes, in arrival order. A world
    * request (`kind: "world"`) goes only to the makers approved for worlds. */
   collect<T = MakerQuote>(input: {
@@ -278,6 +361,7 @@ export class RfqHub {
         quotes: new Map(),
         attempts: new Map(),
         validate: input.validate as QuoteCheck<unknown>,
+        standing: null,
         finish: () => {
           if (!p.open) return;
           p.open = false;
@@ -297,6 +381,87 @@ export class RfqHub {
         if (!delivered) this.answered(p, id);
       }
     });
+  }
+
+  /** Opens a standing request: `request(false)` goes to every eligible maker online now, and
+   * `request(true)` to each that connects later or is asked again. Every quote that stands is
+   * reported (`onQuote`, with the one it replaced), and every one that leaves before `close`
+   * (`onWithdrawn`). With no maker online the first round settles at once. */
+  open<T = MakerQuote>(input: {
+    id: string;
+    kind: RequestKind;
+    request(replay: boolean): object;
+    exclude?: Address;
+    validate: QuoteCheck<T>;
+    onQuote(quote: CollectedQuote<T>, replaced: CollectedQuote<T> | null): void;
+    onWithdrawn(quote: CollectedQuote<T>, why: QuoteWithdrawal): void;
+  }): OpenRequest<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let settle: (() => void) | undefined;
+    const p: Pending = {
+      kind: input.kind,
+      open: true,
+      recipients: new Set(),
+      done: new Set(),
+      quotes: new Map(),
+      attempts: new Map(),
+      validate: input.validate as QuoteCheck<unknown>,
+      standing: {
+        request: input.request,
+        exclude: input.exclude,
+        onQuote: input.onQuote as never,
+        onWithdrawn: input.onWithdrawn as never,
+      },
+      finish: () => {
+        clearTimeout(timer);
+        timer = undefined;
+        p.recipients = new Set();
+        p.done = new Set();
+        settle?.();
+        settle = undefined;
+      },
+    };
+    /** One round: the request to the eligible makers online that hold no quote on it. */
+    const round = (replay: boolean) => {
+      // A round still waiting ends here: its makers are asked again with the rest.
+      p.finish();
+      if (!p.open) return Promise.resolve();
+      const recipients = [...this.sessions.entries()].filter(([id, live]) => {
+        const first = live.values().next().value;
+        return (
+          first !== undefined &&
+          !p.quotes.has(id) &&
+          this.eligible(first.maker, p.kind, input.exclude)
+        );
+      });
+      if (!recipients.length) return Promise.resolve();
+      return new Promise<void>((resolve) => {
+        settle = resolve;
+        p.recipients = new Set(recipients.map(([id]) => id));
+        timer = setTimeout(p.finish, this.options.windowMs);
+        const frame = input.request(replay);
+        for (const [id, live] of recipients) {
+          this.stats(id).requests++;
+          let delivered = false;
+          for (const session of live) delivered = session.send(frame) || delivered;
+          if (!delivered) this.answered(p, id);
+        }
+      });
+    };
+    this.pending.set(input.id, p);
+    return {
+      firstRound: round(false),
+      quotes: () =>
+        [...p.quotes.values()].sort((a, b) => a.arrival - b.arrival) as CollectedQuote<T>[],
+      ask: () => round(true),
+      drop: (makerId) => void p.quotes.delete(makerId),
+      close: () => {
+        if (!p.open) return;
+        p.open = false;
+        this.pending.delete(input.id);
+        p.finish();
+      },
+    };
   }
 
   /** Asks the makers approved for worlds to price a world not created yet (`world.preview`).
@@ -374,7 +539,11 @@ export class RfqHub {
     }
     const maker = session.maker,
       p = this.pending.get(message.rfqId);
-    if (!p?.recipients.has(maker.id)) {
+    // A standing request is any eligible maker's to quote; another only its recipients'.
+    const asked =
+      p &&
+      (p.standing ? this.eligible(maker, p.kind, p.standing.exclude) : p.recipients.has(maker.id));
+    if (!p || !asked) {
       if (message.type === "quote" || message.type === "world.quote")
         session.send({
           type: "quote.rejected",
@@ -386,7 +555,10 @@ export class RfqHub {
     const stats = this.stats(maker.id);
     if (message.type === "decline") {
       stats.declines++;
+      // Declining after a quote withdraws it.
+      const held = p.quotes.get(maker.id);
       p.quotes.delete(maker.id);
+      if (held) p.standing?.onWithdrawn(held, "withdrawn");
       this.answered(p, maker.id);
       return;
     }
@@ -427,7 +599,8 @@ export class RfqHub {
       stats.rejections++;
       session.send({ type: "quote.rejected", rfqId, reason });
     };
-    if (attempts > MAX_ATTEMPTS) return reject(`At most ${MAX_ATTEMPTS} quotes per request`);
+    const most = p.standing ? MAX_STANDING_ATTEMPTS : MAX_ATTEMPTS;
+    if (attempts > most) return reject(`At most ${most} quotes per request`);
     const settle = (reason: string | null) => {
       if (!p.open) return reject("The request closed before the quote was checked");
       if (reason) return reject(reason);
@@ -437,6 +610,7 @@ export class RfqHub {
       stats.quotes++;
       p.quotes.set(maker.id, quote);
       session.send({ type: "quote.accepted", rfqId });
+      p.standing?.onQuote(quote, held ?? null);
       this.answered(p, maker.id);
     };
     let check: ReturnType<QuoteCheck>;
@@ -451,6 +625,8 @@ export class RfqHub {
   }
 
   private answered(p: Pending, makerId: string) {
+    // A standing request between rounds waits for nobody.
+    if (!p.recipients.has(makerId)) return;
     p.done.add(makerId);
     if (p.done.size >= p.recipients.size) p.finish();
   }

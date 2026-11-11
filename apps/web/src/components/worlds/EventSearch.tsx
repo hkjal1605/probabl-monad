@@ -91,20 +91,34 @@ export function EventRow({
   );
 }
 
-/** The event search: Polymarket and Kalshi, as you type. With nothing typed it offers
- * `suggestions` (live events to start from), else a line saying what it searches. */
+/** The event search: Polymarket and Kalshi, as you type. With nothing typed it offers `similar`
+ * (events the words may have meant) and `suggestions` (live events to start from), else a line
+ * saying what it searches. */
 export function EventSearchPanel({
   onPick,
   initial = "",
   exclude = [],
   suggestions = [],
+  similar = [],
   autoFocus = true,
+  placeholder = "Fed cut, trade deal, CPI, shutdown…",
+  action = "Add",
+  tight = false,
 }: {
   onPick: (e: LegEntry) => void;
   initial?: string;
   exclude?: string[];
   suggestions?: LegEntry[];
+  /** Events the words may have meant, offered first ("Or did you mean"). */
+  similar?: LegEntry[];
   autoFocus?: boolean;
+  placeholder?: string;
+  /** What taking a found event is called on its row: "Add", or "Use" where it takes another
+   * event's place. */
+  action?: string;
+  /** Under an event's own details in a popover: the list takes only the room of what it shows,
+   * and nothing while it has nothing to show. A sheet's list fills it as ever. */
+  tight?: boolean;
 }) {
   const [q, setQ] = useState(initial);
   const [state, setState] = useState<{ q: string; events: LegEntry[] | null; error: boolean }>({
@@ -131,32 +145,51 @@ export function EventSearchPanel({
   }, [q]);
   const term = q.trim();
   const shown = state.q === term ? state.events?.filter((e) => !exclude.includes(e.id)) : null;
-  const offered = suggestions.filter((e) => !exclude.includes(e.id));
+  const meant = similar.filter((e) => !exclude.includes(e.id));
+  const offered = suggestions.filter(
+    (e) => !exclude.includes(e.id) && !meant.some((m) => m.id === e.id),
+  );
   // In a bottom sheet the field waits for a tap (focusing it would raise the keyboard over the
   // suggestions), and the results fill the sheet, scrolling clear of the keyboard.
   const sheet = useInSheet();
+  const idle = term.length < 2;
+  const snug = tight && !sheet;
+  // A snug list with nothing to offer yet is no list: only the field shows.
+  if (snug && idle && !meant.length && !offered.length)
+    return (
+      <SearchField
+        value={q}
+        onChange={setQ}
+        placeholder={placeholder}
+        autoFocus={autoFocus && !sheet}
+      />
+    );
   return (
     <>
-      <div className="relative shrink-0">
-        <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          autoFocus={autoFocus && !sheet}
-          type="search"
-          enterKeyHint="search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Fed cut, trade deal, CPI, shutdown…"
-          aria-label="Search events"
-          className="h-11 rounded-full pl-10 text-base [&::-webkit-search-cancel-button]:hidden"
-        />
-      </div>
+      <SearchField
+        value={q}
+        onChange={setQ}
+        placeholder={placeholder}
+        autoFocus={autoFocus && !sheet}
+      />
       <div
         className={cn(
-          "-mx-2 flex min-h-40 flex-col overflow-y-auto overscroll-contain",
+          "-mx-2 flex flex-col overflow-y-auto overscroll-contain",
+          snug ? "min-h-0" : "min-h-40",
           sheet && "flex-1 touch-auto pb-[var(--drawer-keyboard-inset,0px)]",
         )}
       >
-        {term.length < 2 && offered.length > 0 && (
+        {idle && meant.length > 0 && (
+          <>
+            <span className="px-2 pt-1 pb-0.5 text-xs font-medium text-muted-foreground">
+              Or did you mean
+            </span>
+            {meant.map((e) => (
+              <EventRow key={e.id} event={e} onPick={onPick} action="Use" />
+            ))}
+          </>
+        )}
+        {idle && offered.length > 0 && (
           <>
             <span className="px-2 pt-1 pb-0.5 text-xs font-medium text-muted-foreground">
               Live on Polymarket
@@ -166,7 +199,7 @@ export function EventSearchPanel({
             ))}
           </>
         )}
-        {term.length < 2 && !offered.length && (
+        {idle && !meant.length && !offered.length && (
           <p className="px-2 py-6 text-center text-sm text-muted-foreground">
             Polymarket and Kalshi events
           </p>
@@ -189,10 +222,39 @@ export function EventSearchPanel({
           </p>
         )}
         {shown?.map((e) => (
-          <EventRow key={e.id} event={e} onPick={onPick} />
+          <EventRow key={e.id} event={e} onPick={onPick} action={action} />
         ))}
       </div>
     </>
+  );
+}
+
+/** The search's field. */
+function SearchField({
+  value,
+  onChange,
+  placeholder,
+  autoFocus,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  autoFocus: boolean;
+}) {
+  return (
+    <div className="relative shrink-0">
+      <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
+      <Input
+        autoFocus={autoFocus}
+        type="search"
+        enterKeyHint="search"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        aria-label="Search events"
+        className="h-11 rounded-full pl-10 text-base [&::-webkit-search-cancel-button]:hidden"
+      />
+    </div>
   );
 }
 
@@ -205,6 +267,7 @@ export function EventSearchDialog({
   title = "Add an event",
   initial = "",
   exclude = [],
+  suggestions = [],
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -212,6 +275,8 @@ export function EventSearchDialog({
   title?: string;
   initial?: string;
   exclude?: string[];
+  /** Live events to offer before anything is typed. */
+  suggestions?: LegEntry[];
 }) {
   return (
     <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
@@ -227,7 +292,14 @@ export function EventSearchDialog({
         scroll={false}
       >
         {/* Mounted only while open, so each opening starts from `initial`. */}
-        {open && <EventSearchPanel onPick={onPick} initial={initial} exclude={exclude} />}
+        {open && (
+          <EventSearchPanel
+            onPick={onPick}
+            initial={initial}
+            exclude={exclude}
+            suggestions={suggestions}
+          />
+        )}
       </ResponsiveDialogContent>
     </ResponsiveDialog>
   );

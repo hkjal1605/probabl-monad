@@ -38,6 +38,20 @@ export interface QuotePolicy {
   nearSeconds: number;
   /** No quote within this long of a leg's scheduled resolution. */
   stopSeconds: number;
+  /** Seconds a quote on an open request lives: its taker reads the quotes and chooses one, so
+   * it needs minutes, not seconds (at most the vault's `maxTtl`). Within `nearSeconds` of a
+   * leg's scheduled resolution it lives `nearOpenTtlSeconds`. */
+  openTtlSeconds: number;
+  nearOpenTtlSeconds: number;
+  /** How many quotes the vault gives one ask of an open request of its own accord: the first,
+   * then one more each time its quote runs out unaccepted or the price moves against it. Past
+   * that it stays out until the taker asks again, so a request nobody means to fill holds the
+   * vault's capacity for this many quote lives at most. */
+  openQuotes: number;
+  /** A quote standing on an open request is replaced by one at the new price once the book's
+   * fair value has moved against it until less than this share of the margin it was signed
+   * with is left. */
+  withdrawEdge: number;
   /** A standard ticket for indications, whole quote tokens. */
   indicationStake: string;
   indicationMs: number;
@@ -113,6 +127,10 @@ export const DEFAULT_QUOTES: QuotePolicy = {
   nearTtlSeconds: 5,
   nearSeconds: 7_200,
   stopSeconds: 900,
+  openTtlSeconds: 300,
+  nearOpenTtlSeconds: 60,
+  openQuotes: 2,
+  withdrawEdge: 0.5,
   indicationStake: "100",
   indicationMs: 10_000,
 };
@@ -220,6 +238,10 @@ export function settings(input: unknown): Settings {
       nearTtlSeconds: [3, 300],
       nearSeconds: [0, 7 * 86_400],
       stopSeconds: [0, 86_400],
+      openTtlSeconds: [10, 3_600],
+      nearOpenTtlSeconds: [10, 3_600],
+      openQuotes: [1, 64],
+      withdrawEdge: [0, 1],
       indicationMs: [1_000, 60_000],
     },
     "quotes",

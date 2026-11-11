@@ -3,9 +3,18 @@
  * are decimal strings of raw quote units; per-unit prices and atom marks are x 1e6.
  *
  * Server to maker: `world.rfq` for every world order, `quote.accepted` / `quote.rejected` for
- * each quote, `world.result` once the order settled. Maker to server: `world.quote` (a signed
- * `WorldQuote`), `decline` (shared with version 1), and `world.indications` (its current
- * prices for each book's standard products and the atom marks it values books at). */
+ * each quote, `world.declined` when the taker turned its standing quote down, `world.result`
+ * once the order settled, and `world.closed` when an open request ended. Maker to server: `world.quote` (a signed `WorldQuote`), `decline` (shared with version
+ * 1; after a quote it withdraws it), and `world.indications` (its current prices for each
+ * book's standard products and the atom marks it values books at).
+ *
+ * A world order is asked in one of two ways. An open request (`open: true`) stays open until
+ * `quoteDeadline`, 15 minutes by default: its taker sees every standing quote with its own
+ * expiry and fills the one they choose, or none. A maker quotes it whenever it likes before the
+ * deadline, replaces its quote with a later one, and withdraws it with `decline`; makers that
+ * connect later receive it too (`replay: true`), and a maker's quotes leave with its last
+ * connection. An auction (`open: false`) is decided when the window closes, the best quote
+ * filling at once. */
 
 import {
   BOOK_STATE_NAMES,
@@ -260,11 +269,28 @@ export interface WorldOrder {
   limit: bigint;
 }
 
-/** The request every world maker receives for one world order. */
+/** What a maker hears when the taker declined its standing quote on an open request: the quote
+ * is gone and fills no more, the request stays open, and the maker may quote it again (the
+ * request is sent to it again if the taker asks for fresh quotes). */
+export const worldQuoteDeclined = (id: string) => ({ type: "world.declined", rfqId: id });
+
+/** Why an open request ended. */
+export type WorldRfqEnd = "filled" | "cancelled" | "expired";
+/** What every world maker online hears when an open request ends. */
+export const worldRfqClosed = (id: string, reason: WorldRfqEnd) => ({
+  type: "world.closed",
+  rfqId: id,
+  reason,
+});
+
+/** The request every world maker receives for one world order. `open` makes it an open request:
+ * quotable until it expires, sent again (`replay`) to a maker that connects later or is asked
+ * again. Without it the request is an auction over `windowMs`. */
 export function worldRfqRequest(input: {
   id: string;
   sentAt: number;
   windowMs: number;
+  open?: { expiresAt: number; replay: boolean };
   minQuoteSeconds: number;
   chainId: number;
   books: Address;
@@ -279,8 +305,13 @@ export function worldRfqRequest(input: {
     type: "world.rfq",
     version: WORLD_PROTOCOL_VERSION,
     id: input.id,
+    /** When the order was asked (an open request keeps it when it is sent again). */
     sentAt: input.sentAt,
-    quoteDeadline: input.sentAt + input.windowMs,
+    /** Quotes received after this time (ms since the epoch) are not considered. */
+    quoteDeadline: input.open?.expiresAt ?? input.sentAt + input.windowMs,
+    /** Whether the taker chooses among the standing quotes (true) or the best fills at once. */
+    open: Boolean(input.open),
+    replay: input.open?.replay ?? false,
     chainId: input.chainId,
     books: input.books,
     book: {

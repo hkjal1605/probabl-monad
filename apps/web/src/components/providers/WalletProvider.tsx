@@ -29,6 +29,7 @@ type WalletValue = WalletState &
     | "invalidateSession"
     | "refreshSession"
     | "sendTransaction"
+    | "signTypedData"
   > & {
     /** Signs in (or reuses the session), joining with an invite link's code when one is kept. */
     authenticate(): Promise<string>;
@@ -90,6 +91,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       invalidateSession: controller.invalidateSession,
       refreshSession: controller.refreshSession,
       sendTransaction: controller.sendTransaction,
+      signTypedData: controller.signTypedData,
     }),
     [state, invite, controller, authenticate],
   );

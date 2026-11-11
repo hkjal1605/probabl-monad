@@ -44,6 +44,10 @@ export type {
   WorldGapRecord,
   WorldLegMetadata,
   WorldPriceRow,
+  WorldRfqFill,
+  WorldRfqOrder,
+  WorldRfqRecord,
+  WorldRfqStatus,
   WorldVolRecord,
 } from "./worlds.ts";
 

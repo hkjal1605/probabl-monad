@@ -221,7 +221,9 @@ const adminCalls: Envelope[] = [
   calls.seed(seed),
 ];
 const limits: WorldVaultLimits = {
-  maxTtl: 30,
+  // Quotes on open requests live minutes while a taker chooses (the keeper's
+  // `quotes.openTtlSeconds`, 5 minutes by default).
+  maxTtl: 600,
   cutoffBuffer: 3_600,
   maxTenor: 35 * 86_400,
   maxLegs: 4,

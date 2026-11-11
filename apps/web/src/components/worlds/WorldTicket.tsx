@@ -7,9 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { Spinner } from "@/components/ui/spinner";
+import { toast } from "@/components/ui/toast";
 import { explorerFor, protocolConfig, worldsEnabled } from "@/config/protocol";
+import { type RfqOrder, useRfqOrder } from "@/hooks/useRfqOrder";
 import { useWorldAccount } from "@/hooks/useWorldAccount";
 import { cn } from "@/lib/utils";
+import { orderCost, orderWorld } from "@/lib/worlds/board";
 import { chancePercent, dollars, money, multiple, whenDay } from "@/lib/worlds/format";
 import {
   atStake,
@@ -20,14 +23,17 @@ import {
   stakeRawWithin,
   stakeWithin,
 } from "@/lib/worlds/offer";
-import type { BookView, Preview, Spec } from "@/lib/worlds/types";
+import type { BookView, Preview, RfqQuote, Spec } from "@/lib/worlds/types";
+import { ApiError } from "@/services/api";
 import { worldsApi } from "@/services/worlds-api";
 import { Fact } from "./primitives";
+import { type BoardAction, QuoteBoard } from "./QuoteBoard";
 import { type SentenceWorld, WorldSentence } from "./Sentence";
 import { shareLink } from "./share";
 
 export type TicketWorld =
-  | { kind: "draft"; spec: Spec; preview: Preview | null; pricing: boolean }
+  // A draft's spec is null while it has no event: nothing is priced, and nothing can be placed.
+  | { kind: "draft"; spec: Spec | null; preview: Preview | null; pricing: boolean }
   | { kind: "book"; book: BookView };
 
 const STAKES: Record<ProductName, number[]> = {
@@ -42,16 +48,18 @@ const DEFAULT_FEE_BPS = 100;
 /** An amount as "You pay" shows it: whole dollars, or with its cents. */
 const amountText = (amount: number) =>
   Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
-/** How far the price may move between the offer shown and the fill. */
-const TOLERANCE = 0.03;
 const LOW_CHANCE = 10_000;
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** What a world offers, and the one gesture that trades it: the product chosen as a belief, what
- * to pay (the fee comes out of it, so an order costs what it says), what it pays and how many
- * times over, then the account steps and the trade. Fills are RFQ only: a maker's firm quote at
- * the moment of the trade. */
+/** What a world offers, and how it is traded: the product chosen as a belief, what to pay (the
+ * fee comes out of it, so an order costs what it says) and what it should pay, then the account
+ * steps. Placing the order opens the world if it is new and sends the order to the makers: the
+ * ticket then shows their quotes as they arrive (`QuoteBoard`), each firm until its own expiry,
+ * and the person accepts one, declines one, or cancels. Nothing fills until a quote is accepted,
+ * and until Place nothing is opened or asked: the prices before it are estimates. An order stays
+ * open when the page is left (until it is cancelled, accepted or runs out), and the ticket of its
+ * world shows it again. */
 export function WorldTicket({
   world,
   sentence,
@@ -80,16 +88,68 @@ export function WorldTicket({
   >);
   const [payText, setPayText] = useState<string | null>(null);
   const [ack, setAck] = useState(false);
-  const [phase, setPhase] = useState<"idle" | "opening" | "pricing" | "placing">("idle");
-  const [receipt, setReceipt] = useState<{
-    book: number;
-    product: ProductName;
-    paid: number;
-    payout: number;
-    refund: number;
-    tx: string;
-  } | null>(null);
-  const clientId = useRef<string | null>(null);
+  const [phase, setPhase] = useState<"idle" | "opening" | "asking">("idle");
+  const [receipt, setReceipt] = useState<ReceiptOf | null>(null);
+  // The order out for quotes, and what it was placed as (the ticket may change underneath).
+  const { order, show } = useRfqOrder(account.owner);
+  const [placed, setPlaced] = useState<{ product: ProductName; amount: number } | null>(null);
+  const [action, setAction] = useState<BoardAction | null>(null);
+  /** The order as it stood when a quote was accepted: the board holds still while it fills. */
+  const held = useRef<RfqOrder | null>(null);
+  /** One request id a quote: accepting the same quote again never fills twice. */
+  const clientIds = useRef(new Map<string, string>());
+
+  // An order this wallet left open on this world is its board again: once the world has a book,
+  // one read of the wallet's open orders (the API holds them in memory) finds it, and a draft's
+  // book is read too, to know the order bets the way the sentence says.
+  const bookId = world.kind === "book" ? world.book.id : (world.preview?.existing?.book ?? null);
+  const owner = account.owner;
+  const resumedFor = useRef<string | null>(null);
+  const latest = useRef({ order, phase, amounts, world, direction, onAmounts });
+  latest.current = { order, phase, amounts, world, direction, onAmounts };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once a wallet and world; the rest is read when the answer comes.
+  useEffect(() => {
+    const key = owner && bookId !== null ? `${owner}:${bookId}` : null;
+    if (!owner || bookId === null || resumedFor.current === key) return;
+    resumedFor.current = key;
+    const controller = new AbortController();
+    const { signal } = controller;
+    let done = false;
+    (async () => {
+      const open = (await worldsApi.rfq.list(owner, signal)).filter(
+        (r) => r.status === "open" && r.book === bookId,
+      );
+      if (!open.length) return;
+      const now = latest.current;
+      const live =
+        now.world.kind === "book" ? now.world.book : await worldsApi.book(bookId, signal);
+      const rfq = open.find((r) => {
+        const side = orderWorld(live, r.order.mask).stock?.direction ?? null;
+        return !now.direction || !side || side === now.direction;
+      });
+      const at = latest.current;
+      // Placed here meanwhile, or another order already on the board: that one stands.
+      if (!rfq || signal.aborted || at.order || at.phase !== "idle") return;
+      const resumed: ProductName = rfq.order.conditional ? "Money-back" : "All-in";
+      const paid = Math.round(dollars(orderCost(rfq.order, live.feeBps)) * 100) / 100;
+      const next = { ...at.amounts, [resumed]: paid };
+      setProduct(resumed);
+      setAmounts(next);
+      at.onAmounts?.({ allIn: next["All-in"], moneyBack: next["Money-back"] });
+      setPlaced({ product: resumed, amount: paid });
+      show(rfq);
+    })()
+      .catch(() => {})
+      .finally(() => {
+        done = true;
+      });
+    return () => {
+      controller.abort();
+      // Stopped before its answer (React's development remount, or the world changed): asked
+      // again next time.
+      if (!done) resumedFor.current = null;
+    };
+  }, [owner, bookId]);
 
   const priced = sentence.stock !== null;
   const feeBps =
@@ -161,11 +221,11 @@ export function WorldTicket({
     account
       .run(async (assertCurrent) => {
         if (!offer) throw new Error("Nothing to trade yet.");
-        clientId.current ??= crypto.randomUUID();
         // 1. The world's book: a new world is opened first (once per opinion, by anyone).
         let bookId: number | null =
           world.kind === "book" ? world.book.id : (world.preview?.existing?.book ?? null);
         if (bookId === null && world.kind === "draft") {
+          if (!world.spec) throw new Error("Nothing to trade yet.");
           setPhase("opening");
           const opened = await worldsApi.open(world.spec);
           bookId = opened.book;
@@ -177,53 +237,103 @@ export function WorldTicket({
           if (bookId === null)
             throw new Error("Your world is still being opened. Try again in a minute.");
         }
-        // 2. A live price for it from the makers (a new world's first takes a few seconds).
-        setPhase("pricing");
-        let live: BookView | null = null;
-        for (let i = 0; i < 45; i++) {
+        // 2. The order, sent to the makers: it stays open while their quotes come in.
+        setPhase("asking");
+        let live: BookView | null = world.kind === "book" ? world.book : null;
+        for (let i = 0; !live && i < 30; i++) {
           live = await worldsApi.book(bookId!).catch(() => null);
-          if (live?.products.find((p) => p.key === offer.key)?.ask) break;
+          if (live) break;
           await wait(1_000);
           assertCurrent();
         }
         const p = live?.products.find((x) => x.key === offer.key);
-        if (!live || !p?.ask)
-          throw new Error("No maker is quoting this world right now. Try again shortly.");
+        if (!live || !p) throw new Error("Your world is not ready yet. Try again shortly.");
         if (!live.tradable) throw new Error("This world is not trading right now.");
         // The stake the order buys: with the books' fee on top, it costs the order's amount.
         const stakeRaw = stakeRawWithin(amount, live.feeBps);
-        const units = Number(stakeRaw) / 1_000_000 / (p.ask / 1_000_000);
-        const minUnits = BigInt(Math.floor(units * (1 - TOLERANCE) * 1_000_000));
-        // 3. The trade: an RFQ, filled by the trading delegate within the grant.
-        setPhase("placing");
-        const result = await worldsApi.submit(
-          {
-            book: bookId,
-            mask: p.mask,
-            side: "buy",
-            stake: stakeRaw.toString(),
-            conditional: selected === "Money-back",
-            limit: minUnits.toString(),
-          },
-          clientId.current,
-        );
-        clientId.current = null;
-        const award = result.rfq?.award;
-        setReceipt({
-          book: bookId!,
-          product: selected,
-          paid: amount,
-          payout: award ? dollars(award.units) : units,
-          refund: award
-            ? dollars(award.refund)
-            : selected === "Money-back"
-              ? Number(stakeRaw) / 1_000_000
-              : 0,
-          tx: result.transactionHash,
+        const rfq = await worldsApi.rfq.open({
+          book: bookId,
+          mask: p.mask,
+          side: "buy",
+          stake: stakeRaw.toString(),
+          conditional: selected === "Money-back",
+          // The person reads each quote and chooses: none is turned away for its price.
+          limit: "0",
         });
-        account.refresh();
+        assertCurrent();
+        setPlaced({ product: selected, amount });
+        show(rfq);
       })
       .finally(() => setPhase("idle"));
+
+  // ---------------------------------------------------------------- the order out for quotes
+
+  const rfq = order?.rfq ?? null;
+  const act = (next: BoardAction, work: () => Promise<void>) => {
+    setAction(next);
+    return account.run(work).finally(() => {
+      held.current = null;
+      setAction(null);
+    });
+  };
+  const filled = (quote: Pick<RfqQuote, "units" | "refund" | "maker">, tx: string) => {
+    if (!rfq || !placed) return;
+    setReceipt({
+      book: rfq.book,
+      product: placed.product,
+      paid: placed.amount,
+      payout: dollars(quote.units),
+      refund: dollars(quote.refund),
+      maker: quote.maker,
+      tx,
+    });
+    show(null);
+    setPlaced(null);
+    account.refresh();
+  };
+  const acceptQuote = (quote: RfqQuote) => {
+    if (!order) return;
+    held.current = order;
+    const id = clientIds.current.get(quote.id) ?? crypto.randomUUID();
+    clientIds.current.set(quote.id, id);
+    void act({ kind: "accept", quote: quote.id }, async () => {
+      const result = await worldsApi.rfq.accept(order.rfq.id, quote.id, id).catch((error) => {
+        // A refusal (the quote went, or its fill did not execute) spent nothing: say so.
+        if (error instanceof ApiError && [400, 409, 429].includes(error.status))
+          throw new Error(`${error.message.replace(/[.\s]+$/, "")}. Nothing was charged.`);
+        throw error;
+      });
+      filled(quote, result.transactionHash);
+    });
+  };
+  const declineQuote = (quote: RfqQuote) =>
+    void act({ kind: "decline", quote: quote.id }, async () => {
+      if (rfq) show(await worldsApi.rfq.decline(rfq.id, quote.id));
+    });
+  const askAgain = () =>
+    void act({ kind: "again" }, async () => {
+      if (rfq) show(await worldsApi.rfq.again(rfq.id));
+    });
+  const back = () => {
+    show(null);
+    setPlaced(null);
+  };
+  const cancelOrder = () =>
+    void act({ kind: "cancel" }, async () => {
+      if (rfq) await worldsApi.rfq.cancel(rfq.id);
+      back();
+      toast.add({ title: "Order cancelled. Nothing was charged." });
+    });
+  // An order that closed without this screen asking: filled (the answer was lost on the way) is
+  // shown as the fill it was; cancelled elsewhere, the ticket comes back.
+  const status = rfq?.status ?? null;
+  const settled = action?.kind === "accept" ? null : status;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: acts once on the status it sees.
+  useEffect(() => {
+    if (settled === "filled" && rfq?.fill?.transactionHash)
+      filled({ ...rfq.fill, maker: rfq.fill.maker }, rfq.fill.transactionHash);
+    else if (settled === "cancelled") back();
+  }, [settled]);
 
   if (receipt)
     return (
@@ -231,6 +341,28 @@ export function WorldTicket({
         receipt={receipt}
         sentence={sentence}
         onAgain={() => setReceipt(null)}
+        className={className}
+      />
+    );
+  // While a quote is being filled the board holds the order as it stood.
+  const shown = (action?.kind === "accept" ? held.current : null) ?? order;
+  if (shown && placed)
+    return (
+      <QuoteBoard
+        order={shown}
+        product={placed.product}
+        paid={placed.amount}
+        failsFrom={firstEnd ? whenDay(firstEnd) : null}
+        action={action}
+        onAccept={acceptQuote}
+        onDecline={declineQuote}
+        onAgain={askAgain}
+        onCancel={cancelOrder}
+        onRestart={() => {
+          back();
+          void place();
+        }}
+        onBack={back}
         className={className}
       />
     );
@@ -253,7 +385,11 @@ export function WorldTicket({
             <Info className="mt-0.5 size-4 shrink-0" />
           )}
           {decline ??
-            (world.kind === "draft" && world.pricing ? "Pricing your world…" : "No price yet")}
+            (world.kind === "draft" && world.spec === null
+              ? "Select an event to see what your world pays"
+              : world.kind === "draft" && world.pricing
+                ? "Pricing your world…"
+                : "No price yet")}
         </div>
       ) : (
         <div className={cn("grid gap-2", offers.length > 1 && "grid-cols-2")}>
@@ -403,6 +539,7 @@ export function WorldTicket({
 
       <TradeButton
         decline={decline}
+        waiting={world.kind === "draft" && world.spec === null ? "Select an event" : "Pricing…"}
         offer={offer}
         busy={busy}
         phase={phase}
@@ -480,6 +617,8 @@ function ProductTile({
 
 function TradeButton(props: {
   decline: string | null;
+  /** What the button says while there is no offer and no reason against one. */
+  waiting: string;
   offer: Offer | null;
   busy: boolean;
   phase: string;
@@ -499,11 +638,9 @@ function TradeButton(props: {
   const label =
     props.phase === "opening"
       ? "Opening your world…"
-      : props.phase === "pricing"
-        ? "Getting your price…"
-        : props.phase === "placing"
-          ? "Placing…"
-          : null;
+      : props.phase === "asking"
+        ? "Asking for quotes…"
+        : null;
   if (label)
     return (
       <Button size="lg" disabled className="w-full">
@@ -515,7 +652,7 @@ function TradeButton(props: {
   if (props.decline || !offer)
     return (
       <Button size="lg" disabled className="w-full">
-        {props.decline ? "No quote available" : "Pricing…"}
+        {props.decline ? "No quote available" : props.waiting}
       </Button>
     );
   const step = account.step;
@@ -585,16 +722,32 @@ function TradeButton(props: {
     );
   }
   return (
-    <Button
-      size="lg"
-      className="w-full"
-      disabled={props.busy || props.blocked || props.hold !== null}
-      onClick={props.onPlace}
-    >
-      {props.hold ??
-        (props.blocked ? "Tick the box above" : `Place ${money(props.total, { cents: true })}`)}
-    </Button>
+    <div className="flex flex-col gap-2">
+      <Button
+        size="lg"
+        className="w-full"
+        disabled={props.busy || props.blocked || props.hold !== null}
+        onClick={props.onPlace}
+      >
+        {props.hold ??
+          (props.blocked ? "Tick the box above" : `Place ${money(props.total, { cents: true })}`)}
+      </Button>
+      <p className="text-center text-xs text-muted-foreground">
+        Makers send their quotes · you pick one · nothing is charged before
+      </p>
+    </div>
   );
+}
+
+/** A bet that filled: what was paid, what it pays, and who quoted it. */
+interface ReceiptOf {
+  book: number;
+  product: ProductName;
+  paid: number;
+  payout: number;
+  refund: number;
+  maker: string;
+  tx: string;
 }
 
 function Receipt({
@@ -603,14 +756,7 @@ function Receipt({
   onAgain,
   className,
 }: {
-  receipt: {
-    book: number;
-    product: ProductName;
-    paid: number;
-    payout: number;
-    refund: number;
-    tx: string;
-  };
+  receipt: ReceiptOf;
   sentence: SentenceWorld;
   onAgain: () => void;
   className?: string | undefined;
@@ -630,7 +776,9 @@ function Receipt({
         </span>
         <div className="flex flex-col">
           <h2 className="text-base font-medium">You're in</h2>
-          <span className="text-xs text-muted-foreground">{receipt.product} · filled over RFQ</span>
+          <span className="text-xs text-muted-foreground">
+            {receipt.product} · quoted by {receipt.maker}
+          </span>
         </div>
       </div>
       <WorldSentence world={sentence} size="card" />

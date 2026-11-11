@@ -81,8 +81,18 @@ export function WorldPayouts({ shown }: { shown: ShownWorld | null }) {
 }
 
 const PRODUCTS = [
-  { name: "All-in", art: "/worlds/allin.webp", stake: AMOUNTS.allIn },
-  { name: "Money-back", art: "/worlds/moneyback.webp", stake: AMOUNTS.moneyBack },
+  {
+    name: "All-in",
+    art: "/worlds/allin.webp",
+    light: "/worlds/allin-light.webp",
+    stake: AMOUNTS.allIn,
+  },
+  {
+    name: "Money-back",
+    art: "/worlds/moneyback.webp",
+    light: "/worlds/moneyback-light.webp",
+    stake: AMOUNTS.moneyBack,
+  },
 ] as const;
 
 function ProductCard({
@@ -103,7 +113,13 @@ function ProductCard({
   return (
     <article className="flex flex-col gap-5 rounded-xl bg-card p-5 ring-1 ring-border sm:p-6">
       <div className="flex items-center gap-4">
-        <Art src={product.art} width={512} height={512} className="size-20 shrink-0 sm:size-24" />
+        <Art
+          src={product.art}
+          light={product.light}
+          width={512}
+          height={512}
+          className="size-20 shrink-0 sm:size-24"
+        />
         <div className="flex min-w-0 flex-col gap-1">
           <h3 className="text-lg font-medium">{product.name}</h3>
           <div className="flex items-center gap-2 text-3xl font-medium tracking-[-0.02em] tabular-nums">
@@ -301,30 +317,50 @@ function usePriced(shown: ShownWorld | null): Priced | null {
 }
 
 /** Generated art (public/worlds), drawn on black: it sits in a black tile, seamless on the dark
- * page and a framed picture on the light one. */
+ * page and a framed picture on the light one. Art with a light version (`light`, drawn on white)
+ * shows it in a white tile on the light theme. Only the one shown is loaded: the other is not
+ * displayed, and lazy images load once displayed. */
 export function Art({
   src,
+  light,
   width,
   height,
   className,
 }: {
   src: string;
+  light?: string;
   width: number;
   height: number;
   className?: string;
 }) {
+  const image = (url: string, shown?: string) => (
+    // biome-ignore lint/performance/noImgElement: static art served as is.
+    <img
+      src={url}
+      alt=""
+      width={width}
+      height={height}
+      decoding="async"
+      loading="lazy"
+      className={cn("size-full object-cover", shown)}
+    />
+  );
   return (
-    <div className={cn("overflow-hidden rounded-3xl bg-black", className)}>
-      {/* biome-ignore lint/performance/noImgElement: static art served as is. */}
-      <img
-        src={src}
-        alt=""
-        width={width}
-        height={height}
-        decoding="async"
-        loading="lazy"
-        className="size-full object-cover"
-      />
+    <div
+      className={cn(
+        "overflow-hidden rounded-3xl",
+        light ? "bg-white dark:bg-black" : "bg-black",
+        className,
+      )}
+    >
+      {light ? (
+        <>
+          {image(light, "dark:hidden")}
+          {image(src, "hidden dark:block")}
+        </>
+      ) : (
+        image(src)
+      )}
     </div>
   );
 }

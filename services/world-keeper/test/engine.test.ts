@@ -71,6 +71,13 @@ for (let i = 0; i < 3; i++)
     data.correlations.set(`${a}:${b}`, { rho: 0.146, se: 0.1, samples: 60 });
   }
 
+/** A tick's time: the clock's, but always later than the last one (a tick no newer than the
+ * one before it is ignored, and two in the same millisecond would be). */
+let stamped = 0;
+const stamp = () => {
+  stamped = Math.max(stamped + 1, Date.now());
+  return stamped;
+};
 const tick = (condition: Hex, yes: number) => ({
   schemaVersion: 1,
   quality: "valid",
@@ -79,7 +86,7 @@ const tick = (condition: Hex, yes: number) => ({
   midpointX6: String(Math.round(yes * 1e6)),
   bestBidX6: String(Math.round(yes * 1e6) - 5_000),
   bestAskX6: String(Math.round(yes * 1e6) + 5_000),
-  observedAtMs: String(Date.now()),
+  observedAtMs: String(stamp()),
 });
 const observeAll = () => {
   for (const [i, c] of CONDITIONS.entries()) legs.observe(c, tick(c, YES[i]!));
@@ -430,6 +437,199 @@ describe("quoting the world vault", () => {
     });
     expect(blind.refresh(true)).toBe(0);
     expect(blind.price(order({}), 3)).toEqual({ decline: "The book is not quoted" });
+  });
+
+  test("a quote on an open request lives minutes, costs a little more, and the vault fills it", async () => {
+    observeAll();
+    keeper.refresh(true);
+    const bet = order({ taker: bob!, mask: outcomeMask({ kind: "world" }, 7) });
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    const auction = keeper.price(bet, 3);
+    const open = keeper.price(bet, 3, undefined, true);
+    if ("decline" in auction || "decline" in open) throw new Error("declined");
+    // An auction's quote fills at once: ten seconds. An open request's taker reads the quotes
+    // and chooses: five minutes (the vault's `maxTtl` here, counted from the signing time).
+    expect(Number(auction.quote.expiry - now)).toBeGreaterThanOrEqual(8);
+    expect(Number(auction.quote.expiry - now)).toBeLessThanOrEqual(11);
+    expect(Number(open.quote.expiry - now)).toBeGreaterThanOrEqual(295);
+    expect(Number(open.quote.expiry - now)).toBeLessThanOrEqual(300);
+    // The same formula charges the longer life (its stale-quote term), and nothing else moves.
+    expect(open.components.stale).toBeGreaterThan(auction.components.stale * 4);
+    expect(open.components.stale).toBeLessThan(auction.components.stale * 7);
+    const perUnit = (p: typeof open) => p.components.ambiguity / Number(p.quote.units);
+    expect(perUnit(open)).toBeCloseTo(perUnit(auction), 6);
+    expect(open.quote.units).toBeLessThanOrEqual(auction.quote.units);
+    expect(Number(auction.quote.units - open.quote.units)).toBeLessThan(
+      Number(auction.quote.units) * 0.02,
+    );
+    // The vault's own hook accepts the long quote.
+    const signed = await keeper.sign("open-fill", open, true);
+    expect(keeper.standingQuotes).toBe(1);
+    expect((await fill(2, signed)).status).toBe("success");
+    // Its fill, seen on the replica, ends the review and the hold.
+    expect(keeper.standingQuotes).toBe(0);
+    expect(keeper.risk.outstanding.has("open-fill")).toBe(false);
+  });
+
+  test("near a scheduled resolution an open quote lives a minute", () => {
+    observeAll();
+    const resolvingIn = (seconds: number, open: boolean) => {
+      const near = new Map(
+        [...metadata].map(([id, m]) => [
+          id,
+          {
+            ...m,
+            metadata: {
+              ...m.metadata,
+              legs: m.metadata.legs.map((l) => ({
+                ...l,
+                endTime: new Date(Date.now() + seconds * 1000).toISOString(),
+              })),
+            },
+          },
+        ]),
+      );
+      const k = new WorldKeeper({
+        ...keeper.options,
+        metadata: () => near,
+        state: { version: 1, scope: `near-${seconds}`, ...initialJournal(), counter: "1" },
+      });
+      k.refresh(true);
+      const priced = k.price(order({ book: 2, mask: 0b10 }), 3, undefined, open);
+      if ("decline" in priced) throw new Error(priced.decline);
+      return Number(priced.quote.expiry) - Math.floor(Date.now() / 1000);
+    };
+    const about = (ttl: number, seconds: number) => {
+      expect(ttl).toBeGreaterThanOrEqual(seconds - 3);
+      expect(ttl).toBeLessThanOrEqual(seconds);
+    };
+    // Days ahead of it: five minutes. Within two hours, or past the venue's end time: a
+    // minute, where an auction's quote lives five seconds.
+    about(resolvingIn(3 * 86_400, true), 300);
+    about(resolvingIn(5_400, true), 60);
+    about(resolvingIn(-600, true), 60);
+    about(resolvingIn(5_400, false), 5);
+  });
+
+  test("a standing quote is withdrawn once the price has moved against it, never for a move its way", async () => {
+    const lone = CONDITIONS[3]!;
+    const fresh = (scope: string, now?: () => number) => {
+      const k = new WorldKeeper({
+        ...keeper.options,
+        state: { version: 1, scope, ...initialJournal(), counter: "500" },
+        ...(now ? { now } : {}),
+      });
+      k.refresh(true);
+      return k;
+    };
+    const quoteOpen = async (k: WorldKeeper, id: string) => {
+      // Asked again, the vault's earlier quote on the request goes first (as its maker does).
+      k.withdraw(id);
+      // The event-only book: one leg, at 60%.
+      const priced = k.price(
+        order({ taker: accounts[7]!.address, book: 2, mask: 0b10 }),
+        3,
+        undefined,
+        true,
+      );
+      if ("decline" in priced) throw new Error(priced.decline);
+      await k.sign(id, priced, true);
+      return priced;
+    };
+    try {
+      observeAll();
+      const k = fresh("review");
+      await quoteOpen(k, "rfq-a");
+      expect(k.standingQuotes).toBe(1);
+      expect(k.risk.outstanding.has("rfq-a")).toBe(true);
+      // Nothing moved: nothing to look at, nothing withdrawn.
+      expect(k.review()).toEqual([]);
+      k.refresh(true);
+      expect(k.review()).toEqual([]);
+      // The world got less likely: the quote only got better for the vault.
+      legs.observe(lone, tick(lone, 0.5));
+      k.refresh(true);
+      expect(k.review()).toEqual([]);
+      // A small move against it leaves most of its margin.
+      legs.observe(lone, tick(lone, 0.603));
+      k.refresh(true);
+      expect(k.review()).toEqual([]);
+      // The world got much more likely: the bet is now worth more than the vault sold it for.
+      legs.observe(lone, tick(lone, 0.75));
+      k.refresh(true);
+      expect(k.review()).toEqual([{ id: "rfq-a", reason: "The price moved" }]);
+      k.withdraw("rfq-a");
+      expect(k.standingQuotes).toBe(0);
+      expect(k.risk.outstanding.has("rfq-a")).toBe(false);
+      expect(k.review()).toEqual([]);
+
+      // A quote asked again replaces the earlier one: one hold, one quote under review.
+      legs.observe(lone, tick(lone, 0.6));
+      k.refresh(true);
+      const first = await quoteOpen(k, "rfq-b");
+      const second = await quoteOpen(k, "rfq-b");
+      expect(second.quote.units).toBe(first.quote.units);
+      expect(k.standingQuotes).toBe(1);
+      expect(k.risk.outstanding.size).toBe(1);
+      // A request that ended frees the quote; the stream closing frees them all.
+      k.outcome("rfq-b", "unfilled");
+      expect([k.standingQuotes, k.risk.outstanding.size]).toEqual([0, 0]);
+      await quoteOpen(k, "rfq-c");
+      await quoteOpen(k, "rfq-d");
+      k.dropStanding();
+      expect([k.standingQuotes, k.risk.outstanding.size]).toEqual([0, 0]);
+
+      // A vault that could not quote withdraws what stands.
+      await quoteOpen(k, "rfq-e");
+      k.stopped = true;
+      expect(k.review()).toEqual([{ id: "rfq-e", reason: "Stopping" }]);
+      k.stopped = false;
+      // A quote that ran out unaccepted is named once, so the vault can quote the request
+      // again, and nothing of it is held any more.
+      let clock = Date.now();
+      const timed = fresh("review-clock", () => clock);
+      await quoteOpen(timed, "rfq-f");
+      clock += 200_000;
+      expect(timed.review()).toEqual([]);
+      expect(timed.standingQuotes).toBe(1);
+      clock += 110_000;
+      expect(timed.review()).toEqual([{ id: "rfq-f", reason: "Expired" }]);
+      expect([timed.standingQuotes, timed.risk.outstanding.size]).toEqual([0, 0]);
+      expect(timed.review()).toEqual([]);
+    } finally {
+      observeAll();
+      keeper.refresh(true);
+    }
+  });
+
+  test("a book whose references went stale takes its standing quotes with it", async () => {
+    observeAll();
+    const own = new LegReferences({
+      origin: "http://127.0.0.1:1",
+      fetch: (async () => new Response("null")) as never,
+      connect: () => ({ onmessage: null, onclose: null, close() {} }),
+    });
+    for (const [i, c] of CONDITIONS.entries()) own.observe(c, tick(c, YES[i]!));
+    let clock = Date.now();
+    const k = new WorldKeeper({
+      ...keeper.options,
+      legs: own,
+      state: { version: 1, scope: "stale", ...initialJournal(), counter: "900" },
+      now: () => clock,
+    });
+    k.refresh(true);
+    const priced = k.price(
+      order({ taker: accounts[7]!.address, book: 2, mask: 0b10 }),
+      3,
+      undefined,
+      true,
+    );
+    if ("decline" in priced) throw new Error(priced.decline);
+    await k.sign("rfq-stale", priced, true);
+    // A minute without a tick: the leg is too old to price from, and the model goes.
+    clock += 60_000;
+    k.refresh(true);
+    expect(k.review()).toEqual([{ id: "rfq-stale", reason: "The book is not quoted" }]);
   });
 
   test("indications carry each book's chance chain", () => {

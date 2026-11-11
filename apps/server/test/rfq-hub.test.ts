@@ -303,3 +303,188 @@ test("makers' indications combine into the best bid and ask per branch, until th
   hub.detach(b);
   expect(hub.prices()).toEqual([]);
 });
+
+// ---------------------------------------------------------------- standing requests
+
+/** A standing request and what it reported, for the tests below. */
+function standing(hub: RfqHub, id: string, exclude?: MakerIdentity) {
+  const stood: string[] = [];
+  const left: string[] = [];
+  const request = hub.open<MakerQuote>({
+    id,
+    kind: "market",
+    request: (replay) => ({ type: "rfq", id, replay }),
+    ...(exclude ? { exclude: exclude.wallet } : {}),
+    validate: accept,
+    onQuote: (q, replaced) =>
+      void stood.push(
+        `${q.maker.label}@${q.terms.price}${replaced ? ` over ${replaced.terms.price}` : ""}`,
+      ),
+    onWithdrawn: (q, why) => void left.push(`${q.maker.label} ${why}`),
+  });
+  return { request, stood, left };
+}
+const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
+
+test("a standing request outlives its first round: quotes arrive, replace and withdraw until it closes", async () => {
+  let hub!: RfqHub;
+  hub = newHub(60_000);
+  const [one, two] = [0, 1].map((n) => session(() => hub, maker(n)));
+  one!.answer = (r) => quote(String(r.id), "100");
+  two!.answer = (r) => ({ type: "decline", rfqId: r.id });
+  hub.attach(one!);
+  hub.attach(two!);
+  const started = performance.now();
+  const { request, stood, left } = standing(hub, rfqId(20));
+  await request.firstRound;
+  // Both makers answered, so the 60 s window did not run out; the request is still open.
+  expect(performance.now() - started).toBeLessThan(100);
+  expect(ofType(one!, "rfq")[0]).toMatchObject({ id: rfqId(20), replay: false });
+  expect(request.quotes().map((q) => q.terms.price)).toEqual([100n]);
+  // The maker that declined quotes after all, long after the first round.
+  hub.receive(two!, JSON.stringify(quote(rfqId(20), "98")));
+  hub.receive(one!, JSON.stringify(quote(rfqId(20), "97")));
+  expect(stood).toEqual(["maker 0@100", "maker 1@98", "maker 0@97 over 100"]);
+  expect(request.quotes().map((q) => `${q.maker.label}@${q.terms.price}`)).toEqual([
+    "maker 1@98",
+    "maker 0@97",
+  ]);
+  // Declining after a quote withdraws it; declining again reports nothing.
+  hub.receive(two!, JSON.stringify({ type: "decline", rfqId: rfqId(20) }));
+  hub.receive(two!, JSON.stringify({ type: "decline", rfqId: rfqId(20) }));
+  expect(left).toEqual(["maker 1 withdrawn"]);
+  expect(request.quotes()).toHaveLength(1);
+  request.close();
+  hub.receive(one!, JSON.stringify(quote(rfqId(20), "96")));
+  expect(ofType(one!, "quote.rejected").at(-1)).toMatchObject({
+    reason: "The request is closed or was not sent to this maker",
+  });
+  expect(stood).toHaveLength(3);
+});
+
+test("a silent maker holds only a standing request's first round, for the window", async () => {
+  let hub!: RfqHub;
+  hub = newHub(80);
+  const [fast, slow] = [0, 1].map((n) => session(() => hub, maker(n)));
+  fast!.answer = (r) => quote(String(r.id), "100");
+  hub.attach(fast!);
+  hub.attach(slow!);
+  const started = performance.now();
+  const { request, stood } = standing(hub, rfqId(21));
+  await request.firstRound;
+  expect(performance.now() - started).toBeGreaterThanOrEqual(75);
+  // Unlike an auction, the slow maker's quote still stands after the window.
+  hub.receive(slow!, JSON.stringify(quote(rfqId(21), "99")));
+  expect(stood).toEqual(["maker 0@100", "maker 1@99"]);
+  request.close();
+});
+
+test("a maker that connects later receives the standing requests it may quote, never its own", async () => {
+  let hub!: RfqHub;
+  hub = newHub(60_000);
+  const started = performance.now();
+  const mine = standing(hub, rfqId(22), maker(0));
+  const other = standing(hub, rfqId(23));
+  // With no maker online the first round waits for nobody.
+  await Promise.all([mine.request.firstRound, other.request.firstRound]);
+  expect(performance.now() - started).toBeLessThan(20);
+  const late = session(() => hub, maker(0));
+  late.answer = (r) => quote(String(r.id), "100");
+  hub.attach(late);
+  await tick();
+  // Its own request is not sent to it; the other is, marked as sent again.
+  expect(ofType(late, "rfq")).toEqual([{ type: "rfq", id: rfqId(23), replay: true }]);
+  expect(other.stood).toEqual(["maker 0@100"]);
+  expect(mine.stood).toEqual([]);
+  // A quote on its own request is refused.
+  hub.receive(late, JSON.stringify(quote(rfqId(22), "1")));
+  expect(ofType(late, "quote.rejected")).toHaveLength(1);
+  // A second connection of the maker is not asked again for what it already quotes.
+  const second = session(() => hub, maker(0));
+  hub.attach(second);
+  await tick();
+  expect(ofType(second, "rfq")).toHaveLength(0);
+  mine.request.close();
+  other.request.close();
+});
+
+test("a maker's standing quotes leave with its last connection", async () => {
+  let hub!: RfqHub;
+  hub = newHub(60_000);
+  const [first, second] = [0, 0].map((n) => session(() => hub, maker(n)));
+  first!.answer = (r) => quote(String(r.id), "100");
+  hub.attach(first!);
+  hub.attach(second!);
+  const { request, left } = standing(hub, rfqId(24));
+  await request.firstRound;
+  expect(request.quotes()).toHaveLength(1);
+  hub.detach(first!);
+  expect(left).toEqual([]);
+  expect(request.quotes()).toHaveLength(1);
+  hub.detach(second!);
+  expect(left).toEqual(["maker 0 offline"]);
+  expect(request.quotes()).toHaveLength(0);
+  request.close();
+});
+
+test("asking again goes to the makers without a standing quote, and to one whose quote was dropped", async () => {
+  let hub!: RfqHub;
+  hub = newHub(60_000);
+  const [one, two] = [0, 1].map((n) => session(() => hub, maker(n)));
+  let price = 100;
+  one!.answer = (r) => quote(String(r.id), String(price--));
+  two!.answer = (r) => (r.replay ? quote(String(r.id), "90") : { type: "decline", rfqId: r.id });
+  hub.attach(one!);
+  hub.attach(two!);
+  const { request, stood } = standing(hub, rfqId(25));
+  await request.firstRound;
+  await request.ask();
+  // Only the maker that held no quote was asked again.
+  expect(ofType(one!, "rfq")).toHaveLength(1);
+  expect(ofType(two!, "rfq").map((m) => m.replay)).toEqual([false, true]);
+  expect(stood).toEqual(["maker 0@100", "maker 1@90"]);
+  // A quote that ran out is forgotten, and its maker asked again.
+  request.drop(maker(0).id);
+  expect(request.quotes().map((q) => q.maker.label)).toEqual(["maker 1"]);
+  await request.ask();
+  expect(ofType(one!, "rfq")).toHaveLength(2);
+  expect(stood.at(-1)).toBe("maker 0@99");
+  // With every maker quoting, asking again sends nothing and settles at once.
+  const started = performance.now();
+  await request.ask();
+  expect(performance.now() - started).toBeLessThan(20);
+  expect(ofType(one!, "rfq")).toHaveLength(2);
+  request.close();
+});
+
+test("a connecting maker receives a long list of standing requests in bursts", async () => {
+  let hub!: RfqHub;
+  hub = newHub(60_000);
+  const open = Array.from({ length: 60 }, (_, i) => standing(hub, rfqId(100 + i)));
+  const late = session(() => hub, maker(0));
+  hub.attach(late);
+  expect(ofType(late, "rfq")).toHaveLength(25);
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  expect(ofType(late, "rfq").map((m) => m.id)).toEqual(
+    Array.from({ length: 60 }, (_, i) => rfqId(100 + i)),
+  );
+  // A request closed meanwhile is not sent, and a maker gone stops the rest.
+  for (const o of open) o.request.close();
+  const next = session(() => hub, maker(1));
+  hub.attach(next);
+  expect(ofType(next, "rfq")).toHaveLength(0);
+});
+
+test("a standing request takes many quotes from one maker, up to its own limit", async () => {
+  let hub!: RfqHub;
+  hub = newHub(60_000);
+  const one = session(() => hub, maker(0));
+  hub.attach(one);
+  const { request, stood } = standing(hub, rfqId(26));
+  for (let i = 0; i < 257; i++) hub.receive(one, JSON.stringify(quote(rfqId(26), String(900 - i))));
+  expect(stood).toHaveLength(256);
+  expect(ofType(one, "quote.rejected").at(-1)).toMatchObject({
+    reason: "At most 256 quotes per request",
+  });
+  request.close();
+});

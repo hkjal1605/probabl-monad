@@ -93,7 +93,7 @@ export function previewOffers(
 
 /** The books' taker fee on a price, in raw units: `feeBps` of it, rounded up, as `WorldBooks`
  * charges it on top of the price. */
-const feeOn = (price: bigint, feeBps: number) => (price * BigInt(feeBps) + 9_999n) / 10_000n;
+export const feeOn = (price: bigint, feeBps: number) => (price * BigInt(feeBps) + 9_999n) / 10_000n;
 
 /** What an order of `amount` dollars stakes when its fee comes out of it, in raw units: the most
  * whose stake plus fee is at most the amount, so the order costs what it says (at 1%, a $20

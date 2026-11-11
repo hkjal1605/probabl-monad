@@ -25,6 +25,7 @@ import { WorldTicket } from "@/components/worlds/WorldTicket";
 import { useMaxTenor, useStocks } from "@/hooks/useWorlds";
 import { cn } from "@/lib/utils";
 import { nyDate, weekdayFrom, worldDates } from "@/lib/worlds/dates";
+import { addEvent, removeEvent, setEvent } from "@/lib/worlds/events";
 import { calendarDay } from "@/lib/worlds/format";
 import {
   atStake,
@@ -62,6 +63,9 @@ export function WorldBuilder() {
     error: string | null;
   } | null>(null);
   const [legs, setLegs] = useState<LegState[]>([]);
+  /** The person took the last event out: the world stays on the page, asking for an event
+   * (a reading that found no event asks which one it is about instead). */
+  const [emptied, setEmptied] = useState(false);
   const [stock, setStock] = useState<StockState | null>(null);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -83,6 +87,7 @@ export function WorldBuilder() {
     if (!start) return;
     const param = startParam(start);
     const stashed = takeStart(param);
+    setEmptied(false);
     if (stashed) {
       setLegs(stashed.legs);
       setStock(stashed.stock);
@@ -139,6 +144,7 @@ export function WorldBuilder() {
     const controller = new AbortController();
     setDraft(null);
     setPreview(null);
+    setEmptied(false);
     worldsApi
       .parse(text, controller.signal)
       .then((d) => {
@@ -221,7 +227,8 @@ export function WorldBuilder() {
       controller.abort();
     };
   }, [key, spec, stakes]);
-  const current = preview?.value ?? null;
+  // Without an event there is no world to price: the last world's price is not this one's.
+  const current = spec ? (preview?.value ?? null) : null;
   const pricing = key !== null && preview?.key !== key;
 
   // The stock is read from tomorrow to the vault's tenor less a day (to open and fill the world).
@@ -241,8 +248,12 @@ export function WorldBuilder() {
   const onProduct = useCallback((p: ProductName) => setProduct(p), []);
   const addLeg = (e: LegEntry) => {
     setAdding(false);
-    if (legs.some((l) => l.entry.id === e.id)) return;
-    setLegs((ls) => [...ls, { entry: e, wantYes: true, note: null, alternatives: [] }]);
+    setLegs((ls) => addEvent(ls, e));
+  };
+  /** Takes an event out, with its place in the sentence; the last one leaves the selector. */
+  const removeLeg = (i: number) => {
+    if (legs.length === 1) setEmptied(true);
+    setLegs((ls) => removeEvent(ls, i));
   };
 
   if ((!text && !start) || editing)
@@ -294,7 +305,7 @@ export function WorldBuilder() {
       </div>
     );
 
-  if (draft.error || !legs.length)
+  if (draft.error || (!legs.length && !emptied))
     return (
       <div className="mx-auto flex max-w-3xl flex-col gap-6 pt-4 sm:pt-8">
         <TopBar text={text} onEdit={() => setEditing(true)} />
@@ -367,8 +378,8 @@ export function WorldBuilder() {
           // The worlds page's size and line spacing.
           className={HERO_SENTENCE}
           dates={dates}
-          onLeg={(i, leg) => setLegs((ls) => ls.map((l, j) => (j === i ? leg : l)))}
-          onRemoveLeg={(i) => setLegs((ls) => ls.filter((_, j) => j !== i))}
+          onLeg={(i, leg) => setLegs((ls) => setEvent(ls, i, leg))}
+          onRemoveLeg={removeLeg}
           onAddEvent={() => setAdding(true)}
           onStock={setStock}
         />
@@ -397,7 +408,7 @@ export function WorldBuilder() {
       <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_400px]">
         <aside className="min-w-0 lg:col-start-2 lg:row-start-1">
           <WorldTicket
-            world={{ kind: "draft", spec: spec!, preview: current, pricing }}
+            world={{ kind: "draft", spec, preview: current, pricing }}
             sentence={sentence}
             direction={stock?.direction ?? null}
             onAmounts={onAmounts}
@@ -437,16 +448,14 @@ export function WorldBuilder() {
                         : x,
                     ),
                   ),
-                ...(legs.length > 1
-                  ? { onRemove: () => setLegs((ls) => ls.filter((_, j) => j !== i)) }
-                  : {}),
+                onRemove: () => removeLeg(i),
               }),
             )}
             notes={notes}
             onAdd={legs.length < 4 ? () => setAdding(true) : undefined}
             offer={offer}
             paid={offer?.name === "Money-back" ? amounts.moneyBack : amounts.allIn}
-            outcomesLoading={!offer && !current?.problems[0]}
+            outcomesLoading={spec !== null && !offer && !current?.problems[0]}
             stock={stock}
           />
         </div>
